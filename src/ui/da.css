@@ -1,0 +1,2549 @@
+/*
+ * DA « Tag sacré » (planche ui-r4.html) : l'interface du jeu.
+ *
+ * Le récit : la Ligue parle sur des écrans sombres, la rébellion les tague à la bombe,
+ * et ce qui est au joueur (dons, attaques, sa carte) tient sur des bandes de papier.
+ * Pas de rouge pour la bombe (les coulures rouges faisaient sang) ; les polices graffiti
+ * qui bavent sont écartées (film d'horreur). Polices embarquées via @fontsource (main.ts).
+ *
+ * Mesures : la planche était dessinée en largeurs de cadre 16:9. --u en est l'équivalent
+ * à l'écran : 1 % de la largeur, plafonné par la hauteur pour une fenêtre très large.
+ */
+:root {
+  --u: min(1vw, 1.7778vh);
+  --ink: #14100e;
+  --paper: #efe6d2;
+  --paper-hi: #fff6e0;
+  --muted: #6b5a48;
+  --gold-da: #ffcb05;
+  --yel: #ffd23f;
+  /* Couleur de la bombe (la rébellion) et du biome courant (posée par main.ts). */
+  --spray: #ff3f9e;
+  --biome: #5fb83e;
+  --body: 'Rubik', system-ui, sans-serif;
+  --head: 'Bebas Neue', 'Rubik', sans-serif;
+  --marker: 'Permanent Marker', cursive;
+  /* Police d'accent : combo, nom de zone. */
+  --accent: 'Bangers', 'Bebas Neue', cursive;
+}
+
+/* ── Briques ───────────────────────────────────────────────────────────── */
+/* Bande de papier aux bords déchirés. */
+.da-paper {
+  color: var(--ink);
+  background: var(--paper);
+  clip-path: polygon(0 0, 97% 0, 100% 18%, 98% 40%, 100% 62%, 97% 82%, 99% 100%, 0 100%);
+}
+/* Ruban adhésif noir : étiquettes, lettres capitales. */
+.da-tape {
+  padding: calc(0.25 * var(--u)) var(--u);
+  font-family: var(--head);
+  font-size: calc(1.6 * var(--u));
+  letter-spacing: 0.08em;
+  color: var(--paper);
+  background: var(--ink);
+}
+/* Étiquette jaune : prix, valeurs, gains. */
+.da-stamp {
+  padding: calc(0.2 * var(--u)) calc(0.9 * var(--u));
+  font-family: var(--head);
+  font-size: calc(2 * var(--u));
+  line-height: 1.1;
+  color: var(--ink);
+  background: var(--yel);
+  transform: rotate(3deg);
+  text-align: center;
+}
+.da-stamp small {
+  display: block;
+  font-family: var(--body);
+  font-size: calc(0.8 * var(--u));
+  text-transform: uppercase;
+}
+/* Pastille de type : un sticker de la couleur du type. */
+.pill {
+  display: inline-block;
+  padding: calc(0.05 * var(--u)) calc(0.7 * var(--u));
+  font-family: var(--head);
+  font-size: calc(1.25 * var(--u));
+  font-weight: normal;
+  letter-spacing: 0.06em;
+  color: #fff;
+  background: var(--c);
+  transform: rotate(-3deg);
+  text-shadow: 0 calc(0.12 * var(--u)) 0 rgba(0, 0, 0, 0.55);
+  box-shadow: calc(0.15 * var(--u)) calc(0.15 * var(--u)) 0 rgba(0, 0, 0, 0.35);
+}
+.pill.light {
+  color: var(--ink);
+  text-shadow: none;
+}
+/* Scotch de masquage : translucide, fibres fines, bouts déchirés en dents de scie. */
+.da-tapestrip {
+  position: absolute;
+  width: calc(9 * var(--u));
+  height: calc(2.4 * var(--u));
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0) 45%, rgba(120, 90, 40, 0.12)),
+    repeating-linear-gradient(100deg, rgba(255, 255, 255, 0.12) 0 1px, transparent 1px 4px),
+    rgba(236, 214, 160, 0.82);
+  clip-path: polygon(0 0, 4% 12%, 0 25%, 4% 37%, 0 50%, 4% 62%, 0 75%, 4% 87%, 0 100%, 100% 100%, 96% 87%, 100% 75%, 96% 62%, 100% 50%, 96% 37%, 100% 25%, 96% 12%, 100% 0);
+}
+.da-ballx circle,
+.da-ballx path {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+}
+.da-ballx .x {
+  stroke: var(--gold-da);
+  stroke-width: 3.6;
+}
+
+/* ── Bombe de peinture (spray.ts) ─────────────────────────────────────── */
+.spr {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.spr path,
+.spr line {
+  fill: none;
+  stroke: var(--c);
+  stroke-linecap: round;
+}
+.spr circle {
+  fill: var(--c);
+}
+.spr .halo {
+  opacity: 0.28;
+  filter: blur(1px);
+}
+.spr .halo,
+.spr .main,
+.spr .drip {
+  stroke-dasharray: var(--len) var(--len);
+}
+.play .spr .halo,
+.play .spr .main {
+  animation: spr-draw var(--draw) ease-out var(--w0) both;
+}
+.play .spr .drip {
+  animation: spr-draw var(--d) cubic-bezier(0.5, 0, 0.3, 1) var(--w) both;
+}
+.spr .bulb {
+  transform: translateY(var(--ty));
+}
+.play .spr .bulb {
+  animation: spr-bulb var(--d) cubic-bezier(0.5, 0, 0.3, 1) var(--w) both;
+}
+.play .spr .dot {
+  animation: spr-dot 0.2s ease-out var(--w) both;
+}
+/* Trait de bord adouci : un halo large et flou, un trait un peu transparent. */
+.spr.soft .halo {
+  stroke-width: 9;
+  opacity: 0.45;
+  filter: blur(2.5px);
+}
+.spr.soft .main {
+  opacity: 0.8;
+}
+@keyframes spr-draw {
+  from {
+    stroke-dashoffset: var(--len);
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes spr-bulb {
+  0% {
+    transform: none;
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+}
+@keyframes spr-dot {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes da-tag-in {
+  from {
+    opacity: 0;
+    filter: blur(calc(0.8 * var(--u)));
+  }
+}
+@keyframes da-slap {
+  from {
+    opacity: 0;
+    transform: rotate(-10deg) scale(1.3);
+  }
+}
+@keyframes da-rise {
+  from {
+    opacity: 0;
+    transform: translateY(calc(2 * var(--u)));
+  }
+}
+@keyframes da-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+.play .in-tag {
+  animation: da-tag-in 0.5s ease-out var(--w, 0.2s) both;
+}
+.play .in-slap {
+  animation: da-slap 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) var(--w, 0.2s) both;
+}
+
+/* ── HUD de combat ────────────────────────────────────────────────────── */
+/* La carte du Pokémon, ses attaques collées juste à droite, à la même hauteur. */
+.hud {
+  position: absolute;
+  left: calc(2.5 * var(--u));
+  bottom: calc(2 * var(--u));
+  display: flex;
+  gap: calc(1.4 * var(--u));
+  align-items: stretch;
+  font-family: var(--body);
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+/* Pendant un dialogue de champion, et derrière un écran de choix ou l'affiche, le HUD s'efface. */
+.talking .hud,
+.modal .hud,
+.modal .hud-combo {
+  opacity: 0;
+}
+/* L'équipe, à gauche (dès deux Pokémon) : celui qu'on joue en avant, les K.O. en gris. */
+.hud-team {
+  position: absolute;
+  left: calc(2.5 * var(--u));
+  top: 45%;
+  width: calc(15 * var(--u));
+  display: grid;
+  gap: calc(0.8 * var(--u));
+  translate: 0 -50%;
+  font-family: var(--body);
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+.hud-team:empty {
+  display: none;
+}
+.talking .hud-team,
+.modal .hud-team {
+  opacity: 0;
+}
+.hud-team .lbl {
+  font-family: var(--marker);
+  font-size: calc(1.3 * var(--u));
+  color: #fff;
+  text-shadow: 0 calc(0.15 * var(--u)) calc(0.3 * var(--u)) rgba(0, 0, 0, 0.6);
+}
+.hud-team .member {
+  display: grid;
+  grid-template-columns: calc(4.4 * var(--u)) 1fr;
+  gap: calc(0.5 * var(--u));
+  align-items: center;
+  padding: calc(0.4 * var(--u)) calc(1.6 * var(--u)) calc(0.5 * var(--u)) calc(0.5 * var(--u));
+  opacity: 0.85;
+  transition: translate 0.2s;
+}
+.hud-team .member img {
+  width: calc(4.8 * var(--u));
+  margin: calc(-0.6 * var(--u)) calc(-0.3 * var(--u));
+}
+.hud-team .nm {
+  font-family: var(--head);
+  font-size: calc(1.5 * var(--u));
+  line-height: 1;
+  letter-spacing: 0.04em;
+}
+.hud-team .nm small {
+  font-family: var(--body);
+  font-size: calc(0.85 * var(--u));
+  font-weight: 700;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+.hud-team .da-gauge {
+  height: calc(0.8 * var(--u));
+  margin-top: calc(0.3 * var(--u));
+}
+.hud-team .da-gauge b {
+  inset: calc(0.15 * var(--u)) auto calc(0.15 * var(--u)) calc(0.15 * var(--u));
+}
+.hud-team .da-gauge.xp {
+  height: calc(0.5 * var(--u));
+  margin-top: calc(0.2 * var(--u));
+}
+.hud-team .da-gauge.xp b {
+  inset: calc(0.1 * var(--u)) auto calc(0.1 * var(--u)) calc(0.1 * var(--u));
+}
+.hud-team .member.active {
+  opacity: 1;
+  background: var(--paper-hi);
+  box-shadow: inset calc(0.5 * var(--u)) 0 0 var(--spray);
+  translate: var(--u) 0;
+}
+.hud-team .member.ko {
+  opacity: 0.55;
+}
+.hud-team .member.ko img {
+  filter: grayscale(1);
+}
+/* Carte du Pokémon : sans étiquettes, PV, XP, dashs, ultime et dons se reconnaissent à leur forme. */
+.hud-card {
+  width: calc(30 * var(--u));
+  padding: var(--u) calc(2.6 * var(--u)) calc(1.1 * var(--u)) calc(1.4 * var(--u));
+  rotate: -1deg;
+}
+.hud-name {
+  display: flex;
+  gap: calc(0.7 * var(--u));
+  align-items: baseline;
+  font-family: var(--head);
+  font-size: calc(2.4 * var(--u));
+  line-height: 1;
+  letter-spacing: 0.04em;
+}
+.hud-name .lv {
+  font-family: var(--body);
+  font-size: calc(1.1 * var(--u));
+  font-weight: 700;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+.hud-name .pill {
+  margin-left: auto;
+}
+.hud-stat {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: calc(0.7 * var(--u));
+  align-items: center;
+  margin-top: calc(0.55 * var(--u));
+}
+/* Jauges : barres d'encre au bout coupé en biais ; le fantôme rattrape les dégâts. */
+.da-gauge {
+  position: relative;
+  height: calc(1.6 * var(--u));
+  background: var(--ink);
+  clip-path: polygon(0 0, 100% 0, 98.5% 100%, 0 100%);
+}
+.da-gauge b,
+.da-gauge i {
+  position: absolute;
+  inset: calc(0.2 * var(--u)) auto calc(0.2 * var(--u)) calc(0.2 * var(--u));
+  width: calc(var(--v, 100%) - calc(0.4 * var(--u)));
+  max-width: calc(100% - calc(0.4 * var(--u)));
+  background: var(--c, #4cd964);
+}
+.da-gauge i {
+  background: #ff8a7a;
+}
+.da-gauge b[data-band='y'] {
+  --c: #f0c330;
+}
+.da-gauge b[data-band='r'] {
+  --c: #f0603a;
+}
+.da-gauge.xp {
+  --c: #4aa8ff;
+  height: calc(0.8 * var(--u));
+}
+.da-gauge.xp b {
+  inset: calc(0.15 * var(--u)) auto calc(0.15 * var(--u)) calc(0.15 * var(--u));
+}
+.hud-val {
+  min-width: calc(4.6 * var(--u));
+  text-align: right;
+  font-family: var(--head);
+  font-size: calc(1.6 * var(--u));
+  letter-spacing: 0.04em;
+}
+.hud-val.xp {
+  font-size: calc(1.15 * var(--u));
+  color: var(--muted);
+}
+/* Dashs : une grosse pastille d'encre par charge ; celle qui recharge se remplit. */
+.hud-dashes {
+  display: flex;
+  gap: calc(0.45 * var(--u));
+}
+.hud-dashes i {
+  position: relative;
+  width: calc(2.8 * var(--u));
+  height: calc(1.5 * var(--u));
+  background: rgba(20, 16, 14, 0.16);
+  clip-path: polygon(25% 0, 100% 0, 75% 100%, 0 100%);
+}
+.hud-dashes i::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--f, 0) * 100%);
+  background: var(--ink);
+}
+.hud-buffs {
+  display: flex;
+  gap: calc(0.5 * var(--u));
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.hud-buffs span {
+  padding: 0 calc(0.5 * var(--u));
+  font-family: var(--head);
+  font-size: calc(1.15 * var(--u));
+  letter-spacing: 0.05em;
+  color: #fff;
+  background: #2f9d4e;
+  rotate: -2deg;
+}
+.hud-buffs span.down {
+  background: #b0472f;
+}
+.hud-buffs span.status {
+  color: var(--ink);
+  background: var(--c);
+}
+.hud-ult {
+  position: relative;
+  height: calc(2.2 * var(--u));
+  margin-top: calc(0.55 * var(--u));
+  overflow: hidden;
+  background: var(--ink);
+  clip-path: polygon(0 0, 98% 0, 100% 50%, 98% 100%, 0 100%);
+}
+.hud-ult b {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: linear-gradient(90deg, var(--spray), color-mix(in srgb, var(--spray) 50%, #fff));
+}
+.hud-ult.full b {
+  background: linear-gradient(90deg, var(--yel), #fff3b0);
+  animation: hud-ult-glow 0.9s ease-in-out infinite alternate;
+}
+@keyframes hud-ult-glow {
+  to {
+    filter: brightness(1.25);
+  }
+}
+.hud-ult span {
+  position: relative;
+  display: block;
+  padding: 0 calc(0.8 * var(--u));
+  font-family: var(--head);
+  font-size: calc(1.5 * var(--u));
+  line-height: calc(2.2 * var(--u));
+  letter-spacing: 0.06em;
+  color: #fff;
+  text-shadow: 0 calc(0.12 * var(--u)) 0 rgba(0, 0, 0, 0.6);
+}
+.hud-ult.full span {
+  color: var(--ink);
+  text-shadow: none;
+}
+.hud-boons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(0.5 * var(--u));
+  margin-top: calc(0.55 * var(--u));
+}
+.hud-boons:empty {
+  display: none;
+}
+.hud-boons i {
+  display: grid;
+  place-items: center;
+  width: calc(2.4 * var(--u));
+  height: calc(2.4 * var(--u));
+  font-style: normal;
+  font-size: calc(1.3 * var(--u));
+  color: #fff;
+  background: var(--c);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 calc(0.2 * var(--u)) var(--paper),
+    0 0 0 calc(0.35 * var(--u)) var(--ink);
+}
+/* Attaques en 2 × 2, comme dans les jeux Pokémon : une bande de papier chacune, un trait
+   de feutre à la couleur du type, le type collé au nom, la touche sur ruban noir. */
+.hud-moves {
+  display: grid;
+  grid-template-columns: repeat(2, calc(22 * var(--u)));
+  grid-template-rows: 1fr 1fr;
+  gap: calc(1.1 * var(--u));
+}
+.hud-move {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: calc(0.7 * var(--u)) calc(2 * var(--u));
+}
+.hud-move:nth-child(odd) {
+  rotate: 0.5deg;
+}
+.hud-move:nth-child(even) {
+  rotate: -0.6deg;
+}
+.hud-move::before {
+  content: '';
+  position: absolute;
+  left: calc(0.6 * var(--u));
+  top: calc(0.6 * var(--u));
+  bottom: calc(0.6 * var(--u));
+  width: calc(0.6 * var(--u));
+  background: var(--c, #999);
+  border-radius: calc(0.3 * var(--u));
+}
+.hud-move.selected {
+  background: var(--paper-hi);
+  box-shadow: inset 0 calc(-0.35 * var(--u)) 0 var(--spray);
+}
+.hud-move.empty {
+  opacity: 0.55;
+}
+.hud-move .top {
+  display: flex;
+  gap: calc(0.6 * var(--u));
+  align-items: center;
+}
+.hud-move .mname {
+  font-family: var(--head);
+  font-size: calc(2 * var(--u));
+  line-height: 1;
+  letter-spacing: 0.04em;
+}
+.hud-move .pill {
+  font-size: var(--u);
+  transform: none;
+}
+.hud-move .key {
+  margin-left: auto;
+  padding: 0 calc(0.5 * var(--u));
+  font-family: var(--head);
+  font-size: calc(1.1 * var(--u));
+  letter-spacing: 0.06em;
+  color: var(--paper);
+  background: var(--ink);
+}
+.hud-move .minfo {
+  margin-top: calc(0.4 * var(--u));
+  font-size: calc(0.95 * var(--u));
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--muted);
+}
+/* Recharge : un voile d'encre qui redescend. */
+.hud-move .veil {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 0;
+  background: rgba(20, 16, 14, 0.4);
+}
+.hud-move .cross {
+  position: absolute;
+  right: calc(2.4 * var(--u));
+  bottom: calc(0.4 * var(--u));
+  font-family: var(--head);
+  font-size: calc(1.4 * var(--u));
+  color: var(--ink);
+}
+/* Combo : pas de cadre ; « combo » et le chiffre dans la police d'accent, le chiffre à la
+   couleur du biome, détouré d'encre. */
+.hud-combo {
+  position: absolute;
+  right: calc(24 * var(--u));
+  top: 38%;
+  display: grid;
+  justify-items: center;
+  rotate: -6deg;
+  pointer-events: none;
+}
+.hud-combo:empty {
+  display: none;
+}
+.hud-combo span {
+  font-family: var(--accent);
+  font-size: calc(2.2 * var(--u));
+  letter-spacing: 0.08em;
+  color: #fff;
+  -webkit-text-stroke: calc(0.15 * var(--u)) var(--ink);
+  paint-order: stroke fill;
+  text-shadow: calc(0.2 * var(--u)) calc(0.2 * var(--u)) 0 var(--ink);
+}
+.hud-combo b {
+  font-family: var(--accent);
+  font-weight: normal;
+  font-size: calc(6 * var(--u));
+  line-height: 0.95;
+  color: var(--biome);
+  -webkit-text-stroke: calc(0.3 * var(--u)) var(--ink);
+  paint-order: stroke fill;
+  text-shadow: calc(0.35 * var(--u)) calc(0.35 * var(--u)) 0 var(--ink);
+}
+.hud-ko {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  translate: -50% -50%;
+  font-family: var(--accent);
+  font-size: calc(9 * var(--u));
+  color: #fff;
+  -webkit-text-stroke: calc(0.4 * var(--u)) var(--ink);
+  paint-order: stroke fill;
+  text-shadow: calc(0.5 * var(--u)) calc(0.5 * var(--u)) 0 var(--spray);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+.hud-ko.shown {
+  opacity: 1;
+}
+
+/* ── Run : lieu et ₽, message central, annonce, notifications, boss ──── */
+.run-bar {
+  position: absolute;
+  left: calc(2 * var(--u));
+  top: calc(1.6 * var(--u));
+  display: flex;
+  gap: calc(0.8 * var(--u));
+  align-items: center;
+  pointer-events: none;
+}
+.run-bar .da-tape {
+  transform: rotate(-1deg);
+}
+.run-bar .da-stamp {
+  font-size: calc(1.7 * var(--u));
+}
+/* Message central : salle libérée, victoire, défaite. */
+.run-toast {
+  position: absolute;
+  left: 50%;
+  top: calc(7 * var(--u));
+  display: flex;
+  gap: var(--u);
+  align-items: center;
+  padding: calc(0.5 * var(--u)) calc(2.4 * var(--u)) calc(0.5 * var(--u)) calc(1.4 * var(--u));
+  font-family: var(--head);
+  font-size: calc(2 * var(--u));
+  letter-spacing: 0.05em;
+  translate: -50% 0;
+  rotate: -1.5deg;
+  pointer-events: none;
+  transition: opacity 0.4s;
+}
+.run-toast .da-stamp {
+  font-size: calc(1.7 * var(--u));
+}
+/* Notifications : petites bandes à droite, la plus récente en haut. */
+.run-notifs {
+  position: absolute;
+  right: calc(2 * var(--u));
+  top: calc(6 * var(--u));
+  width: calc(26 * var(--u));
+  display: grid;
+  gap: calc(0.7 * var(--u));
+  pointer-events: none;
+}
+.notif {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: calc(0.9 * var(--u));
+  align-items: center;
+  padding: calc(0.6 * var(--u)) calc(2 * var(--u)) calc(0.6 * var(--u)) calc(1.4 * var(--u));
+  animation: notif-in 0.4s cubic-bezier(0.2, 1, 0.3, 1) both;
+  transition: opacity 0.5s;
+}
+.notif::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: calc(0.5 * var(--u));
+  background: var(--c, var(--spray));
+}
+.notif .ico {
+  display: grid;
+  place-items: center;
+  width: calc(3.6 * var(--u));
+  height: calc(3.6 * var(--u));
+  font-size: calc(1.8 * var(--u));
+  color: var(--ink);
+}
+.notif .ico img {
+  width: 135%;
+  max-width: none;
+  filter: drop-shadow(0 calc(0.15 * var(--u)) calc(0.2 * var(--u)) rgba(0, 0, 0, 0.35));
+}
+.notif .ico.ko img {
+  filter: grayscale(1) brightness(0.85);
+}
+.notif b {
+  display: block;
+  font-family: var(--head);
+  font-size: calc(1.5 * var(--u));
+  font-weight: normal;
+  line-height: 1;
+  letter-spacing: 0.05em;
+}
+.notif span {
+  font-size: calc(1.1 * var(--u));
+}
+.notif.old {
+  opacity: 0.6;
+}
+.notif.gone {
+  opacity: 0;
+}
+@keyframes notif-in {
+  from {
+    opacity: 0;
+    transform: translateX(110%);
+  }
+}
+/* Annonce de zone : le nom seul, à la couleur du biome, souligné d'un trait de bombe. */
+.run-title {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 26%;
+  display: grid;
+  justify-items: center;
+  pointer-events: none;
+}
+.run-title .kick {
+  rotate: -2deg;
+}
+.run-title .name {
+  font-family: var(--accent);
+  font-size: calc(9 * var(--u));
+  line-height: 1.05;
+  letter-spacing: 0.02em;
+  color: #fff;
+  -webkit-text-stroke: calc(0.25 * var(--u)) var(--ink);
+  paint-order: stroke fill;
+  text-shadow:
+    calc(0.4 * var(--u)) calc(0.4 * var(--u)) 0 var(--zone, var(--biome)),
+    0 calc(0.6 * var(--u)) calc(2 * var(--u)) rgba(0, 0, 0, 0.4);
+}
+.run-title .under {
+  position: relative;
+  width: calc(40 * var(--u));
+  aspect-ratio: 100 / 8;
+  margin-top: calc(-1 * var(--u));
+}
+.run-veil {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+}
+/* Barre du boss : nom sur ruban, PV en une grosse jauge d'encre. */
+.boss-bar {
+  position: absolute;
+  left: 50%;
+  top: calc(1.4 * var(--u));
+  width: calc(44 * var(--u));
+  display: grid;
+  justify-items: center;
+  gap: calc(0.4 * var(--u));
+  translate: -50% 0;
+  pointer-events: none;
+}
+.boss-bar .who {
+  display: flex;
+  gap: calc(0.8 * var(--u));
+  align-items: center;
+}
+.boss-bar .da-tape {
+  font-size: calc(1.9 * var(--u));
+  rotate: -1deg;
+}
+.boss-bar .ace {
+  color: var(--yel);
+}
+.boss-bar small {
+  padding: calc(0.1 * var(--u)) calc(0.6 * var(--u));
+  font-family: var(--marker);
+  font-size: calc(1.15 * var(--u));
+  color: var(--ink);
+  background: var(--paper);
+  rotate: 2deg;
+}
+.boss-bar .da-gauge {
+  width: 100%;
+  height: calc(2.2 * var(--u));
+}
+.boss-bar .da-gauge b {
+  background: linear-gradient(90deg, #ff7a3a, #ffb03a);
+}
+
+/* ── Dialogue du champion : en bas, comme une scène ─────────────────── */
+.dialogue {
+  position: absolute;
+  left: calc(3 * var(--u));
+  right: calc(3 * var(--u));
+  bottom: calc(3 * var(--u));
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: calc(1.4 * var(--u));
+  align-items: end;
+  font-family: var(--body);
+  z-index: 10;
+}
+/* Le champion en grand, détouré de blanc pour ressortir sur n'importe quel décor. */
+.dialogue .speaker {
+  display: block;
+  width: calc(21 * var(--u));
+  image-rendering: pixelated;
+  filter: drop-shadow(calc(0.3 * var(--u)) 0 0 #fff) drop-shadow(calc(-0.3 * var(--u)) 0 0 #fff) drop-shadow(0 calc(0.3 * var(--u)) 0 #fff) drop-shadow(0 calc(-0.3 * var(--u)) 0 #fff) drop-shadow(0 calc(0.8 * var(--u)) calc(1.4 * var(--u)) rgba(0, 0, 0, 0.55));
+  animation: da-slap 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+.dialogue .sheet {
+  margin-bottom: var(--u);
+  padding: calc(1.8 * var(--u)) calc(4 * var(--u)) calc(1.6 * var(--u)) calc(2.4 * var(--u));
+  animation: da-slap 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) 0.12s both;
+}
+.dialogue .nm {
+  display: flex;
+  gap: calc(1.2 * var(--u));
+  align-items: center;
+}
+.dialogue .nm .da-tape {
+  font-size: calc(2.8 * var(--u));
+  rotate: -1.5deg;
+}
+.dialogue .nm small {
+  font-size: calc(1.2 * var(--u));
+  font-weight: 700;
+  color: var(--muted);
+}
+.dialogue p {
+  margin: var(--u) 0 0;
+  min-height: 2.9em;
+  font-size: calc(2 * var(--u));
+  line-height: 1.45;
+}
+.dialogue .hint {
+  margin-top: calc(0.6 * var(--u));
+  text-align: right;
+  font-size: calc(1.1 * var(--u));
+  color: var(--muted);
+}
+
+/* ── Écrans de choix (dons, récompenses) et affiche : modaux ──────────── */
+.reward {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  overflow: hidden;
+  font-family: var(--body);
+}
+.reward > * {
+  position: absolute;
+}
+.rw-half {
+  inset: 0;
+  clip-path: var(--clip);
+}
+/* Plus sombre côté illustration, à la couleur pleine côté trait : pas de démarcation. */
+.rw-half.top {
+  background: linear-gradient(100deg, color-mix(in srgb, var(--tint) 55%, rgba(0, 0, 0, 0.85)) 0%, color-mix(in srgb, var(--tint) 80%, transparent) 70%, color-mix(in srgb, var(--tint) 88%, transparent) 100%);
+}
+.rw-half.bot {
+  background: rgba(16, 15, 22, 0.78);
+}
+.play .rw-half.top {
+  animation: rw-fill 0.55s ease-in-out 0.35s both;
+}
+@keyframes rw-fill {
+  from {
+    clip-path: var(--clip0);
+  }
+}
+.rw-slash {
+  inset: 0;
+}
+.rw-walltag {
+  right: calc(3 * var(--u));
+  bottom: calc(2.5 * var(--u));
+  font-family: var(--marker);
+  font-size: calc(1.7 * var(--u));
+  line-height: 0.9;
+  color: #fffa;
+  rotate: 7deg;
+  text-align: center;
+}
+.rw-ballx {
+  left: calc(2.5 * var(--u));
+  top: calc(2.5 * var(--u));
+  width: calc(5 * var(--u));
+  opacity: 0.8;
+  rotate: -14deg;
+}
+/* Pour qui ? La liste de l'équipe : le don ou l'attaque va au Pokémon choisi. */
+.rw-pick {
+  left: calc(2.5 * var(--u));
+  top: 50%;
+  width: calc(14.5 * var(--u));
+  display: grid;
+  gap: var(--u);
+  translate: 0 -50%;
+}
+.rw-pick .lbl {
+  font-family: var(--marker);
+  font-size: calc(1.6 * var(--u));
+  color: #fff;
+  text-shadow: 0 calc(0.15 * var(--u)) calc(0.3 * var(--u)) rgba(0, 0, 0, 0.6);
+}
+.rw-pick .mon {
+  display: grid;
+  grid-template-columns: calc(4.6 * var(--u)) 1fr;
+  gap: calc(0.5 * var(--u));
+  align-items: center;
+  padding: calc(0.5 * var(--u)) calc(1.6 * var(--u)) calc(0.5 * var(--u)) calc(0.5 * var(--u));
+  opacity: 0.82;
+  cursor: pointer;
+}
+.rw-pick .mon img {
+  width: calc(5.2 * var(--u));
+  margin: calc(-0.6 * var(--u)) calc(-0.3 * var(--u));
+}
+.rw-pick .mon b {
+  display: block;
+  font-family: var(--head);
+  font-size: calc(1.7 * var(--u));
+  font-weight: normal;
+  line-height: 1;
+  letter-spacing: 0.04em;
+}
+.rw-pick .mon small {
+  font-size: calc(0.9 * var(--u));
+  font-weight: 700;
+  color: var(--muted);
+}
+.rw-pick .mon.sel {
+  opacity: 1;
+  background: var(--paper-hi);
+  box-shadow: inset calc(0.5 * var(--u)) 0 0 var(--spray);
+  translate: calc(1.2 * var(--u)) 0;
+}
+.rw-pick .keys {
+  font-size: calc(0.95 * var(--u));
+  color: #fffc;
+}
+.rw-boon {
+  inset: 0;
+  display: grid;
+  grid-template-columns: calc(22 * var(--u)) 1fr;
+  align-items: center;
+  gap: calc(2.5 * var(--u));
+  padding: calc(3 * var(--u)) calc(4 * var(--u)) calc(3 * var(--u)) calc(21 * var(--u));
+}
+.rw-art {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+.rw-art > img {
+  position: relative;
+  width: calc(20 * var(--u));
+  filter: drop-shadow(calc(0.18 * var(--u)) 0 0 #fff) drop-shadow(calc(-0.18 * var(--u)) 0 0 #fff) drop-shadow(0 calc(0.18 * var(--u)) 0 #fff) drop-shadow(0 calc(-0.18 * var(--u)) 0 #fff) drop-shadow(0 var(--u) calc(1.2 * var(--u)) rgba(0, 0, 0, 0.4));
+}
+.play .rw-art > img {
+  animation: da-slap 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) 0.5s both;
+}
+.rw-text {
+  padding-left: calc(7 * var(--u));
+}
+.rw-kicker {
+  width: fit-content;
+  font-family: var(--marker);
+  font-size: calc(2.2 * var(--u));
+  color: var(--gold-da);
+  rotate: -2deg;
+}
+.rw-title {
+  margin: 0;
+  font-family: var(--head);
+  font-size: calc(5.6 * var(--u));
+  font-weight: normal;
+  line-height: 0.95;
+  letter-spacing: 0.03em;
+  color: #fff;
+  text-shadow: calc(0.25 * var(--u)) calc(0.25 * var(--u)) 0 var(--spray);
+}
+.rw-quote {
+  margin: calc(0.4 * var(--u)) 0 var(--u);
+  font-style: italic;
+  font-size: calc(1.35 * var(--u));
+  color: #ddd;
+}
+.rw-cards {
+  display: grid;
+  gap: calc(1.1 * var(--u));
+}
+.rw-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: calc(1.4 * var(--u));
+  align-items: center;
+  padding: calc(0.9 * var(--u)) calc(2 * var(--u)) calc(0.9 * var(--u)) calc(1.2 * var(--u));
+  cursor: pointer;
+}
+.rw-card:nth-child(2) {
+  rotate: 0.6deg;
+}
+.rw-card:nth-child(3) {
+  rotate: -0.5deg;
+}
+.rw-card.focus {
+  background: var(--paper-hi);
+  scale: 1.03;
+  rotate: -1deg;
+  box-shadow: inset calc(0.6 * var(--u)) 0 0 var(--spray);
+}
+/* Renforcer une attaque connue : un peu à l'écart des attaques à apprendre. */
+.rw-card.upgrade {
+  margin-top: var(--u);
+}
+.play .rw-card {
+  animation: rw-card-in 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+  animation-delay: calc(0.6s + var(--i) * 0.09s);
+}
+@keyframes rw-card-in {
+  from {
+    opacity: 0;
+    transform: scale(1.25) rotate(3deg);
+  }
+}
+.rw-icon {
+  display: grid;
+  place-items: center;
+  width: calc(4.2 * var(--u));
+  height: calc(4.2 * var(--u));
+  font-size: calc(2 * var(--u));
+  color: #fff;
+  background: var(--c, var(--ink));
+  border-radius: 50%;
+}
+.rw-head {
+  display: flex;
+  gap: calc(0.9 * var(--u));
+  align-items: center;
+}
+.rw-cname {
+  font-family: var(--head);
+  font-size: calc(2.4 * var(--u));
+  line-height: 1;
+  letter-spacing: 0.04em;
+}
+/* Rareté : au feutre, soulignée en zigzag, juste après le nom. */
+.rw-rar {
+  font-family: var(--marker);
+  font-size: calc(1.4 * var(--u));
+  color: var(--c);
+  text-decoration: underline wavy;
+  text-underline-offset: calc(0.3 * var(--u));
+}
+.rw-head .pill {
+  font-size: calc(1.15 * var(--u));
+  transform: none;
+}
+.rw-head small {
+  margin-left: auto;
+  white-space: nowrap;
+  font-size: calc(1.05 * var(--u));
+  font-weight: 700;
+  color: var(--muted);
+}
+.rw-desc {
+  margin-top: calc(0.35 * var(--u));
+  font-size: calc(1.25 * var(--u));
+}
+.rw-desc .act {
+  margin-right: calc(0.6 * var(--u));
+  padding: 0 calc(0.5 * var(--u));
+  font-family: var(--head);
+  font-size: calc(1.15 * var(--u));
+  letter-spacing: 0.06em;
+  color: var(--paper);
+  background: var(--ink);
+}
+.rw-num {
+  position: absolute;
+  left: calc(0.3 * var(--u));
+  top: calc(0.2 * var(--u));
+  font-family: var(--head);
+  font-size: var(--u);
+  color: var(--muted);
+}
+.rw-keys {
+  margin-top: var(--u);
+  font-size: var(--u);
+  color: #fffb;
+}
+.rw-empty {
+  font-size: calc(1.4 * var(--u));
+  color: #fff;
+}
+/* Sceau d'un dieu derrière lui : rayons et anneaux qui tournent lentement. */
+.sigil {
+  position: absolute;
+  width: calc(27 * var(--u));
+  aspect-ratio: 1;
+  pointer-events: none;
+}
+.sigil i {
+  position: absolute;
+  border-radius: 50%;
+}
+.sigil .rays {
+  inset: 0;
+  background: repeating-conic-gradient(rgba(255, 246, 200, 0.32) 0 5deg, transparent 5deg 15deg);
+  -webkit-mask: radial-gradient(circle, #000 18%, transparent 68%);
+  mask: radial-gradient(circle, #000 18%, transparent 68%);
+  animation: da-spin 70s linear infinite;
+}
+.sigil .ring {
+  inset: 13%;
+  border: calc(0.3 * var(--u)) dashed rgba(255, 246, 200, 0.6);
+  animation: da-spin 40s linear infinite reverse;
+}
+.sigil .ring2 {
+  inset: 20%;
+  border: calc(0.2 * var(--u)) solid rgba(255, 246, 200, 0.5);
+  box-shadow:
+    0 0 calc(2 * var(--u)) rgba(255, 246, 200, 0.35),
+    inset 0 0 calc(2 * var(--u)) rgba(255, 246, 200, 0.25);
+}
+/* Aura d'un Pokémon (le sceau est réservé aux dieux) : une lueur de son type qui respire. */
+.aura {
+  position: absolute;
+  width: calc(34 * var(--u));
+  aspect-ratio: 1;
+  pointer-events: none;
+}
+.aura::before {
+  content: '';
+  position: absolute;
+  inset: 8%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.8) 0%, color-mix(in srgb, var(--t) 35%, rgba(255, 255, 255, 0.5)) 35%, color-mix(in srgb, var(--t) 40%, transparent) 52%, transparent 70%);
+  animation: aura-breathe 2.4s ease-in-out infinite;
+}
+@keyframes aura-breathe {
+  50% {
+    transform: scale(1.08);
+    opacity: 0.7;
+  }
+}
+/* Le halo (sceau ou aura) arrive avec l'illustration, au même rythme. */
+.play .sigil,
+.play .aura {
+  animation: halo-in 0.6s cubic-bezier(0.2, 1, 0.3, 1) 0.5s both;
+}
+@keyframes halo-in {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+}
+/* Particules de l'aura, une famille par type : petites et discrètes. Étincelles autour
+   (Électrik), poussières de lumière, braises et bulles qui montent, feuilles et cristaux
+   qui tombent. */
+.aura i {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  opacity: 0;
+}
+.aura i svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.fx-electric .spark {
+  width: calc(0.45 * var(--u));
+  height: calc(0.45 * var(--u));
+  border-radius: 50%;
+  background: #fff;
+  box-shadow:
+    0 0 calc(0.4 * var(--u)) calc(0.12 * var(--u)) #fff7a0,
+    0 0 calc(1.1 * var(--u)) calc(0.25 * var(--u)) var(--t);
+  animation: fx-crackle 1.6s var(--d) infinite;
+}
+@keyframes fx-crackle {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0);
+    animation-timing-function: steps(1);
+  }
+  8% {
+    opacity: 1;
+    transform: translate(calc(0.5 * var(--u)), calc(-0.4 * var(--u)));
+    animation-timing-function: steps(1);
+  }
+  18% {
+    transform: translate(calc(-0.3 * var(--u)), calc(-1 * var(--u)));
+    animation-timing-function: steps(1);
+  }
+  28% {
+    opacity: 0.4;
+    transform: translate(calc(0.7 * var(--u)), calc(-1.5 * var(--u)));
+    animation-timing-function: steps(1);
+  }
+  34% {
+    opacity: 1;
+    transform: translate(calc(0.2 * var(--u)), calc(-2.1 * var(--u)));
+    animation-timing-function: steps(1);
+  }
+  46% {
+    opacity: 0;
+    transform: translate(calc(-0.4 * var(--u)), calc(-2.6 * var(--u)));
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.fx-electric .arc {
+  width: calc(3 * var(--u));
+  height: calc(1.4 * var(--u));
+  rotate: var(--r);
+  filter: drop-shadow(0 0 calc(0.25 * var(--u)) #fff7a0) drop-shadow(0 0 calc(0.5 * var(--u)) var(--t));
+  animation: fx-arc 2.2s steps(1) var(--d) infinite;
+}
+.fx-electric .arc polyline {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 0.9;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+@keyframes fx-arc {
+  0% {
+    opacity: 0;
+  }
+  5% {
+    opacity: 1;
+  }
+  8% {
+    opacity: 0.15;
+  }
+  11% {
+    opacity: 0.9;
+  }
+  16% {
+    opacity: 0;
+  }
+}
+.fx-mote .spark {
+  width: calc(0.5 * var(--u));
+  height: calc(0.5 * var(--u));
+  border-radius: 50%;
+  background: #fff;
+  box-shadow:
+    0 0 calc(0.6 * var(--u)) calc(0.15 * var(--u)) rgba(255, 255, 255, 0.8),
+    0 0 var(--u) calc(0.2 * var(--u)) color-mix(in srgb, var(--t) 70%, transparent);
+  animation: fx-mote 3.2s ease-in-out var(--d) infinite;
+}
+@keyframes fx-mote {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.6);
+  }
+  25% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+    transform: translate(calc(0.6 * var(--u)), calc(-4 * var(--u))) scale(1);
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-0.4 * var(--u)), calc(-8 * var(--u))) scale(0.5);
+  }
+}
+.fx-fire .spark {
+  width: calc(0.8 * var(--u));
+  height: calc(0.8 * var(--u));
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff6c0 0%, #ffb340 45%, #ff5a1f 75%, transparent 76%);
+  box-shadow: 0 0 calc(0.6 * var(--u)) #ff7a2a;
+  animation: fx-ember 2.4s ease-out var(--d) infinite;
+}
+@keyframes fx-ember {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(1);
+  }
+  15% {
+    opacity: 1;
+  }
+  50% {
+    transform: translate(calc(0.8 * var(--u)), calc(-7 * var(--u))) scale(0.8);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-0.6 * var(--u)), calc(-14 * var(--u))) scale(0.3);
+  }
+}
+.fx-bubble .spark {
+  width: calc(1.2 * var(--u));
+  height: calc(1.2 * var(--u));
+  border: calc(0.18 * var(--u)) solid color-mix(in srgb, var(--t) 25%, #fff);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.85) 0 18%, transparent 20%);
+  animation: fx-bubble 3s ease-in var(--d) infinite;
+}
+@keyframes fx-bubble {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.5);
+  }
+  15% {
+    opacity: 1;
+  }
+  50% {
+    transform: translate(calc(-0.6 * var(--u)), calc(-7 * var(--u))) scale(0.9);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(0.6 * var(--u)), calc(-15 * var(--u))) scale(1.1);
+  }
+}
+.fx-leaf .spark {
+  width: calc(1.8 * var(--u));
+  height: calc(0.9 * var(--u));
+  animation: fx-leaf 3.4s ease-in-out var(--d) infinite;
+}
+.fx-leaf path {
+  fill: color-mix(in srgb, var(--t) 60%, #c8ff9a);
+  stroke: color-mix(in srgb, var(--t) 60%, #000);
+  stroke-width: 1;
+}
+.fx-leaf .vein {
+  fill: none;
+}
+@keyframes fx-leaf {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) rotate(0);
+  }
+  15% {
+    opacity: 1;
+  }
+  50% {
+    transform: translate(calc(2 * var(--u)), calc(7 * var(--u))) rotate(140deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-1 * var(--u)), calc(15 * var(--u))) rotate(300deg);
+  }
+}
+.fx-crystal .spark {
+  width: calc(0.55 * var(--u));
+  height: calc(0.55 * var(--u));
+  background: #fff;
+  rotate: 45deg;
+  box-shadow:
+    0 0 calc(0.4 * var(--u)) calc(0.1 * var(--u)) #e8fbff,
+    0 0 var(--u) calc(0.2 * var(--u)) var(--t);
+  animation: fx-glint 3.6s linear var(--d) infinite;
+}
+@keyframes fx-glint {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.6);
+  }
+  15% {
+    opacity: 1;
+  }
+  30% {
+    opacity: 0.3;
+  }
+  45% {
+    opacity: 1;
+    transform: translate(calc(0.6 * var(--u)), calc(6 * var(--u))) scale(1);
+  }
+  60% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--u), calc(14 * var(--u))) scale(0.5);
+  }
+}
+
+/* ── Affiche du prochain combat ──────────────────────────────────────── */
+.poster-dim {
+  inset: 0;
+  background: rgba(16, 15, 22, 0.6);
+}
+/* Le support de l'affiche : centré, légèrement de travers ; le scotch est posé dessus. */
+.poster-wrap {
+  left: 50%;
+  top: 50%;
+  width: calc(64 * var(--u));
+  translate: -50% -50%;
+  rotate: -1deg;
+}
+.poster-wrap .da-tapestrip {
+  top: calc(-1.2 * var(--u));
+  z-index: 1;
+}
+.poster {
+  padding: calc(2 * var(--u)) calc(2.6 * var(--u)) calc(1.6 * var(--u));
+  color: var(--ink);
+  background: var(--paper);
+  clip-path: polygon(0 1%, 6% 0, 22% 1.2%, 40% 0, 60% 1%, 80% 0, 100% 1.4%, 99.4% 40%, 100% 70%, 99.2% 100%, 70% 99%, 46% 100%, 24% 98.8%, 4% 100%, 0.6% 70%, 0 30%);
+  box-shadow: 0 var(--u) calc(2 * var(--u)) rgba(0, 0, 0, 0.5);
+}
+.play .poster-wrap {
+  animation: da-slap 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) 0.1s both;
+}
+.poster .top {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: calc(2 * var(--u));
+}
+.poster .banner {
+  display: inline-block;
+  font-size: calc(1.8 * var(--u));
+  rotate: -2deg;
+}
+.poster h3 {
+  margin: calc(0.6 * var(--u)) 0 calc(0.2 * var(--u));
+  display: flex;
+  gap: calc(1.2 * var(--u));
+  align-items: center;
+  font: normal calc(5 * var(--u))/1 var(--head);
+  letter-spacing: 0.04em;
+}
+.poster p {
+  margin: calc(0.3 * var(--u)) 0;
+  font-size: calc(1.35 * var(--u));
+}
+.poster .weak b {
+  color: #c0392b;
+}
+.poster .trainer {
+  position: relative;
+  width: calc(10 * var(--u));
+  height: calc(13 * var(--u));
+  background: linear-gradient(160deg, #2a2340, #120f1c);
+}
+.poster .trainer img {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: calc(10 * var(--u));
+  translate: -50% 0;
+  image-rendering: pixelated;
+}
+.poster .team-title {
+  margin: calc(1.2 * var(--u)) 0 calc(0.6 * var(--u));
+  font-family: var(--head);
+  font-size: calc(1.7 * var(--u));
+  letter-spacing: 0.12em;
+}
+.poster .team {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: calc(0.8 * var(--u));
+}
+.poster .mon {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  padding: calc(0.6 * var(--u)) calc(0.4 * var(--u)) calc(0.7 * var(--u));
+  background: rgba(20, 16, 14, 0.07);
+}
+.poster .mon img {
+  width: calc(7.5 * var(--u));
+  aspect-ratio: 1;
+  object-fit: contain;
+}
+.poster .mon b {
+  font-family: var(--head);
+  font-size: calc(1.5 * var(--u));
+  font-weight: normal;
+  letter-spacing: 0.04em;
+}
+.poster .mon small {
+  font-size: var(--u);
+  font-weight: 700;
+  color: var(--muted);
+}
+.poster .mon.ace {
+  background: color-mix(in srgb, var(--trainer) 22%, transparent);
+}
+.poster .ace-tag {
+  color: #b8860b;
+}
+.poster .mon .spr {
+  inset: -18%;
+  width: 136%;
+  height: 136%;
+}
+.poster .keys {
+  margin-top: var(--u);
+  font-size: var(--u);
+  color: var(--muted);
+  text-align: right;
+}
+
+/* ── Boutique : étiquettes de prix, fiche d'article, bulles, mercenaires ── */
+/* Prix de l'étal : une petite ardoise cerclée de bois, le prix à la craie ; elle
+   passe au jaune devant l'article qu'on regarde. */
+.shop-price {
+  padding: calc(0.15 * var(--u)) calc(0.8 * var(--u)) calc(0.05 * var(--u));
+  font-family: var(--head);
+  font-size: calc(1.45 * var(--u));
+  font-weight: normal;
+  letter-spacing: 0.05em;
+  line-height: 1.2;
+  color: #f4efe4;
+  background: linear-gradient(180deg, #3a3640, #26232b);
+  border: calc(0.25 * var(--u)) solid #7a5230;
+  border-radius: calc(0.35 * var(--u));
+  box-shadow:
+    inset 0 0 0 calc(0.1 * var(--u)) rgba(255, 255, 255, 0.08),
+    0 calc(0.25 * var(--u)) 0 #3b2414;
+  -webkit-text-stroke: 0;
+}
+/* Sélectionné : il change de couleur, sans grossir (la taille de .room-label.near, et
+   toute mise à l'échelle, le décaleraient de sa position). */
+.shop-price.near {
+  font-size: calc(1.45 * var(--u));
+  color: var(--ink);
+  background: var(--yel);
+  border-color: #b8860b;
+}
+/* Ce que dit un Pokémon de la place : une bulle de bande dessinée, blanche et cernée
+   d'encre, avec sa pointe vers lui — lisible sur l'herbe, le sable ou la mer. */
+.shop-bubble {
+  width: max-content;
+  max-width: calc(22 * var(--u));
+  padding: calc(0.6 * var(--u)) calc(1.1 * var(--u));
+  font-family: var(--body);
+  font-size: calc(1.2 * var(--u));
+  font-weight: 700;
+  line-height: 1.3;
+  white-space: normal;
+  text-align: center;
+  color: var(--ink);
+  background: #fff;
+  border: calc(0.22 * var(--u)) solid var(--ink);
+  border-radius: calc(1.2 * var(--u));
+  box-shadow: calc(0.3 * var(--u)) calc(0.3 * var(--u)) 0 rgba(20, 16, 14, 0.35);
+  -webkit-text-stroke: 0;
+  margin-top: calc(-1.2 * var(--u));
+}
+.shop-bubble::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: calc(-1.1 * var(--u));
+  width: calc(1.4 * var(--u));
+  height: calc(1.1 * var(--u));
+  translate: -50% 0;
+  background: var(--ink);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+.shop-bubble::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: calc(-0.75 * var(--u));
+  z-index: 1;
+  width: calc(0.95 * var(--u));
+  height: calc(0.8 * var(--u));
+  translate: -50% 0;
+  background: #fff;
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+/* Fiche d'un mercenaire : illustration, rang et niveau, types, statistiques, attaques, prix. */
+.shop-prompt:has(.merc-card) {
+  width: calc(42 * var(--u));
+}
+.merc-card {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: calc(0.5 * var(--u)) calc(1.2 * var(--u));
+  align-items: center;
+}
+.merc-art {
+  grid-row: span 2;
+  width: calc(6 * var(--u));
+  margin: calc(-1 * var(--u)) 0;
+}
+.merc-sub {
+  display: flex;
+  white-space: nowrap;
+  gap: calc(0.6 * var(--u));
+  align-items: center;
+  margin-top: calc(0.3 * var(--u));
+  font-size: calc(1.05 * var(--u));
+  font-weight: 700;
+  color: var(--muted);
+}
+.merc-sub .pill {
+  font-size: var(--u);
+  transform: none;
+}
+.merc-stats {
+  grid-column: 2 / -1;
+  display: flex;
+  gap: calc(0.9 * var(--u));
+  font-family: var(--head);
+  font-size: calc(1.4 * var(--u));
+  letter-spacing: 0.03em;
+}
+.merc-stats small {
+  display: block;
+  font-family: var(--body);
+  font-size: calc(0.75 * var(--u));
+  font-weight: 700;
+  color: var(--muted);
+}
+.merc-moves {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: calc(0.3 * var(--u)) calc(1.2 * var(--u));
+}
+.merc-moves > div {
+  display: flex;
+  white-space: nowrap;
+  gap: calc(0.5 * var(--u));
+  align-items: center;
+  font-size: calc(1.05 * var(--u));
+}
+.merc-moves b {
+  font-family: var(--head);
+  font-size: calc(1.35 * var(--u));
+  font-weight: normal;
+  letter-spacing: 0.03em;
+}
+.merc-moves .pill {
+  font-size: calc(0.9 * var(--u));
+  transform: none;
+}
+.merc-moves small {
+  color: var(--muted);
+  font-weight: 700;
+}
+/* Fiche de l'article devant lequel on se tient : en bas à droite, au-dessus des attaques. */
+.shop-prompt {
+  position: absolute;
+  right: calc(2 * var(--u));
+  bottom: calc(20 * var(--u));
+  width: calc(30 * var(--u));
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: calc(0.4 * var(--u)) calc(1.2 * var(--u));
+  align-items: center;
+  padding: var(--u) calc(2.4 * var(--u)) var(--u) calc(1.2 * var(--u));
+  font-family: var(--body);
+  rotate: -0.8deg;
+  pointer-events: none;
+}
+.shop-prompt canvas {
+  width: calc(4.4 * var(--u));
+  height: calc(4.4 * var(--u));
+  image-rendering: pixelated;
+}
+.shop-name {
+  font-family: var(--head);
+  font-size: calc(2.2 * var(--u));
+  line-height: 1;
+  letter-spacing: 0.04em;
+}
+.shop-prompt .shop-cost {
+  font-size: calc(2.2 * var(--u));
+}
+.shop-desc {
+  grid-column: 1 / -1;
+  font-size: calc(1.2 * var(--u));
+}
+.shop-note {
+  grid-column: 1 / -1;
+  font-size: var(--u);
+  font-weight: 700;
+  color: var(--muted);
+}
+.shop-prompt.refused .shop-note {
+  color: #c0392b;
+}
+.shop-buy {
+  grid-column: 1 / -1;
+  justify-self: end;
+  padding: 0 calc(0.6 * var(--u));
+  font-family: var(--head);
+  font-size: calc(1.2 * var(--u));
+  letter-spacing: 0.06em;
+  color: var(--paper);
+  background: var(--ink);
+}
+.shop-buy:empty {
+  display: none;
+}
+.shop-hint {
+  grid-column: 1 / -1;
+  font-family: var(--head);
+  font-size: calc(1.5 * var(--u));
+  letter-spacing: 0.04em;
+}
+.talking .shop-prompt,
+.modal .shop-prompt {
+  display: none;
+}
+
+/* ── Repaire : panneaux des postes et écrans ────────────────────────────── */
+.camp-screen {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  font-family: var(--body);
+  background:
+    linear-gradient(105deg, color-mix(in srgb, var(--tint) 70%, rgba(0, 0, 0, 0.6)) 0 31%, transparent 31.2%),
+    rgba(14, 12, 24, 0.84);
+}
+.cs-page {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: calc(30 * var(--u)) 1fr;
+}
+.cs-side {
+  position: relative;
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  padding: 0 calc(3 * var(--u));
+}
+.cs-art {
+  width: calc(19 * var(--u));
+  margin-bottom: calc(-1 * var(--u));
+  filter: drop-shadow(calc(0.18 * var(--u)) 0 0 #fff) drop-shadow(calc(-0.18 * var(--u)) 0 0 #fff) drop-shadow(0 calc(0.18 * var(--u)) 0 #fff) drop-shadow(0 calc(-0.18 * var(--u)) 0 #fff) drop-shadow(0 var(--u) calc(1.2 * var(--u)) rgba(0, 0, 0, 0.45));
+}
+.play .cs-art {
+  animation: da-slap 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) 0.1s both;
+}
+.cs-kicker {
+  font-family: var(--marker);
+  font-size: calc(2 * var(--u));
+  color: var(--gold-da);
+  rotate: -3deg;
+}
+.cs-title {
+  margin: 0;
+  font-family: var(--head);
+  font-size: calc(6 * var(--u));
+  font-weight: normal;
+  line-height: 0.9;
+  letter-spacing: 0.03em;
+  color: #fff;
+  text-shadow: calc(0.3 * var(--u)) calc(0.3 * var(--u)) 0 var(--spray);
+}
+.cs-main {
+  align-self: center;
+  max-height: 82vh;
+  overflow-y: auto;
+  padding: calc(2 * var(--u)) calc(4 * var(--u)) calc(2 * var(--u)) calc(3 * var(--u));
+  scrollbar-width: thin;
+}
+.play .cs-main {
+  animation: cs-in 0.35s ease-out 0.15s both;
+}
+@keyframes cs-in {
+  from {
+    opacity: 0;
+    translate: calc(3 * var(--u)) 0;
+  }
+}
+.cs-quote {
+  margin: 0 0 calc(1.2 * var(--u));
+  max-width: calc(52 * var(--u));
+  font-style: italic;
+  font-size: calc(1.3 * var(--u));
+  color: #e4dccb;
+}
+.cs-quote.wide {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+/* Dans le volet du gardien : à droite, le tampon mordait sur les illustrations. */
+.cs-purse {
+  position: absolute;
+  top: calc(2.4 * var(--u));
+  left: calc(3 * var(--u));
+  font-size: calc(2.6 * var(--u));
+}
+.cs-keys {
+  position: absolute;
+  right: calc(3 * var(--u));
+  bottom: calc(1.6 * var(--u));
+  font-size: calc(1 * var(--u));
+  color: #fffa;
+}
+.cs-close {
+  position: absolute;
+  top: calc(1.6 * var(--u));
+  right: calc(1.6 * var(--u));
+  width: calc(2.6 * var(--u));
+  height: calc(2.6 * var(--u));
+  font-size: calc(1.4 * var(--u));
+  color: var(--paper);
+  background: none;
+  border: calc(0.15 * var(--u)) solid #fff6;
+  border-radius: 50%;
+  cursor: pointer;
+}
+.cs-tabs {
+  display: flex;
+  gap: var(--u);
+  margin-bottom: calc(1.4 * var(--u));
+}
+.cs-tabs button,
+.cs-actions button {
+  padding: calc(0.3 * var(--u)) calc(1.2 * var(--u));
+  font-family: var(--head);
+  font-size: calc(1.7 * var(--u));
+  letter-spacing: 0.05em;
+  color: var(--paper);
+  background: #fff1;
+  border: none;
+  cursor: pointer;
+}
+.cs-tabs button.sel {
+  color: var(--ink);
+  background: var(--paper);
+  box-shadow: inset 0 calc(-0.4 * var(--u)) 0 var(--tint);
+}
+.cs-label {
+  margin: calc(1.2 * var(--u)) 0 calc(0.5 * var(--u));
+  font-family: var(--marker);
+  font-size: calc(1.3 * var(--u));
+  color: var(--yel);
+}
+.cs-detail .cs-label {
+  color: var(--muted);
+}
+
+/* Cartes : CT, améliorations, objets. */
+.cs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(calc(24 * var(--u)), 1fr));
+  gap: calc(1.2 * var(--u));
+}
+.cs-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: calc(4 * var(--u)) 1fr;
+  column-gap: var(--u);
+  align-items: center;
+  min-height: calc(7.5 * var(--u));
+  padding: var(--u) calc(5.5 * var(--u)) var(--u) var(--u);
+  box-shadow: inset calc(0.5 * var(--u)) 0 0 var(--c, var(--tint));
+  cursor: pointer;
+  transition: translate 0.12s;
+}
+.cs-card:hover {
+  translate: 0 calc(-0.3 * var(--u));
+  background: var(--paper-hi);
+}
+.cs-card.owned {
+  cursor: default;
+  opacity: 0.72;
+}
+.cs-card.owned:hover {
+  translate: none;
+  background: var(--paper);
+}
+.cs-card.poor .cs-price {
+  background: #c9bfa8;
+}
+.cs-card > :not(.cs-icon) {
+  grid-column: 2;
+}
+.cs-icon {
+  grid-row: 1 / span 4;
+  width: calc(4 * var(--u));
+  image-rendering: pixelated;
+}
+.cs-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(0.6 * var(--u));
+}
+.cs-head b {
+  font-family: var(--head);
+  font-size: calc(1.9 * var(--u));
+  font-weight: normal;
+  line-height: 1;
+  letter-spacing: 0.03em;
+}
+.cs-info,
+.cs-next {
+  font-size: calc(1 * var(--u));
+  font-weight: 700;
+  color: var(--muted);
+}
+.cs-next {
+  color: var(--ink);
+}
+.cs-who {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(0.1 * var(--u));
+  margin-top: calc(0.3 * var(--u));
+}
+.cs-who img {
+  width: calc(2.4 * var(--u));
+}
+.cs-who small {
+  font-size: calc(0.9 * var(--u));
+  color: var(--muted);
+}
+.cs-price,
+.cs-tag {
+  position: absolute;
+  top: 50%;
+  right: var(--u);
+  translate: 0 -50%;
+}
+.cs-price {
+  font-size: calc(2 * var(--u));
+}
+.cs-tag {
+  font-size: calc(1.2 * var(--u));
+  rotate: -4deg;
+}
+.cs-pips {
+  display: flex;
+  gap: calc(0.3 * var(--u));
+  margin-top: calc(0.4 * var(--u));
+}
+.cs-pips i {
+  width: calc(1.4 * var(--u));
+  height: calc(0.5 * var(--u));
+  background: #0002;
+  transform: skewX(-20deg);
+}
+.cs-pips i.on {
+  background: var(--tint);
+  box-shadow: 0 0 0 calc(0.1 * var(--u)) var(--ink);
+}
+
+/* Équipe : la liste à gauche, la fiche du Pokémon choisi à droite. */
+.cs-team {
+  display: grid;
+  grid-template-columns: calc(19 * var(--u)) 1fr;
+  gap: calc(2 * var(--u));
+  align-items: start;
+}
+.cs-roster {
+  display: grid;
+  gap: calc(0.7 * var(--u));
+}
+.cs-roster > .cs-label:first-child {
+  margin-top: 0;
+}
+.cs-slot {
+  position: relative;
+  display: grid;
+  grid-template-columns: calc(4.2 * var(--u)) 1fr;
+  gap: calc(0.5 * var(--u));
+  align-items: center;
+  padding: calc(0.4 * var(--u)) calc(1.4 * var(--u)) calc(0.4 * var(--u)) calc(0.4 * var(--u));
+  opacity: 0.85;
+  cursor: pointer;
+}
+.cs-slot img:first-child {
+  width: calc(4.8 * var(--u));
+  margin: calc(-0.4 * var(--u)) calc(-0.3 * var(--u));
+}
+.cs-slot b {
+  display: block;
+  font-family: var(--head);
+  font-size: calc(1.7 * var(--u));
+  font-weight: normal;
+  line-height: 1;
+}
+.cs-slot small {
+  font-size: calc(0.9 * var(--u));
+  font-weight: 700;
+  color: var(--muted);
+}
+.cs-slot.sel {
+  opacity: 1;
+  background: var(--paper-hi);
+  box-shadow: inset calc(0.5 * var(--u)) 0 0 var(--spray);
+  translate: calc(1 * var(--u)) 0;
+}
+.cs-slot.empty,
+.cs-slot.locked {
+  display: block;
+  padding: calc(1 * var(--u));
+  font-family: var(--marker);
+  font-size: calc(1.1 * var(--u));
+  color: #fff9;
+  border: calc(0.15 * var(--u)) dashed #fff4;
+  cursor: default;
+}
+.cs-slot.locked {
+  color: #fff6;
+  border-style: dotted;
+}
+.cs-held {
+  position: absolute;
+  right: calc(0.4 * var(--u));
+  top: 50%;
+  width: calc(2.4 * var(--u));
+  translate: 0 -50%;
+  image-rendering: pixelated;
+}
+.cs-bench {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(0.4 * var(--u));
+}
+.cs-bench img {
+  display: block;
+  width: calc(3.8 * var(--u));
+}
+.cs-detail {
+  position: relative;
+  padding: calc(1.4 * var(--u)) calc(2.4 * var(--u)) calc(1.6 * var(--u)) calc(1.6 * var(--u));
+  box-shadow: inset calc(0.5 * var(--u)) 0 0 var(--c);
+}
+.cs-big {
+  position: absolute;
+  top: calc(-3 * var(--u));
+  right: calc(1.5 * var(--u));
+  width: calc(12 * var(--u));
+  filter: drop-shadow(0 calc(0.6 * var(--u)) calc(0.8 * var(--u)) rgba(0, 0, 0, 0.3));
+}
+.cs-detail > .cs-head b {
+  font-size: calc(3 * var(--u));
+}
+.cs-actions {
+  display: flex;
+  gap: calc(0.6 * var(--u));
+  margin-top: calc(0.8 * var(--u));
+}
+.cs-actions button {
+  font-size: calc(1.4 * var(--u));
+  color: var(--paper);
+  background: var(--ink);
+}
+.cs-actions button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.cs-moves {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, calc(24 * var(--u))));
+  gap: calc(0.5 * var(--u));
+}
+.cs-move {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: center;
+  gap: 0 calc(0.6 * var(--u));
+  padding: calc(0.4 * var(--u)) var(--u);
+  text-align: left;
+  font-family: var(--body);
+  color: var(--ink);
+  background: #0000000d;
+  border: none;
+  box-shadow: inset calc(0.35 * var(--u)) 0 0 var(--c);
+  cursor: pointer;
+}
+.cs-move.on {
+  background: #fff;
+}
+.cs-moves b {
+  font-family: var(--head);
+  font-size: calc(1.5 * var(--u));
+  font-weight: normal;
+}
+.cs-moves small {
+  grid-column: 1 / -1;
+  font-size: calc(0.9 * var(--u));
+  color: var(--muted);
+}
+.cs-moves .ct {
+  position: absolute;
+  right: calc(0.6 * var(--u));
+  top: calc(0.4 * var(--u));
+  font-family: var(--head);
+  font-style: normal;
+  font-size: calc(1 * var(--u));
+  color: #8a5fd0;
+}
+.cs-items {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(0.5 * var(--u));
+}
+.cs-items button {
+  min-width: calc(3.4 * var(--u));
+  height: calc(3.4 * var(--u));
+  padding: 0 calc(0.6 * var(--u));
+  font-family: var(--head);
+  font-size: calc(1.3 * var(--u));
+  background: #0000000d;
+  border: calc(0.15 * var(--u)) solid transparent;
+  cursor: pointer;
+}
+.cs-items button.on {
+  background: #fff;
+  border-color: var(--spray);
+}
+.cs-items img {
+  width: calc(2.6 * var(--u));
+  image-rendering: pixelated;
+}
+
+/* Départ : l'équipe alignée, ce qu'elle emporte, et le grand bouton. */
+.cs-lineup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(1.4 * var(--u));
+  margin: calc(1 * var(--u)) 0;
+}
+.cs-lineup > div {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  width: calc(11 * var(--u));
+}
+.cs-lineup img:first-child {
+  width: calc(10 * var(--u));
+  filter: drop-shadow(0 calc(0.5 * var(--u)) calc(0.6 * var(--u)) rgba(0, 0, 0, 0.5));
+}
+.cs-lineup .lead img:first-child {
+  width: calc(12 * var(--u));
+  filter: drop-shadow(calc(0.15 * var(--u)) 0 0 #fff) drop-shadow(calc(-0.15 * var(--u)) 0 0 #fff) drop-shadow(0 calc(0.15 * var(--u)) 0 #fff) drop-shadow(0 calc(-0.15 * var(--u)) 0 #fff);
+}
+.cs-lineup b {
+  font-family: var(--head);
+  font-size: calc(1.8 * var(--u));
+  font-weight: normal;
+  color: #fff;
+}
+.cs-lineup .lead b::before {
+  content: '★ ';
+  color: var(--yel);
+}
+.cs-lineup .cs-held {
+  top: calc(1 * var(--u));
+  right: 0;
+  translate: none;
+}
+.cs-perks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--u);
+  margin-bottom: calc(1.6 * var(--u));
+}
+.cs-perks .da-tape {
+  font-size: calc(1.4 * var(--u));
+}
+
+/* Fenêtre par-dessus l'écran (fiche d'une CT). */
+.cs-veil {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  background: rgba(8, 6, 16, 0.55);
+}
+.cs-modal {
+  position: relative;
+  width: calc(46 * var(--u));
+  padding: calc(2 * var(--u)) calc(2.4 * var(--u)) calc(2 * var(--u)) calc(7.5 * var(--u));
+  box-shadow: inset calc(0.6 * var(--u)) 0 0 var(--c);
+  animation: cs-pop 0.18s ease-out both;
+}
+@keyframes cs-pop {
+  from {
+    opacity: 0;
+    scale: 0.94;
+  }
+}
+.cs-modal .cs-close {
+  top: var(--u);
+  right: var(--u);
+  color: var(--ink);
+  border-color: #0003;
+}
+.cs-modal-icon {
+  position: absolute;
+  left: calc(1.6 * var(--u));
+  top: calc(1.8 * var(--u));
+  width: calc(4.6 * var(--u));
+  image-rendering: pixelated;
+}
+.cs-modal .cs-head b {
+  font-size: calc(2.8 * var(--u));
+}
+.cs-learners {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: calc(0.6 * var(--u));
+}
+.cs-learners > div {
+  display: grid;
+  justify-items: center;
+  padding: calc(0.3 * var(--u));
+  background: #0000000a;
+}
+.cs-learners img {
+  width: calc(5 * var(--u));
+}
+.cs-learners small {
+  font-size: calc(0.95 * var(--u));
+  font-weight: 700;
+}
+.cs-learners .no {
+  opacity: 0.3;
+  filter: grayscale(1);
+}
+.cs-modal-act {
+  margin-top: calc(1.4 * var(--u));
+}
+.cs-buy {
+  padding: calc(0.4 * var(--u)) calc(2 * var(--u));
+  font-family: var(--head);
+  font-size: calc(2 * var(--u));
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  background: var(--yel);
+  border: none;
+  box-shadow: calc(0.3 * var(--u)) calc(0.3 * var(--u)) 0 var(--ink);
+  cursor: pointer;
+}
+.cs-buy:disabled {
+  background: #c9bfa8;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+.cs-card.soon {
+  cursor: default;
+  opacity: 0.6;
+}
+.cs-card.soon:hover {
+  translate: none;
+  background: var(--paper);
+}
+
+/* Équipe : glisser-déposer. */
+[draggable='true'] {
+  cursor: grab;
+}
+.dragging {
+  opacity: 0.35;
+}
+.over {
+  outline: calc(0.25 * var(--u)) dashed var(--spray);
+  outline-offset: calc(0.2 * var(--u));
+}
+.dragging-mon .cs-slot.empty,
+.dragging-mon .cs-bench,
+.dragging-move .cs-moveslot,
+.dragging-move .cs-moves.spare {
+  background: color-mix(in srgb, var(--spray) 12%, transparent);
+}
+.cs-bench {
+  min-height: calc(5 * var(--u));
+  padding: calc(0.4 * var(--u));
+  border: calc(0.12 * var(--u)) dashed #fff3;
+}
+.cs-chip {
+  background: #fff1;
+  border: calc(0.12 * var(--u)) solid transparent;
+}
+.cs-chip:hover {
+  background: #fff3;
+}
+.cs-chip.sel {
+  border-color: var(--spray);
+  background: #fff3;
+}
+.cs-hint {
+  font-size: calc(0.9 * var(--u));
+  color: #fff8;
+}
+.cs-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: calc(0.4 * var(--u)) calc(1.4 * var(--u));
+  margin: calc(1 * var(--u)) calc(13 * var(--u)) 0 0;
+}
+.cs-stats > div {
+  display: grid;
+  grid-template-columns: calc(3.6 * var(--u)) calc(3 * var(--u)) 1fr;
+  align-items: center;
+  gap: calc(0.4 * var(--u));
+}
+.cs-stats small {
+  font-size: calc(0.9 * var(--u));
+  font-weight: 700;
+  color: var(--muted);
+}
+.cs-stats b {
+  font-family: var(--head);
+  font-size: calc(1.5 * var(--u));
+  font-weight: normal;
+  text-align: right;
+}
+.cs-stats i {
+  height: calc(0.6 * var(--u));
+  background: #0001;
+}
+.cs-stats i::before {
+  content: '';
+  display: block;
+  width: var(--w);
+  height: 100%;
+  background: #4a3e36;
+}
+.cs-stats .up b {
+  color: #2f8a3a;
+}
+.cs-stats .up b::after {
+  content: ' ▲';
+  font-size: 0.6em;
+}
+.cs-moveslot {
+  min-height: calc(4.4 * var(--u));
+  display: grid;
+}
+.cs-moveslot .empty {
+  display: grid;
+  place-items: center;
+  font-family: var(--marker);
+  font-size: calc(1 * var(--u));
+  color: #0006;
+  border: calc(0.15 * var(--u)) dashed #0003;
+}
+.cs-moves.spare {
+  min-height: calc(4 * var(--u));
+}
+.cs-candy {
+  display: flex;
+  align-items: center;
+  gap: calc(0.6 * var(--u));
+  margin-top: calc(1.2 * var(--u));
+}
+.cs-candy img {
+  width: calc(2.8 * var(--u));
+  image-rendering: pixelated;
+}
+.cs-candy button {
+  padding: calc(0.3 * var(--u)) calc(1.2 * var(--u));
+  font-family: var(--head);
+  font-size: calc(1.4 * var(--u));
+  color: var(--paper);
+  background: var(--ink);
+  border: none;
+  cursor: pointer;
+}
+.cs-candy button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.cs-online {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: calc(1.4 * var(--u));
+}
+.cs-online .cs-card {
+  min-height: calc(12 * var(--u));
+  grid-template-columns: 1fr;
+}
+.cs-online .cs-card > * {
+  grid-column: 1;
+}
+.cs-code {
+  width: calc(12 * var(--u));
+  margin-top: var(--u);
+  padding: calc(0.4 * var(--u));
+  font-family: var(--head);
+  font-size: calc(1.8 * var(--u));
+  letter-spacing: 0.3em;
+  background: #fff8;
+  border: calc(0.15 * var(--u)) solid #0002;
+}
+
+/* Départ : la prochaine run, puis le grand départ. */
+.cs-next-run {
+  display: grid;
+  width: fit-content;
+  margin: 0 0 calc(0.8 * var(--u));
+  padding: calc(0.6 * var(--u)) calc(2 * var(--u)) calc(0.8 * var(--u)) calc(1.4 * var(--u));
+  color: #fff;
+  background: color-mix(in srgb, var(--b) 55%, rgba(0, 0, 0, 0.6));
+  box-shadow: inset calc(0.5 * var(--u)) 0 0 var(--b);
+}
+.cs-next-run small {
+  font-size: calc(0.95 * var(--u));
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #fffc;
+}
+.cs-next-run b {
+  font-family: var(--accent);
+  font-size: calc(3.4 * var(--u));
+  font-weight: normal;
+  line-height: 1;
+  letter-spacing: 0.04em;
+}
+.cs-next-run span {
+  font-size: calc(1.2 * var(--u));
+}
+.cs-next-run .pill {
+  margin-left: calc(0.4 * var(--u));
+}
+.cs-lineup small {
+  font-size: calc(1 * var(--u));
+  color: #fffb;
+}
+/* Le bouton de départ : un ruban d'encre, le mot au pochoir et une flèche bombée qui pousse vers la sortie. */
+.cs-go {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: calc(1.4 * var(--u));
+  padding: calc(0.6 * var(--u)) calc(2.4 * var(--u)) calc(0.6 * var(--u)) calc(3 * var(--u));
+  color: var(--yel);
+  background: var(--ink);
+  border: none;
+  clip-path: polygon(0 0, 100% 0, 96% 50%, 100% 100%, 0 100%, 2% 50%);
+  cursor: pointer;
+  transition: translate 0.15s;
+}
+.cs-go::before {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 0;
+  height: calc(0.5 * var(--u));
+  background: var(--spray);
+  transform-origin: left;
+  scale: 0 1;
+  transition: scale 0.25s ease-out;
+}
+.cs-go-word {
+  font-family: var(--head);
+  font-size: calc(4.6 * var(--u));
+  line-height: 1;
+  letter-spacing: 0.08em;
+}
+.cs-go-arrow {
+  font-size: calc(3 * var(--u));
+  color: var(--spray);
+  transition: translate 0.2s;
+}
+.cs-go kbd {
+  padding: calc(0.15 * var(--u)) calc(0.6 * var(--u));
+  font-family: var(--body);
+  font-size: calc(0.9 * var(--u));
+  color: var(--paper);
+  border: calc(0.12 * var(--u)) solid #fff5;
+}
+.cs-go:hover {
+  translate: calc(0.6 * var(--u)) 0;
+}
+.cs-go:hover::before {
+  scale: 1 1;
+}
+.cs-go:hover .cs-go-arrow {
+  translate: calc(0.8 * var(--u)) 0;
+}
+.cs-modal .cs-label {
+  color: var(--muted);
+}
+
+/* Repère du gardien dont on s'approche : un chevron bombé qui tressaute au-dessus de sa tête. */
+.camp-mark {
+  width: 0;
+  height: 0;
+  border-left: calc(0.8 * var(--u)) solid transparent;
+  border-right: calc(0.8 * var(--u)) solid transparent;
+  border-top: calc(1 * var(--u)) solid var(--yel);
+  filter: drop-shadow(0 calc(0.15 * var(--u)) 0 var(--ink));
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.camp-mark.open {
+  opacity: 1;
+  animation: camp-mark 0.7s ease-in-out infinite alternate;
+}
+@keyframes camp-mark {
+  to {
+    margin-top: calc(-0.6 * var(--u));
+  }
+}
+/* Les papiers sont détourés (clip-path) : le pointillé de survol se trace à l'intérieur, sinon il est coupé. */
+.da-paper.over {
+  outline-offset: calc(-0.45 * var(--u));
+}
+/* La fiche de l'équipe laisse dépasser l'illustration du Pokémon par le haut : on lui fait de la place. */
+.cs-team {
+  margin-top: calc(3.5 * var(--u));
+}
+.cs-build-art {
+  image-rendering: auto;
+  width: calc(4.6 * var(--u));
+}
+.cs-title.long {
+  font-size: calc(4.2 * var(--u));
+}
+/* Une stat : son nom et sa valeur sur une ligne, sa barre en dessous. */
+.cs-stats > div {
+  grid-template-columns: auto 1fr;
+  row-gap: calc(0.15 * var(--u));
+}
+.cs-stats i {
+  grid-column: 1 / -1;
+}
+/* Choisi au clavier (flèches) : un liseré jaune, tracé à l'intérieur des papiers détourés. */
+.nav-focus {
+  outline: calc(0.3 * var(--u)) solid var(--yel);
+  outline-offset: calc(-0.45 * var(--u));
+}

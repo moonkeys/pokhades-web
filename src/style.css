@@ -1,0 +1,264 @@
+/* Tokens repris de scripts/ui/UiKit.gd (kit « bois & parchemin »). */
+:root {
+  --wood: #543824;
+  --wood-dark: #382417;
+  --wood-edge: #24170d;
+  --tan: #e3c287;
+  --tan-dark: #c49e66;
+  --cream: #f5e6c7;
+  --gold: #f2c24f;
+  --text-dark: #472b14;
+  --cyan-sel: #40e0d1;
+  --font: ui-rounded, 'Trebuchet MS', system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* L'attribut hidden doit l'emporter sur les display: flex / grid des composants. */
+[hidden] {
+  display: none !important;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #0b0d0a;
+  color: var(--cream);
+  font-family: var(--font);
+}
+
+#screen {
+  /* Le canvas peut déborder de la fenêtre de moins d'un pixel agrandi : on le centre. */
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  image-rendering: pixelated;
+}
+
+#loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  color: var(--tan);
+}
+
+#panel {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 300px;
+  max-height: calc(100% - 24px);
+  overflow-y: auto;
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--wood-dark) 92%, transparent);
+  border: 3px solid var(--wood-edge);
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 2px var(--wood);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+#panel.hidden {
+  display: none;
+}
+
+#panel header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+#panel h1 {
+  margin: 0;
+  font-size: 16px;
+  color: var(--gold);
+}
+
+#panel .tag {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--tan);
+  color: var(--text-dark);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+#panel section {
+  padding: 8px 0;
+  border-top: 1px solid var(--wood);
+}
+
+#panel .field {
+  display: grid;
+  gap: 3px;
+  margin-bottom: 8px;
+}
+
+#panel .label {
+  color: var(--tan);
+  font-weight: 700;
+}
+
+#panel small {
+  color: var(--tan-dark);
+}
+
+#panel .row {
+  display: flex;
+  gap: 6px;
+}
+
+#panel .row select {
+  flex: 1;
+  min-width: 0;
+}
+
+#panel .team {
+  display: grid;
+  gap: 4px;
+}
+
+#panel select,
+#panel input[type='number'],
+#panel button {
+  font: inherit;
+  color: var(--text-dark);
+  background: var(--cream);
+  border: 2px solid var(--wood-edge);
+  border-radius: 6px;
+  padding: 3px 6px;
+}
+
+#panel input[type='number'] {
+  width: 80px;
+}
+
+#panel button {
+  flex: 1;
+  background: var(--tan);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#panel button:hover {
+  background: var(--gold);
+}
+
+#panel :focus-visible {
+  outline: 3px solid var(--cyan-sel);
+  outline-offset: 1px;
+}
+
+#panel input[type='range'] {
+  accent-color: var(--gold);
+}
+
+#panel .toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+  cursor: pointer;
+}
+
+#panel .toggle input {
+  accent-color: var(--gold);
+}
+
+#panel footer {
+  border-top: 1px solid var(--wood);
+  padding-top: 8px;
+}
+
+#panel .keys {
+  margin: 0 0 6px;
+  color: var(--tan);
+}
+
+#panel kbd {
+  padding: 0 4px;
+  border-radius: 4px;
+  background: var(--cream);
+  color: var(--text-dark);
+  font-family: inherit;
+  font-size: 11px;
+}
+
+#panel .status {
+  margin: 0;
+  color: var(--tan-dark);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Combat : HUD (HUD.gd) et chiffres de dégâts (CombatVFX.gd) ─────────── */
+
+#fx-layer,
+.hud-tags {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.dmg,
+.status-tag {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-weight: 900;
+  white-space: nowrap;
+  /* Contour sombre épais, comme l'outline 12 des Label3D du jeu. */
+  -webkit-text-stroke: 4px #1a1008;
+  paint-order: stroke fill;
+}
+
+.status-tag {
+  font-size: 13px;
+  color: var(--c);
+  -webkit-text-stroke-width: 3px;
+}
+
+.hud-danger {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  box-shadow: inset 0 0 120px 30px rgba(200, 30, 20, 0.85);
+}
+
+.room-labels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.room-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: none;
+  font-size: 15px;
+  font-weight: 900;
+  white-space: nowrap;
+  color: var(--c);
+  -webkit-text-stroke: 4px #1a1008;
+  paint-order: stroke fill;
+}
+
+.room-label.open {
+  display: block;
+}
+
+.room-label.near {
+  font-size: 18px;
+}
+

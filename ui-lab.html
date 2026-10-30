@@ -1,0 +1,2126 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pokhades — labo d'interface</title>
+    <!--
+      Labo de direction artistique des interfaces : le même écran (don de
+      Darkrai + morceau de HUD) dans cinq styles, sur une vraie scène du jeu.
+      Page de travail, hors du jeu. Les polices viennent de Google Fonts ici ;
+      celle qui sera retenue sera embarquée dans le build (pas d'appel réseau
+      en jeu, cf. PORTAGE.md D8).
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Exo+2:ital,wght@0,600;0,800;0,900;1,800;1,900&family=Spectral:ital,wght@0,500;0,700;1,500&family=Caveat:wght@600;700&family=Cinzel:wght@600;800&family=Cormorant+Garamond:ital,wght@0,500;1,500&family=Pixelify+Sans:wght@500;700&family=Rubik:ital,wght@0,500;0,700;0,900;1,500&family=Bebas+Neue&family=Permanent+Marker&family=Rubik+Wet+Paint&family=Sedgwick+Ave+Display&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #15121a;
+        color: #eee;
+        font-family: system-ui, sans-serif;
+      }
+      main {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 24px 16px 60px;
+      }
+      h1 {
+        margin: 0 0 4px;
+        font-size: 26px;
+      }
+      .intro {
+        margin: 0 0 24px;
+        color: #aaa;
+      }
+      .lab-item {
+        margin-bottom: 44px;
+      }
+      .lab-item > header {
+        display: flex;
+        gap: 18px;
+        align-items: baseline;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+      }
+      .lab-item h2 {
+        margin: 0;
+        font-size: 22px;
+      }
+      .lab-item header p {
+        margin: 0;
+        flex: 1 1 360px;
+        color: #bbb;
+        font-size: 14px;
+      }
+      .swatches {
+        display: flex;
+        gap: 4px;
+      }
+      .swatches i {
+        width: 22px;
+        height: 22px;
+        border-radius: 4px;
+        border: 1px solid #0006;
+      }
+
+      /* Cadre commun : une capture du jeu 16:9 derrière, l'interface par-dessus. */
+      .frame {
+        position: relative;
+        aspect-ratio: 16 / 9;
+        overflow: hidden;
+        border-radius: 10px;
+        background: url('/lab/scene.jpg') center / cover;
+        image-rendering: pixelated;
+        container-type: inline-size;
+      }
+      .veil {
+        position: absolute;
+        inset: 0;
+      }
+      .boon {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        grid-template-columns: 36% 1fr;
+        align-items: center;
+        gap: 2.5cqw;
+        padding: 3cqw 4cqw 12cqw;
+        image-rendering: auto;
+      }
+      .art {
+        position: relative;
+        display: grid;
+        place-items: center;
+      }
+      .art img {
+        position: relative;
+        width: 100%;
+        max-width: min(100%, 30cqw);
+      }
+      .cards {
+        display: grid;
+        gap: 1.1cqw;
+      }
+      .card {
+        position: relative;
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 1.4cqw;
+        align-items: center;
+      }
+      .card .ic {
+        display: grid;
+        place-items: center;
+      }
+      .chips {
+        display: flex;
+        gap: 0.6cqw;
+        flex-wrap: wrap;
+      }
+      .hud {
+        position: absolute;
+        left: 2.5cqw;
+        right: 2.5cqw;
+        bottom: 2cqw;
+        display: flex;
+        gap: 1.6cqw;
+        align-items: flex-end;
+        image-rendering: auto;
+      }
+      .moves {
+        display: flex;
+        gap: 0.8cqw;
+        margin-left: auto;
+      }
+      .hp {
+        position: relative;
+        overflow: hidden;
+      }
+      .hp b {
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 78%;
+      }
+
+      /* ── A · Pokédex : rouge et blanc, arrondi, net et rassurant ───────── */
+      .v-dex {
+        font-family: 'Baloo 2', sans-serif;
+      }
+      .v-dex .veil {
+        background: linear-gradient(90deg, rgba(227, 53, 13, 0.92) 0 38%, rgba(20, 20, 26, 0.55) 38%);
+      }
+      .v-dex .veil::after {
+        content: '';
+        position: absolute;
+        left: 38%;
+        top: 0;
+        bottom: 0;
+        width: 1cqw;
+        background: #222;
+        box-shadow: 0 0 0 0.35cqw #fff;
+      }
+      .v-dex .art::before {
+        content: '';
+        position: absolute;
+        width: 30cqw;
+        aspect-ratio: 1;
+        border-radius: 50%;
+        background: radial-gradient(circle, #fff 0 58%, #f2f2f2 58% 62%, transparent 62%);
+        box-shadow: 0 0 0 0.6cqw #222;
+      }
+      .v-dex .kicker {
+        color: #ffd9d0;
+        font-weight: 700;
+        font-size: 1.4cqw;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+      }
+      .v-dex .who {
+        color: #fff;
+        font-weight: 800;
+        font-size: 3.6cqw;
+        line-height: 1;
+      }
+      .v-dex .quote {
+        margin-top: 1cqw;
+        padding: 1cqw 1.4cqw;
+        font-size: 1.4cqw;
+        line-height: 1.3;
+        color: #222;
+        background: #fff;
+        border-radius: 1.6cqw;
+      }
+      .v-dex .card {
+        padding: 1cqw 1.6cqw 1cqw 1cqw;
+        color: #222;
+        background: #fff;
+        border-radius: 2cqw;
+        box-shadow: 0 0.4cqw 0 #c9c9c9;
+      }
+      .v-dex .card.focus {
+        outline: 0.45cqw solid #ffcb05;
+        transform: translateX(0.8cqw);
+      }
+      .v-dex .ic {
+        width: 5cqw;
+        height: 5cqw;
+        font-size: 2.4cqw;
+        color: #fff;
+        border-radius: 50%;
+        background: var(--t);
+      }
+      .v-dex .name {
+        font-weight: 800;
+        font-size: 2cqw;
+        line-height: 1.1;
+      }
+      .v-dex .chip {
+        padding: 0 0.9cqw;
+        font-size: 1.1cqw;
+        font-weight: 700;
+        border-radius: 99px;
+        background: #eee;
+        color: #555;
+      }
+      .v-dex .chip.r {
+        background: var(--r);
+        color: #fff;
+      }
+      .v-dex .desc {
+        font-size: 1.35cqw;
+        color: #444;
+        line-height: 1.25;
+      }
+      .v-dex .val {
+        min-width: 7cqw;
+        padding: 0.6cqw 1cqw;
+        text-align: center;
+        font-weight: 800;
+        font-size: 2cqw;
+        color: #fff;
+        background: #222;
+        border-radius: 1.2cqw;
+      }
+      .v-dex .val small {
+        display: block;
+        font-size: 0.9cqw;
+        font-weight: 700;
+        color: #aaa;
+        text-transform: uppercase;
+      }
+      .v-dex .mon {
+        padding: 0.8cqw 1.4cqw;
+        min-width: 22cqw;
+        color: #222;
+        background: #fff;
+        border-radius: 1.6cqw;
+        box-shadow: 0 0.4cqw 0 #c9c9c9;
+        border-left: 1.2cqw solid #e3350d;
+      }
+      .v-dex .mon .nm {
+        font-weight: 800;
+        font-size: 1.7cqw;
+      }
+      .v-dex .hp {
+        height: 1cqw;
+        margin-top: 0.4cqw;
+        background: #ddd;
+        border-radius: 99px;
+      }
+      .v-dex .hp b {
+        background: #3fc461;
+        border-radius: 99px;
+      }
+      .v-dex .mv {
+        min-width: 11cqw;
+        padding: 0.6cqw 1cqw;
+        color: #222;
+        background: #fff;
+        border-radius: 1.2cqw;
+        border-bottom: 0.5cqw solid var(--t);
+        font-weight: 800;
+        font-size: 1.3cqw;
+      }
+      .v-dex .mv small {
+        display: block;
+        color: #888;
+        font-size: 1cqw;
+      }
+
+      /* ── B · Écarlate : vif, diagonales, typo grasse en italique ──────── */
+      .v-sv {
+        font-family: 'Exo 2', sans-serif;
+      }
+      .v-sv .veil {
+        background:
+          repeating-linear-gradient(115deg, rgba(255, 212, 0, 0.12) 0 1.2cqw, transparent 1.2cqw 2.4cqw),
+          linear-gradient(115deg, rgba(43, 29, 92, 0.94) 0 44%, rgba(255, 212, 0, 0.92) 44% 46%, rgba(17, 12, 40, 0.82) 46%);
+      }
+      .v-sv .art::before {
+        content: '';
+        position: absolute;
+        width: 30cqw;
+        aspect-ratio: 1;
+        background: conic-gradient(from 0deg, #ffd40055, transparent 20%, #ff3d7f55 40%, transparent 60%, #ffd40055 80%, transparent);
+        border-radius: 50%;
+        filter: blur(1cqw);
+      }
+      .v-sv .kicker {
+        display: inline-block;
+        padding: 0.2cqw 1.2cqw;
+        font-weight: 900;
+        font-style: italic;
+        font-size: 1.3cqw;
+        color: #2b1d5c;
+        background: #ffd400;
+        transform: skewX(-15deg);
+      }
+      .v-sv .who {
+        font-weight: 900;
+        font-style: italic;
+        font-size: 4.2cqw;
+        line-height: 1;
+        color: #fff;
+        text-shadow: 0.4cqw 0.4cqw 0 #ff3d7f;
+      }
+      .v-sv .quote {
+        display: inline-block;
+        margin: 0.8cqw 0 0.4cqw;
+        padding: 0.3cqw 1cqw;
+        font-size: 1.35cqw;
+        font-weight: 600;
+        color: #d9d1ff;
+        background: rgba(17, 12, 40, 0.85);
+      }
+      .v-sv .card {
+        padding: 1cqw 1.8cqw 1cqw 1.2cqw;
+        color: #fff;
+        background: linear-gradient(90deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.05));
+        backdrop-filter: blur(6px);
+        border: 0.2cqw solid rgba(255, 255, 255, 0.25);
+        transform: skewX(-8deg);
+      }
+      .v-sv .card > * {
+        transform: skewX(8deg);
+      }
+      .v-sv .card.focus {
+        background: linear-gradient(90deg, #ffd400, #ffb100);
+        color: #2b1d5c;
+        border-color: #fff;
+      }
+      .v-sv .ic {
+        width: 4.6cqw;
+        height: 4.6cqw;
+        font-size: 2.2cqw;
+        background: var(--t);
+        clip-path: polygon(25% 0, 100% 0, 75% 100%, 0 100%);
+      }
+      .v-sv .name {
+        font-weight: 900;
+        font-style: italic;
+        font-size: 2.1cqw;
+      }
+      .v-sv .chip {
+        font-weight: 800;
+        font-size: 1.05cqw;
+        padding: 0 0.8cqw;
+        background: rgba(0, 0, 0, 0.3);
+      }
+      .v-sv .chip.r {
+        background: var(--r);
+        color: #111;
+      }
+      .v-sv .desc {
+        font-size: 1.35cqw;
+        font-weight: 600;
+        opacity: 0.9;
+      }
+      .v-sv .val {
+        font-weight: 900;
+        font-style: italic;
+        font-size: 2.4cqw;
+      }
+      .v-sv .val small {
+        display: block;
+        font-size: 0.9cqw;
+        opacity: 0.7;
+      }
+      .v-sv .mon {
+        min-width: 24cqw;
+        padding: 0.8cqw 2cqw 1cqw 1.4cqw;
+        color: #fff;
+        background: #2b1d5c;
+        border-left: 0.8cqw solid #ffd400;
+        transform: skewX(-8deg);
+      }
+      .v-sv .mon .nm {
+        font-weight: 900;
+        font-style: italic;
+        font-size: 1.8cqw;
+      }
+      .v-sv .hp {
+        height: 1cqw;
+        margin-top: 0.4cqw;
+        background: #0007;
+      }
+      .v-sv .hp b {
+        background: linear-gradient(90deg, #4cff8a, #b4ff4c);
+      }
+      .v-sv .mv {
+        min-width: 11cqw;
+        padding: 0.6cqw 1.2cqw;
+        color: #fff;
+        background: #2b1d5c;
+        border-bottom: 0.5cqw solid var(--t);
+        transform: skewX(-8deg);
+        font-weight: 900;
+        font-style: italic;
+        font-size: 1.35cqw;
+      }
+      .v-sv .mv small {
+        display: block;
+        font-weight: 600;
+        font-style: normal;
+        font-size: 1cqw;
+        opacity: 0.7;
+      }
+
+      /* ── C · Carnet d'explorateur : parchemin, encre, tampons ─────────── */
+      .v-arc {
+        font-family: 'Spectral', serif;
+        color: #3a2a1a;
+      }
+      .v-arc .veil {
+        background: radial-gradient(ellipse at 70% 50%, rgba(243, 232, 208, 0.97) 0 48%, rgba(243, 232, 208, 0.88) 70%, rgba(80, 60, 30, 0.6));
+      }
+      .v-arc .art::before {
+        content: '';
+        position: absolute;
+        width: 28cqw;
+        aspect-ratio: 1;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(126, 90, 150, 0.35), transparent 65%);
+        filter: blur(0.4cqw);
+      }
+      .v-arc .art img {
+        filter: sepia(0.15) drop-shadow(0.3cqw 0.4cqw 0 rgba(58, 42, 26, 0.25));
+      }
+      .v-arc .kicker {
+        font-family: 'Caveat', cursive;
+        font-size: 2.2cqw;
+        color: #8a5a2b;
+      }
+      .v-arc .who {
+        font-weight: 700;
+        font-size: 3.8cqw;
+        line-height: 1;
+        border-bottom: 0.2cqw solid #3a2a1a;
+        padding-bottom: 0.4cqw;
+      }
+      .v-arc .quote {
+        margin-top: 0.8cqw;
+        font-style: italic;
+        font-size: 1.45cqw;
+        color: #5a4632;
+      }
+      .v-arc .card {
+        padding: 1cqw 1.6cqw 1cqw 1cqw;
+        background: #fbf4e3;
+        border: 0.15cqw solid #c9b48c;
+        box-shadow: 0.3cqw 0.3cqw 0 #d9c7a1;
+      }
+      .v-arc .card.focus {
+        border-color: #3a2a1a;
+        box-shadow: 0.4cqw 0.4cqw 0 #3a2a1a;
+      }
+      .v-arc .ic {
+        width: 4.8cqw;
+        height: 4.8cqw;
+        font-size: 2.2cqw;
+        color: var(--t);
+        border: 0.25cqw solid var(--t);
+        border-radius: 50%;
+        background: #fff8ea;
+      }
+      .v-arc .name {
+        font-weight: 700;
+        font-size: 2cqw;
+      }
+      .v-arc .chip {
+        font-family: 'Caveat', cursive;
+        font-size: 1.6cqw;
+        color: #8a5a2b;
+      }
+      .v-arc .chip.r {
+        padding: 0 0.8cqw;
+        color: var(--r);
+        border: 0.18cqw solid var(--r);
+        border-radius: 0.4cqw;
+        transform: rotate(-3deg);
+      }
+      .v-arc .desc {
+        font-size: 1.4cqw;
+        line-height: 1.25;
+      }
+      .v-arc .val {
+        font-family: 'Caveat', cursive;
+        font-size: 3cqw;
+        color: #b0412a;
+        transform: rotate(-4deg);
+      }
+      .v-arc .val small {
+        display: block;
+        font-family: 'Spectral', serif;
+        font-size: 0.95cqw;
+        color: #8a5a2b;
+      }
+      .v-arc .mon {
+        min-width: 22cqw;
+        padding: 0.8cqw 1.4cqw;
+        background: #fbf4e3;
+        border: 0.15cqw solid #c9b48c;
+        box-shadow: 0.3cqw 0.3cqw 0 #d9c7a1;
+      }
+      .v-arc .mon .nm {
+        font-weight: 700;
+        font-size: 1.7cqw;
+      }
+      .v-arc .hp {
+        height: 0.8cqw;
+        margin-top: 0.4cqw;
+        background: #e6d7b6;
+        border: 0.12cqw solid #8a6a3a;
+      }
+      .v-arc .hp b {
+        background: #6f9a3a;
+      }
+      .v-arc .mv {
+        min-width: 11cqw;
+        padding: 0.5cqw 1cqw;
+        background: #fbf4e3;
+        border: 0.15cqw solid #c9b48c;
+        border-top: 0.5cqw solid var(--t);
+        font-weight: 700;
+        font-size: 1.35cqw;
+      }
+      .v-arc .mv small {
+        display: block;
+        font-family: 'Caveat', cursive;
+        font-size: 1.3cqw;
+        color: #8a5a2b;
+      }
+
+      /* ── D · Mythique : obsidienne et or, capitales gravées ───────────── */
+      .v-myth {
+        font-family: 'Cormorant Garamond', serif;
+        color: #eadfc6;
+      }
+      .v-myth .veil {
+        background: radial-gradient(ellipse at 28% 50%, rgba(60, 20, 70, 0.55), transparent 50%), rgba(8, 6, 10, 0.9);
+      }
+      .v-myth .art::before {
+        content: '';
+        position: absolute;
+        width: 28cqw;
+        aspect-ratio: 1;
+        border-radius: 50%;
+        border: 0.2cqw solid #d8b45a;
+        box-shadow: 0 0 3cqw rgba(216, 180, 90, 0.35), inset 0 0 3cqw rgba(140, 60, 160, 0.4);
+      }
+      .v-myth .kicker {
+        font-family: 'Cinzel', serif;
+        font-size: 1.3cqw;
+        letter-spacing: 0.4em;
+        color: #b89a52;
+      }
+      .v-myth .who {
+        font-family: 'Cinzel', serif;
+        font-weight: 800;
+        font-size: 4cqw;
+        line-height: 1;
+        color: #f3d98a;
+        text-shadow: 0 0 1.5cqw rgba(243, 217, 138, 0.35);
+      }
+      .v-myth .quote {
+        margin-top: 0.6cqw;
+        font-style: italic;
+        font-size: 1.7cqw;
+        color: #cdbf9f;
+      }
+      .v-myth .card {
+        padding: 1cqw 1.8cqw 1cqw 1.2cqw;
+        background: linear-gradient(90deg, rgba(30, 22, 34, 0.95), rgba(14, 10, 16, 0.95));
+        border: 0.12cqw solid #6b5630;
+        outline: 0.12cqw solid #2a2016;
+        outline-offset: 0.35cqw;
+      }
+      .v-myth .card.focus {
+        border-color: #f3d98a;
+        box-shadow: 0 0 2cqw rgba(243, 217, 138, 0.3);
+      }
+      .v-myth .ic {
+        width: 4.6cqw;
+        height: 4.6cqw;
+        font-size: 2.2cqw;
+        color: #f3d98a;
+        background: radial-gradient(circle, color-mix(in srgb, var(--r) 50%, #000), #000);
+        border: 0.15cqw solid #d8b45a;
+        transform: rotate(45deg);
+      }
+      .v-myth .ic span {
+        transform: rotate(-45deg);
+      }
+      .v-myth .name {
+        font-family: 'Cinzel', serif;
+        font-weight: 800;
+        font-size: 1.9cqw;
+        color: #f3d98a;
+      }
+      .v-myth .chip {
+        font-family: 'Cinzel', serif;
+        font-size: 1cqw;
+        letter-spacing: 0.15em;
+        color: #9d8a62;
+      }
+      .v-myth .chip.r {
+        color: var(--r);
+      }
+      .v-myth .desc {
+        font-size: 1.6cqw;
+        line-height: 1.2;
+      }
+      .v-myth .val {
+        font-family: 'Cinzel', serif;
+        font-weight: 800;
+        font-size: 2.2cqw;
+        color: #f3d98a;
+        text-align: center;
+      }
+      .v-myth .val small {
+        display: block;
+        font-size: 0.85cqw;
+        letter-spacing: 0.2em;
+        color: #9d8a62;
+      }
+      .v-myth .mon {
+        min-width: 22cqw;
+        padding: 0.8cqw 1.4cqw;
+        background: rgba(14, 10, 16, 0.92);
+        border: 0.12cqw solid #6b5630;
+      }
+      .v-myth .mon .nm {
+        font-family: 'Cinzel', serif;
+        font-weight: 800;
+        font-size: 1.6cqw;
+        color: #f3d98a;
+      }
+      .v-myth .hp {
+        height: 0.7cqw;
+        margin-top: 0.5cqw;
+        background: #2a1f18;
+        border: 0.1cqw solid #6b5630;
+      }
+      .v-myth .hp b {
+        background: linear-gradient(90deg, #8a1a1a, #d8433a);
+      }
+      .v-myth .mv {
+        min-width: 11cqw;
+        padding: 0.5cqw 1cqw;
+        background: rgba(14, 10, 16, 0.92);
+        border: 0.12cqw solid #6b5630;
+        border-bottom: 0.35cqw solid var(--t);
+        font-family: 'Cinzel', serif;
+        font-weight: 800;
+        font-size: 1.25cqw;
+        color: #f3d98a;
+      }
+      .v-myth .mv small {
+        display: block;
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 1.15cqw;
+        color: #9d8a62;
+      }
+
+      /* ── E · Pixel GBA : fenêtres blanches à bordure épaisse, police pixel ── */
+      .v-gba {
+        font-family: 'Pixelify Sans', monospace;
+        color: #303030;
+      }
+      .v-gba .veil {
+        background: rgba(16, 32, 48, 0.55);
+      }
+      .v-gba .boon,
+      .v-gba .hud {
+        image-rendering: pixelated;
+      }
+      .v-gba .art::before {
+        content: '';
+        position: absolute;
+        width: 28cqw;
+        height: 10cqw;
+        bottom: 1cqw;
+        border-radius: 50%;
+        background: #6a9a5a;
+        box-shadow: 0 0 0 0.5cqw #4a7a3a;
+      }
+      .v-gba .panel {
+        padding: 1.4cqw;
+        background: #f8f8f8;
+        border: 0.6cqw solid #5888b0;
+        border-radius: 1.2cqw;
+        box-shadow: inset 0 0 0 0.4cqw #c8e0f0, 0 0.6cqw 0 #283848;
+      }
+      .v-gba .kicker {
+        font-size: 1.3cqw;
+        color: #708090;
+      }
+      .v-gba .who {
+        font-weight: 700;
+        font-size: 3cqw;
+        color: #303030;
+        text-shadow: 0.25cqw 0.25cqw 0 #d0d0d0;
+      }
+      .v-gba .quote {
+        font-size: 1.35cqw;
+        color: #505050;
+        margin-bottom: 1cqw;
+      }
+      .v-gba .card {
+        padding: 0.7cqw 1.2cqw 0.7cqw 0.8cqw;
+        background: #fff;
+        border: 0.35cqw solid #a8b8c8;
+        border-radius: 0.8cqw;
+      }
+      .v-gba .card.focus {
+        border-color: #e05040;
+        background: #fff8e0;
+      }
+      .v-gba .card.focus::before {
+        content: '▶';
+        position: absolute;
+        left: -2.2cqw;
+        color: #e05040;
+        font-size: 1.8cqw;
+      }
+      .v-gba .ic {
+        width: 4cqw;
+        height: 4cqw;
+        font-size: 2cqw;
+        color: #fff;
+        background: var(--t);
+        border: 0.3cqw solid #303030;
+        border-radius: 0.6cqw;
+      }
+      .v-gba .name {
+        font-weight: 700;
+        font-size: 1.9cqw;
+      }
+      .v-gba .chip {
+        font-size: 1.05cqw;
+        padding: 0 0.6cqw;
+        background: #e8e8e8;
+        border-radius: 0.4cqw;
+      }
+      .v-gba .chip.r {
+        background: var(--r);
+        color: #fff;
+        text-shadow: 0.12cqw 0.12cqw 0 #303030;
+      }
+      .v-gba .desc {
+        font-size: 1.3cqw;
+      }
+      .v-gba .val {
+        font-weight: 700;
+        font-size: 2cqw;
+        color: #e05040;
+      }
+      .v-gba .val small {
+        display: block;
+        font-size: 0.9cqw;
+        color: #708090;
+      }
+      .v-gba .mon {
+        min-width: 22cqw;
+        padding: 0.8cqw 1.2cqw;
+        background: #f8f8d8;
+        border: 0.5cqw solid #303030;
+        border-radius: 1.2cqw 0 1.2cqw 0;
+        box-shadow: 0.4cqw 0.4cqw 0 #283848;
+      }
+      .v-gba .mon .nm {
+        font-weight: 700;
+        font-size: 1.7cqw;
+      }
+      .v-gba .hp {
+        height: 0.9cqw;
+        margin-top: 0.4cqw;
+        background: #505050;
+        border: 0.25cqw solid #303030;
+        border-radius: 0.4cqw;
+      }
+      .v-gba .hp b {
+        background: #70f8a8;
+      }
+      .v-gba .mv {
+        min-width: 11cqw;
+        padding: 0.5cqw 1cqw;
+        background: #f8f8f8;
+        border: 0.35cqw solid #5888b0;
+        border-radius: 0.8cqw;
+        font-weight: 700;
+        font-size: 1.35cqw;
+      }
+      .v-gba .mv small {
+        display: block;
+        font-size: 1cqw;
+        color: #708090;
+      }
+
+      /* ── Commun aux pistes « rébellion » ──────────────────────────────── */
+      h2.group {
+        margin: 34px 0 14px;
+        padding-bottom: 6px;
+        font-size: 15px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: #ff8a5a;
+        border-bottom: 1px solid #ff8a5a55;
+      }
+      .replay {
+        position: absolute;
+        top: 1.2cqw;
+        right: 1.2cqw;
+        z-index: 5;
+        padding: 0.5cqw 1.2cqw;
+        font: 700 1.2cqw system-ui, sans-serif;
+        color: #fff;
+        background: #0009;
+        border: 1px solid #fff4;
+        border-radius: 99px;
+        cursor: pointer;
+      }
+      /* La diagonale passe de 46 % (haut) à 34 % (bas) : le texte commence après elle. */
+      .r-rift .boon,
+      .r-mix .boon,
+      .r-tag .boon,
+      .r-dawn .boon {
+        grid-template-columns: 40% 1fr;
+        padding-left: 3cqw;
+      }
+      .r-rift .text,
+      .r-mix .text,
+      .r-tag .text,
+      .r-dawn .text {
+        padding-left: 4.5cqw;
+      }
+      .r-rift .art img,
+      .r-mix .art img,
+      .r-tag .art img,
+      .r-dawn .art img {
+        max-width: min(100%, 27cqw);
+      }
+      .play .card {
+        animation: card-in 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+        animation-delay: calc(0.6s + var(--i) * 0.09s);
+      }
+      @keyframes card-in {
+        from {
+          opacity: 0;
+          transform: translateX(5cqw);
+        }
+      }
+
+      /* ── Bombe de peinture (R2, R4) : trait, halo, postillons, coulures ───── */
+      /* Tout est en unités du viewBox (le cadre est en 16:9, comme lui) : les tirets
+         du trait et la descente des gouttes se calent ainsi sur les mêmes longueurs. */
+      .spr {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+        pointer-events: none;
+      }
+      .spr path,
+      .spr line {
+        fill: none;
+        stroke: var(--c);
+        stroke-linecap: round;
+      }
+      .spr circle {
+        fill: var(--c);
+      }
+      .spr .halo {
+        opacity: 0.28;
+        filter: blur(1px);
+      }
+      .spr .halo,
+      .spr .main,
+      .spr .drip {
+        stroke-dasharray: var(--len) var(--len);
+      }
+      .play .spr .halo,
+      .play .spr .main {
+        animation: spr-draw var(--draw) ease-out var(--w0) both;
+      }
+      /* Une goutte part lentement, accélère, puis ralentit en s'épuisant. */
+      .play .spr .drip {
+        animation: spr-draw var(--d) cubic-bezier(0.5, 0, 0.3, 1) var(--w) both;
+      }
+      .spr .bulb {
+        transform: translateY(var(--ty));
+      }
+      .play .spr .bulb {
+        animation: spr-bulb var(--d) cubic-bezier(0.5, 0, 0.3, 1) var(--w) both;
+      }
+      .play .spr .dot {
+        animation: spr-dot 0.2s ease-out var(--w) both;
+      }
+      @keyframes spr-draw {
+        from {
+          stroke-dashoffset: var(--len);
+        }
+        to {
+          stroke-dashoffset: 0;
+        }
+      }
+      @keyframes spr-bulb {
+        0% {
+          transform: none;
+          opacity: 0;
+        }
+        8% {
+          opacity: 1;
+        }
+      }
+      @keyframes spr-dot {
+        from {
+          opacity: 0;
+        }
+      }
+      /* Auréole taguée au-dessus du légendaire. */
+      .art .aureole {
+        inset: auto;
+        top: -1.5cqw;
+        width: 17cqw;
+        height: 6.8cqw;
+      }
+      @keyframes slap {
+        from {
+          opacity: 0;
+          transform: rotate(-14deg) scale(1.3);
+        }
+      }
+      @keyframes tag-in {
+        from {
+          opacity: 0;
+          filter: blur(0.8cqw);
+        }
+      }
+
+      /* Sceau du légendaire (R1, R4) : rayons et anneaux qui tournent lentement. */
+      .sigil {
+        position: absolute;
+        width: 32cqw;
+        aspect-ratio: 1;
+        pointer-events: none;
+      }
+      .sigil i {
+        position: absolute;
+        border-radius: 50%;
+      }
+      .sigil .rays {
+        inset: 0;
+        background: repeating-conic-gradient(rgba(255, 246, 200, 0.32) 0 5deg, transparent 5deg 15deg);
+        -webkit-mask: radial-gradient(circle, #000 18%, transparent 68%);
+        mask: radial-gradient(circle, #000 18%, transparent 68%);
+        animation: spin 70s linear infinite;
+      }
+      .sigil .ring {
+        inset: 13%;
+        border: 0.3cqw dashed rgba(255, 246, 200, 0.6);
+        animation: spin 40s linear infinite reverse;
+      }
+      .sigil .ring2 {
+        inset: 20%;
+        border: 0.2cqw solid rgba(255, 246, 200, 0.5);
+        box-shadow:
+          0 0 2cqw rgba(255, 246, 200, 0.35),
+          inset 0 0 2cqw rgba(255, 246, 200, 0.25);
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(1turn);
+        }
+      }
+      .play .sigil {
+        animation: sigil-in 0.9s cubic-bezier(0.2, 1.2, 0.4, 1) 0.55s both;
+      }
+      @keyframes sigil-in {
+        from {
+          opacity: 0;
+          transform: scale(0.3) rotate(-60deg);
+        }
+      }
+
+      /* Cartes et HUD « officiels » (R1 ; R4 garde le HUD) : blancs, lisibles, liseré à la couleur du dieu. */
+      .clean .card {
+        padding: 0.9cqw 1.4cqw 0.9cqw 1cqw;
+        color: #1d1a22;
+        background: #fff;
+        border-radius: 1.6cqw;
+        border-left: 0.7cqw solid var(--god);
+      }
+      .clean .card.focus {
+        outline: 0.4cqw solid #ffcb05;
+        transform: translateX(0.8cqw);
+      }
+      .clean .ic {
+        width: 4.4cqw;
+        height: 4.4cqw;
+        font-size: 2.1cqw;
+        color: #fff;
+        background: var(--t);
+        border-radius: 50%;
+      }
+      .clean .name {
+        font-weight: 900;
+        font-size: 1.8cqw;
+      }
+      .clean .chip {
+        padding: 0 0.8cqw;
+        font-size: 1.05cqw;
+        font-weight: 700;
+        color: #555;
+        background: #eee;
+        border-radius: 99px;
+      }
+      .clean .chip.r {
+        color: #fff;
+        background: var(--r);
+      }
+      .clean .desc {
+        font-size: 1.25cqw;
+        color: #444;
+      }
+      .clean .val {
+        min-width: 6.6cqw;
+        padding: 0.5cqw 0.8cqw;
+        text-align: center;
+        font-weight: 900;
+        font-size: 1.8cqw;
+        color: #fff;
+        background: #1d1a22;
+        border-radius: 1cqw;
+      }
+      .clean .val small {
+        display: block;
+        font-size: 0.85cqw;
+        color: #aaa;
+        text-transform: uppercase;
+      }
+      .clean .quote,
+      .r-mix .quote {
+        margin: 0.8cqw 0 1cqw;
+        font-style: italic;
+        font-size: 1.35cqw;
+        color: #ddd;
+      }
+      .clean-hud .mon {
+        min-width: 22cqw;
+        padding: 0.8cqw 1.4cqw;
+        color: #1d1a22;
+        background: #fff;
+        border-radius: 1.4cqw;
+        border-left: 1cqw solid var(--god);
+      }
+      .clean-hud .mon .nm {
+        font-weight: 900;
+        font-size: 1.6cqw;
+      }
+      .clean-hud .hp {
+        height: 0.9cqw;
+        margin-top: 0.4cqw;
+        background: #ddd;
+        border-radius: 99px;
+      }
+      .clean-hud .hp b {
+        background: #3fc461;
+        border-radius: 99px;
+      }
+      .clean-hud .mv {
+        min-width: 11cqw;
+        padding: 0.5cqw 1cqw;
+        font-weight: 900;
+        font-size: 1.25cqw;
+        color: #1d1a22;
+        background: #fff;
+        border-radius: 1cqw;
+        border-bottom: 0.5cqw solid var(--t);
+      }
+      .clean-hud .mv small {
+        display: block;
+        font-weight: 500;
+        font-size: 1cqw;
+        color: #888;
+      }
+
+      /* ── R1 · Faille divine ───────────────────────────────────────────── */
+      .r-rift {
+        font-family: 'Rubik', sans-serif;
+      }
+      .r-rift .veil {
+        display: none;
+      }
+      .r-rift .half {
+        position: absolute;
+        inset: 0;
+        transform: var(--open);
+      }
+      /* Le sanctuaire du dieu, à sa couleur (--god). Les deux polygones suivent la
+         ligne brisée RIFT du script (viewBox 160 × 90). */
+      .r-rift .half.top {
+        --open: translate(-1.2cqw, -0.5cqw);
+        background:
+          radial-gradient(circle at 20% 45%, rgba(255, 246, 200, 0.35), transparent 45%),
+          linear-gradient(160deg, color-mix(in srgb, var(--god) 86%, transparent), color-mix(in srgb, var(--god) 60%, rgba(0, 0, 0, 0.8)));
+        clip-path: polygon(0 0, 46.25% 0, 44.06% 15.56%, 45.63% 24.44%, 42.19% 42.22%, 43.75% 52.22%, 38.75% 70%, 40.31% 78.89%, 33.75% 100%, 0 100%);
+      }
+      /* De l'autre côté, l'écran du système : sombre, rayé comme un moniteur de surveillance. */
+      .r-rift .half.bot {
+        --open: translate(1.2cqw, 0.5cqw);
+        background:
+          repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 4px),
+          rgba(16, 15, 22, 0.74);
+        clip-path: polygon(46.25% 0, 100% 0, 100% 100%, 33.75% 100%, 40.31% 78.89%, 38.75% 70%, 43.75% 52.22%, 42.19% 42.22%, 45.63% 24.44%, 44.06% 15.56%);
+      }
+      .r-rift .rift {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+      }
+      .r-rift .rift polyline {
+        fill: none;
+        stroke-linejoin: round;
+        vector-effect: non-scaling-stroke;
+      }
+      .r-rift .rift .glow {
+        stroke: #fff6c8;
+        stroke-width: 22px;
+        opacity: 0.55;
+        filter: blur(6px);
+      }
+      .r-rift .rift .edge {
+        stroke: #fff;
+        stroke-width: 8px;
+      }
+      .r-rift .rift .core {
+        stroke: #15121a;
+        stroke-width: 4px;
+      }
+      /* La faille court de haut en bas, la lumière en jaillit, puis l'écran s'ouvre.
+         Tirets en pixels d'écran : avec non-scaling-stroke, Chrome ignore pathLength. */
+      .r-rift.play .rift .edge,
+      .r-rift.play .rift .core {
+        stroke-dasharray: 1600px 1600px;
+        animation: rift-run 0.4s ease-in both;
+      }
+      @keyframes rift-run {
+        from {
+          stroke-dashoffset: 1600px;
+        }
+        to {
+          stroke-dashoffset: 0;
+        }
+      }
+      .r-rift.play .rift .glow {
+        animation: rift-flash 1s ease-out 0.3s both;
+      }
+      @keyframes rift-flash {
+        0% {
+          opacity: 0;
+          stroke-width: 2px;
+        }
+        30% {
+          opacity: 1;
+          stroke-width: 110px;
+        }
+      }
+      .r-rift.play .half {
+        animation: rift-open 0.7s cubic-bezier(0.3, 1.4, 0.4, 1) 0.4s both;
+      }
+      @keyframes rift-open {
+        from {
+          transform: none;
+        }
+      }
+      /* Le dieu descend par la faille, dans un éclat de lumière. */
+      .r-rift .art img {
+        filter: brightness(1) blur(0) drop-shadow(0 0 2cqw rgba(255, 246, 200, 0.45)) drop-shadow(0 1cqw 1.2cqw rgba(0, 0, 0, 0.45));
+      }
+      .r-rift.play .art img {
+        animation: descend 1s cubic-bezier(0.2, 1, 0.3, 1) 0.6s both;
+      }
+      @keyframes descend {
+        from {
+          opacity: 0;
+          transform: translateY(-7cqw) scale(0.9);
+          filter: brightness(5) blur(4px) drop-shadow(0 0 2cqw rgba(255, 246, 200, 0.45)) drop-shadow(0 1cqw 1.2cqw rgba(0, 0, 0, 0.45));
+        }
+      }
+      .r-rift .kicker {
+        font-weight: 700;
+        font-size: 1.3cqw;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: #ffcb05;
+      }
+      .r-rift .who {
+        font-weight: 900;
+        font-size: 4cqw;
+        line-height: 1;
+        color: #fff;
+      }
+
+      /* ── R2 · Fresque de la résistance ────────────────────────────────── */
+      .r-tag {
+        font-family: 'Rubik', sans-serif;
+      }
+      .r-tag .veil {
+        background:
+          radial-gradient(ellipse at 18% 45%, rgba(255, 79, 163, 0.18), transparent 42%),
+          radial-gradient(ellipse at 85% 15%, rgba(255, 90, 31, 0.16), transparent 40%),
+          rgba(20, 16, 14, 0.7);
+      }
+      /* Le mur : des tags de fond qui coulent (la police Rubik Wet Paint bave d'elle-même). */
+      .r-tag .wall {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+      .r-tag .wall > * {
+        position: absolute;
+        white-space: nowrap;
+        line-height: 0.9;
+      }
+      .r-tag .t-big {
+        right: -2cqw;
+        top: 1.5cqw;
+        font-family: 'Rubik Wet Paint', cursive;
+        font-size: 10cqw;
+        color: rgba(255, 90, 31, 0.2);
+        transform: rotate(-6deg);
+      }
+      .r-tag .t-nmnb {
+        --w: 0.5s;
+        left: 2cqw;
+        top: 2cqw;
+        font-family: 'Sedgwick Ave Display', cursive;
+        font-size: 3.2cqw;
+        color: rgba(255, 79, 163, 0.8);
+        transform: rotate(-8deg);
+      }
+      .r-tag .t-res {
+        --w: 0.9s;
+        left: 26cqw;
+        bottom: 2.6cqw;
+        font-family: 'Rubik Wet Paint', cursive;
+        font-size: 2.9cqw;
+        color: rgba(255, 210, 63, 0.6);
+        transform: rotate(3deg);
+      }
+      .r-tag .t-ball {
+        --w: 0.7s;
+        right: 5cqw;
+        top: 9cqw;
+        width: 8cqw;
+        opacity: 0.6;
+        transform: rotate(12deg);
+      }
+      .r-tag .t-ball circle,
+      .r-tag .t-ball path {
+        fill: none;
+        stroke: #efe6d2;
+        stroke-width: 2.4;
+        stroke-linecap: round;
+      }
+      .r-tag .t-ball .x {
+        stroke: #ff3b3b;
+        stroke-width: 3.4;
+      }
+      .r-tag.play .wall > * {
+        animation: tag-in 0.5s ease-out var(--w, 0.1s) both;
+      }
+      .r-tag .blot {
+        position: absolute;
+        width: 30cqw;
+        aspect-ratio: 1;
+        border-radius: 50%;
+        background: radial-gradient(circle at 45% 50%, rgba(255, 79, 163, 0.5), rgba(255, 90, 31, 0.3) 42%, transparent 68%);
+        filter: blur(0.5cqw);
+      }
+      .r-tag.play .blot {
+        animation: tag-in 0.6s ease-out 0.1s both;
+      }
+      /* Le légendaire collé au mur comme un sticker, détouré de papier : l'icône de la résistance. */
+      .r-tag .art img {
+        max-width: min(100%, 25cqw);
+        transform: rotate(-3deg);
+        filter: drop-shadow(0.3cqw 0 0 #efe6d2) drop-shadow(-0.3cqw 0 0 #efe6d2) drop-shadow(0 0.3cqw 0 #efe6d2) drop-shadow(0 -0.3cqw 0 #efe6d2) drop-shadow(0.6cqw 0.8cqw 0 rgba(0, 0, 0, 0.4));
+      }
+      .r-tag.play .art img {
+        animation: slap 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) 0.2s both;
+      }
+      .r-tag .star {
+        position: absolute;
+        font-style: normal;
+        font-size: 2.6cqw;
+        color: #ffd23f;
+        text-shadow: 0 0 1cqw rgba(255, 210, 63, 0.6);
+      }
+      .r-tag .s1 {
+        left: 4%;
+        top: 22%;
+      }
+      .r-tag .s2 {
+        right: 6%;
+        top: 8%;
+        font-size: 1.8cqw;
+        color: #fff;
+      }
+      .r-tag .s3 {
+        right: 2%;
+        bottom: 12%;
+        font-size: 2.2cqw;
+        color: #ff4fa3;
+      }
+      .r-tag.play .star {
+        animation: twinkle 0.5s ease-out 1s both;
+      }
+      @keyframes twinkle {
+        from {
+          opacity: 0;
+          transform: scale(0) rotate(-90deg);
+        }
+      }
+      .r-tag .kicker {
+        display: inline-block;
+        padding: 0.2cqw 1cqw;
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: 1.7cqw;
+        letter-spacing: 0.12em;
+        color: #14100e;
+        background: #ff5a1f;
+        transform: rotate(-2deg);
+      }
+      .r-tag .who {
+        font-family: 'Rubik Wet Paint', cursive;
+        font-size: 5.2cqw;
+        line-height: 1.15;
+        color: #fff;
+        text-shadow: 0.3cqw 0.3cqw 0 #ff5a1f;
+      }
+      .r-tag.play .who {
+        animation: tag-in 0.5s ease-out 0.35s both;
+      }
+      .r-tag .tagline {
+        margin-top: 0.8cqw;
+        font-family: 'Sedgwick Ave Display', cursive;
+        font-size: 2cqw;
+        color: #ffd23f;
+        transform: rotate(-1.5deg);
+      }
+      .r-tag .quote {
+        margin: 0.2cqw 0 1cqw;
+        font-style: italic;
+        font-size: 1.35cqw;
+        color: #d8cdb8;
+      }
+      /* Bandes de papier aux bords déchirés (R2, R4) : le texte des dons reste parfaitement lisible. */
+      .paper .card {
+        padding: 0.9cqw 2cqw 0.9cqw 1.2cqw;
+        color: #14100e;
+        background: #efe6d2;
+        clip-path: polygon(0 0, 97% 0, 100% 18%, 98% 40%, 100% 62%, 97% 82%, 99% 100%, 0 100%);
+      }
+      .paper .card:nth-child(2) {
+        transform: rotate(0.6deg);
+      }
+      .paper .card:nth-child(3) {
+        transform: rotate(-0.5deg);
+      }
+      .paper .card.focus {
+        background: #fff6e0;
+        transform: rotate(-1deg) scale(1.03);
+        box-shadow: inset 0.6cqw 0 0 var(--ink, #ff5a1f);
+      }
+      .paper .ic {
+        width: 4.2cqw;
+        height: 4.2cqw;
+        font-size: 2cqw;
+        color: #efe6d2;
+        background: #14100e;
+        border-radius: 50%;
+      }
+      .paper .name {
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: 2.4cqw;
+        line-height: 1;
+        letter-spacing: 0.04em;
+      }
+      .paper .chip {
+        font-size: 1.05cqw;
+        font-weight: 700;
+        color: #6b5a48;
+      }
+      .paper .chip.r {
+        font-family: 'Permanent Marker', cursive;
+        font-size: 1.3cqw;
+        color: var(--r);
+        text-decoration: underline wavy;
+      }
+      .paper .desc {
+        font-size: 1.25cqw;
+      }
+      .paper .val {
+        padding: 0.3cqw 0.9cqw;
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: 2.6cqw;
+        color: #14100e;
+        background: #ffd23f;
+        transform: rotate(3deg);
+        text-align: center;
+      }
+      .paper .val small {
+        display: block;
+        font-family: 'Rubik', sans-serif;
+        font-size: 0.8cqw;
+        text-transform: uppercase;
+      }
+      .paper.play .card {
+        animation-name: slap-in;
+      }
+      @keyframes slap-in {
+        from {
+          opacity: 0;
+          transform: scale(1.25) rotate(3deg);
+        }
+      }
+      .r-tag .mon {
+        min-width: 22cqw;
+        padding: 0.7cqw 1.4cqw;
+        color: #efe6d2;
+        background: rgba(20, 16, 14, 0.92);
+        border: 0.2cqw dashed #ff5a1f;
+      }
+      .r-tag .mon .nm {
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: 2cqw;
+        letter-spacing: 0.05em;
+      }
+      .r-tag .hp {
+        height: 0.9cqw;
+        margin-top: 0.3cqw;
+        background: #3a302a;
+      }
+      .r-tag .hp b {
+        background: #9be05a;
+      }
+      .r-tag .mv {
+        min-width: 11cqw;
+        padding: 0.4cqw 1cqw;
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: 1.7cqw;
+        letter-spacing: 0.04em;
+        color: #14100e;
+        background: #efe6d2;
+        border-bottom: 0.5cqw solid var(--t);
+      }
+      .r-tag .mv small {
+        display: block;
+        font-family: 'Rubik', sans-serif;
+        font-size: 0.95cqw;
+        letter-spacing: 0;
+        color: #6b5a48;
+      }
+
+      /* ── R4 · Tag sacré : l'interface claire de R1, vandalisée par la rébellion ── */
+      .r-mix {
+        font-family: 'Rubik', sans-serif;
+      }
+      .r-mix .veil {
+        display: none;
+      }
+      .r-mix .half {
+        position: absolute;
+        inset: 0;
+        clip-path: var(--clip);
+      }
+      /* Polygones calculés dans le script sur la courbe du trait de bombe. */
+      .r-mix .half.top {
+        background: linear-gradient(160deg, color-mix(in srgb, var(--god) 86%, transparent), color-mix(in srgb, var(--god) 62%, rgba(0, 0, 0, 0.8)));
+      }
+      .r-mix .half.bot {
+        background: rgba(16, 15, 22, 0.74);
+      }
+      /* La moitié du dieu se remplit à la bombe, derrière le trait. */
+      .r-mix.play .half.top {
+        animation: mix-fill 0.55s ease-in-out 0.35s both;
+      }
+      @keyframes mix-fill {
+        from {
+          clip-path: var(--clip0);
+        }
+      }
+      .r-mix .art img {
+        filter: drop-shadow(0.3cqw 0 0 #fff) drop-shadow(-0.3cqw 0 0 #fff) drop-shadow(0 0.3cqw 0 #fff) drop-shadow(0 -0.3cqw 0 #fff) drop-shadow(0 1cqw 1.2cqw rgba(0, 0, 0, 0.4));
+      }
+      .r-mix.play .art img {
+        animation: slap 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) 0.5s both;
+      }
+      .r-mix .kicker {
+        width: fit-content;
+        font-family: 'Sedgwick Ave Display', cursive;
+        font-size: 2.2cqw;
+        color: #ffcb05;
+        transform: rotate(-2deg);
+      }
+      .r-mix .who {
+        font-family: 'Rubik Wet Paint', cursive;
+        font-size: 5.2cqw;
+        line-height: 1.15;
+        color: #fff;
+        text-shadow: 0.3cqw 0.3cqw 0 var(--god);
+      }
+      .r-mix.play .who {
+        animation: tag-in 0.5s ease-out 0.6s both;
+      }
+      /* Petits tags autour : ils arrivent après le trait, chacun à son tour (--w). */
+      .r-mix .wall {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+      .r-mix .wall > * {
+        position: absolute;
+        white-space: nowrap;
+        line-height: 0.9;
+      }
+      .r-mix.play .wall > * {
+        animation: tag-in 0.5s ease-out var(--w, 0.9s) both;
+      }
+      .r-mix .t-big {
+        --w: 1.1s;
+        right: 3cqw;
+        bottom: 6.6cqw;
+        font-family: 'Rubik Wet Paint', cursive;
+        font-size: 3.2cqw;
+        color: rgba(224, 48, 42, 0.8);
+        transform: rotate(-2deg);
+      }
+      .r-mix .t-nmnb {
+        --w: 1.3s;
+        right: 3cqw;
+        top: 5.5cqw;
+        font-family: 'Sedgwick Ave Display', cursive;
+        font-size: 2.1cqw;
+        text-align: center;
+        color: rgba(255, 255, 255, 0.55);
+        transform: rotate(7deg);
+      }
+      .r-mix .t-ball {
+        --w: 1s;
+        left: 2.5cqw;
+        top: 2.5cqw;
+        width: 5cqw;
+        opacity: 0.7;
+        transform: rotate(-14deg);
+      }
+      .r-mix .t-ball circle,
+      .r-mix .t-ball path {
+        fill: none;
+        stroke: #fff;
+        stroke-width: 2.6;
+        stroke-linecap: round;
+      }
+      .r-mix .t-ball .x {
+        stroke: #ffcb05;
+        stroke-width: 3.6;
+      }
+      .r-mix .star {
+        position: absolute;
+        font-style: normal;
+        font-size: 2.4cqw;
+        color: #ffcb05;
+        text-shadow: 0 0 1cqw rgba(255, 203, 5, 0.6);
+      }
+      .r-mix .s1 {
+        left: 2%;
+        top: 14%;
+      }
+      .r-mix .s2 {
+        right: 4%;
+        top: 4%;
+        font-size: 1.6cqw;
+        color: #fff;
+      }
+      .r-mix .s3 {
+        right: 0;
+        bottom: 20%;
+        font-size: 2cqw;
+      }
+      .r-mix.play .star {
+        animation: twinkle 0.5s ease-out 1.1s both;
+      }
+
+      /* ── R3 · L'aube de la liberté ────────────────────────────────────── */
+      .r-dawn {
+        font-family: 'Rubik', sans-serif;
+        color: #fff4e6;
+      }
+      .r-dawn .veil {
+        background: linear-gradient(115deg, rgba(14, 16, 52, 0.88) 0%, rgba(54, 30, 90, 0.8) 40%, rgba(214, 92, 90, 0.62) 72%, rgba(255, 170, 90, 0.5) 100%);
+      }
+      /* Le rayon d'aube : il balaie l'écran puis se pose en diagonale entre le légendaire et les cartes. */
+      .r-dawn .beam {
+        position: absolute;
+        top: -25%;
+        bottom: -25%;
+        left: 37%;
+        width: 13cqw;
+        transform: rotate(14deg);
+        background: linear-gradient(90deg, transparent, rgba(255, 226, 170, 0.42), transparent);
+        mix-blend-mode: screen;
+        pointer-events: none;
+      }
+      .r-dawn .beam::after {
+        content: '';
+        position: absolute;
+        left: 50%;
+        top: 0;
+        bottom: 0;
+        width: 0.25cqw;
+        background: rgba(255, 246, 220, 0.9);
+        box-shadow: 0 0 1.2cqw #ffe2a8;
+      }
+      .r-dawn.play .beam {
+        animation: beam-sweep 1.3s cubic-bezier(0.5, 0, 0.2, 1) both;
+      }
+      @keyframes beam-sweep {
+        from {
+          left: -20%;
+          opacity: 0;
+        }
+        30% {
+          opacity: 1;
+        }
+      }
+      .r-dawn .art::before {
+        content: '';
+        position: absolute;
+        width: 26cqw;
+        aspect-ratio: 1;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(255, 196, 140, 0.45), transparent 66%);
+      }
+      .r-dawn.play .art img {
+        animation: dawn-rise 1s ease-out 0.3s both;
+      }
+      @keyframes dawn-rise {
+        from {
+          opacity: 0;
+          transform: translateY(3cqw);
+          filter: brightness(0.2);
+        }
+      }
+      /* Maillons de chaîne autour du légendaire : chacun se brise en deux et s'éloigne. */
+      .r-dawn .chains {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+      .r-dawn .link {
+        position: absolute;
+        width: 6cqw;
+        height: 3cqw;
+      }
+      .r-dawn .link:nth-child(1) {
+        left: 2%;
+        top: 12%;
+        transform: rotate(-30deg);
+      }
+      .r-dawn .link:nth-child(2) {
+        right: 4%;
+        top: 8%;
+        transform: rotate(25deg);
+      }
+      .r-dawn .link:nth-child(3) {
+        left: 0;
+        bottom: 14%;
+        transform: rotate(20deg);
+      }
+      .r-dawn .link:nth-child(4) {
+        right: 0;
+        bottom: 18%;
+        transform: rotate(-18deg);
+      }
+      .r-dawn .link i {
+        position: absolute;
+        top: 0;
+        width: 50%;
+        height: 100%;
+        border: 0.5cqw solid #cfc6e0;
+        box-shadow: 0 0 0.6cqw rgba(0, 0, 0, 0.5);
+      }
+      .r-dawn .link .l {
+        left: 0;
+        border-right: none;
+        border-radius: 1.5cqw 0 0 1.5cqw;
+        transform: translate(-1.2cqw, -0.6cqw) rotate(-24deg);
+        opacity: 0.55;
+      }
+      .r-dawn .link .r {
+        right: 0;
+        border-left: none;
+        border-radius: 0 1.5cqw 1.5cqw 0;
+        transform: translate(1.2cqw, 0.6cqw) rotate(18deg);
+        opacity: 0.55;
+      }
+      .r-dawn.play .link i {
+        animation: link-break 0.9s cubic-bezier(0.3, 1.4, 0.4, 1) 0.6s both;
+      }
+      @keyframes link-break {
+        from {
+          transform: none;
+          opacity: 1;
+        }
+      }
+      .r-dawn .kicker {
+        font-weight: 700;
+        font-size: 1.3cqw;
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+        color: #ffcf8a;
+      }
+      .r-dawn .who {
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: 6cqw;
+        line-height: 0.9;
+        letter-spacing: 0.04em;
+        background: linear-gradient(90deg, #ffe2a8, #ff9a7a);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      .r-dawn .tagline {
+        font-weight: 700;
+        font-size: 1.3cqw;
+        color: #fff;
+      }
+      .r-dawn .quote {
+        margin: 0.4cqw 0 1cqw;
+        font-style: italic;
+        font-size: 1.3cqw;
+        color: #e8d8ff;
+      }
+      .r-dawn .card {
+        padding: 0.9cqw 1.6cqw 0.9cqw 1cqw;
+        background: rgba(255, 255, 255, 0.09);
+        backdrop-filter: blur(6px);
+        border: 0.12cqw solid rgba(255, 255, 255, 0.2);
+        border-left: 0.5cqw solid #ffb070;
+        border-radius: 1.2cqw;
+      }
+      .r-dawn .card.focus {
+        background: rgba(255, 214, 160, 0.2);
+        border-color: #ffe2a8;
+        box-shadow: 0 0 2.4cqw rgba(255, 180, 110, 0.35);
+      }
+      .r-dawn .ic {
+        width: 4.2cqw;
+        height: 4.2cqw;
+        font-size: 2cqw;
+        color: #fff;
+        background: radial-gradient(circle at 35% 30%, #ffcf8a, #b4508a);
+        border-radius: 50%;
+      }
+      .r-dawn .name {
+        font-weight: 700;
+        font-size: 1.8cqw;
+      }
+      .r-dawn .chip {
+        padding: 0 0.7cqw;
+        font-size: 1cqw;
+        font-weight: 700;
+        color: #e8d8ff;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 99px;
+      }
+      .r-dawn .chip.r {
+        color: #1c1430;
+        background: var(--r);
+      }
+      .r-dawn .desc {
+        font-size: 1.25cqw;
+        color: #f2e6ff;
+      }
+      .r-dawn .val {
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: 2.8cqw;
+        line-height: 1;
+        color: #ffe2a8;
+        text-align: center;
+      }
+      .r-dawn .val small {
+        display: block;
+        font-family: 'Rubik', sans-serif;
+        font-size: 0.85cqw;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: #c9b4e8;
+      }
+      .r-dawn .mon {
+        min-width: 22cqw;
+        padding: 0.8cqw 1.4cqw;
+        background: rgba(20, 16, 50, 0.7);
+        backdrop-filter: blur(6px);
+        border: 0.12cqw solid rgba(255, 255, 255, 0.2);
+        border-radius: 1.2cqw;
+      }
+      .r-dawn .mon .nm {
+        font-weight: 700;
+        font-size: 1.6cqw;
+      }
+      .r-dawn .hp {
+        height: 0.8cqw;
+        margin-top: 0.4cqw;
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 99px;
+      }
+      .r-dawn .hp b {
+        background: linear-gradient(90deg, #7ae0a0, #ffe2a8);
+        border-radius: 99px;
+      }
+      .r-dawn .mv {
+        min-width: 11cqw;
+        padding: 0.5cqw 1cqw;
+        font-weight: 700;
+        font-size: 1.25cqw;
+        background: rgba(20, 16, 50, 0.7);
+        backdrop-filter: blur(6px);
+        border: 0.12cqw solid rgba(255, 255, 255, 0.18);
+        border-bottom: 0.45cqw solid var(--t);
+        border-radius: 1cqw;
+      }
+      .r-dawn .mv small {
+        display: block;
+        font-weight: 500;
+        font-size: 0.95cqw;
+        color: #c9b4e8;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Labo d'interface</h1>
+      <p class="intro">
+        Même écran partout : le don de Darkrai et un morceau du HUD (carte du Pokémon, capacités), posés sur une vraie scène du jeu. La carte du haut est celle
+        survolée. Le style retenu sera décliné sur toutes les interfaces.
+      </p>
+      <div id="variants"></div>
+    </main>
+    <script type="module">
+      // Pistes « bénédiction » (troisième tour), puis les tours précédents pour comparer.
+      // Les légendaires sont des dieux qui bénissent la rébellion (comme les Olympiens de
+      // Hades) : ils ne sortent pas d'une Poké Ball, ils apparaissent.
+      // `art` : décor propre à la piste autour de l'illustration ; `layers` : calques du cadre
+      // (faille, mur tagué, traits de bombe…) ; `kicker` et `tagline` : le récit.
+      const ART = '<img src="/game/data/artwork/491.png" alt="Darkrai" />';
+
+      // Bombe de peinture : un trait, son halo, des postillons et des coulures qui
+      // descendent à vitesse de goutte une fois le trait passé. Tout est tiré d'une
+      // graine, pour que chaque ouverture coule pareil.
+      const rand = (seed) => () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+      const f = (n) => n.toFixed(2);
+      /** Courbe de Bézier cubique [x0, y0, … x3, y3] : son tracé, un point en t, sa longueur. */
+      const curve = (p) => {
+        const at = (t) => {
+          const u = 1 - t;
+          const k = [u * u * u, 3 * u * u * t, 3 * u * t * t, t * t * t];
+          return [0, 1].map((o) => k.reduce((s, c, i) => s + c * p[i * 2 + o], 0));
+        };
+        let len = 0;
+        for (let i = 1; i <= 40; i++) len += Math.hypot(...at(i / 40).map((v, o) => v - at((i - 1) / 40)[o]));
+        return { d: `M${p[0]} ${p[1]} C${p.slice(2).join(' ')}`, at, len };
+      };
+      const spray = ({ d, at, len, color, width, drips = 0, dripMax = 9, dots = 0, seed = 7, delay = 0, draw = 0.55, viewBox = '0 0 160 90', cls = '' }) => {
+        const r = rand(seed);
+        let out = '';
+        for (let i = 0; i < dots; i++) {
+          const t = r();
+          const [x, y] = at(t);
+          const a = r() * Math.PI * 2;
+          const dist = width * (0.7 + r() * 1.8);
+          out += `<circle class="dot" cx="${f(x + Math.cos(a) * dist)}" cy="${f(y + Math.sin(a) * dist)}" r="${f(width * (0.04 + r() * 0.12))}" style="--w:${f(delay + t * draw)}s"/>`;
+        }
+        for (let i = 0; i < drips; i++) {
+          const t = 0.04 + r() * 0.92;
+          const [x0, y] = at(t);
+          const x = x0 + (r() - 0.5) * width * 0.5;
+          const l = width * (1.5 + r() ** 2 * dripMax); // beaucoup de courtes, quelques longues
+          const w = width * (0.22 + r() * 0.28);
+          const vars = `--w:${f(delay + t * draw + 0.05 + r() * 0.5)}s;--d:${f(0.4 + (l / width) * 0.18)}s;--len:${f(l)}`;
+          out += `<line class="drip" x1="${f(x)}" y1="${f(y)}" x2="${f(x)}" y2="${f(y + l)}" stroke-width="${f(w)}" style="${vars}"/>`;
+          out += `<circle class="bulb" cx="${f(x)}" cy="${f(y)}" r="${f(w * 0.8)}" style="${vars};--ty:${f(l)}px"/>`;
+        }
+        return `<svg class="spr ${cls}" viewBox="${viewBox}" preserveAspectRatio="none" style="--c:${color};--len:${f(len)};--w0:${delay}s;--draw:${draw}s">
+          <path class="halo" d="${d}" stroke-width="${f(width * 2)}"/><path class="main" d="${d}" stroke-width="${width}"/>${out}</svg>`;
+      };
+      /** Auréole taguée : une ellipse, et ce qui coule de son arc du bas. */
+      const aureole = (color, seed) =>
+        spray({
+          d: 'M16 14 A34 9 0 1 1 84 14 A34 9 0 1 1 16 14',
+          at: (t) => {
+            const a = Math.PI * (0.12 + t * 0.76);
+            return [50 + 34 * Math.cos(a), 14 + 9 * Math.sin(a)];
+          },
+          len: 160,
+          color,
+          width: 2.4,
+          drips: 7,
+          dripMax: 4,
+          dots: 8,
+          seed,
+          delay: 0.7,
+          viewBox: '0 0 100 40',
+          cls: 'aureole',
+        });
+      /** Polygones des deux moitiés de part et d'autre d'une courbe (en % du cadre 160 × 90). */
+      const halves = (p) => {
+        const { at } = curve(p);
+        const s = Array.from({ length: 13 }, (_, i) => at(i / 12)).map(([x, y]) => [(x / 1.6).toFixed(2), (y / 0.9).toFixed(2)]);
+        const poly = (edge, pts) => `polygon(${[[edge, s[0][1]], ...pts, [edge, s[12][1]]].map(([x, y]) => `${x}% ${y}%`).join(', ')})`;
+        return { left: poly(0, s), left0: poly(0, s.map(([, y]) => [0, y])), right: poly(100, s) };
+      };
+
+      /** Poké Ball barrée, tag du mur (R2, R4). */
+      const BALL_X = '<svg class="t-ball" viewBox="0 0 40 40"><circle cx="20" cy="20" r="15"/><path d="M5 20 H35"/><circle cx="20" cy="20" r="4.5"/><path class="x" d="M6 6 L34 34 M34 6 L6 34"/></svg>';
+      /** Trois traits de comptage à la bombe, comme sur un mur de cellule. */
+      const TALLY = [8, 11, 14]
+        .map((x, i) => spray({ ...curve([x, 66, x + 0.8, 63, x + 1.8, 60, x + 2.6, 57]), color: '#fff', width: 0.8, drips: 2, dripMax: 6, dots: 4, seed: 31 + i, delay: 1 + i * 0.12, draw: 0.15 }))
+        .join('');
+      const RIFT = '74,-1 70.5,14 73,22 67.5,38 70,47 62,63 64.5,71 54,91';
+      const SLASH = [77, -4, 72, 28, 66, 58, 56, 96];
+      const MIX = halves(SLASH);
+      const VARIANTS = [
+        {
+          group: 'Troisième tour — les légendaires bénissent la rébellion',
+          cls: 'r-rift clean clean-hud',
+          vars: '--god:#e0302a',
+          title: 'R1 · Faille divine',
+          text: "L'écran du système se fend : une faille en éclair court en diagonale, la lumière d'un dieu passe à travers et l'écran s'ouvre. Le légendaire descend dans son sanctuaire, un sceau tourne derrière lui. Clair, lisible, solennel ; la couleur du sanctuaire change avec chaque légendaire.",
+          swatches: ['#e0302a', '#15121a', '#ffffff', '#fff6c8', '#ffcb05'],
+          kicker: 'Un dieu bénit ta rébellion',
+          layers: `<div class="half top"></div><div class="half bot"></div>
+            <svg class="rift" viewBox="0 0 160 90" preserveAspectRatio="none">${['glow', 'edge', 'core'].map((c) => `<polyline class="${c}" points="${RIFT}"/>`).join('')}</svg>`,
+          art: `<div class="sigil"><i class="rays"></i><i class="ring"></i><i class="ring2"></i></div>${ART}`,
+        },
+        {
+          cls: 'r-tag paper',
+          title: 'R2 · Fresque de la résistance',
+          text: "Le mur de la rébellion, saturé : la diagonale est un double trait de bombe qui bave pendant que l'écran s'ouvre, les tags coulent (« LIBÉREZ-LES », « NI MAÎTRE NI BALL », « RÉSISTANCE »), une Poké Ball barrée. Le légendaire est collé comme l'icône de la résistance, auréole à la bombe. Les dons restent sur des bandes de papier lisibles.",
+          swatches: ['#14100e', '#ff5a1f', '#ff4fa3', '#efe6d2', '#ffd23f'],
+          kicker: 'Bénédiction de',
+          tagline: 'Les dieux sont avec la rébellion',
+          layers: `<div class="wall">
+              <span class="t-big">LIBÉREZ-LES</span><span class="t-nmnb">NI MAÎTRE<br />NI BALL</span><span class="t-res">RÉSISTANCE</span>
+              ${BALL_X}
+            </div>
+            ${spray({ ...curve([73, -4, 68, 28, 62, 58, 52, 96]), color: '#ff4fa3', width: 0.9, drips: 6, dripMax: 12, dots: 10, seed: 5, delay: 0.15 })}
+            ${spray({ ...curve(SLASH), color: '#ff5a1f', width: 2.8, drips: 18, dots: 45, seed: 11 })}`,
+          art: `<div class="blot"></div>${ART}${aureole('#ffd23f', 3)}<i class="star s1">✦</i><i class="star s2">✦</i><i class="star s3">✦</i>`,
+        },
+        {
+          cls: 'r-mix paper clean-hud',
+          vars: '--god:#e0302a;--ink:#e0302a',
+          title: 'R4 · Tag sacré — retenue',
+          text: "Retenue. La moitié du dieu est peinte à la bombe et coule dans l'écran du système ; son nom bave, des petits tags coulent autour (traits de comptage, Poké Ball barrée, « NI MAÎTRE NI BALL »). Les dons sur les bandes de papier de R2, le HUD clair de R1.",
+          swatches: ['#e0302a', '#15121a', '#ffffff', '#ffcb05', '#ffd23f'],
+          kicker: 'Bénédiction de',
+          layers: `<div class="half top" style="--clip:${MIX.left};--clip0:${MIX.left0}"></div><div class="half bot" style="--clip:${MIX.right}"></div>
+            <div class="wall"><span class="t-big">LIBÉREZ-LES</span><span class="t-nmnb">NI MAÎTRE<br />NI BALL</span>${BALL_X}</div>
+            ${spray({ ...curve(SLASH), color: 'var(--god)', width: 3, drips: 16, dots: 30, seed: 23 })}${TALLY}`,
+          art: `<div class="sigil"><i class="rays"></i><i class="ring"></i><i class="ring2"></i></div>${ART}<i class="star s1">✦</i><i class="star s2">✦</i><i class="star s3">✦</i>`,
+        },
+        {
+          group: 'Deuxième tour',
+          cls: 'r-dawn',
+          title: "R3 · L'aube de la liberté",
+          text: "Un dégradé de la nuit vers l'aurore, coupé par un rayon de lumière en diagonale qui balaie l'écran. Autour du légendaire, les maillons d'une chaîne se brisent et s'éloignent. Plus poétique : l'espoir plutôt que la colère.",
+          swatches: ['#0e1034', '#361e5a', '#d65c5a', '#ffaa5a', '#ffe2a8'],
+          kicker: 'Les chaînes cèdent',
+          tagline: 'Brise les chaînes. Libère-les tous.',
+          layers: '<div class="beam"></div>',
+          art: `${ART}<div class="chains">${'<span class="link"><i class="l"></i><i class="r"></i></span>'.repeat(4)}</div>`,
+        },
+        {
+          group: 'Premières pistes',
+          cls: 'v-dex',
+          title: 'A · Pokédex',
+          text: "Rouge et blanc, coins arrondis, cartes blanches lisibles, pastilles de couleur. L'ambiance d'une interface officielle Pokémon : claire, rassurante, très « friendly ».",
+          swatches: ['#e3350d', '#ffffff', '#222222', '#ffcb05', '#3fc461'],
+        },
+        {
+          cls: 'v-sv',
+          title: 'B · Écarlate',
+          text: 'Moderne et énergique : diagonales, jaune vif sur violet profond, typo grasse en italique, cartes inclinées en verre dépoli. Proche des interfaces Pokémon récentes.',
+          swatches: ['#2b1d5c', '#ffd400', '#ff3d7f', '#ffffff', '#4cff8a'],
+        },
+        {
+          cls: 'v-arc',
+          title: "C · Carnet d'explorateur",
+          text: "Parchemin, encre brune, annotations manuscrites et tampons de rareté. Une ambiance de récit d'aventure, chaleureuse, qui va bien avec la rébellion.",
+          swatches: ['#f3e8d0', '#3a2a1a', '#8a5a2b', '#b0412a', '#6f9a3a'],
+        },
+        {
+          cls: 'v-myth',
+          title: 'D · Mythique',
+          text: "Obsidienne et or, capitales gravées, gemmes de rareté en losange. Le registre de Hades : solennel, dramatique, met en valeur les légendaires.",
+          swatches: ['#08060a', '#1e1622', '#d8b45a', '#f3d98a', '#8a1a1a'],
+        },
+        {
+          cls: 'v-gba',
+          title: 'E · Pixel GBA',
+          text: "Fenêtres blanches à bordure épaisse et police pixel, curseur ▶ : l'héritage direct de Rouge Feu / Émeraude, en cohérence totale avec le décor pixel art.",
+          swatches: ['#f8f8f8', '#5888b0', '#303030', '#e05040', '#70f8a8'],
+          panel: true,
+        },
+      ];
+
+      const RARITY = { Commun: '#c9a46a', Rare: '#4fb04a', Épique: '#e8a91a', Prismatique: '#2fc9bf' };
+      const DARK = '#6b5a7a';
+      const CARDS = [
+        { name: "Vol d'Ombre", rarity: 'Commun', scope: 'Ton Pokémon', desc: 'Tu frappes plus fort, mais tu perds des PV max à chaque salle.', val: '25 %', label: 'valeur' },
+        { name: 'Vide', rarity: 'Rare', scope: "Toute l'équipe", desc: 'Chaque ennemi tué laisse une ombre qui ronge ce qui la traverse.', val: '12 s', label: 'durée' },
+        { name: 'Exécution', rarity: 'Épique', scope: 'Ton Pokémon', desc: 'Ton finisher achève net un ennemi déjà bas.', val: '44 %', label: 'seuil' },
+      ];
+      const MOVES = [
+        ['Double Pied', 'Combat · 30', '#cc3829'],
+        ['Éclair', 'Électrik · 40', '#f2cc14'],
+        ['Charme', 'ATT ↓ ennemis', '#eb85b8'],
+        ['Rugissement', 'ATT ↓ ennemis', '#a8a899'],
+      ];
+
+      const h = (html) => {
+        const t = document.createElement('template');
+        t.innerHTML = html.trim();
+        return t.content.firstElementChild;
+      };
+
+      /** Rejoue l'animation d'ouverture : on retire la classe, on force un recalcul, on la remet. */
+      const play = (frame) => {
+        frame.classList.remove('play');
+        void frame.offsetWidth;
+        frame.classList.add('play');
+      };
+
+      const root = document.getElementById('variants');
+      for (const v of VARIANTS) {
+        if (v.group) root.append(h(`<h2 class="group">${v.group}</h2>`));
+        const cards = CARDS.map(
+          (c, i) => `
+          <div class="card${i === 0 ? ' focus' : ''}" style="--t:${DARK};--r:${RARITY[c.rarity]};--i:${i}">
+            <div class="ic"><span>☾</span></div>
+            <div>
+              <div class="name">${c.name}</div>
+              <div class="chips"><span class="chip r">${c.rarity}</span><span class="chip">${c.scope}</span></div>
+              <div class="desc">${c.desc}</div>
+            </div>
+            <div class="val">${c.val}<small>${c.label}</small></div>
+          </div>`,
+        ).join('');
+        const moves = MOVES.map(([n, s, t]) => `<div class="mv" style="--t:${t}">${n}<small>${s}</small></div>`).join('');
+        const tagline = v.tagline ? `<div class="tagline">${v.tagline}</div>` : '';
+        const text = `<div class="kicker">${v.kicker ?? 'Un don de'}</div><div class="who">Darkrai</div>${tagline}<div class="quote">« Je peux te rendre terrible. Tu paieras — mais plus tard. »</div><div class="cards">${cards}</div>`;
+        const item = h(`
+          <section class="lab-item">
+            <header>
+              <h2>${v.title}</h2>
+              <div class="swatches">${v.swatches.map((c) => `<i style="background:${c}"></i>`).join('')}</div>
+              <p>${v.text}</p>
+            </header>
+            <div class="frame ${v.cls}" style="${v.vars ?? ''}">
+              <div class="veil"></div>
+              ${v.layers ?? ''}
+              <div class="boon">
+                <div class="art">${v.art ?? ART}</div>
+                ${v.panel ? `<div class="panel">${text}</div>` : `<div class="text">${text}</div>`}
+              </div>
+              <div class="hud">
+                <div class="mon"><div class="nm">Pikachu <small>N.12</small></div><div class="hp"><b></b></div><small>21 / 27 PV</small></div>
+                <div class="moves">${moves}</div>
+              </div>
+              ${v.layers ? '<button class="replay">↻ Rejouer l’ouverture</button>' : ''}
+            </div>
+          </section>`);
+        root.append(item);
+        const frame = item.querySelector('.frame');
+        item.querySelector('.replay')?.addEventListener('click', () => play(frame));
+      }
+      // Chaque piste animée s'ouvre quand elle arrive à l'écran.
+      const seen = new IntersectionObserver((entries) => {
+        for (const e of entries) if (e.isIntersecting) play(e.target);
+      }, { threshold: 0.55 });
+      document.querySelectorAll('.frame').forEach((f) => seen.observe(f));
+    </script>
+  </body>
+</html>
