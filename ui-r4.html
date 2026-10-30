@@ -1,0 +1,1941 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pokhades — planche « Tag sacré »</title>
+    <!--
+      Planche de rendu de la DA retenue (R4 · Tag sacré) : chaque écran du jeu
+      maquetté sur une vraie scène, avant de l'appliquer dans src/ui. Page de
+      travail, hors du jeu. Les polices viennent de Google Fonts ici ; elles
+      seront embarquées dans le build (pas d'appel réseau en jeu, PORTAGE.md D8).
+
+      Le récit : l'interface « officielle » est l'écran du système (sombre, rayé
+      comme un moniteur), la rébellion la tague à la bombe, et ce qui est au
+      joueur tient sur des bandes de papier collées au mur. Pas de rouge pour la
+      bombe : les coulures rouges font sang, Halloween. La couleur (--spray) se
+      choisit en haut de page.
+
+      Illustrations : seuls les légendaires ont la leur en local (data/artwork) ;
+      les autres viennent ici du dépôt PokéAPI, en attendant de les embarquer.
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,500;0,700;0,900;1,500&family=Bebas+Neue&family=Permanent+Marker&family=Bangers&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --red: #e0302a;
+        --spray: #ff3f9e;
+        /* Police d'accent (combo, nom de zone) : Bangers, retenue. Couleur du biome courant. */
+        --accent: 'Bangers', cursive;
+        --biome: #5fb83e;
+        --ink: #14100e;
+        --sys: rgba(16, 15, 22, 0.78);
+        --paper: #efe6d2;
+        --paper-hi: #fff6e0;
+        --gold: #ffcb05;
+        --yel: #ffd23f;
+        --muted: #6b5a48;
+        --head: 'Bebas Neue', sans-serif;
+        --marker: 'Permanent Marker', cursive;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #15121a;
+        color: #eee;
+        font-family: system-ui, sans-serif;
+      }
+      main {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 24px 16px 60px;
+      }
+      h1 {
+        margin: 0 0 4px;
+        font-size: 26px;
+      }
+      .intro {
+        margin: 0 0 28px;
+        color: #aaa;
+        max-width: 760px;
+      }
+      .lab-item {
+        margin-bottom: 44px;
+      }
+      .lab-item > header {
+        display: flex;
+        gap: 18px;
+        align-items: baseline;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+      }
+      .lab-item h2 {
+        margin: 0;
+        font-size: 22px;
+      }
+      .lab-item header p {
+        margin: 0;
+        flex: 1 1 360px;
+        color: #bbb;
+        font-size: 14px;
+      }
+
+      /* Cadre : une capture du jeu 16:9 derrière, l'interface par-dessus. */
+      .frame {
+        position: relative;
+        aspect-ratio: 16 / 9;
+        overflow: hidden;
+        border-radius: 10px;
+        background: url('/lab/scene.jpg') center / cover;
+        image-rendering: pixelated;
+        container-type: inline-size;
+        font-family: 'Rubik', sans-serif;
+        color: #fff;
+      }
+      .frame > * {
+        position: absolute;
+        image-rendering: auto;
+      }
+      .frame canvas,
+      .frame .px {
+        image-rendering: pixelated;
+      }
+      .replay {
+        top: 1.2cqw;
+        right: 1.2cqw;
+        z-index: 9;
+        padding: 0.5cqw 1.2cqw;
+        font: 700 1.2cqw system-ui, sans-serif;
+        color: #fff;
+        background: #0009;
+        border: 1px solid #fff4;
+        border-radius: 99px;
+        cursor: pointer;
+      }
+
+      /* ── Bombe de peinture (src/ui/spray.ts) ──────────────────────────── */
+      .spr {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+        pointer-events: none;
+      }
+      .spr path,
+      .spr line {
+        fill: none;
+        stroke: var(--c);
+        stroke-linecap: round;
+      }
+      .spr circle {
+        fill: var(--c);
+      }
+      .spr .halo {
+        opacity: 0.28;
+        filter: blur(1px);
+      }
+      .spr .halo,
+      .spr .main,
+      .spr .drip {
+        stroke-dasharray: var(--len) var(--len);
+      }
+      .play .spr .halo,
+      .play .spr .main {
+        animation: spr-draw var(--draw) ease-out var(--w0) both;
+      }
+      .play .spr .drip {
+        animation: spr-draw var(--d) cubic-bezier(0.5, 0, 0.3, 1) var(--w) both;
+      }
+      .spr .bulb {
+        transform: translateY(var(--ty));
+      }
+      .play .spr .bulb {
+        animation: spr-bulb var(--d) cubic-bezier(0.5, 0, 0.3, 1) var(--w) both;
+      }
+      .play .spr .dot {
+        animation: spr-dot 0.2s ease-out var(--w) both;
+      }
+      @keyframes spr-draw {
+        from {
+          stroke-dashoffset: var(--len);
+        }
+        to {
+          stroke-dashoffset: 0;
+        }
+      }
+      @keyframes spr-bulb {
+        0% {
+          transform: none;
+          opacity: 0;
+        }
+        8% {
+          opacity: 1;
+        }
+      }
+      @keyframes spr-dot {
+        from {
+          opacity: 0;
+        }
+      }
+      @keyframes tag-in {
+        from {
+          opacity: 0;
+          filter: blur(0.8cqw);
+        }
+      }
+      @keyframes slap {
+        from {
+          opacity: 0;
+          transform: rotate(-10deg) scale(1.3);
+        }
+      }
+      @keyframes rise {
+        from {
+          opacity: 0;
+          transform: translateY(2cqw);
+        }
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(1turn);
+        }
+      }
+      /* Ce qui entre à l'ouverture : --w règle l'ordre d'arrivée. */
+      .play .in-tag {
+        animation: tag-in 0.5s ease-out var(--w, 0.2s) both;
+      }
+      .play .in-slap {
+        animation: slap 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) var(--w, 0.2s) both;
+      }
+      .play .in-rise {
+        animation: rise 0.45s cubic-bezier(0.2, 1, 0.3, 1) var(--w, 0.2s) both;
+      }
+
+      /* ── Briques de la DA ─────────────────────────────────────────────── */
+      /* Titre d'affiche : capitales serrées, ombre à la couleur de la bombe.
+         (Les polices graffiti qui bavent faisaient film d'horreur : écartées.) */
+      .title {
+        font-family: var(--head);
+        line-height: 0.95;
+        letter-spacing: 0.03em;
+        color: #fff;
+        text-shadow: 0.25cqw 0.25cqw 0 var(--spray);
+      }
+      /* Écriture au feutre, jaune : le kicker des écrans. */
+      .hand {
+        font-family: var(--marker);
+        color: var(--gold);
+      }
+      /* Ruban adhésif noir : étiquettes du système, lettres capitales. */
+      .tape {
+        padding: 0.25cqw 1cqw;
+        font-family: var(--head);
+        font-size: 1.6cqw;
+        letter-spacing: 0.08em;
+        color: var(--paper);
+        background: var(--ink);
+      }
+      /* Étiquette jaune : prix, valeurs, gains. */
+      .stamp {
+        padding: 0.2cqw 0.9cqw;
+        font-family: var(--head);
+        font-size: 2cqw;
+        line-height: 1.1;
+        color: var(--ink);
+        background: var(--yel);
+        transform: rotate(3deg);
+        text-align: center;
+      }
+      .stamp small {
+        display: block;
+        font-family: 'Rubik', sans-serif;
+        font-size: 0.8cqw;
+        text-transform: uppercase;
+      }
+      /* Pastille de type : un sticker de la couleur du type. */
+      .pill {
+        display: inline-block;
+        padding: 0.05cqw 0.7cqw;
+        font-family: var(--head);
+        font-size: 1.25cqw;
+        letter-spacing: 0.06em;
+        color: #fff;
+        background: var(--c);
+        transform: rotate(-3deg);
+        text-shadow: 0 0.12cqw 0 rgba(0, 0, 0, 0.55);
+        box-shadow: 0.15cqw 0.15cqw 0 rgba(0, 0, 0, 0.35);
+      }
+      /* Bande de papier aux bords déchirés. */
+      .paper {
+        color: var(--ink);
+        background: var(--paper);
+        clip-path: polygon(0 0, 97% 0, 100% 18%, 98% 40%, 100% 62%, 97% 82%, 99% 100%, 0 100%);
+      }
+      .ball-x circle,
+      .ball-x path {
+        fill: none;
+        stroke: #fff;
+        stroke-width: 2.6;
+        stroke-linecap: round;
+      }
+      .ball-x .x {
+        stroke: var(--gold);
+        stroke-width: 3.6;
+      }
+      .star {
+        font-style: normal;
+        color: var(--gold);
+        text-shadow: 0 0 1cqw rgba(255, 203, 5, 0.6);
+      }
+
+      /* ── HUD de combat ────────────────────────────────────────────────── */
+      .runbar {
+        left: 2cqw;
+        top: 1.6cqw;
+        display: flex;
+        gap: 0.8cqw;
+        align-items: center;
+      }
+      .runbar .tape {
+        transform: rotate(-1deg);
+      }
+      .runbar .kills {
+        padding: 0.1cqw 0.8cqw;
+        font-family: var(--head);
+        font-size: 1.7cqw;
+        letter-spacing: 0.05em;
+        color: var(--spray);
+        background: var(--ink);
+        transform: rotate(1.5deg);
+      }
+      .runbar .stamp {
+        font-size: 1.7cqw;
+      }
+      .toast {
+        left: 50%;
+        top: 7cqw;
+        display: flex;
+        gap: 1cqw;
+        align-items: center;
+        padding: 0.5cqw 2.4cqw 0.5cqw 1.4cqw;
+        font-family: var(--head);
+        font-size: 2cqw;
+        letter-spacing: 0.05em;
+        translate: -50% 0;
+        rotate: -1.5deg;
+      }
+      .toast .stamp {
+        font-size: 1.7cqw;
+      }
+      /* Combo : pas de cadre ; « combo » et le chiffre dans la même police d'accent,
+         le chiffre à la couleur du biome, détouré d'encre. */
+      .combo {
+        right: 24cqw;
+        top: 19cqw;
+        display: grid;
+        justify-items: center;
+        rotate: -6deg;
+      }
+      .combo span {
+        font-family: var(--accent);
+        font-size: 2.2cqw;
+        letter-spacing: 0.08em;
+        color: #fff;
+        -webkit-text-stroke: 0.15cqw var(--ink);
+        paint-order: stroke fill;
+        text-shadow: 0.2cqw 0.2cqw 0 var(--ink);
+      }
+      .combo b {
+        font-family: var(--accent);
+        font-weight: normal;
+        font-size: 6cqw;
+        line-height: 0.95;
+        color: var(--biome);
+        -webkit-text-stroke: 0.3cqw var(--ink);
+        paint-order: stroke fill;
+        text-shadow: 0.35cqw 0.35cqw 0 var(--ink);
+      }
+      /* Bas de l'écran : la carte du Pokémon, ses attaques collées juste à droite. */
+      .hudrow {
+        left: 2.5cqw;
+        bottom: 2cqw;
+        display: flex;
+        gap: 1.4cqw;
+        align-items: stretch;
+      }
+      /* Carte du Pokémon : une bande de papier. Pas d'étiquettes : PV, XP, dashs, ultime et
+         dons se reconnaissent à leur forme, ça reste simple. */
+      .hudcard {
+        width: 30cqw;
+        padding: 1cqw 2.6cqw 1.1cqw 1.4cqw;
+        rotate: -1deg;
+      }
+      .hudcard .nm {
+        display: flex;
+        gap: 0.7cqw;
+        align-items: baseline;
+        font-family: var(--head);
+        font-size: 2.4cqw;
+        line-height: 1;
+        letter-spacing: 0.04em;
+      }
+      .hudcard .nm small {
+        font-family: 'Rubik', sans-serif;
+        font-size: 1.1cqw;
+        font-weight: 700;
+        letter-spacing: 0;
+        color: var(--muted);
+      }
+      .hudcard .nm .pill {
+        margin-left: auto;
+      }
+      /* Jauges : barres d'encre au bout coupé en biais. */
+      .gauge {
+        position: relative;
+        height: 1.3cqw;
+        background: var(--ink);
+        clip-path: polygon(0 0, 100% 0, 98.5% 100%, 0 100%);
+      }
+      .gauge b,
+      .gauge i {
+        position: absolute;
+        inset: 0.2cqw auto 0.2cqw 0.2cqw;
+        width: calc(var(--v) - 0.4cqw);
+        background: var(--c, #4cd964);
+      }
+      .gauge i {
+        background: #ff8a7a;
+      }
+      .stat {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 0.7cqw;
+        align-items: center;
+        margin-top: 0.55cqw;
+      }
+      .stat > label {
+        font-family: var(--head);
+        font-size: 1.25cqw;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+      }
+      .stat .val {
+        min-width: 4.6cqw;
+        text-align: right;
+        font-family: var(--head);
+        font-size: 1.6cqw;
+        letter-spacing: 0.04em;
+      }
+      .stat.hp .gauge {
+        height: 1.6cqw;
+      }
+      .stat.xp .gauge {
+        --c: #4aa8ff;
+        height: 0.8cqw;
+      }
+      .stat.xp .gauge b {
+        inset: 0.15cqw auto 0.15cqw 0.15cqw;
+      }
+      .stat.xp .val {
+        font-size: 1.15cqw;
+        color: var(--muted);
+      }
+      /* Esquives : une grosse pastille d'encre par charge, vide quand elle recharge. */
+      .dashes {
+        display: flex;
+        gap: 0.45cqw;
+      }
+      .dashes i {
+        width: 2.8cqw;
+        height: 1.5cqw;
+        background: var(--ink);
+        clip-path: polygon(25% 0, 100% 0, 75% 100%, 0 100%);
+      }
+      .dashes i.off {
+        background: rgba(20, 16, 14, 0.16);
+      }
+      .buffs {
+        display: flex;
+        gap: 0.5cqw;
+      }
+      .hudcard .buff {
+        padding: 0 0.5cqw;
+        font-family: var(--head);
+        font-size: 1.15cqw;
+        letter-spacing: 0.05em;
+        color: #fff;
+        background: #2f9d4e;
+        rotate: -2deg;
+      }
+      .ult {
+        position: relative;
+        height: 2.2cqw;
+        overflow: hidden;
+        background: var(--ink);
+        clip-path: polygon(0 0, 98% 0, 100% 50%, 98% 100%, 0 100%);
+      }
+      .ult b {
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 64%;
+        background: linear-gradient(90deg, var(--spray), color-mix(in srgb, var(--spray) 50%, #fff));
+      }
+      .ult span {
+        position: relative;
+        display: block;
+        padding: 0 0.8cqw;
+        font-family: var(--head);
+        font-size: 1.5cqw;
+        line-height: 2.2cqw;
+        letter-spacing: 0.06em;
+        color: #fff;
+        text-shadow: 0 0.12cqw 0 rgba(0, 0, 0, 0.6);
+      }
+      .boons {
+        display: flex;
+        gap: 0.5cqw;
+      }
+      .boons i {
+        display: grid;
+        place-items: center;
+        width: 2.4cqw;
+        height: 2.4cqw;
+        font-style: normal;
+        font-size: 1.3cqw;
+        color: #fff;
+        background: var(--c);
+        border-radius: 50%;
+        box-shadow: 0 0 0 0.2cqw var(--paper), 0 0 0 0.35cqw var(--ink);
+      }
+      /* Attaques en 2 × 2, comme dans les jeux Pokémon : une bande de papier chacune,
+         un trait de feutre à la couleur du type, la touche sur ruban noir. */
+      /* Même hauteur que la carte du Pokémon : les deux rangées se partagent sa hauteur. */
+      .moves {
+        display: grid;
+        grid-template-columns: repeat(2, 22cqw);
+        grid-template-rows: 1fr 1fr;
+        gap: 1.1cqw 1.1cqw;
+      }
+      .mv {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 0.7cqw 2cqw 0.7cqw 2cqw;
+      }
+      .mv:nth-child(odd) {
+        rotate: 0.5deg;
+      }
+      .mv:nth-child(even) {
+        rotate: -0.6deg;
+      }
+      .mv::before {
+        content: '';
+        position: absolute;
+        left: 0.6cqw;
+        top: 0.6cqw;
+        bottom: 0.6cqw;
+        width: 0.6cqw;
+        background: var(--c);
+        border-radius: 0.3cqw;
+      }
+      .mv .top {
+        display: flex;
+        gap: 0.6cqw;
+        align-items: center;
+      }
+      .mv .key {
+        margin-left: auto;
+      }
+      .mv .nmv {
+        font-family: var(--head);
+        font-size: 2cqw;
+        line-height: 1;
+        letter-spacing: 0.04em;
+      }
+      .mv .key {
+        padding: 0 0.5cqw;
+        font-family: var(--head);
+        font-size: 1.1cqw;
+        letter-spacing: 0.06em;
+        color: var(--paper);
+        background: var(--ink);
+      }
+      /* Sous le nom et son type : la catégorie et la puissance, ou l'effet chiffré. */
+      .mv .info {
+        display: flex;
+        gap: 0.6cqw;
+        align-items: center;
+        margin-top: 0.4cqw;
+        font-size: 0.95cqw;
+        font-weight: 700;
+        white-space: nowrap;
+        color: var(--muted);
+      }
+      .mv .pill {
+        font-size: 1cqw;
+        rotate: none;
+        transform: none;
+      }
+      /* Attaque en recharge : la bande se couvre d'un voile. */
+      .mv.cd::after {
+        content: '';
+        position: absolute;
+        inset: 0 0 45% 0;
+        background: rgba(20, 16, 14, 0.4);
+      }
+
+      /* ── Annonce de zone ─────────────────────────────────────────────── */
+      .dim {
+        inset: 0;
+        background: rgba(16, 15, 22, 0.45);
+      }
+      .announce {
+        left: 0;
+        right: 0;
+        top: 15cqw;
+        display: grid;
+        justify-items: center;
+      }
+      .announce .kick {
+        rotate: -2deg;
+      }
+      /* Nom du lieu : sa couleur vient du biome (--biome), la police se compare ci-dessus. */
+      /* Nom du lieu : couleur du biome, police d'accent choisie en haut de page. */
+      .announce .name {
+        font-family: var(--accent);
+        font-size: 9cqw;
+        line-height: 1.05;
+        letter-spacing: 0.02em;
+        color: #fff;
+        -webkit-text-stroke: 0.25cqw var(--ink);
+        paint-order: stroke fill;
+        text-shadow:
+          0.4cqw 0.4cqw 0 var(--biome),
+          0 0.6cqw 2cqw rgba(0, 0, 0, 0.4);
+      }
+      .announce .title {
+        font-size: 10cqw;
+        line-height: 1.1;
+      }
+      .announce .under {
+        position: relative;
+        width: 40cqw;
+        aspect-ratio: 100 / 8;
+        margin-top: -1cqw;
+      }
+      .announce .hand {
+        margin-top: 0.8cqw;
+        font-size: 2.6cqw;
+        rotate: -2deg;
+      }
+
+      /* ── Dialogue du champion + barre de boss ────────────────────────── */
+      /* Barre du boss : nom sur ruban, PV en une grosse jauge d'encre. */
+      .bossbar {
+        left: 50%;
+        top: 1.4cqw;
+        width: 44cqw;
+        display: grid;
+        justify-items: center;
+        gap: 0.4cqw;
+        translate: -50% 0;
+      }
+      .bossbar .who {
+        display: flex;
+        gap: 0.8cqw;
+        align-items: center;
+      }
+      .bossbar .tape {
+        font-size: 1.9cqw;
+        rotate: -1deg;
+      }
+      .bossbar .tape .ace {
+        color: var(--yel);
+      }
+      .bossbar .who small {
+        padding: 0.1cqw 0.6cqw;
+        font-family: var(--marker);
+        font-size: 1.15cqw;
+        color: var(--ink);
+        background: var(--paper);
+        rotate: 2deg;
+      }
+      /* Une seule barre, épaisse : un boss tient longtemps, inutile d'afficher ses barres. */
+      .bossbar .gauge {
+        width: 100%;
+        height: 2.2cqw;
+        margin: 0;
+      }
+      .bossbar .gauge b {
+        background: linear-gradient(90deg, #ff7a3a, #ffb03a);
+      }
+      /* Dialogue : en bas de l'écran, comme une scène. Le champion en grand, détouré de
+         blanc pour ressortir sur n'importe quel décor ; le HUD s'efface pendant ce temps. */
+      .dialog {
+        left: 3cqw;
+        right: 3cqw;
+        bottom: 3cqw;
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 1.4cqw;
+        align-items: end;
+      }
+      .dialog .speaker {
+        display: block;
+        width: 21cqw;
+        filter: drop-shadow(0.3cqw 0 0 #fff) drop-shadow(-0.3cqw 0 0 #fff) drop-shadow(0 0.3cqw 0 #fff) drop-shadow(0 -0.3cqw 0 #fff) drop-shadow(0 0.8cqw 1.4cqw rgba(0, 0, 0, 0.55));
+      }
+      .dialog .sheet {
+        margin-bottom: 1cqw;
+        padding: 1.8cqw 4cqw 1.6cqw 2.4cqw;
+      }
+      .dialog .nm {
+        display: flex;
+        gap: 1.2cqw;
+        align-items: center;
+      }
+      .dialog .nm .tape {
+        font-size: 2.8cqw;
+        rotate: -1.5deg;
+      }
+      .dialog .nm small {
+        font-size: 1.2cqw;
+        font-weight: 700;
+        color: var(--muted);
+      }
+      .dialog p {
+        margin: 1cqw 0 0;
+        font-size: 2cqw;
+        line-height: 1.45;
+      }
+      .dialog .hint {
+        margin-top: 0.6cqw;
+        text-align: right;
+        font-size: 1.1cqw;
+        color: var(--muted);
+      }
+
+      /* ── Notifications : petites bandes à droite, la plus récente en haut ── */
+      .notifs {
+        right: 2cqw;
+        top: 6cqw;
+        width: 26cqw;
+        display: grid;
+        gap: 0.7cqw;
+      }
+      .notif {
+        position: relative;
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 0.9cqw;
+        align-items: center;
+        padding: 0.6cqw 2cqw 0.6cqw 1.4cqw;
+      }
+      .notif::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 0.5cqw;
+        background: var(--c, var(--spray));
+      }
+      .notif .ico {
+        display: grid;
+        place-items: center;
+        width: 3.6cqw;
+        height: 3.6cqw;
+        font-size: 1.6cqw;
+        color: #fff;
+      }
+      .notif .ico img {
+        width: 135%;
+        max-width: none;
+        filter: drop-shadow(0 0.15cqw 0.2cqw rgba(0, 0, 0, 0.35));
+      }
+      /* Pokémon K.O. : son image passe en gris. */
+      .notif .ico.ko img {
+        filter: grayscale(1) brightness(0.85);
+      }
+      .notif b {
+        display: block;
+        font-family: var(--head);
+        font-size: 1.5cqw;
+        font-weight: normal;
+        line-height: 1;
+        letter-spacing: 0.05em;
+      }
+      .notif span {
+        font-size: 1.1cqw;
+      }
+      /* Les plus anciennes s'effacent doucement avant de partir. */
+      .notif:nth-child(3) {
+        opacity: 0.8;
+      }
+      .notif:nth-child(4) {
+        opacity: 0.55;
+      }
+      .play .notif {
+        animation: notif-in 0.4s cubic-bezier(0.2, 1, 0.3, 1) var(--w) both;
+      }
+      @keyframes notif-in {
+        from {
+          opacity: 0;
+          transform: translateX(110%);
+        }
+      }
+
+      /* ── Écran de récompense (même gabarit que les dons) ─────────────── */
+      .half {
+        inset: 0;
+        clip-path: var(--clip);
+      }
+      /* Plus sombre côté illustration, à la couleur pleine côté trait : la moitié peinte
+         rejoint le trait sans démarcation. */
+      .half.top {
+        background: linear-gradient(100deg, color-mix(in srgb, var(--god) 55%, rgba(0, 0, 0, 0.85)) 0%, color-mix(in srgb, var(--god) 80%, transparent) 70%, color-mix(in srgb, var(--god) 88%, transparent) 100%);
+      }
+      /* Trait de bord adouci : un halo large et flou, un trait un peu transparent. */
+      .spr.soft .halo {
+        stroke-width: 9;
+        opacity: 0.45;
+        filter: blur(2.5px);
+      }
+      .spr.soft .main {
+        opacity: 0.8;
+      }
+      .half.bot {
+        background: rgba(16, 15, 22, 0.74);
+      }
+      .play .half.top {
+        animation: fill 0.55s ease-in-out 0.35s both;
+      }
+      @keyframes fill {
+        from {
+          clip-path: var(--clip0);
+        }
+      }
+      .boon {
+        inset: 0;
+        display: grid;
+        grid-template-columns: 22cqw 1fr;
+        align-items: center;
+        gap: 2.5cqw;
+        padding: 3cqw 4cqw 4cqw 21cqw;
+      }
+      .boon .art {
+        position: relative;
+        display: grid;
+        place-items: center;
+      }
+      /* Pour qui ? La liste de l'équipe à gauche : le don ou l'attaque va au Pokémon choisi. */
+      .picklist {
+        left: 2.5cqw;
+        top: 50%;
+        width: 14.5cqw;
+        display: grid;
+        gap: 1cqw;
+        translate: 0 -50%;
+      }
+      .picklist .lbl {
+        font-family: var(--marker);
+        font-size: 1.6cqw;
+        color: #fff;
+        text-shadow: 0 0.15cqw 0.3cqw rgba(0, 0, 0, 0.6);
+      }
+      .pick {
+        display: grid;
+        grid-template-columns: 4.6cqw 1fr;
+        gap: 0.5cqw;
+        align-items: center;
+        padding: 0.5cqw 1.6cqw 0.5cqw 0.5cqw;
+        opacity: 0.82;
+      }
+      .pick img {
+        width: 5.2cqw;
+        margin: -0.6cqw -0.3cqw;
+      }
+      .pick b {
+        display: block;
+        font-family: var(--head);
+        font-size: 1.7cqw;
+        font-weight: normal;
+        line-height: 1;
+        letter-spacing: 0.04em;
+      }
+      .pick small {
+        font-size: 0.9cqw;
+        font-weight: 700;
+        color: var(--muted);
+      }
+      .pick.sel {
+        opacity: 1;
+        background: var(--paper-hi);
+        box-shadow: inset 0.5cqw 0 0 var(--spray);
+        translate: 1.2cqw 0;
+      }
+      .picklist .keys {
+        font-size: 0.95cqw;
+        color: #fffc;
+      }
+      .boon .text {
+        padding-left: 7cqw;
+      }
+      /* Aura d'un Pokémon récompensé (le sceau qui tourne est réservé aux dieux) :
+         une lueur à la couleur de son type qui respire, des étincelles qui montent. */
+      .aura {
+        position: absolute;
+        width: 34cqw;
+        aspect-ratio: 1;
+        pointer-events: none;
+      }
+      .aura::before {
+        content: '';
+        position: absolute;
+        inset: 8%;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.8) 0%, color-mix(in srgb, var(--t) 35%, rgba(255, 255, 255, 0.5)) 35%, color-mix(in srgb, var(--t) 40%, transparent) 52%, transparent 70%);
+        animation: aura-breathe 2.4s ease-in-out infinite;
+      }
+      @keyframes aura-breathe {
+        50% {
+          transform: scale(1.08);
+          opacity: 0.7;
+        }
+      }
+      /* Particules de l'aura, une famille par type : petites et discrètes. Électrik crépite
+         autour du Pokémon ; Normal, Feu et Eau montent ; Plante et Glace tombent. */
+      .aura i {
+        position: absolute;
+        left: var(--x);
+        top: var(--y);
+        opacity: 0;
+      }
+      .aura i svg {
+        display: block;
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+      }
+      /* Électrik : des étincelles (points lumineux qui crépitent par sauts secs) et de
+         fins arcs qui claquent un instant entre elles. */
+      .fx-electric .spark {
+        width: 0.45cqw;
+        height: 0.45cqw;
+        border-radius: 50%;
+        background: #fff;
+        box-shadow:
+          0 0 0.4cqw 0.12cqw #fff7a0,
+          0 0 1.1cqw 0.25cqw var(--t);
+        animation: crackle 1.6s var(--d) infinite;
+      }
+      @keyframes crackle {
+        0% {
+          opacity: 0;
+          transform: translate(0, 0);
+          animation-timing-function: steps(1);
+        }
+        8% {
+          opacity: 1;
+          transform: translate(0.5cqw, -0.4cqw);
+          animation-timing-function: steps(1);
+        }
+        18% {
+          transform: translate(-0.3cqw, -1cqw);
+          animation-timing-function: steps(1);
+        }
+        28% {
+          opacity: 0.4;
+          transform: translate(0.7cqw, -1.5cqw);
+          animation-timing-function: steps(1);
+        }
+        34% {
+          opacity: 1;
+          transform: translate(0.2cqw, -2.1cqw);
+          animation-timing-function: steps(1);
+        }
+        46% {
+          opacity: 0;
+          transform: translate(-0.4cqw, -2.6cqw);
+        }
+        100% {
+          opacity: 0;
+        }
+      }
+      .fx-electric .arc {
+        width: 3cqw;
+        height: 1.4cqw;
+        rotate: var(--r);
+        filter: drop-shadow(0 0 0.25cqw #fff7a0) drop-shadow(0 0 0.5cqw var(--t));
+        animation: arc-flick 2.2s steps(1) var(--d) infinite;
+      }
+      .fx-electric .arc polyline {
+        fill: none;
+        stroke: #fff;
+        stroke-width: 0.9;
+        stroke-linejoin: round;
+        stroke-linecap: round;
+      }
+      @keyframes arc-flick {
+        0% {
+          opacity: 0;
+        }
+        5% {
+          opacity: 1;
+        }
+        8% {
+          opacity: 0.15;
+        }
+        11% {
+          opacity: 0.9;
+        }
+        16% {
+          opacity: 0;
+        }
+      }
+      /* Normal : de petites poussières de lumière qui montent doucement en scintillant. */
+      .fx-normal i {
+        width: 0.5cqw;
+        height: 0.5cqw;
+        border-radius: 50%;
+        background: #fff;
+        box-shadow: 0 0 0.6cqw 0.15cqw rgba(255, 255, 255, 0.8);
+        animation: mote 3.2s ease-in-out var(--d) infinite;
+      }
+      @keyframes mote {
+        0% {
+          opacity: 0;
+          transform: translate(0, 0) scale(0.6);
+        }
+        25% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.4;
+          transform: translate(0.6cqw, -4cqw) scale(1);
+        }
+        70% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0;
+          transform: translate(-0.4cqw, -8cqw) scale(0.5);
+        }
+      }
+      .fx-fire i {
+        width: 0.8cqw;
+        height: 0.8cqw;
+        border-radius: 50%;
+        background: radial-gradient(circle, #fff6c0 0%, #ffb340 45%, #ff5a1f 75%, transparent 76%);
+        box-shadow: 0 0 0.6cqw #ff7a2a;
+        animation: ember 2.4s ease-out var(--d) infinite;
+      }
+      @keyframes ember {
+        0% {
+          opacity: 0;
+          transform: translate(0, 0) scale(1);
+        }
+        15% {
+          opacity: 1;
+        }
+        50% {
+          transform: translate(0.8cqw, -7cqw) scale(0.8);
+        }
+        100% {
+          opacity: 0;
+          transform: translate(-0.6cqw, -14cqw) scale(0.3);
+        }
+      }
+      .fx-water i {
+        width: 1.2cqw;
+        height: 1.2cqw;
+        border: 0.18cqw solid rgba(255, 255, 255, 0.9);
+        border-radius: 50%;
+        background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.85) 0 18%, transparent 20%);
+        animation: bubble 3s ease-in var(--d) infinite;
+      }
+      @keyframes bubble {
+        0% {
+          opacity: 0;
+          transform: translate(0, 0) scale(0.5);
+        }
+        15% {
+          opacity: 1;
+        }
+        50% {
+          transform: translate(-0.6cqw, -7cqw) scale(0.9);
+        }
+        100% {
+          opacity: 0;
+          transform: translate(0.6cqw, -15cqw) scale(1.1);
+        }
+      }
+      .fx-grass i {
+        width: 1.8cqw;
+        height: 0.9cqw;
+        animation: leaf 3.4s ease-in-out var(--d) infinite;
+      }
+      .fx-grass path {
+        fill: #8ee06a;
+        stroke: #2f6f2c;
+        stroke-width: 1;
+      }
+      .fx-grass .vein {
+        fill: none;
+      }
+      @keyframes leaf {
+        0% {
+          opacity: 0;
+          transform: translate(0, 0) rotate(0);
+        }
+        15% {
+          opacity: 1;
+        }
+        50% {
+          transform: translate(2cqw, 7cqw) rotate(140deg);
+        }
+        100% {
+          opacity: 0;
+          transform: translate(-1cqw, 15cqw) rotate(300deg);
+        }
+      }
+      /* Glace : de minuscules cristaux qui descendent en scintillant. */
+      .fx-ice i {
+        width: 0.55cqw;
+        height: 0.55cqw;
+        background: #fff;
+        rotate: 45deg;
+        box-shadow:
+          0 0 0.4cqw 0.1cqw #e8fbff,
+          0 0 1cqw 0.2cqw var(--t);
+        animation: glint 3.6s linear var(--d) infinite;
+      }
+      @keyframes glint {
+        0% {
+          opacity: 0;
+          transform: translate(0, 0) scale(0.6);
+        }
+        15% {
+          opacity: 1;
+        }
+        30% {
+          opacity: 0.3;
+        }
+        45% {
+          opacity: 1;
+          transform: translate(0.6cqw, 6cqw) scale(1);
+        }
+        60% {
+          opacity: 0.4;
+        }
+        100% {
+          opacity: 0;
+          transform: translate(1cqw, 14cqw) scale(0.5);
+        }
+      }
+      /* Le halo (sceau ou aura) arrive avec l'illustration, au même rythme. */
+      .play .sigil,
+      .play .aura {
+        animation: halo-in 0.6s cubic-bezier(0.2, 1, 0.3, 1) 0.5s both;
+      }
+      @keyframes halo-in {
+        from {
+          opacity: 0;
+          transform: scale(0.4);
+        }
+      }
+      .sigil {
+        position: absolute;
+        width: 27cqw;
+        aspect-ratio: 1;
+        pointer-events: none;
+      }
+      .sigil i {
+        position: absolute;
+        border-radius: 50%;
+      }
+      .sigil .rays {
+        inset: 0;
+        background: repeating-conic-gradient(rgba(255, 246, 200, 0.32) 0 5deg, transparent 5deg 15deg);
+        -webkit-mask: radial-gradient(circle, #000 18%, transparent 68%);
+        mask: radial-gradient(circle, #000 18%, transparent 68%);
+        animation: spin 70s linear infinite;
+      }
+      .sigil .ring {
+        inset: 13%;
+        border: 0.3cqw dashed rgba(255, 246, 200, 0.6);
+        animation: spin 40s linear infinite reverse;
+      }
+      .sigil .ring2 {
+        inset: 20%;
+        border: 0.2cqw solid rgba(255, 246, 200, 0.5);
+        box-shadow:
+          0 0 2cqw rgba(255, 246, 200, 0.35),
+          inset 0 0 2cqw rgba(255, 246, 200, 0.25);
+      }
+      .boon .art img {
+        position: relative;
+        width: 20cqw;
+        filter: drop-shadow(0.18cqw 0 0 #fff) drop-shadow(-0.18cqw 0 0 #fff) drop-shadow(0 0.18cqw 0 #fff) drop-shadow(0 -0.18cqw 0 #fff) drop-shadow(0 1cqw 1.2cqw rgba(0, 0, 0, 0.4));
+      }
+      .boon .kick {
+        width: fit-content;
+        font-size: 2.2cqw;
+        rotate: -2deg;
+      }
+      .boon .title {
+        font-size: 5.6cqw;
+      }
+      .boon .quote {
+        margin: 0.4cqw 0 1cqw;
+        font-style: italic;
+        font-size: 1.35cqw;
+        color: #ddd;
+      }
+      .cards {
+        display: grid;
+        gap: 1.1cqw;
+      }
+      .card {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 1.4cqw;
+        align-items: center;
+        padding: 0.9cqw 2cqw 0.9cqw 1.2cqw;
+      }
+      .card:nth-child(2) {
+        rotate: 0.6deg;
+      }
+      .card:nth-child(3) {
+        rotate: -0.5deg;
+      }
+      .card.focus {
+        background: var(--paper-hi);
+        scale: 1.03;
+        rotate: -1deg;
+        box-shadow: inset 0.6cqw 0 0 var(--spray);
+      }
+      .card .ic {
+        display: grid;
+        place-items: center;
+        width: 4.2cqw;
+        height: 4.2cqw;
+        font-size: 2cqw;
+        color: #fff;
+        background: var(--c, var(--ink));
+        border-radius: 50%;
+      }
+      /* Ligne de titre : le nom, puis son étiquette (rareté du don, ou type de l'attaque),
+         puis la portée en petit — tout centré sur la même ligne. */
+      .card .head {
+        display: flex;
+        gap: 0.9cqw;
+        align-items: center;
+      }
+      .card .name {
+        font-family: var(--head);
+        font-size: 2.4cqw;
+        line-height: 1;
+        letter-spacing: 0.04em;
+      }
+      .card .tag {
+        font-family: var(--marker);
+        font-size: 1.4cqw;
+        color: var(--c);
+        text-decoration: underline wavy;
+        text-underline-offset: 0.3cqw;
+      }
+      .card .head small {
+        margin-left: auto;
+        font-size: 1.05cqw;
+        font-weight: 700;
+        color: var(--muted);
+      }
+      .card .head .pill {
+        font-size: 1.15cqw;
+        rotate: none;
+        transform: none;
+      }
+      .card .desc {
+        margin-top: 0.35cqw;
+        font-size: 1.25cqw;
+      }
+      .card .desc .act {
+        margin-right: 0.6cqw;
+        padding: 0 0.5cqw;
+        font-family: var(--head);
+        font-size: 1.15cqw;
+        letter-spacing: 0.06em;
+        color: var(--paper);
+        background: var(--ink);
+      }
+      /* Renforcer une attaque connue : un peu à l'écart des attaques à apprendre. */
+      .card.upgrade {
+        margin-top: 1cqw;
+      }
+      .play .card {
+        animation: card-slap 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+        animation-delay: calc(0.6s + var(--i) * 0.09s);
+      }
+      @keyframes card-slap {
+        from {
+          opacity: 0;
+          transform: scale(1.25) rotate(3deg);
+        }
+      }
+      .wall-tag {
+        white-space: nowrap;
+        line-height: 0.9;
+      }
+
+      /* ── Boutique ────────────────────────────────────────────────────── */
+      .item {
+        display: grid;
+        justify-items: center;
+        gap: 0.4cqw;
+      }
+      .item img {
+        width: 4.6cqw;
+        filter: drop-shadow(0 0.4cqw 0 rgba(0, 0, 0, 0.35));
+      }
+      /* Étiquette de prix accrochée à l'article, un trou et une ficelle. */
+      .item .price {
+        position: relative;
+        padding: 0.15cqw 0.8cqw 0.15cqw 1.4cqw;
+        font-family: var(--head);
+        font-size: 1.6cqw;
+        color: var(--ink);
+        background: var(--paper);
+        clip-path: polygon(0.8cqw 0, 100% 0, 100% 100%, 0.8cqw 100%, 0 50%);
+        rotate: -6deg;
+      }
+      .item .price::before {
+        content: '';
+        position: absolute;
+        left: 0.9cqw;
+        top: 50%;
+        width: 0.35cqw;
+        height: 0.35cqw;
+        margin-top: -0.18cqw;
+        background: var(--ink);
+        border-radius: 50%;
+      }
+      .item.focus .price {
+        background: var(--yel);
+        scale: 1.15;
+      }
+      .prompt {
+        left: 50%;
+        bottom: 9.5cqw;
+        width: 40cqw;
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 0.4cqw 1.4cqw;
+        align-items: center;
+        padding: 1cqw 2.4cqw 1cqw 1.4cqw;
+        translate: -50% 0;
+        rotate: -0.8deg;
+      }
+      .prompt img {
+        grid-row: span 3;
+        width: 5cqw;
+      }
+      .prompt .name {
+        font-family: var(--head);
+        font-size: 2.4cqw;
+        line-height: 1;
+        letter-spacing: 0.04em;
+      }
+      .prompt .desc {
+        grid-column: 2;
+        font-size: 1.3cqw;
+      }
+      .prompt .note {
+        grid-column: 2;
+        font-size: 1.05cqw;
+        font-weight: 700;
+        color: var(--muted);
+      }
+      .prompt .stamp {
+        grid-column: 3;
+        grid-row: 1 / span 2;
+        font-size: 2.6cqw;
+      }
+      .prompt .buy {
+        grid-column: 3;
+        padding: 0.1cqw 0.7cqw;
+        font-family: var(--head);
+        font-size: 1.3cqw;
+        letter-spacing: 0.06em;
+        color: var(--paper);
+        background: var(--ink);
+      }
+
+      /* ── Affiche du prochain combat ──────────────────────────────────── */
+      .poster {
+        left: 50%;
+        top: 3cqw;
+        width: 64cqw;
+        padding: 2cqw 2.6cqw 1.6cqw;
+        color: var(--ink);
+        background: var(--paper);
+        translate: -50% 0;
+        rotate: -1deg;
+        clip-path: polygon(0 1%, 6% 0, 22% 1.2%, 40% 0, 60% 1%, 80% 0, 100% 1.4%, 99.4% 40%, 100% 70%, 99.2% 100%, 70% 99%, 46% 100%, 24% 98.8%, 4% 100%, 0.6% 70%, 0 30%);
+        box-shadow: 0 1cqw 2cqw rgba(0, 0, 0, 0.5);
+      }
+      .poster .top {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 2cqw;
+      }
+      .poster .banner {
+        display: inline-block;
+        font-size: 1.8cqw;
+        rotate: -2deg;
+      }
+      .poster h3 {
+        margin: 0.6cqw 0 0.2cqw;
+        display: flex;
+        gap: 1.2cqw;
+        align-items: center;
+        font: normal 5cqw/1 var(--head);
+        letter-spacing: 0.04em;
+      }
+      .poster p {
+        margin: 0.3cqw 0;
+        font-size: 1.35cqw;
+      }
+      .poster .weak b {
+        color: var(--red);
+      }
+      .poster .trainer {
+        position: relative;
+        width: 10cqw;
+        height: 13cqw;
+        background: linear-gradient(160deg, #2a2340, #120f1c);
+      }
+      .poster .trainer img {
+        position: absolute;
+        left: 50%;
+        bottom: 0;
+        width: 9cqw;
+        translate: -50% 0;
+      }
+      .poster .team-title {
+        margin: 1.2cqw 0 0.6cqw;
+        font-family: var(--head);
+        font-size: 1.7cqw;
+        letter-spacing: 0.12em;
+      }
+      .poster .team {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 0.8cqw;
+      }
+      .poster .mon {
+        position: relative;
+        display: grid;
+        justify-items: center;
+        padding: 0.6cqw 0.4cqw 0.7cqw;
+        background: rgba(20, 16, 14, 0.07);
+      }
+      .poster .mon img {
+        width: 7.5cqw;
+        aspect-ratio: 1;
+        object-fit: contain;
+      }
+      .poster .mon b {
+        font-family: var(--head);
+        font-size: 1.5cqw;
+        font-weight: normal;
+        letter-spacing: 0.04em;
+      }
+      .poster .mon small {
+        font-size: 1cqw;
+        font-weight: 700;
+        color: var(--muted);
+      }
+      .poster .ace-tag {
+        color: #b8860b;
+      }
+      .poster .mon.ace {
+        background: color-mix(in srgb, var(--trainer) 22%, transparent);
+      }
+      .poster .mon .spr {
+        inset: -18%;
+        width: 136%;
+        height: 136%;
+      }
+      .poster .keys {
+        margin-top: 1cqw;
+        font-size: 1cqw;
+        color: var(--muted);
+        text-align: right;
+      }
+      .picker {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin: 0 -16px 24px;
+        padding: 10px 16px;
+        background: #15121aee;
+        border-bottom: 1px solid #fff2;
+        font-size: 14px;
+      }
+      .picker button {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        padding: 5px 12px;
+        font: 600 13px system-ui, sans-serif;
+        color: #eee;
+        background: #241f2c;
+        border: 1px solid #fff3;
+        border-radius: 99px;
+        cursor: pointer;
+      }
+      .picker button i {
+        width: 14px;
+        height: 14px;
+        background: var(--c);
+        border-radius: 50%;
+      }
+      .picker > span {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-right: 18px;
+      }
+      .ctrl {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        flex-basis: 100%;
+      }
+      .ctrl button,
+      .picker button {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        padding: 5px 12px;
+        font: 600 13px system-ui, sans-serif;
+        color: #eee;
+        background: #241f2c;
+        border: 1px solid #fff3;
+        border-radius: 99px;
+        cursor: pointer;
+      }
+      .ctrl button i {
+        width: 14px;
+        height: 14px;
+        background: var(--c);
+        border-radius: 50%;
+      }
+      .ctrl button[aria-pressed='true'],
+      .picker button[aria-pressed='true'] {
+        border-color: #fff;
+        background: #3a3346;
+      }
+      /* Scotch de masquage : bandes translucides, fibres fines, bouts déchirés en dents de scie. */
+      .tape-strip {
+        width: 9cqw;
+        height: 2.4cqw;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0) 45%, rgba(120, 90, 40, 0.12)),
+          repeating-linear-gradient(100deg, rgba(255, 255, 255, 0.12) 0 1px, transparent 1px 4px),
+          rgba(236, 214, 160, 0.82);
+        clip-path: polygon(0 0, 4% 12%, 0 25%, 4% 37%, 0 50%, 4% 62%, 0 75%, 4% 87%, 0 100%, 100% 100%, 96% 87%, 100% 75%, 96% 62%, 100% 50%, 96% 37%, 100% 25%, 96% 12%, 100% 0);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Planche « Tag sacré » — tous les écrans</h1>
+      <p class="intro">
+        La DA retenue (R4) déclinée sur chaque écran du jeu, sur une vraie scène, avant de l'appliquer. Le système (la Ligue) parle sur des
+        écrans sombres rayés ; la rébellion les tague à la bombe ; ce qui est à toi (dons, objets, capacités) tient sur des bandes de papier.
+        Choisis la couleur de la bombe ci-dessous : elle change partout. Chaque écran se rejoue avec son bouton.
+      </p>
+      <div class="picker"><span id="picker">Couleur de la bombe :</span></div>
+      <div id="screens"></div>
+    </main>
+    <script type="module">
+      import { curve, halves, spray } from '/src/ui/spray.ts';
+      import { loadInfo } from '/src/assets/pmd.ts';
+
+      const TYPE = {
+        electric: ['Électrik', '#f2c414'],
+        normal: ['Normal', '#a8a899'],
+        steel: ['Acier', '#9aa6b8'],
+        rock: ['Roche', '#b8a038'],
+        dark: ['Ténèbres', '#6b5a7a'],
+        ice: ['Glace', '#5bc8d8'],
+        fire: ['Feu', '#f08030'],
+        water: ['Eau', '#4a90e2'],
+        grass: ['Plante', '#5fb83e'],
+      };
+      /** Couleurs de bombe à comparer : aucune ne doit rappeler le sang. */
+      const SPRAYS = [
+        ['Néon rose', '#ff3f9e'],
+        ['Jaune électrique', '#ffd400'],
+        ['Cyan', '#22d3ee'],
+        ['Vert acide', '#9be22b'],
+        ['Violet', '#9b5cff'],
+      ];
+      /** Artwork officiel : en local pour les légendaires, depuis PokéAPI pour les autres (planche seulement). */
+      const art = (id) => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
+      const pill = (t) => `<span class="pill" style="--c:${TYPE[t][1]}">${TYPE[t][0]}</span>`;
+      const BALL_X = '<svg class="ball-x" viewBox="0 0 40 40"><circle cx="20" cy="20" r="15"/><path d="M5 20 H35"/><circle cx="20" cy="20" r="4.5"/><path class="x" d="M6 6 L34 34 M34 6 L6 34"/></svg>';
+      // Assez à droite pour que l'illustration reste dans la moitié peinte, assez à gauche
+      // pour ne pas toucher le kicker (le texte est décalé d'autant).
+      const SLASH = [78, -4, 73, 28, 67, 58, 57, 96];
+
+      /** Barre de run : le lieu et l'argent, rien d'autre. */
+      const runbar = (zone, money) => `<div class="runbar in-rise" style="--w:.05s"><span class="tape">${zone}</span><span class="stamp">₽ ${money}</span></div>`;
+      // Infos d'attaque : catégorie et puissance, ou l'effet chiffré (moves.ts : EFFECTS, BUFF_TIME ; pokemon.ts : STATUS).
+      const MOVES = [
+        ['1 · Q', 'Éclair', 'electric', 'Spéciale · 40'],
+        ['2 · Z', 'Vive-Attaque', 'normal', 'Physique · 40'],
+        ['3 · S', 'Mimi-Queue', 'normal', 'DÉF ennemis −25 % · 8 s'],
+        ['4 · D', 'Cage-Éclair', 'electric', 'Paralysie 5 s · VIT −50 %'],
+      ];
+      const hud = (cd = -1) => `
+        <div class="hudrow">
+          <div class="hudcard paper in-slap" style="--w:.1s">
+            <div class="nm">Pikachu <small>N.12</small>${pill('electric')}</div>
+            <div class="stat hp"><div class="gauge" style="--v:78%"><i style="--v:86%"></i><b style="--v:78%"></b></div><span class="val">21 / 27</span></div>
+            <div class="stat xp"><div class="gauge" style="--v:40%"><b></b></div><span class="val">40 %</span></div>
+            <div class="stat"><div class="dashes"><i></i><i></i><i class="off"></i></div><div class="buffs"><span class="buff">ATT ↑</span><span class="buff">VIT ↑</span></div></div>
+            <div class="stat"><div class="ult"><b></b><span>☾ Trou Noir · 64 %</span></div></div>
+            <div class="stat"><div class="boons"><i style="--c:#6b5a7a">☾</i><i style="--c:#6b5a7a">☾</i><i style="--c:#f2c414">⚡</i><i style="--c:#5bc8d8">❄</i></div></div>
+          </div>
+          <div class="moves">
+            ${MOVES.map(
+              ([k, n, t, info], i) =>
+                `<div class="mv paper in-slap${i === cd ? ' cd' : ''}" style="--c:${TYPE[t][1]};--w:${0.15 + i * 0.05}s"><div class="top"><span class="nmv">${n}</span>${pill(t)}<span class="key">${k}</span></div><div class="info">${info}</div></div>`,
+            ).join('')}
+          </div>
+        </div>`;
+
+      /** Particules d'aura par type : leur dessin, et où elles naissent (autour, en bas, en haut). */
+      /**
+       * Particules d'aura par type : de vraies particules (points lumineux, braises, bulles,
+       * feuilles, cristaux), jamais des pictogrammes. `at` : où elles naissent — autour du
+       * Pokémon, en bas (elles montent) ou en haut (elles tombent).
+       */
+      const FX = {
+        electric: { n: 9, at: 'ring' },
+        normal: { n: 9, at: 'rise' },
+        fire: { n: 9, at: 'rise' },
+        water: { n: 8, at: 'rise' },
+        grass: { n: 6, at: 'fall', glyph: '<svg viewBox="0 0 20 10"><path d="M1 5 Q10 -3 19 5 Q10 13 1 5Z"/><path class="vein" d="M2 5 H17"/></svg>' },
+        ice: { n: 9, at: 'fall' },
+      };
+      /** Arc électrique : une ligne brisée au hasard (graine fixe), redessinée à chaque arc. */
+      const arcPath = (i) => {
+        const pts = [[0, 5]];
+        for (let k = 1; k < 6; k++) pts.push([k * 4, 5 + (((i * 7 + k * 13) % 9) - 4) * 0.9]);
+        pts.push([24, 5]);
+        return `<svg viewBox="0 0 24 10"><polyline points="${pts.map((p) => p.join(',')).join(' ')}"/></svg>`;
+      };
+      const aura = (type) => {
+        const fx = FX[type];
+        const at = (i, n) => {
+          const a = (i / n) * Math.PI * 2 + 0.4;
+          return fx.at === 'ring' ? [50 + 34 * Math.cos(a), 50 + 34 * Math.sin(a)] : fx.at === 'rise' ? [20 + ((i * 61) % 60), 60 + ((i * 17) % 16)] : [18 + ((i * 53) % 64), 8 + ((i * 13) % 16)];
+        };
+        const parts = Array.from({ length: fx.n }, (_, i) => {
+          const [x, y] = at(i, fx.n);
+          return `<i class="spark" style="--x:${x.toFixed(1)}%;--y:${y.toFixed(1)}%;--d:${((i * 0.37) % 2.4).toFixed(2)}s">${fx.glyph ?? ''}</i>`;
+        });
+        // Électrik : quelques arcs qui claquent entre les étincelles.
+        if (type === 'electric')
+          for (let i = 0; i < 4; i++) {
+            const [x, y] = at(i * 2 + 1, 8);
+            parts.push(`<i class="arc" style="--x:${(x - 6).toFixed(1)}%;--y:${y.toFixed(1)}%;--r:${(i * 47) % 180}deg;--d:${(0.3 + i * 0.55).toFixed(2)}s">${arcPath(i)}</i>`);
+          }
+        return `<div class="aura fx-${type}" style="--t:${TYPE[type][1]}">${parts.join('')}</div>`;
+      };
+      /** Récompense « nouvelle attaque » par type : le Pokémon, deux attaques à apprendre, une à renforcer. */
+      const REWARDS = {
+        electric: [25, 'Pikachu', '⚡', [['Tonnerre', 'Spéciale · attaque à distance', 90], ['Fatal-Foudre', 'Spéciale · attaque à distance', 110]], ['Éclair', 40, 50]],
+        fire: [4, 'Salamèche', '✹', [['Lance-Flammes', 'Spéciale · attaque à distance', 90], ['Déflagration', 'Spéciale · attaque à distance', 110]], ['Flammèche', 40, 50]],
+        water: [7, 'Carapuce', '≈', [['Surf', 'Spéciale · attaque à distance', 90], ['Hydrocanon', 'Spéciale · attaque à distance', 110]], ['Pistolet à O', 40, 50]],
+        grass: [1, 'Bulbizarre', '❦', [["Tranch'Herbe", 'Physique · attaque au contact', 55], ['Lance-Soleil', 'Spéciale · attaque à distance', 120]], ['Fouet Lianes', 45, 57]],
+        ice: [361, 'Stalgamin', '❄', [['Laser Glace', 'Spéciale · attaque à distance', 90], ['Blizzard', 'Spéciale · attaque à distance', 110]], ['Poudreuse', 40, 50]],
+        normal: [133, 'Évoli', '★', [['Plaquage', 'Physique · attaque au contact', 85], ['Ultralaser', 'Spéciale · attaque à distance', 150]], ['Charge', 40, 50]],
+      };
+      const LEVELS = { 25: [12, '21 / 27 PV'], 133: [11, '30 / 30 PV'], 4: [10, '12 / 24 PV'], 7: [10, '22 / 25 PV'], 1: [11, '26 / 28 PV'], 361: [10, '19 / 23 PV'] };
+      const reward = (type) => {
+        const [id, , ic, learn, [up, from, to]] = REWARDS[type];
+        const c = TYPE[type][1];
+        const team = [id, ...TEAM.map(([t]) => t).filter((t) => t !== id)].slice(0, 3);
+        return choice({
+          tint: c,
+          img: art(id),
+          halo: aura(type),
+          team,
+          kicker: 'Récompense',
+          title: 'Une nouvelle attaque',
+          quote: 'Le parchemin s’ouvre. Choisis ce que tu emporteras.',
+          cards: [
+            ...learn.map(([name, desc, pow]) => ({ ic, c, name, tag: pill(type), desc: `${act('Apprendre')}${desc}`, val: String(pow), label: 'puissance' })),
+            { ic, c, name: up, tag: pill(type), desc: `${act('Renforcer +25 %')}Déjà connue · frappe plus fort`, val: `${from} → ${to}`, label: 'puissance', upgrade: true },
+          ],
+        });
+      };
+      const TYPE_OF = Object.fromEntries(Object.entries(REWARDS).map(([t, [id]]) => [id, t]));
+      const RARITY = { Commun: '#8a6a3a', Rare: '#2f7f2c', Épique: '#b07a00', Prismatique: '#138f88' };
+      /**
+       * Gabarit des dons et des récompenses : moitié peinte à la couleur `tint`, l'illustration
+       * en sticker, les cartes en papier. Écran modal : le HUD n'y est pas (il couvrirait les cartes).
+       * Une carte : { ic, c, name, tag (HTML), scope, desc, val, label, upgrade }.
+       */
+      const TEAM = [
+        [25, 'Pikachu', 12, '21 / 27 PV'],
+        [133, 'Évoli', 11, '30 / 30 PV'],
+        [4, 'Salamèche', 10, '12 / 24 PV'],
+      ];
+      const NAMES = { 25: 'Pikachu', 133: 'Évoli', 4: 'Salamèche', 7: 'Carapuce', 1: 'Bulbizarre', 361: 'Stalgamin' };
+      /** `team` : identifiants, le premier est le Pokémon choisi. */
+      const picklist = (team) => `
+        <div class="picklist">
+          <div class="lbl">Pour qui ?</div>
+          ${team.map((id, i) => `<div class="pick paper in-slap${i === 0 ? ' sel' : ''}" data-id="${id}" style="--w:${0.3 + i * 0.08}s"><img src="${art(id)}" alt="" /><div><b>${NAMES[id]}</b><small>N.${LEVELS[id][0]} · ${LEVELS[id][1]}</small></div></div>`).join('')}
+          <div class="keys">Tab : changer de Pokémon</div>
+        </div>`;
+      const SIGIL = '<div class="sigil"><i class="rays"></i><i class="ring"></i><i class="ring2"></i></div>';
+      const choice = ({ tint, img, kicker, title, quote, cards, halo = SIGIL, team = TEAM.map(([id]) => id) }) => {
+        const h = halves(SLASH);
+        const card = (k, i) =>
+          `<div class="card paper${i === 0 ? ' focus' : ''}${k.upgrade ? ' upgrade' : ''}" style="--i:${i}"><div class="ic" style="--c:${k.c}">${k.ic}</div><div><div class="head"><span class="name">${k.name}</span>${k.tag}${k.scope ? `<small>${k.scope}</small>` : ''}</div><div class="desc">${k.desc}</div></div><div class="stamp">${k.val}<small>${k.label}</small></div></div>`;
+        return `
+          <div class="half top" style="--god:${tint};--clip:${h.left};--clip0:${h.left0}"></div><div class="half bot" style="--clip:${h.right}"></div>
+          <span class="wall-tag hand in-tag" style="--w:1.3s;right:3cqw;top:5.5cqw;font-size:1.7cqw;color:#fffa;rotate:7deg;text-align:center">ni maître<br />ni Ball</span>
+          <div class="in-tag" style="--w:1s;left:2.5cqw;top:2.5cqw;width:5cqw;opacity:.8;rotate:-14deg">${BALL_X}</div>
+          ${picklist(team)}
+          <div style="inset:0">${spray({ ...curve(SLASH), color: tint, width: 3, drips: 6, dripMax: 3, dots: 24, seed: 23, cls: 'soft' })}</div>
+          <div class="boon">
+            <div class="art">
+              ${halo}
+              <img class="in-slap" style="--w:.5s" src="${img}" alt="" />
+            </div>
+            <div class="text">
+              <div class="kick hand">${kicker}</div>
+              <div class="title">${title}</div>
+              <div class="quote">${quote}</div>
+              <div class="cards">${cards.map(card).join('')}</div>
+            </div>
+          </div>`;
+      };
+      const rarity = (r) => `<span class="tag" style="--c:${RARITY[r]}">${r}</span>`;
+      const act = (a) => `<span class="act">${a}</span>`;
+
+      /** Couleur de chaque biome pour l'annonce (une teinte qui évoque le lieu). */
+      const BIOMES = [
+        ['Prairie', '#5fb83e'],
+        ['Forêt', '#2e8b4e'],
+        ['Plage', '#e8b23a'],
+        ['Volcan', '#ff6a2a'],
+        ['Lac', '#3a9ae0'],
+      ];
+      const ROCK = TYPE.rock[1];
+
+      const SCREENS = [
+        {
+          title: 'Combat — HUD',
+          text: "Carte du Pokémon sans étiquettes, à la même hauteur que les attaques. Dashs restants en grosses pastilles d'encre. Combo : « combo » et « ×3 » dans la même police d'accent, le chiffre à la couleur du biome.",
+          html: () => `
+            ${runbar('Prairie', 213)}
+            <div class="toast paper in-slap" style="--w:.5s">Salle libérée !<span class="stamp">+38 ₽</span></div>
+            <div class="combo in-slap" style="--w:.8s"><span>combo</span><b>×3</b></div>
+            ${hud(1)}`,
+        },
+        {
+          title: 'Notifications',
+          text: "Petites bandes à droite, la plus récente en haut ; les anciennes pâlissent puis partent. L'illustration seule, sans rond : le Pokémon qui évolue, celui qui apprend, celui qui tombe (en gris), le légendaire qui donne.",
+          html: () => `
+            ${runbar('Prairie', 251)}
+            <div class="notifs">
+              <div class="notif paper" style="--w:.9s;--c:var(--spray)"><div class="ico"><img src="${art(26)}" alt="" /></div><div><b>Évolution !</b><span>Pikachu évolue en Raichu.</span></div></div>
+              <div class="notif paper" style="--w:.6s;--c:${TYPE.electric[1]}"><div class="ico"><img src="${art(25)}" alt="" /></div><div><b>Nouvelle attaque</b><span>Pikachu apprend Tonnerre.</span></div></div>
+              <div class="notif paper" style="--w:.35s;--c:var(--ink)"><div class="ico ko"><img src="${art(74)}" alt="" /></div><div><b>K.O.</b><span>Racaillou est hors combat · +18 XP</span></div></div>
+              <div class="notif paper" style="--w:.1s;--c:${RARITY.Rare}"><div class="ico"><img src="/game/data/artwork/491.png" alt="" /></div><div><b>Don obtenu</b><span>Vol d'Ombre · Rare</span></div></div>
+            </div>
+            ${hud()}`,
+        },
+        {
+          title: 'Annonce de zone',
+          text: "Le nom du lieu seul, à la couleur de son biome, en Bangers comme le combo. « Nouvelle zone » seulement à la première visite.",
+          controls: `<div class="ctrl" data-k="biome">${BIOMES.map(([n, c], i) => `<button data-v="${i}" style="--c:${c}"><i></i>${n}</button>`).join('')}</div>`,
+          html: () => `
+            <div class="dim"></div>
+            <div class="announce">
+              <div class="kick tape in-slap" style="--w:.15s">NOUVELLE ZONE</div>
+              <div class="name in-tag" style="--w:.3s">Prairie</div>
+              <div class="under">${spray({ ...curve([0, 4, 30, 2, 70, 6, 100, 3]), viewBox: '0 0 100 8', color: 'var(--biome)', width: 2.3, drips: 9, dripMax: 5, dots: 10, seed: 6, delay: 0.55, draw: 0.4 })}</div>
+            </div>
+            ${runbar('Prairie', 120)}`,
+          wire: (frame, item) => {
+            const pick = (k, v) => {
+              item.querySelectorAll(`.ctrl[data-k="${k}"] button`).forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === v)));
+              if (k === 'biome') {
+                const [name, c] = BIOMES[Number(v)];
+                frame.style.setProperty('--biome', c);
+                frame.querySelector('.announce .name').textContent = name;
+                frame.querySelector('.runbar .tape').textContent = name;
+              }
+              play(frame);
+            };
+            item.querySelectorAll('.ctrl button').forEach((b) => b.addEventListener('click', () => pick(b.parentElement.dataset.k, b.dataset.v)));
+            pick('biome', '0');
+          },
+        },
+        {
+          title: 'Dialogue du champion et barre de boss',
+          text: "En bas de l'écran, comme une scène : le champion en grand, détouré de blanc pour ressortir sur le décor, à côté de sa bande de papier. Le HUD s'efface pendant le dialogue ; la barre du boss reste en haut, en une seule grosse jauge.",
+          html: () => `
+            <div class="bossbar in-rise" style="--w:.05s">
+              <div class="who"><span class="tape"><span class="ace">★</span> TYRANOCIF</span><small>l'as de Pierre</small></div>
+              <div class="gauge" style="--v:62%"><b></b></div>
+            </div>
+            <div class="dialog">
+              <img class="speaker px in-slap" style="--w:.15s" src="/lab/trainer-brock.png" alt="Pierre" />
+              <div class="sheet paper in-slap" style="--w:.3s">
+                <div class="nm"><span class="tape">PIERRE</span>${pill('rock')}<small>Champion de la Ligue</small></div>
+                <p>Un Pokémon sauvage qui prêche la « liberté » ? La Roche ne cède pas, et l’ordre non plus. Retourne dans le rang.</p>
+                <div class="hint">Entrée pour passer…</div>
+              </div>
+            </div>`,
+        },
+        {
+          title: "Don d'un légendaire",
+          text: "À gauche, « Pour qui ? » : l'équipe, le Pokémon choisi en avant. Sur les cartes, la rareté au feutre soulignée en zigzag, juste après le nom ; la portée en petit à droite.",
+          html: () =>
+            choice({
+              tint: '#6a3fc1',
+              img: '/game/data/artwork/491.png',
+              kicker: 'Bénédiction de',
+              title: 'Darkrai',
+              quote: '« Je peux te rendre terrible. Tu paieras — mais plus tard. »',
+              cards: [
+                { ic: '☾', c: '#6b5a7a', name: "Vol d'Ombre", tag: rarity('Commun'), scope: 'Ton Pokémon', desc: 'Tu frappes plus fort, mais tu perds des PV max à chaque salle.', val: '25 %', label: 'valeur' },
+                { ic: '☾', c: '#6b5a7a', name: 'Vide', tag: rarity('Rare'), scope: "Toute l'équipe", desc: 'Chaque ennemi tué laisse une ombre qui ronge ce qui la traverse.', val: '12 s', label: 'durée' },
+                { ic: '☾', c: '#6b5a7a', name: 'Exécution', tag: rarity('Épique'), scope: 'Ton Pokémon', desc: 'Ton finisher achève net un ennemi déjà bas.', val: '44 %', label: 'seuil' },
+              ],
+            }),
+        },
+        {
+          title: 'Récompense — nouvelle attaque',
+          text: "L'illustration, la couleur peinte, les attaques et l'aura suivent le Pokémon choisi. L'aura change avec son type, en vraies particules : étincelles qui crépitent et arcs (Électrik), braises (Feu), bulles (Eau), feuilles (Plante), cristaux (Glace), poussières de lumière (Normal). Elle arrive avec l'illustration. Clique un Pokémon dans « Pour qui ? » ou un type ci-dessus.",
+          controls: `<div class="ctrl" data-k="type">${Object.entries(REWARDS).map(([t, [, n]]) => `<button data-v="${t}" style="--c:${TYPE[t][1]}"><i></i>${n} · ${TYPE[t][0]}</button>`).join('')}</div>`,
+          html: () => reward('electric'),
+          wire: (frame, item) => {
+            const show = (type) => {
+              frame.innerHTML = `${reward(type)}<button class="replay">↻ Rejouer</button>`;
+              item.querySelectorAll('.ctrl button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === type)));
+              play(frame);
+            };
+            item.querySelectorAll('.ctrl button').forEach((b) => b.addEventListener('click', () => show(b.dataset.v)));
+            frame.addEventListener('click', (e) => {
+              const p = e.target.closest('.pick');
+              if (p) show(TYPE_OF[p.dataset.id]);
+            });
+            item.querySelector('.ctrl button[data-v="electric"]').setAttribute('aria-pressed', 'true');
+          },
+        },
+        {
+          title: 'Affiche du prochain combat',
+          text: "L'as entouré à la couleur du type du champion (Roche), scotch de masquage translucide. Plus de trait sous chaque Pokémon.",
+          html: () => `
+            <div class="dim" style="background:rgba(16,15,22,.6)"></div>
+            <div class="poster in-slap" style="--w:.1s;--trainer:${ROCK}">
+              <div class="top">
+                <div>
+                  <span class="banner tape">PROCHAIN COMBAT</span>
+                  <h3>Pierre ${pill('rock')}</h3>
+                  <p>Il t'attend derrière la porte, avec 6 Pokémon.</p>
+                  <p class="weak">Ses Pokémon craignent : <b>Eau, Plante, Combat, Sol, Acier</b></p>
+                </div>
+                <div class="trainer"><img class="px" src="/lab/trainer-brock.png" alt="" /></div>
+              </div>
+              <div class="team-title">SON ÉQUIPE</div>
+              <div class="team">
+                ${[76, 208, 112, 76, 208, 248]
+                  .map((id, i) => `<div class="mon${i === 5 ? ' ace' : ''}"><img src="${art(id)}" alt="" /><b data-name="${id}">…</b><small>Niv. ${22 + Math.floor(i * 1.4)}</small>${i === 5 ? '<small class="ace-tag">★ son as</small>' : ''}${i === 5 ? spray({ ...curve([8, 30, 4, -6, 96, -6, 92, 30]), viewBox: '0 0 100 60', color: ROCK, width: 2.6, drips: 1, dripMax: 2, dots: 6, seed: 14, delay: 0.7, draw: 0.3 }) + spray({ ...curve([92, 30, 96, 66, 2, 66, 10, 22]), viewBox: '0 0 100 60', color: ROCK, width: 2.6, drips: 2, dripMax: 3, dots: 6, seed: 15, delay: 0.95, draw: 0.3 }) : ''}</div>`)
+                  .join('')}
+              </div>
+              <div class="keys">Entrée, E ou Échap : compris</div>
+            </div>
+            <i class="tape-strip" style="left:17cqw;top:2cqw;rotate:-14deg"></i>
+            <i class="tape-strip" style="right:17cqw;top:2.2cqw;rotate:11deg"></i>`,
+        },
+      ];
+
+      // Sélecteur de couleur de bombe, mémorisé pour ce navigateur.
+      const picker = document.getElementById('picker');
+      const setSpray = (c) => {
+        document.documentElement.style.setProperty('--spray', c);
+        picker.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.c === c)));
+        try {
+          localStorage.setItem('pokhades-spray', c);
+        } catch {}
+      };
+      for (const [name, c] of SPRAYS) {
+        const b = document.createElement('button');
+        b.dataset.c = c;
+        b.style.setProperty('--c', c);
+        b.innerHTML = `<i></i>${name}`;
+        b.addEventListener('click', () => setSpray(c));
+        picker.append(b);
+      }
+      let saved = null;
+      try {
+        saved = localStorage.getItem('pokhades-spray');
+      } catch {}
+      setSpray(SPRAYS.some(([, c]) => c === saved) ? saved : SPRAYS[0][1]);
+
+      const h = (html) => {
+        const t = document.createElement('template');
+        t.innerHTML = html.trim();
+        return t.content.firstElementChild;
+      };
+      /** Rejoue l'ouverture : on retire la classe, on force un recalcul, on la remet. */
+      const play = (frame) => {
+        frame.classList.remove('play');
+        void frame.offsetWidth;
+        frame.classList.add('play');
+      };
+      const root = document.getElementById('screens');
+      for (const s of SCREENS) {
+        const item = h(`
+          <section class="lab-item">
+            <header><h2>${s.title}</h2><p>${s.text}</p>${s.controls ?? ''}</header>
+            <div class="frame">${s.html()}<button class="replay">↻ Rejouer</button></div>
+          </section>`);
+        root.append(item);
+        const frame = item.querySelector('.frame');
+        frame.addEventListener('click', (e) => e.target.closest('.replay') && play(frame));
+        s.wire?.(frame, item);
+        frame.querySelectorAll('[data-name]').forEach((b) => void loadInfo(Number(b.dataset.name)).then((i) => (b.textContent = i.name)));
+      }
+      const seen = new IntersectionObserver((entries) => {
+        for (const e of entries) if (e.isIntersecting) play(e.target);
+      }, { threshold: 0.55 });
+      document.querySelectorAll('.frame').forEach((f) => seen.observe(f));
+    </script>
+  </body>
+</html>
