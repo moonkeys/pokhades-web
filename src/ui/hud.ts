@@ -1,5 +1,5 @@
 import type { Combat } from '../combat/combat';
-import { BOONS, DONORS, RARITY_NAME, ULT_MAX } from '../combat/boons';
+import { DONORS, ULT_MAX } from '../combat/boons';
 import { BUFF_LABEL, STATUS, type Pokemon, type Status } from '../combat/pokemon';
 import { DASH_RECHARGE, type Actor } from '../entities/actor';
 import { BUFF_TIME, type Move } from '../combat/moves';
@@ -9,18 +9,23 @@ import { GROWTH_FR, growthOf } from '../data/growth';
 // HUD de combat, repris de HUD.gd et redessiné dans la DA « Tag sacré »
 // (src/ui/da.css, planche ui-r4.html) : en bas à gauche, la carte du Pokémon
 // sur une bande de papier (PV avec barre fantôme qui rattrape, XP, charges de
-// dash, bonus et statut, jauge d'ultime, dons reçus), et juste à sa droite ses
-// 4 attaques en 2 × 2, comme dans les jeux Pokémon. À gauche, l'équipe (dès
-// deux Pokémon) : PV et XP de chacun, celui qu'on joue en avant, les K.O. en
-// gris, Tab pour changer. Puis le combo, la vignette rouge sous 25 % de PV, et les
-// étiquettes de statut des sauvages.
+// dash, bonus et statut, jauge d'ultime), et juste à sa droite ses 4 attaques
+// en 2 × 2, comme dans les jeux Pokémon. En haut à gauche, sous le lieu,
+// l'équipe (dès deux Pokémon) : PV et XP de chacun (les Rappels,
+// communs, sont comptés à côté des ₽ : ui/runhud.ts), celui qu'on joue
+// en avant, les K.O. en gris ; Tab ou un clic sur un membre pour le faire
+// jouer. Puis le combo, la vignette rouge sous 25 % de PV, et les étiquettes
+// de statut des sauvages.
 //
 // Écarts voulus avec le jeu : le voile de recharge est tenu à jour sur les
 // quatre emplacements (le jeu ne rafraîchit que celui sélectionné), il y a
 // autant de pastilles de dash que de charges (le jeu en dessine 3 au plus),
-// et chaque attaque dit ce qu'elle fait, chiffres à l'appui.
+// et chaque attaque dit ce qu'elle fait, chiffres à l'appui. La carte et les
+// attaques sont tenues basses, et les dons reçus n'y figurent plus (retour de
+// test : ils mangeaient l'écran sans servir en combat) ; ils sont sur la fiche
+// des statistiques (touche C, src/ui/statsheet.ts).
 
-const TYPE_FR: Record<string, string> = {
+export const TYPE_FR: Record<string, string> = {
   normal: 'Normal', fire: 'Feu', water: 'Eau', electric: 'Électrik', grass: 'Plante', ice: 'Glace',
   fighting: 'Combat', poison: 'Poison', ground: 'Sol', flying: 'Vol', psychic: 'Psy', bug: 'Insecte',
   rock: 'Roche', ghost: 'Spectre', dragon: 'Dragon', dark: 'Ténèbres', steel: 'Acier', fairy: 'Fée',
@@ -99,8 +104,6 @@ export class Hud {
   private readonly ult: HTMLElement;
   private readonly ultFill: HTMLElement;
   private readonly ultLabel: HTMLElement;
-  private readonly boonRow: HTMLElement;
-  private boonKey = '';
   private buffKey = '';
   private readonly moves: HTMLElement;
   private readonly combo = el('div', 'hud-combo');
@@ -118,7 +121,14 @@ export class Hud {
   private lastCombo = 0;
   private comboAge = 0;
 
-  constructor(parent: HTMLElement) {
+  /**
+   * `onPick(i)` : un clic sur le i-ème membre de l'équipe, pour le faire
+   * jouer (main.ts vérifie qu'il est debout, comme pour Tab).
+   */
+  constructor(
+    parent: HTMLElement,
+    private readonly onPick: (i: number) => void = () => {},
+  ) {
     const card = el('div', 'hud-card da-paper', this.root);
     this.name = el('div', 'hud-name', card);
     const hp = el('div', 'hud-stat', card);
@@ -135,7 +145,6 @@ export class Hud {
     this.ult = el('div', 'hud-ult', card);
     this.ultFill = el('b', '', this.ult);
     this.ultLabel = el('span', '', this.ult);
-    this.boonRow = el('div', 'hud-boons', card);
     this.moves = el('div', 'hud-moves', this.root);
     parent.append(this.danger, this.tagLayer, this.teamList, this.root, this.combo, this.ko);
   }
@@ -175,9 +184,14 @@ export class Hud {
       this.teamList.replaceChildren();
       this.members = [];
       if (team.length > 1) {
-        el('div', 'lbl', this.teamList, 'Équipe · Tab');
-        for (const a of team) {
+        el('div', 'lbl', this.teamList, 'Équipe · Tab ou clic');
+        team.forEach((a, i) => {
           const m = el('div', 'member da-paper', this.teamList);
+          // mousedown plutôt que click : le changement part au premier appui, en plein combat.
+          m.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            this.onPick(i);
+          });
           const img = el('img', '', m) as HTMLImageElement;
           img.src = `/game/artwork/${a.speciesId}.png`;
           img.alt = '';
@@ -188,7 +202,7 @@ export class Hud {
           const xp = el('b', '', el('div', 'da-gauge xp', body));
           m.title = `Croissance ${GROWTH_FR[growthOf(a.speciesId)]}`;
           this.members.push({ el: m, hp, xp, lv });
-        }
+        });
       }
     }
     this.members.forEach((m, i) => {
@@ -227,7 +241,7 @@ export class Hud {
     this.xpFill.style.setProperty('--v', `${mon.xpRatio * 100}%`);
     this.xpText.textContent = `${Math.floor(mon.xpRatio * 100)} %`;
 
-    // Ultime : jauge à la couleur de la bombe, dorée une fois pleine (touche R) ; un rond par don possédé.
+    // Ultime : jauge à la couleur de la bombe, dorée une fois pleine (touche R).
     const boons = combat.run?.boons;
     this.ult.hidden = !boons?.ult;
     if (boons?.ult) {
@@ -237,22 +251,6 @@ export class Hud {
       this.ultFill.style.width = `${(boons.ultGauge / ULT_MAX) * 100}%`;
       this.ultLabel.textContent = full ? `${d.sym} ${d.ult} — R` : `${d.sym} ${d.ult} · ${Math.floor((boons.ultGauge / ULT_MAX) * 100)} %`;
     }
-    const key = boons ? [...boons.owned].map(([id, r]) => id + r).join() : '';
-    if (key !== this.boonKey) {
-      this.boonKey = key;
-      this.boonRow.replaceChildren(
-        ...[...(boons?.owned ?? [])].map(([id, r]) => {
-          const def = BOONS[id];
-          const i = document.createElement('i');
-          const donor = def && def.god !== 'duo' ? DONORS[def.god] : null;
-          i.textContent = def?.duo ? '✧' : (donor?.sym ?? '?');
-          i.style.setProperty('--c', donor ? typeColor(donor.type) : 'var(--spray)');
-          i.title = `${def?.name ?? id} (${RARITY_NAME[r]}) — ${def?.desc ?? ''}`;
-          return i;
-        }),
-      );
-    }
-
     // Bonus et statut à côté des dashs : vert en hausse, brique en baisse, statut à sa couleur.
     const chips: [string, string, string?][] = buffTexts(mon).map((t) => [t, t.startsWith('−') ? 'down' : '']);
     if (mon.status) chips.unshift([STATUS[mon.status].label, 'status', STATUS[mon.status].color]);

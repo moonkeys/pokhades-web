@@ -18,6 +18,11 @@ export class Placer {
     this.taken.push(at);
   }
 
+  /** Un Pokémon ou un accessoire est-il déjà posé à moins de `r` cases ? */
+  occupied(at: Spot, r = 1.5): boolean {
+    return this.taken.some((t) => Math.hypot(t.x - at.x, t.y - at.y) < r);
+  }
+
   block(x: number, y: number): void {
     const w = this.world;
     if (x >= 0 && y >= 0 && x < w.w && y < w.h) w.blocked[y * w.w + x] = 1;

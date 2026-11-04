@@ -1,4 +1,6 @@
 import type { BiomeId } from '../data/species';
+import type { LayoutId } from '../world/layouts';
+import type { WeatherId } from '../world/weather';
 
 // Réglages de DA exposés dans le panneau. Mémorisés dans le navigateur
 // (confort de test uniquement : tout marche sans).
@@ -7,8 +9,15 @@ export type Density = 'native' | 'mixel';
 export type SizeMode = 'pmd' | 'big2' | 'game';
 
 export interface Options {
-  /** 'run' : la séquence du jeu (un biome par acte) ; sinon toute la run dans ce biome (test_biome_override). */
-  biome: BiomeId | 'run';
+  /**
+   * 'run' : la séquence du jeu (un biome par acte) ; sinon toute la run dans ce biome (test_biome_override).
+   * 'grotte' (test) : chaque salle de combat commence directement dans sa grotte, au Rocailleux.
+   */
+  biome: BiomeId | 'run' | 'grotte';
+  /** 'run' : la météo tirée à chaque salle ; sinon celle-ci partout en run (test). */
+  weather: WeatherId | 'run';
+  /** 'auto' : chaque salle tire sa forme dans la liste de son biome ; sinon celle-ci partout où le biome l'admet (test). */
+  layout: LayoutId | 'auto';
   seed: number;
   /** L'équipe de départ (n° de Pokédex), 1 à 6 Pokémon ; le premier est celui qu'on joue. */
   team: number[];
@@ -30,12 +39,20 @@ export interface Options {
   heightScale: boolean;
   wild: boolean;
   debug: boolean;
+  /** Secousses de l'écran (Combat.addShake) ; à couper si elles gênent. */
+  shake: boolean;
+  /** Volumes de la musique et des bruitages, 0..1 (src/audio/audio.ts) ; `muted` coupe tout (touche M). */
+  music: number;
+  sfx: number;
+  muted: boolean;
   /** Version du format mémorisé (2 : le biome devient celui de la run ; 3 : une équipe au lieu d'un Pokémon). */
   version: number;
 }
 
 export const DEFAULTS: Options = {
   biome: 'run',
+  weather: 'run',
+  layout: 'auto',
   seed: 1,
   team: [25],
   density: 'native',
@@ -51,6 +68,10 @@ export const DEFAULTS: Options = {
   heightScale: true,
   wild: true,
   debug: false,
+  shake: true,
+  music: 0.6,
+  sfx: 0.8,
+  muted: false,
   version: 3,
 };
 
@@ -66,7 +87,9 @@ export function loadOptions(): Options {
       // Avant l'équipe, un seul Pokémon joué : il en devient le premier membre.
       if (!saved.team?.length) saved.team = [saved.species ?? DEFAULTS.team[0]];
       delete saved.species;
-      return { ...DEFAULTS, ...saved, version: DEFAULTS.version };
+      // Plus réglables depuis le menu (ui/settingsmenu.ts) : on revient au
+      // rendu prévu, même si un ancien réglage les avait changés.
+      return { ...DEFAULTS, ...saved, size: DEFAULTS.size, shadows: true, treeFade: true, grading: true, version: DEFAULTS.version };
     }
   } catch {
     // Stockage indisponible (navigation privée…) : réglages par défaut.

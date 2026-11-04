@@ -47,6 +47,14 @@ export interface SpriteDef {
   door?: number;
   /** Lampadaire : s'allume la nuit. */
   light?: boolean;
+  /** Cristal : luit de lui-même dans le noir, à cette couleur (« r,g,b »). */
+  glow?: string;
+  /**
+   * Calque posé par-dessus, de même taille (coin haut-gauche dans le tileset) :
+   * le chapeau de neige des arbres de la Montagne glacée, que le tileset
+   * dessine à part, à côté de chaque modèle.
+   */
+  cap?: readonly [x: number, y: number];
 }
 
 const t = (c: number, r: number): Tile => [c, r];
@@ -74,6 +82,8 @@ export const GROUND = {
   dirt: t(17, 16),
   mud: t(23, 16),
   cobble: t(26, 16),
+  /** Neige (#e9f0f0) : le centre de la plaque de neige 28-30,15-17. */
+  snow: t(29, 16),
 } as const;
 
 // ── Bordures ────────────────────────────────────────────────────────────
@@ -98,6 +108,18 @@ export const BLOB = {
   cliff: { origin: t(52, 32), inner: t(52, 35) },
   /** Le même plateau, dessus herbeux : falaises des biomes verts. */
   cliffGrass: { origin: t(55, 32), inner: t(55, 35) },
+  /** Massif de roche grise-brune (le même dessin que `cliff`, sans dessus praticable) : les parois des grottes. */
+  caveRock: { origin: t(7, 32), inner: t(7, 35) },
+  /** Le même massif, coiffé de neige : falaises et plateaux de la Montagne glacée. */
+  cliffSnow: { origin: t(4, 32), inner: t(4, 35) },
+  /** Gravier gris aux bords déchiquetés (transparent autour) : le sentier de la Montagne glacée. */
+  gravel: { origin: t(31, 15), inner: t(31, 18) },
+  /**
+   * Glace : le tileset n'en a pas. atlas.ts la peint au chargement dans des
+   * cases vides (101-105, 100-102), d'après la forme de la plaque de neige
+   * (28,15), recolorée en bleu glacier avec des reflets.
+   */
+  ice: { origin: t(101, 100), inner: t(104, 100) },
 } satisfies Record<string, Blob>;
 
 export const withFill = (blob: Blob, fill: Tile): Blob => ({ ...blob, fill });
@@ -129,6 +151,18 @@ export const TREES = {
   /** Feuillages d'automne : rouge, orange, olive-orangé. */
   autumn: [sprite(1456, 0, 47, 56, 48), sprite(1504, 0, 47, 56, 48), sprite(1552, 0, 47, 56, 48)],
   oliveCone: [sprite(1525, 148, 38, 44, 43)],
+  /**
+   * Montagne glacée : les feuillus et les conifères sombres, coiffés du
+   * chapeau de neige que le tileset range juste après chaque rangée (un
+   * chapeau partiel, puis un arbre entièrement blanc). Les chapeaux n'ont ni
+   * tronc ni ombre : seuls, ils flottaient.
+   */
+  snowy: [
+    ...[2, 3].map((i) => ({ ...sprite(22 + i * 48, 3, 36, 45, 41), cap: [214, 3] as const })),
+    ...[2, 3].map((i) => ({ ...sprite(22 + i * 48, 3, 36, 45, 41), cap: [262, 3] as const })),
+    ...[2, 3].map((i) => ({ ...sprite(21 + i * 64, 64, 53, 69, 62), cap: [277, 64] as const })),
+    ...[2, 3].map((i) => ({ ...sprite(21 + i * 64, 64, 53, 69, 62), cap: [341, 64] as const })),
+  ],
 } as const;
 
 // ── Décors ──────────────────────────────────────────────────────────────
@@ -158,6 +192,25 @@ export const EXTRA = {
   herringLight: { from: [2, 0] as Tile, to: t(25, 22) },
   whitePath: { from: [3, 0] as Tile, to: t(26, 22) },
 } as const;
+
+/**
+ * Ajout (retour de test : « plein de bâtiments où il n'y a pas de chemin… varier
+ * les types de sol, un truc assez smooth ») : les sols des allées du Repaire
+ * (WorldMap.lanes), une tuile ou un motif 2 × 2. Ce sont les centres des
+ * plaques du tileset : l'anneau d'herbe déchiquetée (BLOB.ringGrass) posé
+ * par-dessus leur fait un bord doux, comme au chemin de terre du camp.
+ */
+export const LANE = {
+  /** Gros galets clairs, motif de 2 × 2 cases. */
+  paleCobble: [t(46, 15), t(47, 15), t(46, 16), t(47, 16)],
+  redBrick: [t(44, 16)],
+  gravel: [t(32, 16)],
+  cobble: [t(26, 16)],
+  planks: [t(23, 16)],
+  sand: [t(2, 16)],
+  squares: [t(41, 16)],
+  brickBeige: [EXTRA.brickBeige.to],
+} as const satisfies Record<string, readonly Tile[]>;
 
 /** Chevrons du tileset principal, pour les places (gris-beige et doré). */
 export const PLAZA_TILES = { herringGrey: t(38, 16), herringGold: t(35, 16) } as const;
@@ -203,6 +256,14 @@ export const PROPS = {
   rockSmall: [gridSprite(22, 37, 1, 1, 1), gridSprite(22, 38, 1, 1, 1)],
   boulder: [gridSprite(22, 41, 2, 2, 2), gridSprite(26, 41, 2, 2, 2)],
   cactus: [sprite(616, 145, 32, 47, 43)],
+  /** Montagne glacée : rocher coiffé de neige, boule de neige, gros rocher enneigé. */
+  snowRocks: [gridSprite(23, 37, 1, 1, 1), gridSprite(24, 37, 1, 1, 1)],
+  snowBoulder: [gridSprite(22, 43, 2, 2, 2)],
+  /** Rochers pâles (gris et vert d'eau), gros et petits. */
+  paleRocks: [gridSprite(56, 39, 2, 2, 2), gridSprite(58, 39, 2, 2, 2)],
+  paleStones: [gridSprite(56, 41, 1, 1, 1), gridSprite(57, 41, 1, 1, 1), gridSprite(58, 41, 1, 1, 1), gridSprite(59, 41, 1, 1, 1)],
+  /** Cristaux de glace bleus : ils luisent la nuit, comme ceux des grottes. */
+  iceCrystals: [{ ...gridSprite(67, 38, 1, 1, 1), glow: '150,220,255' }, { ...gridSprite(68, 38, 1, 2, 1), glow: '150,220,255' }],
   /** Rochers qui émergent de l'eau (cerclés d'écume) : gros et petit. */
   waterRocks: [gridSprite(22, 39, 2, 2, 2), gridSprite(23, 38, 1, 1, 1)],
 };
@@ -333,6 +394,8 @@ export const TOWN_DECOR = {
   /** Massif de tournesols (3 × 3 cases) et tournesol seul (1 × 2,5 cases). */
   sunflowers: sprite(1408, 768, 48, 48, 47, 3),
   sunflower: sprite(1456, 776, 16, 40, 39),
+  /** Le même, semé en champ : il ondule au vent, on le traverse (le champ de tournesols du potager). */
+  sunflowerField: grass(sprite(1456, 776, 16, 40, 39, 0)),
   /** Bac vide, où l'on plante nos fleurs pour en faire un bac fleuri. */
   planterEmpty: sprite(1314, 777, 46, 23, 21, 3),
   /** Panneau d'affichage (place), petit panneau de bois (devant les maisons), grand panneau (entrée du village). */
@@ -342,6 +405,31 @@ export const TOWN_DECOR = {
   /** Long banc jaune (3 cases) : le banc vert à dossier se lisait comme un panneau, un « kiosque ». */
   bench: sprite(1425, 850, 47, 13, 12, 3),
   statue: sprite(1357, 998, 23, 41, 40, 2),
+  /** Pilier de pierre coiffé d'une Poké Ball (entrée de ville), table ronde de terrasse, petit tabouret de bois. */
+  gatePost: sprite(1281, 927, 15, 33, 32, 1),
+  cafeTable: sprite(1312, 831, 31, 27, 26, 2),
+  /**
+   * Petit siège jaune, assorti à la table ronde (le « tabouret » d'avant était
+   * en fait un écriteau de bois : retour de test, « ça passe pas »).
+   */
+  seat: sprite(1409, 850, 15, 13, 12, 0),
+  /** Grand panneau vert à plan (celui des parcs) : la carte des expéditions de Démolosse. */
+  mapBoard: sprite(1362, 837, 46, 27, 26, 3),
+  /** Deux caisses de bois empilées (les provisions du départ des missions). */
+  crates: sprite(1409, 880, 15, 32, 31, 1),
+};
+
+/**
+ * Mobilier d'intérieur (planche, vers 750 × 1030) : meubles bas à deux portes
+ * et à tiroirs, haut buffet, bols de soupe, plateau de fioles. La buvette de
+ * Kangourex en fait son comptoir (retour de test : l'étal rayé « ne fait pas
+ * très bar »).
+ */
+export const BAR = {
+  cabinets: [sprite(754, 1041, 12, 15, 14, 1), sprite(786, 1041, 12, 15, 14, 1)],
+  dresser: sprite(770, 1029, 12, 27, 26, 1),
+  bowls: [sprite(752, 1057, 16, 15, 14, 0), sprite(769, 1059, 14, 13, 12, 0), sprite(785, 1059, 14, 13, 12, 0)],
+  tray: sprite(817, 1052, 15, 20, 19, 0),
 };
 
 /**
@@ -376,12 +464,41 @@ export const CAMP_PROPS = {
   /** Boîte aux lettres rouge : le poste du messager. */
   mailbox: sprite(1458, 890, 12, 22, 21, 1),
   stump: sprite(264, 197, 32, 30, 27, 2),
-  /** Bûche couchée sous le feu de camp (la flamme vient d'Essentials, Animations/fire5). */
-  fireLog: sprite(81, 210, 31, 17, 14, 0),
+  /**
+   * Petites pierres grises (les cailloux du relevé des rochers), en anneau
+   * autour du feu de camp : le tileset n'a pas de foyer tout fait. Trois
+   * variantes, pour que le cercle ne se répète pas ; traversables.
+   */
+  hearth: [sprite(897, 658, 15, 14, 13, 0), sprite(913, 659, 15, 13, 12, 0), sprite(897, 674, 15, 14, 13, 0)],
   /** Paillasse : carré de paille de 3 × 3 cases (cases 13-15, rangées 21-23), posée au sol. */
   hay: { col: 13, row: 21, size: 3 },
   /** Terre battue du terrain d'entraînement : 3 × 2 cases (cases 16-18, rangées 22-23). */
   dirt: { col: 16, row: 22, w: 3, h: 2 },
+  /** Atelier du bâtisseur : la maison de bois sur pilotis, et son porche (ombre à droite comprise). */
+  workshop: { ...sprite(706, 1825, 110, 128, 111, 5), depth: 40 } as SpriteDef,
+  /** Chaumières de la clairière défrichée (celles du hameau rustique, TOWN_STYLES « Chaumières »). */
+  cottages: [building(547, 1541, 79, 123, 91, 18), building(648, 1541, 78, 123, 91, 47)],
+  /** Le hameau de l'est : la grande chaumière du hameau rustique, et un cottage orange à lucarne (TOWN_STYLES). */
+  hamlet: [building(743, 1540, 125, 124, 92, 64), building(1840, 1393, 73, 110, 81, 37)],
+  /** Atelier de l'artisan : la maison de briques aux outils croisés sur la porte (ajout, meta/crafting.ts). */
+  atelier: building(265, 1810, 107, 130, 108, 48),
+  /** Terre labourée du champ : un carré de 3 × 3 cases (cases 22-24, rangées 15-17), étiré par ses bords. */
+  soil: { col: 22, row: 15 },
+  /** Ce qui pousse dans le champ : deux pousses, un chou, une rosette ; traversables. */
+  crops: [gridSprite(18, 20, 1, 1), gridSprite(19, 22, 1, 1), gridSprite(4, 23, 1, 1), gridSprite(7, 22, 1, 1)],
+  /**
+   * Les fleurs du potager, d'une case, par stade : semis, pousse, boutons
+   * (blancs, bleus, roses), puis en fleur (blanches, orange, bleues).
+   */
+  garden: {
+    seedling: gridSprite(19, 23, 1, 1),
+    sprout: gridSprite(19, 22, 1, 1),
+    buds: [gridSprite(10, 20, 1, 1), gridSprite(11, 20, 1, 1), gridSprite(12, 20, 1, 1)],
+    blooms: [gridSprite(11, 21, 1, 1), gridSprite(12, 21, 1, 1), gridSprite(12, 22, 1, 1)],
+    /** Fleurs seules des massifs (bleue, rose) et tournesol : les plantes rares. */
+    blue: sprite(1457, 704, 14, 24, 23),
+    pink: sprite(1457, 736, 14, 25, 24),
+  },
 };
 
 /** Flamme du feu de camp : planche d'animation d'Essentials, cases de 192 px, base à 185 px. */
@@ -392,6 +509,40 @@ export const LAMP: SpriteDef = { ...gridSprite(37, 60, 1, 3, 1), light: true };
 
 /** Coffre fermé (MapBase.tile_chest_closed), posé sur l'île du Lac. */
 export const CHEST = gridSprite(88, 61, 1, 1, 1);
+/** Le même, ouvert (couvercle relevé, intérieur gris) : un coffre de grotte déjà pillé. */
+export const CHEST_OPEN = gridSprite(90, 61, 1, 1, 1);
+
+/**
+ * Grottes (planche relevée à la main, pixels) : les bouches creusées dans
+ * une paroi, dont le trou noir s'ouvre en bas au centre — brune (Volcan…)
+ * et coiffée d'herbe (Rocailleux, falaises herbeuses) —, la sortie baignée
+ * de lumière qu'on voit de l'intérieur, et le mobilier souterrain : éclats
+ * de cristal bleu qui luisent, gros cristal, éboulis et rochers.
+ * `trunk` 0 sur les bouches : c'est la paroi derrière qui bloque, et le
+ * joueur doit pouvoir s'avancer dans le trou.
+ */
+export const CAVE = {
+  /** `snow` : la bouche coiffée de neige, à glaçons (Montagne glacée). */
+  mouth: { rock: sprite(100, 600, 40, 40, 39, 0), grass: sprite(100, 648, 40, 40, 39, 0), snow: sprite(148, 648, 40, 40, 39, 0) },
+  /** Le jour au bout du trou : une lueur pâle, qu'on repère de loin dans le noir. */
+  exit: { ...sprite(20, 680, 40, 40, 39, 0), glow: '255,236,190' } as SpriteDef,
+  shards: [
+    { ...sprite(400, 610, 13, 14, 13, 0), glow: '110,190,255' },
+    { ...sprite(384, 624, 15, 16, 15, 1), glow: '110,190,255' },
+    { ...sprite(384, 641, 15, 15, 14, 1), glow: '110,190,255' },
+  ] as SpriteDef[],
+  pebbles: [sprite(400, 628, 13, 12, 11, 0), sprite(402, 647, 10, 8, 7, 0)],
+  crystal: { ...sprite(417, 627, 30, 29, 28, 2), glow: '90,170,255' } as SpriteDef,
+  rocks: [sprite(448, 656, 32, 32, 31, 2), sprite(484, 645, 24, 27, 26, 1), sprite(416, 657, 32, 31, 30, 2)],
+  /**
+   * La grille de la cellule du prisonnier : la palissade à claire-voie du
+   * tileset (six barreaux de bois liés d'encre, jours transparents), 3 cases
+   * de large. Ni le tileset ni Essentials n'ont de barreaux de prison ; on
+   * l'emploie en herse, que run/cave.ts relève. `trunk` 0 : ce sont les cases
+   * de la cellule que la grotte bloque, tant qu'elle est fermée.
+   */
+  bars: sprite(561, 896, 46, 48, 47, 0),
+};
 
 /** Monture Surf du jeu (assets/cs/surf.png) : 4 colonnes × 4 directions de 64 px. */
 export const SURF = {

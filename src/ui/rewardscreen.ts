@@ -1,3 +1,4 @@
+import { sfx } from '../audio/audio';
 import { BOONS, DONORS, RARITY_COLOR, RARITY_NAME, STAT_BOONS, valueText, type BoonCard, type BoonOffer, type DonorId } from '../combat/boons';
 import type { Move } from '../combat/moves';
 import type { Pokemon } from '../combat/pokemon';
@@ -158,6 +159,7 @@ export class RewardScreen {
 
   close(): void {
     if (this.root.hidden) return;
+    sfx('menuClose');
     this.root.hidden = true;
     this.root.replaceChildren();
     this.skill = null;
@@ -281,6 +283,7 @@ export class RewardScreen {
 
   /** « Bénédiction de Darkrai » : trois cartes du même légendaire. */
   showBoons(offer: BoonOffer, onPick: (card: BoonCard) => void, onClose: () => void, team: Pokemon[] = [], sel = 0): void {
+    sfx('menuOpen');
     this.skill = null;
     this.sel = sel;
     const donor = DONORS[offer.donor];
@@ -338,6 +341,7 @@ export class RewardScreen {
     price = 0,
   ): void {
     const ctx: SkillCtx = { team, offerFor, onLearn, onUpgrade, onClose, price };
+    sfx('menuOpen');
     this.skill = ctx;
     this.sel = sel;
     const mon = team[sel];

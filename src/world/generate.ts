@@ -1,20 +1,51 @@
 import { fbm } from '../core/noise';
 import { Rng } from '../core/rng';
 import type { Biome } from './biomes';
-import { CHEST, FLOWERS, GROUND, PROPS, TILE, TOWN_STYLES, type Blob, type SpriteDef, type Tile } from './tiles';
+import { BLOB, CAVE, CHEST, FLOWERS, GROUND, PROPS, TILE, TOWN_STYLES, type Blob, type SpriteDef, type Tile } from './tiles';
+import { coreDepth, LAYOUT_NAMES, pickLayout, shapeDepth, type LayoutId, type Shape } from './layouts';
 import { furnishTown, layoutStreets, type Paving } from './town';
 
-// Générateur de zone simplifié pour juger la DA : une clairière bordée d'une
-// lisière dense, des chemins qui relient l'entrée (en bas) aux sorties, de
-// l'eau, des plaques de sol, de l'herbe haute, des arbres et des décors.
+// Générateur de zone simplifié pour juger la DA : une zone jouable bordée
+// d'une lisière dense (sa forme et sa taille viennent de layouts.ts), des
+// chemins qui relient l'entrée aux sorties, de l'eau, des plaques de sol, de
+// l'herbe haute, des arbres et des décors.
 // Il ne cherche pas à reproduire MapGenerator.gd (3 200 lignes), seulement à
 // produire des cartes plausibles pour chaque biome.
 
+/** Taille de la boutique, et de la clairière d'origine (les salles de run varient, cf. layouts.ts). */
 export const MAP_W = 64;
 export const MAP_H = 40;
 /** Le Repaire voit plus grand : un camp aéré, et un lac assez large pour cacher son île. */
 export const CAMP_W = 88;
+/** Une poche ouverte dans la forêt du Repaire (centre et demi-axes, en cases). */
+export interface Pocket {
+  x: number;
+  y: number;
+  rx: number;
+  ry: number;
+}
 export const CAMP_H = 66;
+/**
+ * La clairière défrichée du Repaire (aménagement « Défrichage », camp.ts) :
+ * un ovale gagné sur la forêt, à l'ouest de la place, où s'installent le
+ * champ et les maisons. Centre décalé du feu (`hub`) de (dx, dy), demi-axes
+ * rx × ry, en cases.
+ */
+export const CAMP_GLADE = { dx: -31, dy: -1, rx: 9.5, ry: 8.5 } as const;
+/**
+ * Ajout : la clairière de l'est (« Défrichage de l'est », camp.ts), pendant
+ * de celle de l'ouest derrière la hutte de l'équipe, où s'élève le bourg.
+ * Un peu plus petite : la lisière de l'est est plus près du bord de la carte.
+ */
+export const CAMP_EAST_GLADE = { dx: 30, dy: -1, rx: 8.5, ry: 8 } as const;
+/**
+ * Ajout (retour de test : « l'atelier plus à droite du ponton, un espace plus
+ * grand, enlever un peu d'arbres, et un chemin qui y mène ») : la clairière
+ * de l'atelier de l'artisan (camp.ts), sur la berge à l'est du ponton, et le
+ * couloir qui y descend depuis l'allée de l'est (de `from` à `to`, demi-largeur
+ * `r`), gagnés sur la forêt une fois l'atelier bâti.
+ */
+export const CAMP_ATELIER_GLADE = { dx: 23, dy: 17.5, rx: 8, ry: 5.5, from: { dx: 18, dy: 3 }, to: { dx: 18, dy: 16 }, r: 2.6 } as const;
 
 /**
  * Taille de la grille en cours de traitement, pour les outils de masques
@@ -93,6 +124,13 @@ export interface WorldMap {
   lilies: FlatDecor[];
   /** Village : revêtements rectangulaires (rues, place, allées), style et plan. */
   paving: Paving[];
+  /**
+   * Ajout : allées du Repaire (camp.ts) — une bande d'un sol à part (pavés,
+   * sable, gravier…) bordée d'herbe déchiquetée (BLOB.ringGrass), qui se fond
+   * dans le gazon au lieu d'y couper net comme un revêtement. `fill` : une
+   * tuile, ou quatre (motif 2 × 2, ligne par ligne).
+   */
+  lanes?: { mask: Uint8Array; fill: readonly Tile[] }[];
   townStyle: string | null;
   townLayout: string | null;
   /** Fontaines du village (case haut-gauche du bassin). */
@@ -110,6 +148,30 @@ export interface WorldMap {
    * Point au milieu de l'ouverture, une case en retrait du bord.
    */
   exits: Exit[];
+  /**
+   * Entrée de grotte creusée dans une paroi sud (case de paroi au centre de
+   * la bouche) ; `used` : visitée, elle ne rouvre plus. Absente le plus souvent.
+   */
+  cave?: { x: number; y: number; used: boolean } | null;
+  /**
+   * Arbres à baies (case du tronc, bloquée) : run/berries.ts les dessine et
+   * les fait tomber. Absents en boutique, au Repaire, et dans les biomes
+   * sans baie (Biome.berry).
+   */
+  berries?: { x: number; y: number }[];
+  /**
+   * Coffre de la salle (case du coffre, bloquée) et ce qui le garde : un
+   * obstacle sur la case au sud, seule entrée de son alcôve de rochers (CS
+   * Coupe ou Éclate-Roc), ou rien (îlot du Lac, coffre à découvert).
+   * run/chests.ts l'ouvre et lève l'obstacle.
+   */
+  chest?: { x: number; y: number; guard: 'cut' | 'rock-smash' | null } | null;
+  /** Ligne de front (layouts.ts) : les deux bouts du couloir, où surgissent les vagues. */
+  front: { near: { x: number; y: number }; far: { x: number; y: number } } | null;
+  /** Forme de la salle (layouts.ts) ; null en boutique et au Repaire. */
+  layout: LayoutId | null;
+  /** Son nom, pour le panneau de test. */
+  layoutName: string | null;
 }
 
 export type Side = 'N' | 'S' | 'E' | 'W';
@@ -124,9 +186,11 @@ export interface Exit {
 /**
  * Ouvertures du bord : les cases de bordure atteignables à pied (hors eau),
  * regroupées en segments contigus ; on garde la plus large de chaque bord,
- * sauf sur le bord d'entrée.
+ * sauf sur le bord d'entrée. En pleine mer (`swimExits`), l'eau compte : le
+ * bord n'y est que de l'eau, et sans cela la salle n'avait aucune sortie (en
+ * run, on nage toujours).
  */
-function findExits(W: number, H: number, reachable: Uint8Array, water: Uint8Array, entrySide: Side): Exit[] {
+function findExits(W: number, H: number, reachable: Uint8Array, water: Uint8Array, entrySide: Side, swimExits = false): Exit[] {
   const sides: Side[] = ['N', 'E', 'S', 'W'];
   const exits: Exit[] = [];
   for (const side of sides) {
@@ -137,14 +201,15 @@ function findExits(W: number, H: number, reachable: Uint8Array, water: Uint8Arra
       const y = side === 'E' || side === 'W' ? t : side === 'N' ? 0 : H - 1;
       return y * W + x;
     };
+    const open = (t: number) => reachable[cell(t)] && (swimExits || !water[cell(t)]);
     let best: [number, number] | null = null;
     for (let t = 0; t < len; ) {
-      if (!reachable[cell(t)] || water[cell(t)]) {
+      if (!open(t)) {
         t++;
         continue;
       }
       const from = t;
-      while (t < len && reachable[cell(t)] && !water[cell(t)]) t++;
+      while (t < len && open(t)) t++;
       if (!best || t - from > best[1] - best[0]) best = [from, t];
     }
     if (!best || best[1] - best[0] < 2) continue;
@@ -190,7 +255,7 @@ export function blobTile(mask: Uint8Array, x: number, y: number, blob: Blob): Ti
 }
 
 /** Automate cellulaire : lisse les contours bruités. */
-function smooth(mask: Uint8Array, passes: number, allowed: (x: number, y: number) => boolean): void {
+export function smooth(mask: Uint8Array, passes: number, allowed: (x: number, y: number) => boolean): void {
   for (let p = 0; p < passes; p++) {
     const copy = mask.slice();
     for (let y = 0; y < GH; y++) {
@@ -211,7 +276,7 @@ function smooth(mask: Uint8Array, passes: number, allowed: (x: number, y: number
  * - `grow` épaissit autour d'elle (chemins : les rogner les coupait, une
  *   diagonale étroite pouvant s'effacer en entier de proche en proche).
  */
-function cleanThin(mask: Uint8Array, allowed: (x: number, y: number) => boolean, mode: 'erode' | 'grow' = 'erode'): void {
+export function cleanThin(mask: Uint8Array, allowed: (x: number, y: number) => boolean, mode: 'erode' | 'grow' = 'erode'): void {
   const grow = (x: number, y: number) => {
     if (x < 0 || y < 0 || x >= GW || y >= GH || mask[y * GW + x] || !allowed(x, y)) return false;
     mask[y * GW + x] = 1;
@@ -249,7 +314,7 @@ function cleanThin(mask: Uint8Array, allowed: (x: number, y: number) => boolean,
   }
 }
 
-function dilate(mask: Uint8Array, radius: number): Uint8Array {
+export function dilate(mask: Uint8Array, radius: number): Uint8Array {
   let cur = mask.slice();
   for (let r = 0; r < radius; r++) {
     const next = cur.slice();
@@ -276,15 +341,19 @@ function catmullRom(p0: Pt, p1: Pt, p2: Pt, p3: Pt, t: number): Pt {
   return { x: f(p0.x, p1.x, p2.x, p3.x), y: f(p0.y, p1.y, p2.y, p3.y) };
 }
 
-/** Trace un chemin sinueux de a à b (spline par deux points de contrôle décalés). */
-function carvePath(mask: Uint8Array, a: Pt, b: Pt, radius: number, rng: Rng, seed: number): void {
+/**
+ * Trace un chemin sinueux de a à b (spline par deux points de contrôle
+ * décalés d'au plus `wobble` cases : moins dans une forme étroite, où un
+ * grand écart taillerait une tranchée dans la lisière).
+ */
+function carvePath(mask: Uint8Array, a: Pt, b: Pt, radius: number, rng: Rng, seed: number, wobble = 6): void {
   const dx = b.x - a.x;
   const dy = b.y - a.y;
   const len = Math.hypot(dx, dy) || 1;
   const nx = -dy / len;
   const ny = dx / len;
   const ctrl = (t: number) => {
-    const off = rng.range(-6, 6);
+    const off = rng.range(-wobble, wobble);
     return { x: a.x + dx * t + nx * off, y: a.y + dy * t + ny * off };
   };
   const pts = [a, a, ctrl(0.33), ctrl(0.66), b, b];
@@ -316,10 +385,23 @@ function carvePath(mask: Uint8Array, a: Pt, b: Pt, radius: number, rng: Rng, see
  * `camp` : le Repaire, entre deux runs — une carte plus grande (CAMP_W ×
  * CAMP_H), la même clairière en bien plus large (place de 8,5 cases) et un
  * lac au sud, où le camp installe ses postes autour du feu (camp.ts).
+ * `glade` (au Repaire) : la forêt de l'ouest est défrichée (CAMP_GLADE), et
+ * une allée y mène depuis la place ; `eastGlade` : de même à l'est
+ * (CAMP_EAST_GLADE) ; `atelier` : la clairière de l'atelier et son couloir
+ * (CAMP_ATELIER_GLADE).
+ *
+ * `layout` : forme imposée à une salle de run (panneau de test) ; sinon elle
+ * se tire dans la liste du biome (layouts.ts), avec sa propre graine : la
+ * même salle garde toujours la même forme.
  */
-export function generate(biome: Biome, seed: number, options: { store?: boolean; camp?: boolean } = {}): WorldMap {
-  const W = options.camp ? CAMP_W : MAP_W;
-  const H = options.camp ? CAMP_H : MAP_H;
+export function generate(
+  biome: Biome,
+  seed: number,
+  options: { store?: boolean; camp?: boolean; cave?: boolean; glade?: boolean; eastGlade?: boolean; atelier?: boolean; layout?: LayoutId; pockets?: readonly Pocket[] } = {},
+): WorldMap {
+  const shape: Shape | null = options.store || options.camp ? null : pickLayout(biome, new Rng(seed * 2246822519 + 3), options.layout);
+  const W = options.camp ? CAMP_W : (shape?.w ?? MAP_W);
+  const H = options.camp ? CAMP_H : (shape?.h ?? MAP_H);
   useGrid(W, H);
   const N = W * H;
   const rng = new Rng(seed * 2654435761);
@@ -332,7 +414,17 @@ export function generate(biome: Biome, seed: number, options: { store?: boolean;
   const cy0 = options.camp ? 19 : H / 2;
   /** Clairière de la boutique : ovale au bord bruité, au centre de la carte. */
   // (`k` > 1 : une clairière élargie, pour l'anneau d'eau ou de lave et le pied des montagnes.)
-  const inClearing = (x: number, y: number, k = 1) => Math.hypot((x + 0.5 - W / 2) / (13 * k * roomy), (y + 0.5 - cy0) / (9 * k * roomy)) + (fbm(x * 0.14, y * 0.14, s + 401) - 0.5) * 0.35 < 1;
+  const inOpen = (x: number, y: number, k = 1) => Math.hypot((x + 0.5 - W / 2) / (13 * k * roomy), (y + 0.5 - cy0) / (9 * k * roomy)) + (fbm(x * 0.14, y * 0.14, s + 401) - 0.5) * 0.35 < 1;
+  /**
+   * Le Repaire compact (retour de test : « plus petit au tout départ, que le cercle… on verra
+   * mieux l'évolution ») : la place autour du feu, et une poche par poste (camp.ts,
+   * campPockets) ; chaque aménagement bâti ouvre la sienne dans la forêt.
+   */
+  const pockets = options.camp ? options.pockets : undefined;
+  const inPocket = (x: number, y: number) =>
+    pockets!.some((p) => Math.hypot((x + 0.5 - p.x) / p.rx, (y + 0.5 - p.y) / p.ry) + (fbm(x * 0.2, y * 0.2, s + 409) - 0.5) * 0.3 < 1);
+  const inClearing = (x: number, y: number, k = 1) =>
+    pockets ? Math.hypot((x + 0.5 - W / 2) / 13, (y + 0.5 - cy0) / 10.5) + (fbm(x * 0.14, y * 0.14, s + 401) - 0.5) * 0.3 < 1 || inPocket(x, y) : inOpen(x, y, k);
   /** Boutique du Lac ou du Volcan : un anneau d'eau, ou de lave, entre la clairière et la lisière. */
   const ringed = store && !options.camp && Boolean(biome.water) && !biome.coast;
   const inRing = (x: number, y: number) => ringed && !inClearing(x, y) && inClearing(x, y, 1.45);
@@ -345,16 +437,48 @@ export function generate(biome: Biome, seed: number, options: { store?: boolean;
   // (L'île est loin de la rive : depuis le feu, on ne la voit pas ; il faut descendre au bord du lac.)
   const inLake = (x: number, y: number) => Boolean(options.camp) && Math.hypot((x + 0.5 - W / 2) / 31, (y + 0.5 - (H - 14)) / 11.5) + (fbm(x * 0.12, y * 0.12, s + 433) - 0.5) * 0.3 < 1;
   /** La berge : une bande de terre autour du lac, qui le relie à la clairière du camp. */
-  const inShore = (x: number, y: number) => Boolean(options.camp) && Math.hypot((x + 0.5 - W / 2) / 34, (y + 0.5 - (H - 14)) / 17.5) + (fbm(x * 0.12, y * 0.12, s + 437) - 0.5) * 0.3 < 1;
+  // (Repaire compact : la berge se resserre au milieu, la forêt reprend ses côtés.)
+  const inShore = (x: number, y: number) =>
+    Boolean(options.camp) &&
+    Math.hypot((x + 0.5 - W / 2) / (options.pockets ? 24 : 34), (y + 0.5 - (H - 14)) / 17.5) + (fbm(x * 0.12, y * 0.12, s + 437) - 0.5) * 0.3 < 1;
+  /** Le Repaire défriché : la clairière de l'ouest (CAMP_GLADE), autour du feu (`hub`, connu plus bas). */
+  const glade = Boolean(options.camp && options.glade);
+  const eastGlade = Boolean(options.camp && options.eastGlade);
+  const atelierGlade = Boolean(options.camp && options.atelier);
+  const inOval = (x: number, y: number, g: { dx: number; dy: number; rx: number; ry: number }, salt: number) =>
+    Math.hypot((x + 0.5 - hub.x - g.dx) / g.rx, (y + 0.5 - hub.y - g.dy) / g.ry) + (fbm(x * 0.14, y * 0.14, s + salt) - 0.5) * 0.3 < 1;
+  /** Le couloir de l'atelier : une capsule aux bords bruités, de l'allée de l'est à la berge. */
+  const inCorridor = (x: number, y: number) => {
+    const a = CAMP_ATELIER_GLADE;
+    const ax = hub.x + a.from.dx, ay = hub.y + a.from.dy;
+    const bx = hub.x + a.to.dx, by = hub.y + a.to.dy;
+    const u = Math.max(0, Math.min(1, ((x + 0.5 - ax) * (bx - ax) + (y + 0.5 - ay) * (by - ay)) / ((bx - ax) ** 2 + (by - ay) ** 2)));
+    const d = Math.hypot(x + 0.5 - ax - (bx - ax) * u, y + 0.5 - ay - (by - ay) * u);
+    return d + (fbm(x * 0.2, y * 0.2, s + 461) - 0.5) * 1.2 < a.r;
+  };
+  const inGlade = (x: number, y: number) =>
+    (glade && inOval(x, y, CAMP_GLADE, 443)) || (eastGlade && inOval(x, y, CAMP_EAST_GLADE, 449)) || (atelierGlade && (inOval(x, y, CAMP_ATELIER_GLADE, 457) || inCorridor(x, y)));
   const inIsland = (x: number, y: number) => inLake(x, y) && Math.hypot((x + 0.5 - W / 2) / 11.5, (y + 0.5 - (H - 9.5)) / 5) + (fbm(x * 0.2, y * 0.2, s + 439) - 0.5) * 0.25 < 1;
 
   // 1) Zone jouable : la lisière a une épaisseur bruitée de 1,8 à 4,4 cases
-  // (elle était de 2,5 à 6 : « ça fait trop forêt » sur les côtés).
+  // (elle était de 2,5 à 6 : « ça fait trop forêt » sur les côtés). La
+  // profondeur se mesure dans la forme de la salle (layouts.ts) ; pour la
+  // clairière, c'est la distance au bord de la carte, comme avant.
+  // Le cœur d'une boucle rempli d'eau ou de lave reste dans la zone (on la
+  // voit, on y nage s'il le faut) : il devient de l'eau à l'étape 3.
   const inside = new Uint8Array(N);
+  const coreWater = new Uint8Array(N);
+  const wetCore = shape?.core?.fill === 'water' ? shape.core : null;
   for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {
-      const d = Math.min(x, y, W - 1 - x, H - 1 - y);
-      inside[idx(x, y)] = d >= 1.8 + 2.6 * fbm(x * 0.13, y * 0.13, s + 11) ? 1 : 0;
+      const edge = 1.8 + 2.6 * fbm(x * 0.13, y * 0.13, s + 11);
+      const d = shape ? shapeDepth(shape, x, y) : Math.min(x, y, W - 1 - x, H - 1 - y);
+      inside[idx(x, y)] = d >= edge ? 1 : 0;
+      // Dans la forme, mais dans le cœur : c'est le lac (ou la lave), jusqu'à la rive.
+      if (wetCore && !inside[idx(x, y)] && coreDepth(wetCore, x, y) < edge && shapeDepth({ ...shape!, core: null }, x, y) >= edge) {
+        inside[idx(x, y)] = 1;
+        coreWater[idx(x, y)] = 1;
+      }
     }
   }
 
@@ -428,7 +552,11 @@ export function generate(biome: Biome, seed: number, options: { store?: boolean;
   // Au Lac, le carrefour descend sous le plan d'eau et les sorties partent
   // sur les côtés : les chemins longent la rive au lieu de couper le lac.
   // Village : un plan de rues rectangulaire (cf. town.ts) au lieu de chemins sinueux.
-  const lake = Boolean(biome.water?.lake);
+  // (Le grand lac, ses chemins de rive et son îlot : propres à la clairière.
+  // Les autres formes du Lac le mettent au cœur de leur boucle.)
+  const lake = Boolean(biome.water?.lake) && shape?.id === 'clairiere';
+  /** Les chemins de la forme (toutes sauf la clairière, qui garde le tracé d'origine). */
+  const routed = Boolean(shape?.routes.length) && !biome.coast && !biome.buildings;
   const path = new Uint8Array(N);
   const townStyle = biome.buildings ? TOWN_STYLES[seed % TOWN_STYLES.length] : null;
   const plan = townStyle ? layoutStreets(W, H, rng) : null;
@@ -441,8 +569,14 @@ export function generate(biome: Biome, seed: number, options: { store?: boolean;
         : seaSide === 2
           ? { x: W - 0.5, y: H / 2 + rng.range(-4, 4) }
           : { x: 0.5, y: H / 2 + rng.range(-4, 4) }
-      : { x: plan ? plan.entryX : W / 2 + rng.range(-5, 5), y: H - 0.5 };
-  const hub = plan
+      : routed
+        ? shape!.entry
+        : { x: plan ? plan.entryX : W / 2 + rng.range(-5, 5), y: H - 0.5 };
+  /** La case d'arrivée, une case dans la carte (le bord où l'on entre). */
+  const door = { x: Math.min(W - 1, Math.max(0, Math.floor(entry.x))), y: Math.min(H - 1, Math.max(0, Math.floor(entry.y))) };
+  const hub = routed
+    ? shape!.hub
+    : plan
     ? plan.center
     : store
       ? { x: W / 2, y: cy0 }
@@ -457,12 +591,21 @@ export function generate(biome: Biome, seed: number, options: { store?: boolean;
     // (Au Repaire, pas d'allée d'entrée : le lac occupe le sud, on arrive près du feu.)
     if (!options.camp) carvePath(path, { x: W / 2 + rng.range(-3, 3), y: H - 0.5 }, hub, radius, rng, s);
     carvePath(path, hub, { x: W / 2 + rng.range(-6, 6), y: 0.5 }, radius, rng, s);
+    // L'allée de la clairière défrichée : son propre tirage, pour que le reste du camp ne bouge pas.
+    if (glade) carvePath(path, hub, { x: hub.x + CAMP_GLADE.dx + 4, y: hub.y + CAMP_GLADE.dy + 1 }, 1.2, new Rng(seed * 48271 + 9), s);
+    // (Celle de l'est part du sud-est de la place : en ligne droite, elle passerait sous la hutte de l'équipe.)
+    if (eastGlade) carvePath(path, { x: hub.x + 9, y: hub.y + 3.5 }, { x: hub.x + CAMP_EAST_GLADE.dx - 4, y: hub.y + CAMP_EAST_GLADE.dy + 4 }, 1.2, new Rng(seed * 48271 + 13), s, 2);
     cleanThin(path, () => true, 'grow');
   } else if (biome.coast) {
     // Plage : un seul sentier, de l'entrée jusqu'au sable. Océan : aucun.
     if (biome.coast === 'beach') carvePath(path, entry, hub, biome.path?.radius ?? 1.4, rng, s);
   } else if (plan) {
     for (let i = 0; i < N; i++) if (plan.street[i] || plan.plaza[i]) path[i] = 1;
+  } else if (routed) {
+    // Les chemins suivent le squelette de la forme, tronçon par tronçon.
+    const radius = biome.path?.radius ?? 1.5;
+    for (const route of shape!.routes) for (let k = 1; k < route.length; k++) carvePath(path, route[k - 1], route[k], radius, rng, s, shape!.wobble);
+    cleanThin(path, () => true, 'grow');
   } else {
     const exits = lake
       ? [{ x: 0.5, y: H - rng.range(11, 15) }, { x: W - 0.5, y: H - rng.range(11, 15) }]
@@ -492,7 +635,7 @@ export function generate(biome: Biome, seed: number, options: { store?: boolean;
     // Hors de la clairière (et des allées), plus rien de jouable : la lisière l'entoure.
     // L'eau qui la borde reste à nous (on y nage comme ailleurs) : l'anneau du Lac, la
     // mer autour de l'île. Celui du Volcan aussi, mais la lave bloque d'elle-même.
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (!inClearing(x, y) && !inRing(x, y) && !inBay(x, y) && !inShore(x, y)) inside[idx(x, y)] = 0;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (!inClearing(x, y) && !inRing(x, y) && !inBay(x, y) && !inShore(x, y) && !inGlade(x, y)) inside[idx(x, y)] = 0;
     // Les allées passent la mer sur une langue de sable.
     if (coastSea && coastSand) for (let i = 0; i < N; i++) if (path[i]) [coastSea[i], coastSand[i]] = [0, 1];
   }
@@ -508,15 +651,23 @@ export function generate(biome: Biome, seed: number, options: { store?: boolean;
     cleanThin(cliff, () => true);
   }
 
-  // 3) Eau (mares de bruit, plus un grand lac au Lac).
+  // 3) Eau (mares de bruit, plus un grand lac au Lac, et le cœur d'une boucle).
   const water = new Uint8Array(N);
+  let isleAt: Pt | null = null;
   if (coastSea) {
     water.set(coastSea);
   } else if (options.camp && biome.water) {
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (inLake(x, y) && !inIsland(x, y) && !path[idx(x, y)]) water[idx(x, y)] = 1;
+    const canBeLake = (x: number, y: number) => inLake(x, y) && !inIsland(x, y) && !path[idx(x, y)];
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (canBeLake(x, y)) water[idx(x, y)] = 1;
+    // Comme les mares des runs : le rivage bruité laissait des anses d'une case de large,
+    // que la berge (jeu blob) ne sait pas border — la lèvre de terre s'y cassait.
+    cleanThin(water, canBeLake);
   } else if (ringed) {
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (inRing(x, y) && !path[idx(x, y)]) water[idx(x, y)] = 1;
   } else if (biome.water && !store) {
+    /** Îlot à coffre : au milieu du grand lac de la clairière, ou du lac au cœur d'une boucle. */
+    const isle = lake ? { x: W / 2, y: H / 2 - 4 } : wetCore && biome.water.lake ? { x: wetCore.x - 0.5, y: wetCore.y - 0.5 } : null;
+    isleAt = isle;
     const lakeR = { x: W * 0.32, y: H * 0.3 };
     for (let y = 0; y < H; y++) {
       for (let x = 0; x < W; x++) {
@@ -530,6 +681,9 @@ export function generate(biome: Biome, seed: number, options: { store?: boolean;
           if (Math.hypot((x - W / 2) / 4.5, (y - H / 2 + 4) / 3.2) < 1) water[i] = 0;
         }
         if (fbm(x * 0.08, y * 0.08, s + 23) > biome.water.threshold) water[i] = 1;
+        if (coreWater[i]) water[i] = 1;
+        // L'îlot au cœur de la boucle du Lac, comme celui de la clairière.
+        if (isle && !lake && Math.hypot((x - isle.x) / 4.5, (y - isle.y) / 3.2) < 1) water[i] = 0;
       }
     }
     const canBeWater = (x: number, y: number) => inside[idx(x, y)] === 1 && !nearPath[idx(x, y)];
@@ -547,7 +701,7 @@ export function generate(biome: Biome, seed: number, options: { store?: boolean;
     const farPath = dilate(path, 3);
     const ok = (x: number, y: number) => {
       const i = idx(x, y);
-      return inside[i] === 1 && !farPath[i] && !nearWet[i] && Math.hypot(x - entry.x, y - (H - 4)) > 7;
+      return inside[i] === 1 && !farPath[i] && !nearWet[i] && Math.hypot(x - door.x, y - door.y) > 8;
     };
     for (let y = 0; y < H; y++) {
       for (let x = 0; x < W; x++) {
@@ -561,7 +715,7 @@ export function generate(biome: Biome, seed: number, options: { store?: boolean;
     // Une poche que les falaises encerclent serait une cuvette inaccessible :
     // on la comble, elle devient du plateau.
     const open = new Uint8Array(N);
-    const startCell = idx(Math.min(W - 1, Math.floor(entry.x)), H - 1);
+    const startCell = idx(door.x, door.y);
     const stack = [startCell];
     open[startCell] = 1;
     while (stack.length) {
@@ -754,6 +908,21 @@ export function generate(biome: Biome, seed: number, options: { store?: boolean;
         if (fbm(x * 0.17, y * 0.17, s + 41) > biome.tallGrass.threshold) tall[i] = 1;
       }
     }
+    // Champs (Ligne de front en Prairie) : l'herbe haute couvre la forme de
+    // part en part, sauf le chemin et une case de bas-côté, la place d'entrée
+    // (on s'y replie à découvert) et quelques trouées du bruit.
+    if (routed && shape!.fields) {
+      const verge = dilate(path, 1);
+      const near = shape!.front?.near;
+      for (let y = 0; y < H; y++) {
+        for (let x = 0; x < W; x++) {
+          const i = idx(x, y);
+          if (!inside[i] || blocked[i] || water[i] || verge[i] || patch[i] || reserved[i] || nearSpawn(x, y)) continue;
+          if (near && Math.hypot(x - near.x, y - near.y) < 7) continue;
+          if (fbm(x * 0.21, y * 0.21, s + 43) > 0.3) tall[i] = 1;
+        }
+      }
+    }
   }
 
   const objects: WorldObject[] = [];
@@ -859,6 +1028,8 @@ export function generate(biome: Biome, seed: number, options: { store?: boolean;
     if (blocked[i] || water[i] || touchesPath(path, cx, cy) || touchesPath(reserved, cx, cy) || nearSpawn(x, y)) continue;
     // Littoral : un palmier pousse sur le sable, pas les pieds dans l'eau (2 cases de marge).
     if (nearSea && nearSea[i]) continue;
+    // Glace : la patinoire reste nue, on y glisse d'un bord à l'autre.
+    if (biome.patch?.ice && patch[i]) continue;
     if (fbm(x * 0.1, y * 0.1, s + 53) < 0.45 && rng.chance(0.75)) continue;
     const sp = rng.pick(biome.coast && biome.trees.sand && patch[i] ? biome.trees.sand : biome.trees.interior);
     // Une case de marge autour du tronc, deux au-dessus (le feuillage).
@@ -873,7 +1044,7 @@ export function generate(biome: Biome, seed: number, options: { store?: boolean;
     const half = Math.max(1, sp.trunk) * TILE * 0.5;
     let clear = true;
     for (let tx = Math.floor((px - half) / TILE); tx <= Math.floor((px + half - 1) / TILE); tx++) {
-      if (tx < 0 || tx >= W || water[idx(tx, cy)] || path[idx(tx, cy)]) clear = false;
+      if (tx < 0 || tx >= W || water[idx(tx, cy)] || path[idx(tx, cy)] || (biome.patch?.ice && patch[idx(tx, cy)])) clear = false;
     }
     if (!clear) continue;
     const obj = { sprite: sp, x: px, y: py, fades: true };
@@ -971,7 +1142,9 @@ export function generate(biome: Biome, seed: number, options: { store?: boolean;
     }
   }
 
-  // Nénuphars au cœur de l'eau.
+  // Nénuphars au cœur de l'eau. Écart voulu avec le jeu, où l'on devait les
+  // contourner : ils ne bloquent plus, on nage au travers comme on traverse
+  // l'herbe haute (retour de test : ils fermaient des passages à la nage).
   const lilies: FlatDecor[] = [];
   if (biome.water && biome.water.lilies.length) {
     for (let y = 1; y < H - 1; y++) {
@@ -980,18 +1153,19 @@ export function generate(biome: Biome, seed: number, options: { store?: boolean;
         const interior = water[idx(x + 1, y)] && water[idx(x - 1, y)] && water[idx(x, y + 1)] && water[idx(x, y - 1)];
         if (interior && rng.chance(0.05)) {
           lilies.push({ tile: rng.pick(biome.water.lilies), x, y });
-          // On contourne les nénuphars à la nage.
-          blocked[idx(x, y)] = 1;
         }
       }
     }
   }
 
-  // Coffre sur l'îlot du Lac : la récompense de la traversée.
-  if (lake) {
-    const cx = Math.floor(W / 2);
-    const cy = Math.floor(H / 2 - 4);
+  // Coffre sur l'îlot du Lac : la récompense de la traversée. En run, c'est
+  // le coffre de la salle (étape 12), sans autre garde que l'eau.
+  let islet: Pt | null = null;
+  if (isleAt) {
+    const cx = Math.floor(isleAt.x);
+    const cy = Math.floor(isleAt.y);
     if (!water[idx(cx, cy)]) {
+      islet = { x: cx, y: cy };
       objects.push({ sprite: CHEST, x: cx * TILE + TILE / 2, y: (cy + 1) * TILE, fades: false });
       blocked[idx(cx, cy)] = 1;
       tall[idx(cx, cy)] = 0;
@@ -1050,7 +1224,7 @@ export function generate(biome: Biome, seed: number, options: { store?: boolean;
   }
 
   const entrySide: Side = entry.y < 1 ? 'N' : entry.y > H - 1 ? 'S' : entry.x < 1 ? 'W' : 'E';
-  const exits = findExits(W, H, reachable, water, entrySide);
+  const exits = findExits(W, H, reachable, water, entrySide, biome.coast === 'ocean');
 
   const paving: Paving[] = plan && townStyle
     ? [
@@ -1062,10 +1236,190 @@ export function generate(biome: Biome, seed: number, options: { store?: boolean;
 
   for (let i = 0; i < N; i++) if (!inside[i]) solid[i] = 1;
 
+  // 10) Grotte (run.hasCave) : une bouche creusée dans une paroi sud, sur
+  // trois cases de roche pleine (le trou se dessine sur 2,5 cases de haut),
+  // devant un sol atteignable à pied, loin des sorties et du départ. Son
+  // propre tirage : le reste de la carte ne change pas qu'elle y soit ou non.
+  let cave: WorldMap['cave'] = null;
+  if (options.cave && cliff) {
+    const crng = new Rng(seed * 4099 + 17);
+    const floor = (x: number, y: number, lv: number) => {
+      const i = idx(x, y);
+      return levelAt(x, y) === lv && !blocked[i] && !!reachable[i] && !face[i] && !water[i];
+    };
+    const spots: Pt[] = [];
+    for (let y = 3; y < H - 4; y++) {
+      for (let x = 3; x < W - 3; x++) {
+        const lv = levelAt(x, y);
+        if (!lv) continue;
+        let ok = true;
+        for (let dx = -1; dx <= 1 && ok; dx++) {
+          // La roche : même étage sur trois rangées, paroi au bas, et pas la paroi haute d'un second étage.
+          for (let dy = -2; dy <= 0 && ok; dy++) ok = levelAt(x + dx, y + dy) === lv && !face[idx(x + dx, y + dy)];
+          ok &&= wall[idx(x + dx, y)] === 1 && floor(x + dx, y + 1, lv - 1) && floor(x + dx, y + 2, lv - 1);
+        }
+        if (!ok) continue;
+        if (exits.some((e) => Math.hypot(e.x - x, e.y - y) < 9) || Math.hypot(spawn.x - x, spawn.y - y) < 9) continue;
+        if (stairs.some((st) => Math.abs(st.x - x) < 4 && Math.abs(st.y - y) < 4)) continue;
+        spots.push({ x, y });
+      }
+    }
+    if (spots.length) {
+      const { x, y } = crng.pick(spots);
+      cave = { x, y, used: false };
+      // Ce qui poussait sur la roche au-dessus du trou, ou devant, disparaît : la bouche se voit.
+      objects.splice(0, objects.length, ...objects.filter((o) => {
+        const ox = o.x / TILE;
+        const oy = o.y / TILE;
+        return !(Math.abs(ox - (x + 0.5)) < 2.2 && oy > y - 2 && oy < y + 3.2);
+      }));
+      for (let dy = 1; dy <= 2; dy++) for (let dx = -1; dx <= 1; dx++) tall[idx(x + dx, y + dy)] = 0;
+      const rim = biome.cliffs?.blob ?? biome.mesas?.blob;
+      const mouth = rim === BLOB.cliffGrass ? CAVE.mouth.grass : rim === BLOB.cliffSnow ? CAVE.mouth.snow : CAVE.mouth.rock;
+      objects.push({ sprite: mouth, x: (x + 0.5) * TILE, y: (y + 1) * TILE, fades: false });
+      objects.sort((a, b) => a.y - b.y);
+    }
+  }
+
+  // 11) Arbres à baies (A-FAIRE 1.4) : deux ou trois par salle, sur une case
+  // dégagée au bord du chemin (BerryTree placé par MapGenerator « hors
+  // chemin, de préférence contre lui »), loin du départ, des sorties, de la
+  // grotte et les uns des autres. Une seule case bloquée, entourée de huit
+  // cases libres au même étage : on en fait toujours le tour, la zone
+  // atteignable ne se coupe pas. Son propre tirage, comme la grotte.
+  // Écart voulu : Godot en semait 4 à 8 par carte ; sur nos salles plus
+  // courtes, 2 ou 3 suffisent à faire un petit détour sans en couvrir le sol.
+  const berries: { x: number; y: number }[] = [];
+  if (biome.berry && !store) {
+    const brng = new Rng(seed * 7919 + 29);
+    const near: Pt[] = [];
+    const far: Pt[] = [];
+    for (let y = 3; y < H - 3; y++) {
+      for (let x = 3; x < W - 3; x++) {
+        const i = idx(x, y);
+        if (path[i] || patch[i]) continue;
+        const lv = levelAt(x, y);
+        let ok = true;
+        for (let dy = -1; dy <= 1 && ok; dy++) {
+          for (let dx = -1; dx <= 1 && ok; dx++) {
+            const j = idx(x + dx, y + dy);
+            ok = !!inside[j] && !blocked[j] && !!reachable[j] && !water[j] && !face[j] && levelAt(x + dx, y + dy) === lv;
+          }
+        }
+        // La rangée au-dessus aussi : la ramure (deux cases de haut) ne mord pas sur une paroi.
+        ok &&= !face[idx(x, y - 2)] && levelAt(x, y - 2) === lv;
+        if (!ok || Math.hypot(spawn.x - x, spawn.y - y) < 5) continue;
+        if (exits.some((e) => Math.hypot(e.x - x, e.y - y) < 5)) continue;
+        if (cave && Math.hypot(cave.x - x, cave.y - y) < 6) continue;
+        if (stairs.some((st) => x >= st.x - 2 && x <= st.x + 3 && y >= st.y - 2 && y <= st.y + st.rows + 2)) continue;
+        // Pas de décor au pied : un buisson ou un rocher collé au tronc le cacherait.
+        if (objects.some((o) => Math.abs(o.x / TILE - (x + 0.5)) < 1.6 && Math.abs(o.y / TILE - (y + 1)) < 1.6)) continue;
+        (touchesPath(path, x - 1, y) || touchesPath(path, x + 1, y) || touchesPath(path, x, y + 1) ? near : far).push({ x, y });
+      }
+    }
+    const want = 2 + brng.int(2);
+    for (const pool of [near, far]) {
+      while (berries.length < want && pool.length) {
+        const p = pool.splice(brng.int(pool.length), 1)[0];
+        if (!berries.some((b) => Math.hypot(b.x - p.x, b.y - p.y) < 7)) berries.push(p);
+      }
+    }
+    for (const { x, y } of berries) {
+      const i = idx(x, y);
+      blocked[i] = 1;
+      reachable[i] = 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) tall[idx(x + dx, y + dy)] = 0;
+    }
+  }
+
+  // 12) Coffre (A-FAIRE 1.5 ; MapGenerator._place_chest_gated) : dans deux
+  // salles sur trois, au fond d'une alcôve de rochers ouverte au sud, dont un
+  // obstacle (Biome.guard : arbuste à couper, rocher à briser) est la seule
+  // entrée. Le bloc de l'alcôve (3 × 3) et son abord sont entourés d'un
+  // anneau libre : on en fait le tour, la zone atteignable ne se coupe pas.
+  // Sans place pour l'alcôve, un coffre à découvert (comme le repli de
+  // Godot) ; l'îlot du Lac garde le sien. Son propre tirage, comme la grotte.
+  let chest: WorldMap['chest'] = null;
+  if (!store) {
+    const crng = new Rng(seed * 6007 + 41);
+    const far = (x: number, y: number, d: number) =>
+      Math.hypot(spawn.x - x, spawn.y - y) >= Math.max(6, d) &&
+      !exits.some((e) => Math.hypot(e.x - x, e.y - y) < 8) &&
+      !(cave && Math.hypot(cave.x - x, cave.y - y) < 6) &&
+      !stairs.some((st) => x >= st.x - 3 && x <= st.x + 4 && y >= st.y - 3 && y <= st.y + st.rows + 3) &&
+      !berries.some((b) => Math.hypot(b.x - x, b.y - y) < 3.5);
+    const free = (x: number, y: number, lv: number) => {
+      const i = idx(x, y);
+      return x > 0 && y > 0 && x < W - 1 && y < H - 1 && !!inside[i] && !blocked[i] && !!reachable[i] && !water[i] && !face[i] && levelAt(x, y) === lv;
+    };
+    /** Toutes les cases de x0..x1 × y0..y1 libres, au même étage ; `bare` : hors du chemin. */
+    const clear = (x0: number, x1: number, y0: number, y1: number, lv: number, bare: boolean) => {
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (!free(x, y, lv) || (bare && (path[idx(x, y)] || patch[idx(x, y)]))) return false;
+      return true;
+    };
+    /** Retire décor et herbe haute de x0..x1 × y0..y1 (pieds dedans). */
+    const strip = (x0: number, x1: number, y0: number, y1: number) => {
+      objects.splice(0, objects.length, ...objects.filter((o) => {
+        const ox = Math.floor(o.x / TILE);
+        const oy = Math.floor(o.y / TILE - 0.05);
+        return ox < x0 || ox > x1 || oy < y0 || oy > y1;
+      }));
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) tall[idx(x, y)] = 0;
+    };
+    const putChest = (x: number, y: number) => objects.push({ sprite: CHEST, x: (x + 0.5) * TILE, y: (y + 1) * TILE, fades: false });
+    if (islet) chest = { ...islet, guard: null };
+    else if (crng.chance(0.65)) {
+      const near: Pt[] = [];
+      const other: Pt[] = [];
+      for (let y = 4; y < H - 6; y++) {
+        for (let x = 4; x < W - 4; x++) {
+          const lv = levelAt(x, y);
+          // L'anneau (5 × 6) libre, le bloc de l'alcôve (3 × 3) hors du chemin.
+          if (!clear(x - 2, x + 2, y - 2, y + 3, lv, false) || !clear(x - 1, x + 1, y - 1, y + 1, lv, true) || !far(x, y, 6)) continue;
+          (touchesPath(path, x, y + 2) ? near : other).push({ x, y });
+        }
+      }
+      const pool = near.length ? near : other;
+      if (pool.length) {
+        const { x, y } = crng.pick(pool);
+        strip(x - 1, x + 1, y - 1, y + 1);
+        // Rochers : le fond et les deux flancs ; l'obstacle, au sud du coffre, est dessiné par run/chests.ts.
+        for (const [dx, dy] of [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [1, 1]]) {
+          objects.push({ sprite: crng.pick(PROPS.rockSmall), x: (x + dx + 0.5) * TILE, y: (y + dy + 1) * TILE, fades: false });
+        }
+        putChest(x, y);
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const i = idx(x + dx, y + dy);
+            // Plein, même pour un dash : on n'entre que par l'obstacle levé.
+            blocked[i] = solid[i] = 1;
+            reachable[i] = 0;
+          }
+        }
+        chest = { x, y, guard: biome.guard };
+      } else {
+        // Repli : à découvert, sur une case dont les huit voisines restent libres.
+        const spots: Pt[] = [];
+        for (let y = 3; y < H - 3; y++) for (let x = 3; x < W - 3; x++) if (clear(x - 1, x + 1, y - 1, y + 1, levelAt(x, y), false) && !path[idx(x, y)] && far(x, y, 6)) spots.push({ x, y });
+        if (spots.length) {
+          const { x, y } = crng.pick(spots);
+          strip(x, x, y, y);
+          putChest(x, y);
+          blocked[idx(x, y)] = 1;
+          reachable[idx(x, y)] = 0;
+          chest = { x, y, guard: null };
+        }
+      }
+      objects.sort((a, b) => a.y - b.y);
+    }
+  }
+
   return {
     w: W, h: H, biome, seed, inside, path, patch, water, tall, cliff, cliff2, stairs, face, blocked, solid, reachable,
     objects, flat, lilies, spawn, entrySide, exits, hub, paving, townStyle: townStyle?.name ?? null,
-    townLayout: plan?.layout ?? null, fountains: plan?.fountains ?? [],
+    townLayout: plan?.layout ?? null, fountains: plan?.fountains ?? [], cave, berries, chest,
+    front: routed ? (shape!.front ?? null) : null,
+    layout: shape?.id ?? null, layoutName: shape ? `${LAYOUT_NAMES[shape.id]} ${W}×${H}` : null,
   };
 }
 

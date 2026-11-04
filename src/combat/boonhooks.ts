@@ -1,3 +1,4 @@
+import { sfx } from '../audio/audio';
 import type { Rng } from '../core/rng';
 import type { Actor } from '../entities/actor';
 import { typeColor, withAlpha } from '../render/combatfx';
@@ -510,6 +511,10 @@ export class BoonHooks {
       return;
     }
     b.ultGauge = 0;
+    // Écart voulu : le jeu saluait l'ultime du jingle de victoire
+    // (CombatArena.gd:2959) ; ici le bruit des talents des combats Pokémon,
+    // puis le son du type sur chaque cible (attackAnim).
+    sfx('ability');
     const donor: DonorId = b.ult;
     const d = DONORS[donor];
     this.host.notify(`⚡ ${d.ult} !`);

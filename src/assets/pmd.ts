@@ -8,6 +8,8 @@
 // (pixel opaque le plus bas sur toute la planche) et le centre horizontal
 // opaque de la première frame de face : c'est ce qui ancre le sprite au sol.
 
+import { fetchJson } from './json';
+
 export interface PmdSheet {
   id: number;
   image: HTMLImageElement;
@@ -196,10 +198,9 @@ export function loadSheet(id: number, actions: readonly string[] = []): Promise<
 export function loadInfo(id: number): Promise<SpeciesInfo> {
   let pending = infoCache.get(id);
   if (!pending) {
-    pending = fetch(`/game/data/pokeapi/pokemon/${id}.json`)
-      .then((r) => (r.ok ? r.json() : {}))
-      .catch(() => ({}))
-      .then((d: { name_fr?: string; height_m?: number; weight_kg?: number }) => ({
+    pending = fetchJson<{ name_fr?: string; height_m?: number; weight_kg?: number }>(`/game/data/pokeapi/pokemon/${id}.json`)
+      .then((d) => d ?? {})
+      .then((d) => ({
         id,
         name: d.name_fr ?? `#${id}`,
         heightM: d.height_m ?? 0,

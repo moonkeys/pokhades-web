@@ -69,6 +69,9 @@ export class Input {
   private swapQueued = false;
   private padSwapWasDown = false;
   private padMovesWereDown = [false, false, false, false];
+  /** Stick virtuel des commandes tactiles (src/input/touch.ts), déjà normé. */
+  private stickX = 0;
+  private stickY = 0;
 
   constructor() {
     addEventListener('keydown', (e) => {
@@ -104,6 +107,11 @@ export class Input {
     this.ultQueued = false;
     let swap = this.swapQueued;
     this.swapQueued = false;
+
+    if (this.stickX || this.stickY) {
+      mx = this.stickX;
+      my = this.stickY;
+    }
 
     const pad = navigator.getGamepads?.().find((p) => p && p.connected);
     if (pad) {
@@ -142,6 +150,12 @@ export class Input {
       my /= len;
     }
     return { mx, my, dash, move, interact, ult, swap };
+  }
+
+  /** Position du stick tactile, de -1 à 1 sur chaque axe. */
+  setStick(x: number, y: number): void {
+    this.stickX = x;
+    this.stickY = y;
   }
 
   /** Oublie les appuis en attente (un écran de choix vient de se fermer : Entrée ne doit pas dasher). */

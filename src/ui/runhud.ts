@@ -1,8 +1,11 @@
+import { RESOURCES, RESOURCE_IDS, SHARDS, type ResourceId } from '../meta/catalog';
+import { resIcon } from './resicon';
 import { curve, spray } from './spray';
 
 // HUD de run, repris de HUD.gd et redessiné dans la DA « Tag sacré »
 // (src/ui/da.css, planche ui-r4.html) : en haut à gauche le lieu et les ₽ de
-// la run, au centre un message sur bande de papier (salle libérée, victoire,
+// la run (et les Rappels de l'équipe, s'il en reste à porter) — au Repaire,
+// les Baies puis le stock (Bois, Pierre, Nourriture, Éclats) —, au centre un message sur bande de papier (salle libérée, victoire,
 // défaite), à droite les notifications, le nom de la zone tagué à l'entrée
 // d'un biome, la barre du boss, et le voile noir des transitions.
 //
@@ -65,6 +68,13 @@ function firstVisit(name: string): boolean {
 export class RunHud {
   private readonly zone: HTMLElement;
   private readonly money: HTMLElement;
+  private readonly revives: HTMLElement;
+  private readonly revivesN: HTMLElement;
+  /** Chrono du Défi (salle spéciale). */
+  private readonly timer: HTMLElement;
+  /** Stock du Repaire : ressources de construction et Éclats de Champion, un compteur chacun. */
+  private readonly stock: HTMLElement;
+  private readonly stockN = new Map<ResourceId | 'shards', HTMLElement>();
   private readonly toastEl: HTMLElement;
   private readonly notices: HTMLElement;
   private readonly title: HTMLElement;
@@ -81,10 +91,33 @@ export class RunHud {
   private toastT = Infinity;
   private live: { el: HTMLElement; t: number }[] = [];
 
-  constructor(parent: HTMLElement) {
+  constructor(private readonly parent: HTMLElement) {
     const bar = el('div', 'run-bar', parent);
     this.zone = el('span', 'da-tape', bar);
     this.money = el('span', 'da-stamp', bar);
+    // Rappels de la Ceinture : l'icône du Rappel d'Essentials et le compte, bien en vue à côté des ₽.
+    this.revives = el('span', 'run-revives da-paper', bar);
+    const ico = el('img', '', this.revives) as HTMLImageElement;
+    ico.src = '/game/assets/essentials/items/REVIVE.png';
+    ico.alt = '';
+    this.revivesN = el('b', '', this.revives);
+    this.revives.hidden = true;
+    this.timer = el('span', 'run-timer da-paper', bar);
+    this.timer.hidden = true;
+    this.stock = el('span', 'run-stock da-paper', bar);
+    for (const r of RESOURCE_IDS) {
+      const chip = el('span', 'cs-res', this.stock);
+      chip.title = RESOURCES[r].name;
+      this.stockN.set(r, el('b', '', chip));
+      resIcon(r, chip);
+    }
+    const shard = el('span', 'cs-res', this.stock);
+    shard.title = 'Éclats de Champion';
+    this.stockN.set('shards', el('b', '', shard));
+    const shardIco = el('img', 'cs-res-ico', shard) as HTMLImageElement;
+    shardIco.src = `/game/assets/essentials/items/${SHARDS.icon}.png`;
+    shardIco.alt = '';
+    this.stock.hidden = true;
     this.toastEl = el('div', 'run-toast da-paper', parent);
     this.toastEl.style.opacity = '0';
     this.notices = el('div', 'run-notifs', parent);
@@ -122,6 +155,47 @@ export class RunHud {
     this.bossGhost.style.setProperty('--v', `${this.ghost * 100}%`);
   }
 
+  /**
+   * Rappels qui restent à toute l'équipe (Ceinture de Rappels, une réserve
+   * commune). null : hors run ou sans Ceinture.
+   */
+  setRevives(left: number | null): void {
+    this.revives.hidden = left === null;
+    if (left === null) return;
+    const text = `×${left}`;
+    if (this.revivesN.textContent === text) return;
+    // Un Rappel vient de servir : l'étiquette saute, comme les ₽.
+    if (this.revivesN.textContent) this.pop(this.revives);
+    this.revivesN.textContent = text;
+    this.revives.title = `${left} Rappel${left > 1 ? 's' : ''} dans l'équipe : un membre K.O. se relève seul à 50 % de ses PV.`;
+    this.revives.classList.toggle('none', left === 0);
+  }
+
+  /**
+   * Stock du Repaire, à côté des Baies (null : en run, où il ne se dépense
+   * pas). Un compteur qui change fait sauter sa pastille, comme les ₽.
+   */
+  setStock(stock: { resources: Record<ResourceId, number>; shards: number } | null): void {
+    this.stock.hidden = !stock;
+    if (!stock) return;
+    for (const [id, b] of this.stockN) {
+      const text = String(id === 'shards' ? stock.shards : stock.resources[id]);
+      if (b.textContent === text) continue;
+      if (b.textContent) this.pop(b.parentElement!);
+      b.textContent = text;
+    }
+  }
+
+  /** Chrono du Défi, en secondes ; null le masque. Rouge dans les dix dernières. */
+  setTimer(seconds: number | null): void {
+    this.timer.hidden = seconds === null;
+    if (seconds === null) return;
+    const s = Math.ceil(seconds);
+    const text = `⏱ ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+    if (this.timer.textContent !== text) this.timer.textContent = text;
+    this.timer.classList.toggle('hurry', s <= 10);
+  }
+
   /** Une notification à droite, en haut de la pile ; les plus anciennes pâlissent puis partent. */
   notify(n: Notice): void {
     const card = el('div', 'notif da-paper');
@@ -138,6 +212,27 @@ export class RunHud {
     this.notices.prepend(card);
     this.live.unshift({ el: card, t: 0 });
     for (const old of this.live.splice(MAX_NOTICES)) old.el.remove();
+  }
+
+  /**
+   * Le mini-tuto du prologue (ajout, retour de test : « une espèce de tuto, juste vite fait,
+   * les attaques ») : une carte de papier au-dessus des attaques, des touches et ce qu'elles
+   * font, qui s'efface d'elle-même au bout de `seconds`.
+   */
+  tutorial(rows: readonly [keys: readonly string[], label: string][], seconds = 12): void {
+    const card = el('div', 'run-tuto da-paper', this.parent);
+    el('span', 'da-tape', card, 'Pour te défendre');
+    for (const [keys, label] of rows) {
+      const row = el('div', 'row', card);
+      const caps = el('span', 'keys', row);
+      for (const k of keys) el('kbd', '', caps, k);
+      el('span', '', row, label);
+    }
+    card.animate([{ opacity: 0, transform: 'translate(-50%, 1em)' }, { opacity: 1, transform: 'translate(-50%, 0)' }], { duration: 300, easing: 'ease-out' });
+    card.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600, delay: seconds * 1000, fill: 'forwards' }).finished.then(
+      () => card.remove(),
+      () => card.remove(),
+    );
   }
 
   /** Message court sans titre (boutique, boons, montée de niveau…) : une notification simple. */

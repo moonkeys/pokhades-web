@@ -288,14 +288,11 @@ export class Boons {
    * CombatArena._roll_god_boons : un seul donateur (le premier, dans un ordre
    * mélangé, qui a au moins 3 dons à offrir), 3 cartes. La 1re est un duo s'il y
    * en a un de débloqué avec lui, la 3e son ultime à partir de l'acte 2.
+   * `prefer` : le donateur annoncé par la porte (pickDonor), s'il a encore
+   * 3 dons à offrir ; sinon (des dons pris entre-temps l'ont épuisé), un autre.
    */
-  offer(rng: Rng, room: number, act: number): BoonOffer | null {
-    const gods = [...DONOR_IDS];
-    for (let i = gods.length - 1; i > 0; i--) {
-      const j = rng.int(i + 1);
-      [gods[i], gods[j]] = [gods[j], gods[i]];
-    }
-    const god = gods.find((g) => this.offerableFrom(g).length >= 3);
+  offer(rng: Rng, room: number, act: number, prefer?: DonorId): BoonOffer | null {
+    const god = prefer && this.offerableFrom(prefer).length >= 3 ? prefer : this.pickDonor(rng);
     if (!god) return null;
     const pool = this.offerableFrom(god);
     for (let i = pool.length - 1; i > 0; i--) {
@@ -313,6 +310,16 @@ export class Boons {
     while (cards.length < 3 && pool.length) cards.push(card(pool.shift()!));
     if (act >= 1 && this.ult !== god) cards[2] = { id: `__ult__${god}`, rarity: 3, result: 3 };
     return { donor: god, cards };
+  }
+
+  /** Un donateur au hasard parmi ceux qui ont encore au moins 3 dons à offrir (null : aucun). */
+  pickDonor(rng: Rng): DonorId | null {
+    const gods = [...DONOR_IDS];
+    for (let i = gods.length - 1; i > 0; i--) {
+      const j = rng.int(i + 1);
+      [gods[i], gods[j]] = [gods[j], gods[i]];
+    }
+    return gods.find((g) => this.offerableFrom(g).length >= 3) ?? null;
   }
 
   /** Vœu Exaucé : un don possédé au hasard (non prismatique) monte d'un cran. */

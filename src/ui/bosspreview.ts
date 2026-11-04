@@ -1,3 +1,4 @@
+import { sfx } from '../audio/audio';
 import { loadInfo } from '../assets/pmd';
 import { TYPE_CHART, typeMultiplier } from '../combat/damage';
 import type { Champion } from '../data/champions';
@@ -35,6 +36,8 @@ export class BossPreview {
   constructor(parent: HTMLElement) {
     this.root = el('div', 'reward', parent);
     this.root.hidden = true;
+    // Au doigt : toucher l'affiche la referme.
+    this.root.addEventListener('click', () => this.close());
     addEventListener(
       'keydown',
       (e) => {
@@ -53,6 +56,7 @@ export class BossPreview {
 
   close(): void {
     if (this.root.hidden) return;
+    sfx('menuClose');
     this.root.hidden = true;
     this.root.replaceChildren();
     const done = this.onClose;
@@ -62,6 +66,7 @@ export class BossPreview {
 
   /** `bossRoom` : index de la salle du boss, pour les niveaux (RunManager.boss_wave_level). */
   show(champ: Champion, final: boolean, bossRoom: number, onClose: () => void): void {
+    sfx('menuOpen');
     this.onClose = onClose;
     this.root.replaceChildren();
     this.root.classList.remove('play');

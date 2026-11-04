@@ -1,4 +1,5 @@
 import type { BuffStat, Status } from './pokemon';
+import { fetchJson } from '../assets/json';
 
 // Capacités : fiches PokéAPI embarquées (data/pokeapi/move/<nom>.json), plus
 // la portée et la cadence propres à chaque attaque, dérivées de sa classe et
@@ -121,10 +122,7 @@ const cache = new Map<string, Promise<Move | null>>();
 export function loadMove(api: string, levelLearned = 1): Promise<Move | null> {
   let pending = cache.get(api);
   if (!pending) {
-    pending = fetch(`/game/data/pokeapi/move/${api}.json`)
-      .then((r) => (r.ok ? (r.json() as Promise<MoveJson>) : null))
-      .catch(() => null)
-      .then((d) => {
+    pending = fetchJson<MoveJson>(`/game/data/pokeapi/move/${api}.json`).then((d) => {
         if (!d) return null;
         const cls = d.damage_class === 'special' || d.damage_class === 'status' ? d.damage_class : 'physical';
         return tune({

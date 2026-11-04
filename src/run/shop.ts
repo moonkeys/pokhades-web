@@ -1,3 +1,4 @@
+import { sfx } from '../audio/audio';
 import { loadImage, loadInfo, loadSheet, PLAYER_ACTIONS } from '../assets/pmd';
 import type { Rng } from '../core/rng';
 import { FAUNA, MERC_POOLS, MERCHANT_SPECIES, SHOP_IDLER, SHOP_STROLLERS, SWIMMERS } from '../data/species';
@@ -467,6 +468,7 @@ export class Shop {
       if (this.host.team().length >= MAX_TEAM) return this.say(p, `Ton équipe est au complet (${MAX_TEAM}).`);
       if (run.money < p.merc.price) return this.say(p, `${p.merc.price} ₽, pas un de moins.`);
       run.money -= p.merc.price;
+      sfx('buy');
       this.host.recruit(p.actor.speciesId, p.merc.level, p.actor.x, p.actor.y);
       this.host.message(`${name} rejoint l’équipe (N.${p.merc.level}).`);
       p.bubble.remove();
@@ -519,6 +521,7 @@ export class Shop {
     const run = this.run!;
     const { refuse } = this.offerState(it, player);
     if (refuse) {
+      sfx('buzzer');
       this.host.message(refuse);
       return;
     }
@@ -527,12 +530,14 @@ export class Shop {
       // Rien n'est débité tant qu'on n'a pas choisi : le parchemin peut se refermer sans rien prendre.
       this.host.openMoves(it.price, () => {
         run.money -= it.price;
+        sfx('buy');
         this.ctUsed = true;
         it.sold = 0.01;
       });
       return;
     }
     run.money -= it.price;
+    sfx('buy');
     if (it.kind === 'heal') {
       mon.hp = it.heal < 0 ? mon.maxHp : Math.min(mon.maxHp, mon.hp + it.heal);
       it.sold = 0.01;
