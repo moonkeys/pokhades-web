@@ -23,9 +23,12 @@ interface View {
   h: number;
 }
 
-const COUNT: Record<ParticleKind, number> = { pollen: 46, motes: 26, leaves: 34, fireflies: 28, embers: 48 };
+const COUNT: Record<ParticleKind, number> = { pollen: 46, motes: 26, leaves: 34, fireflies: 28, embers: 48, rain: 150, snow: 90, sand: 130 };
+/** Genres qui entrent par un bord de la vue (et non n'importe où) quand ils renaissent. */
+const FROM_EDGE: readonly ParticleKind[] = ['leaves', 'embers', 'rain', 'snow', 'sand'];
 const LEAF_COLORS = ['#e8622a', '#f2a33a', '#c9472a', '#f5c24a'];
 const EMBER_COLORS = ['#ff9a3a', '#ffd36a', '#ff6a2a'];
+const SAND_COLORS = ['#e8cf96', '#d6b16e', '#f2e0b4'];
 
 export class Particles {
   private items: Particle[] = [];
@@ -80,6 +83,29 @@ export class Particles {
         p.life = r.range(3, 7);
         p.color = r.pick(EMBER_COLORS);
         break;
+      // Météo : la pluie tombe en biais, vite ; la grêle tombe en flocons qui
+      // dansent ; le sable file à l'horizontale, entré par la gauche.
+      case 'rain':
+        if (!anywhere) p.y = view.y - 6;
+        p.vx = r.range(-40, -30);
+        p.vy = r.range(230, 290);
+        p.life = 3;
+        p.color = r.chance(0.5) ? '#cfe2ff' : '#a9c6ee';
+        break;
+      case 'snow':
+        if (!anywhere) p.y = view.y - 4;
+        p.vx = r.range(-8, 8);
+        p.vy = r.range(26, 44);
+        p.life = 14;
+        p.color = '#ffffff';
+        break;
+      case 'sand':
+        if (!anywhere) p.x = view.x - 6;
+        p.vx = r.range(150, 220);
+        p.vy = r.range(-6, 14);
+        p.life = 4;
+        p.color = r.pick(SAND_COLORS);
+        break;
     }
     return p;
   }
@@ -103,11 +129,11 @@ export class Particles {
         p.vx = Math.max(-8, Math.min(8, p.vx));
         p.vy = Math.max(-8, Math.min(8, p.vy));
       }
-      const sway = kind === 'leaves' ? Math.sin(this.time * 2.2 + p.phase) * 10 : 0;
+      const sway = kind === 'leaves' ? Math.sin(this.time * 2.2 + p.phase) * 10 : kind === 'snow' ? Math.sin(this.time * 1.6 + p.phase) * 8 : 0;
       p.x += (p.vx + sway) * dt;
       p.y += p.vy * dt;
       const out = p.x < view.x - margin || p.x > view.x + view.w + margin || p.y < view.y - margin || p.y > view.y + view.h + margin;
-      if (p.age > p.life || out) this.items[i] = this.spawn(kind, view, out && kind !== 'leaves' && kind !== 'embers');
+      if (p.age > p.life || out) this.items[i] = this.spawn(kind, view, out && !FROM_EDGE.includes(kind));
     }
   }
 
@@ -115,6 +141,8 @@ export class Particles {
     const fade = Math.min(1, p.age / 0.6, (p.life - p.age) / 0.8);
     if (this.kind === 'fireflies') return Math.max(0, Math.sin(this.time * 2.6 + p.phase)) * fade;
     if (this.kind === 'pollen' || this.kind === 'motes') return (0.55 + 0.45 * Math.sin(this.time * 3 + p.phase)) * fade;
+    if (this.kind === 'rain') return 0.55 * fade;
+    if (this.kind === 'sand') return 0.7 * fade;
     return fade;
   }
 
@@ -124,8 +152,12 @@ export class Particles {
       if (a <= 0.02) continue;
       ctx.globalAlpha = a;
       ctx.fillStyle = p.color;
-      const w = this.kind === 'leaves' ? 2 : 1;
-      ctx.fillRect(Math.round((p.x - camX) * k), Math.round((p.y - camY) * k), w * k, k);
+      const x = Math.round((p.x - camX) * k);
+      const y = Math.round((p.y - camY) * k);
+      // Une goutte est un trait penché (deux pixels décalés par rangée), un grain de sable un tiret.
+      if (this.kind === 'rain') for (let j = 0; j < 4; j++) ctx.fillRect(x - Math.round(j * 0.5) * k, y + j * k, k, k);
+      else if (this.kind === 'sand') ctx.fillRect(x, y, 3 * k, k);
+      else ctx.fillRect(x, y, (this.kind === 'leaves' ? 2 : 1) * k, k);
     }
     ctx.globalAlpha = 1;
   }

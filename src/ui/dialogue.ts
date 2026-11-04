@@ -1,4 +1,5 @@
 import { typePill } from './hud';
+import { isTouch } from '../input/touch';
 
 // Dialogue d'un champion, repris de ChampionDialogueScreen.gd et redessiné
 // dans la DA « Tag sacré » (src/ui/da.css) : en bas de l'écran, comme une
@@ -41,6 +42,8 @@ export class Dialogue {
   private full = '';
   private t = 0;
   private onDone: (() => void) | null = null;
+  /** Se referme seule une fois lue (sinon, on attend Entrée : les répliques de l'histoire). */
+  private auto = true;
 
   constructor(parent: HTMLElement) {
     this.root = el('div', 'dialogue', parent);
@@ -50,12 +53,19 @@ export class Dialogue {
     const sheet = el('div', 'sheet da-paper', this.root);
     this.head = el('div', 'nm', sheet);
     this.text = el('p', '', sheet);
-    el('div', 'hint', sheet, 'Entrée pour passer…');
-    addEventListener('keydown', (e) => {
-      if (this.root.hidden || (e.code !== 'Enter' && e.code !== 'KeyE')) return;
+    el('div', 'hint', sheet, isTouch() ? 'Touche pour passer…' : 'Entrée pour passer…');
+    const advance = () => {
       const typed = Math.floor(this.t / CHAR_TIME);
       if (typed < this.full.length) this.t = this.full.length * CHAR_TIME;
       else this.close();
+    };
+    addEventListener('keydown', (e) => {
+      if (this.root.hidden || (e.code !== 'Enter' && e.code !== 'KeyE')) return;
+      advance();
+    });
+    // Au doigt (ou à la souris) : toucher l'écran fait comme Entrée.
+    addEventListener('pointerdown', () => {
+      if (!this.root.hidden) advance();
     });
   }
 
@@ -68,9 +78,10 @@ export class Dialogue {
     return (text.length + 4) * CHAR_TIME + READ_TIME;
   }
 
-  show(who: Speaker, text: string, onDone?: () => void): void {
+  show(who: Speaker, text: string, onDone?: () => void, auto = true): void {
     this.full = `« ${text} »`;
     this.t = 0;
+    this.auto = auto;
     this.onDone = onDone ?? null;
     this.head.replaceChildren(el('span', 'da-tape', undefined, who.name.toUpperCase()), typePill(who.type), el('small', '', undefined, who.role));
     this.text.textContent = '';
@@ -96,6 +107,6 @@ export class Dialogue {
     this.t += dt;
     const n = Math.min(this.full.length, Math.floor(this.t / CHAR_TIME));
     if (this.text.textContent!.length !== n) this.text.textContent = this.full.slice(0, n);
-    if (this.t >= this.full.length * CHAR_TIME + READ_TIME) this.close();
+    if (this.auto && this.t >= this.full.length * CHAR_TIME + READ_TIME) this.close();
   }
 }

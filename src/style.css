@@ -262,3 +262,406 @@ body {
   font-size: 18px;
 }
 
+/* Salle piège (room.ts) : la récompense posée en appât palpite, trop belle pour être honnête. */
+.room-label.bait {
+  animation: room-bait 1.1s ease-in-out infinite;
+}
+
+@keyframes room-bait {
+  50% {
+    opacity: 0.55;
+    filter: drop-shadow(0 0 6px #e8604c);
+  }
+}
+
+/*
+ * Ligne de front (room.ts, announce) : d'où vient la vague. Une flèche
+ * magenta (la couleur des anneaux d'apparition) qui palpite au-dessus du
+ * bout du couloir, ou plaquée au bord de l'écran quand il est hors champ ;
+ * `--a` l'oriente vers lui. Pas de texte.
+ */
+.room-incoming {
+  position: absolute;
+  left: 0;
+  top: 0;
+  /* Le contour de la flèche : sur l'élément parent, que le clip-path de la flèche ne rogne pas. */
+  filter: drop-shadow(0 0 1px #1a1008) drop-shadow(0 0 1px #1a1008) drop-shadow(0 2px 0 #1a1008);
+  animation: room-incoming 0.45s ease-in-out infinite alternate;
+}
+.room-incoming i {
+  display: block;
+  width: 38px;
+  height: 38px;
+  background: #f259bf;
+  clip-path: polygon(0 18%, 58% 18%, 58% 0, 100% 50%, 58% 100%, 58% 82%, 0 82%);
+  rotate: var(--a);
+}
+
+@keyframes room-incoming {
+  to {
+    scale: 1.12;
+  }
+}
+
+/*
+ * Porte de sortie de boss (src/run/room.ts, biomeLabel) : le biome où elle
+ * mène en grand, à sa couleur, au-dessus de la récompense. Gardée par une CS
+ * qu'on n'a pas : grisée, l'icône de la CS désaturée.
+ */
+.room-label.route {
+  text-align: center;
+}
+.room-label .room-biome {
+  display: block;
+  font-family: var(--head);
+  font-weight: 400;
+  font-size: 30px;
+  line-height: 0.95;
+  letter-spacing: 0.04em;
+  color: var(--b);
+  -webkit-text-stroke: 6px #1a1008;
+}
+.room-label.route.locked .room-biome {
+  opacity: 0.55;
+}
+.room-label.route.locked .rw-ico img {
+  filter: grayscale(1) drop-shadow(0 0 1px #1a1008) drop-shadow(0 0 1px #1a1008);
+}
+
+
+/* Icône de la récompense devant le texte de l'étiquette (src/ui/rewardicons.ts). */
+.room-label .rw-ico {
+  display: inline-grid;
+  place-items: center;
+  width: 1.9em;
+  height: 1.9em;
+  margin-right: 0.3em;
+  vertical-align: middle;
+}
+.room-label .rw-ico img {
+  width: 100%;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 0 1px #1a1008) drop-shadow(0 0 1px #1a1008);
+}
+/*
+ * Badge d'un don (src/ui/rewardicons.ts, donorBadge) : une pastille comme un
+ * autocollant de la DA — disque à la couleur du type (plus clair au centre),
+ * liseré de papier, trait d'encre, ombre portée décalée — la tête du
+ * légendaire cadrée dedans, et un reflet en haut à gauche. `--s` : son
+ * diamètre. En HTML pour rester net (le canvas le pixellisait).
+ */
+.rw-badge {
+  --s: 1.9em;
+  --ring: calc(var(--s) * 0.07);
+  position: relative;
+  display: inline-block;
+  width: var(--s);
+  height: var(--s);
+  border-radius: 50%;
+  overflow: hidden;
+  vertical-align: middle;
+  background: radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--c) 70%, #fff8e6) 0%, var(--c) 55%, color-mix(in srgb, var(--c) 65%, #1a1008) 100%);
+  box-shadow:
+    inset 0 0 0 calc(var(--ring) * 0.9) color-mix(in srgb, var(--c) 70%, #1a1008),
+    inset 0 0 0 calc(var(--ring) * 1.3) rgba(255, 248, 230, 0.35),
+    0 0 0 var(--ring) #efe6d2,
+    0 0 0 calc(var(--ring) * 1.8) #1a1008,
+    calc(var(--ring) * 1.2) calc(var(--ring) * 1.6) 0 calc(var(--ring) * 1.8) rgba(26, 16, 8, 0.45);
+}
+.rw-badge img {
+  position: absolute;
+  max-width: none;
+  height: auto;
+  image-rendering: auto;
+  filter: drop-shadow(0 0 1px rgba(26, 16, 8, 0.7));
+}
+/* Le reflet : une tache claire en haut à gauche, comme sur un badge verni. */
+.rw-badge::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(ellipse 45% 30% at 32% 20%, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0) 70%);
+  pointer-events: none;
+}
+.room-label .rw-ico.boon {
+  width: auto;
+  height: auto;
+  margin-right: 0.45em;
+}
+.room-label.near .rw-badge {
+  --s: 2.1em;
+}
+
+/* Le badge posé au centre de la salle : il flotte et se balance doucement au-dessus de son ombre. */
+.rw-pedestal {
+  position: absolute;
+  left: 0;
+  top: 0;
+  line-height: 0;
+}
+.rw-pedestal .rw-badge {
+  --s: inherit;
+  width: var(--s);
+  height: var(--s);
+  animation: rw-float 2.6s ease-in-out infinite;
+}
+@keyframes rw-float {
+  0%,
+  100% {
+    transform: translateY(6%) rotate(-5deg);
+  }
+  50% {
+    transform: translateY(-6%) rotate(4deg);
+  }
+}
+
+/* ── Commandes tactiles (src/input/touch.ts) ──────────────────────────────
+ * Stick à gauche (il apparaît sous le pouce), boutons autour du dash à droite,
+ * attaques sur les cartes du HUD. --t met l'ensemble à l'échelle des petits écrans.
+ */
+body.touch {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+body.touch #screen {
+  touch-action: none;
+}
+
+body.touch {
+  --t: 1;
+}
+.touch {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  touch-action: none;
+  font-family: var(--head);
+}
+@media (max-height: 430px) {
+  body.touch {
+    --t: 0.85;
+  }
+}
+@media (max-height: 340px) {
+  body.touch {
+    --t: 0.72;
+  }
+}
+/* Derrière un écran de choix ou pendant un dialogue : ce sont eux qu'on touche. */
+.modal .touch,
+.talking .touch {
+  display: none;
+}
+
+.touch-zone {
+  position: absolute;
+  left: 0;
+  top: 18%;
+  bottom: 0;
+  width: 50%;
+  pointer-events: auto;
+}
+.touch-stick {
+  position: absolute;
+  width: calc(var(--t) * 110px);
+  height: calc(var(--t) * 110px);
+  margin: calc(var(--t) * -55px) 0 0 calc(var(--t) * -55px);
+  border-radius: 50%;
+  border: 2px solid rgba(255, 246, 224, 0.45);
+  background: radial-gradient(circle, rgba(20, 16, 14, 0.15), rgba(20, 16, 14, 0.4));
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.touch-stick.on {
+  opacity: 1;
+}
+.touch-stick i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(var(--t) * 48px);
+  height: calc(var(--t) * 48px);
+  margin: calc(var(--t) * -24px) 0 0 calc(var(--t) * -24px);
+  border-radius: 50%;
+  background: rgba(255, 246, 224, 0.75);
+  box-shadow: 0 2px 0 rgba(20, 16, 14, 0.5);
+}
+
+.touch-btn {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  overflow: hidden;
+  pointer-events: auto;
+  touch-action: none;
+  font: inherit;
+  font-size: calc(var(--t) * 15px);
+  letter-spacing: 0.05em;
+  line-height: 1;
+  color: var(--ink);
+  background: rgba(239, 230, 210, 0.82);
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  box-shadow: 0 calc(var(--t) * 3px) 0 rgba(20, 16, 14, 0.55);
+}
+.touch-btn.down {
+  transform: translateY(calc(var(--t) * 2px));
+  box-shadow: 0 1px 0 rgba(20, 16, 14, 0.55);
+  background: var(--paper-hi);
+}
+
+.touch-pad {
+  position: absolute;
+  right: env(safe-area-inset-right, 0px);
+  bottom: env(safe-area-inset-bottom, 0px);
+  width: calc(var(--t) * 180px);
+  height: calc(var(--t) * 170px);
+}
+.touch-pad .touch-btn {
+  width: calc(var(--t) * var(--s, 56px));
+  height: calc(var(--t) * var(--s, 56px));
+  right: calc(var(--t) * var(--r));
+  bottom: calc(var(--t) * var(--b));
+}
+.touch-btn.dash {
+  --s: 80px;
+  --r: 20px;
+  --b: 12px;
+  font-size: calc(var(--t) * 20px);
+  background: rgba(255, 210, 63, 0.88);
+}
+.touch-btn.act {
+  --s: 62px;
+  --r: 108px;
+  --b: 14px;
+  font-size: calc(var(--t) * 14px);
+  opacity: 0.55;
+  transition: opacity 0.15s, background 0.15s;
+}
+/* Quelque chose à faire à portée (parler, ramasser, acheter) : le bouton s'allume. */
+.touch-btn.act.ready {
+  opacity: 1;
+  background: rgba(64, 224, 209, 0.92);
+  animation: touch-act 0.7s ease-in-out infinite alternate;
+}
+@keyframes touch-act {
+  to {
+    box-shadow: 0 0 calc(var(--t) * 12px) rgba(64, 224, 209, 0.9);
+  }
+}
+.touch-btn.swap { --s: 46px; --r: 126px; --b: 92px; font-size: calc(var(--t) * 20px); }
+.touch-btn.ult { --s: 54px; --r: 34px; --b: 108px; color: var(--paper); background: rgba(20, 16, 14, 0.7); border-color: var(--paper); }
+.touch-btn.ult.full {
+  color: var(--ink);
+  background: var(--spray);
+  animation: touch-ult 0.8s ease-in-out infinite alternate;
+}
+@keyframes touch-ult {
+  to {
+    box-shadow: 0 0 calc(var(--t) * 14px) var(--spray);
+  }
+}
+
+/* Les cartes d'attaque du HUD servent de boutons : au doigt, elles quittent le bas
+   de l'écran pour une grille 2 × 2 plus grosse, sous le pouce droit, à côté du dash. */
+body.touch .hud-moves {
+  position: fixed;
+  right: calc(env(safe-area-inset-right, 0px) + var(--t) * 186px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--t) * 10px);
+  grid-template-columns: repeat(2, calc(var(--t) * 136px));
+  grid-template-rows: repeat(2, calc(var(--t) * 56px));
+  gap: calc(var(--t) * 8px);
+}
+body.touch .hud-move {
+  pointer-events: auto;
+  touch-action: none;
+  padding: 0 calc(var(--t) * 10px) 0 calc(var(--t) * 16px);
+  transition: transform 0.08s;
+}
+body.touch .hud-move::before {
+  left: calc(var(--t) * 5px);
+  width: calc(var(--t) * 5px);
+  top: calc(var(--t) * 6px);
+  bottom: calc(var(--t) * 6px);
+}
+body.touch .hud-move .mname {
+  font-size: calc(var(--t) * 19px);
+}
+body.touch .hud-move .pill {
+  font-size: calc(var(--t) * 9px);
+}
+body.touch .hud-move .minfo {
+  margin-top: calc(var(--t) * 3px);
+  font-size: calc(var(--t) * 10px);
+}
+body.touch .hud-move .cross {
+  right: calc(var(--t) * 8px);
+  bottom: calc(var(--t) * 3px);
+  font-size: calc(var(--t) * 14px);
+}
+body.touch .hud-move.down {
+  transform: translateY(2px) scale(0.95);
+  filter: brightness(1.15);
+}
+
+.touch-top {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 8px);
+  right: calc(env(safe-area-inset-right, 0px) + 8px);
+  display: flex;
+  gap: 8px;
+}
+.touch-btn.menu {
+  position: static;
+  min-width: calc(var(--t) * 40px);
+  height: calc(var(--t) * 40px);
+  padding: 0 calc(var(--t) * 10px);
+  border-radius: calc(var(--t) * 10px);
+  font-size: calc(var(--t) * 18px);
+}
+
+/* L'interface est pensée en 16:9 : en portrait sur un téléphone, on demande de tourner l'appareil
+   (une tablette en portrait reste assez large pour jouer). */
+.touch-rotate {
+  display: none;
+}
+@media (orientation: portrait) and (max-width: 700px) {
+  body.touch .touch-rotate {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: grid;
+    place-content: center;
+    gap: 16px;
+    text-align: center;
+    background: #0b0d0a;
+    color: var(--paper);
+    font-family: var(--head);
+    font-size: 26px;
+    letter-spacing: 0.05em;
+  }
+  body.touch .touch-rotate b {
+    font-size: 72px;
+    color: var(--gold-da);
+    animation: touch-rotate 2s ease-in-out infinite;
+  }
+}
+@keyframes touch-rotate {
+  0%, 30% { transform: rotate(0); }
+  60%, 100% { transform: rotate(90deg); }
+}
+
+/* Au doigt, les rappels de touches du HUD ne disent rien. */
+.touch .hud-move .key,
+body.touch .hud-move .key {
+  display: none;
+}
+
+/* Le voile autour des réglages les referme d'un toucher (settingsmenu.ts l'écoute déjà). */
+.optmenu .poster-dim {
+  pointer-events: auto;
+}

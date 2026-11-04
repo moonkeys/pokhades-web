@@ -1,16 +1,19 @@
+import { cry, sfx } from '../audio/audio';
 import { dirFromVector, type Actor } from '../entities/actor';
 import type { InputSample } from '../input/input';
 import { CombatFx, kindFromMultiplier, typeColor, type NumberKind } from '../render/combatfx';
 import type { WorldMap } from '../world/generate';
-import { calculateDamage } from './damage';
+import { calculateDamage, currentWeather } from './damage';
+import { CHIP, chips } from '../world/weather';
 import type { Run } from '../run/run';
 import { AttackState } from './attackstate';
 import { BoonHooks } from './boonhooks';
 import { forcedStatus } from './boons';
-import { ENEMY_ORB_SPEED } from './enemy';
 import { BUFF_TIME, type Move, type MoveEffect } from './moves';
 import { BUFF_LABEL, XP_MULTIPLIER } from './pokemon';
+import { PowerUps } from '../render/powerup';
 import type { Status } from './pokemon';
+import type { StrikeSnap } from '../net/net';
 
 // Combat de l'équipe, porté de TeamMember.gd (_attack, _ranged_attack, combo,
 // recharges) et de la réception des coups d'EnemyAI.gd (recul, ténacité,
@@ -22,8 +25,8 @@ import type { Status } from './pokemon';
 // dons, le gel d'impact et la secousse — sinon l'écran tremblerait sans cesse.
 //
 // Pas de hitbox, comme le jeu : une attaque physique touche tout ce qui est
-// dans le disque de sa portée, autour du Pokémon ; une attaque spéciale tire
-// un orbe à guidage total sur l'ennemi le plus proche à portée.
+// dans le disque de sa portée, autour du Pokémon ; une attaque spéciale frappe
+// l'ennemi le plus proche à portée, directement sur lui (voir Strike).
 
 /** TeamMember.GLOBAL_LOCK : délai minimal entre deux capacités. */
 const GLOBAL_LOCK = 0.34;
@@ -39,21 +42,24 @@ const KNOCKBACK_TIME = 0.15;
 const STAGGER = KNOCKBACK * 1.7;
 const STAGGER_TIME = 0.22;
 const POISE_TIME = 1.1;
-/** Projectile.gd : vitesse, distance de touche, durée de vie, hauteurs de départ et d'arrivée. */
-const ORB_SPEED = 14;
-const ORB_HIT = 0.55;
-const ORB_LIFE = 3;
-const ORB_FROM_H = 0.9;
-const ORB_TO_H = 0.8;
 /**
- * Virage maximal d'un orbe ennemi (rad/s). Le jeu les guide à 100 % : une
- * fois tiré, le coup était inévitable. Bridé, l'orbe ne fait qu'infléchir sa
- * course (une quarantaine de degrés sur une demi-seconde de vol) : il
- * punit qui reste planté, mais courir de côté ou dasher au bon moment l'évite.
+ * Attaques spéciales : plus d'orbe qui traverse l'écran (Projectile.gd), le
+ * coup tombe sur la cible elle-même, avec l'animation de la capacité. Une
+ * marque au sol, à la couleur du type, l'annonce juste avant.
+ * Écart voulu avec le jeu (retour de test : « Éclair doit frapper
+ * instantanément ») :
+ *   - coup de l'équipe : la marque suit sa cible et frappe après STRIKE_DELAY,
+ *     à peine perceptible, le temps de lire qui va être touché ;
+ *   - coup d'un sauvage : la marque se pose là où était sa cible au tir et
+ *     frappe après ENEMY_STRIKE_DELAY ; qui en sort à temps (ou la traverse en
+ *     dash) l'évite. C'est l'esquive que permettait l'orbe bridé, en lisible.
  */
-const ENEMY_ORB_TURN = 0.8;
-/** Un orbe ennemi qui a frôlé sa cible puis s'en éloigne ne la poursuit plus. */
-const ENEMY_ORB_COMMIT = 1.6;
+const STRIKE_DELAY = 0.12;
+const ENEMY_STRIKE_DELAY = 0.45;
+/** Rayon de la marque d'un sauvage (cases) : touché si l'on est encore dedans quand elle frappe. */
+const ENEMY_STRIKE_RADIUS = 0.8;
+/** Rayon dessiné de la marque d'un coup de l'équipe, simple repère sous la cible. */
+const STRIKE_RADIUS = 0.55;
 /** Portée des capacités de statut qui visent un sauvage (TeamMember.STATUS_MOVE_RANGE). */
 const STATUS_MOVE_RANGE = 9;
 /**
@@ -62,6 +68,18 @@ const STATUS_MOVE_RANGE = 9;
  * parti ne s'évitait pas, et un groupe de sauvages devenait impossible.
  */
 const DASH_IFRAMES_AFTER = 0.08;
+/**
+ * Entrée en puissance d'un Pokémon de champion (render/powerup.ts) :
+ * concentration jusqu'à `burst`, libération, motif du type jusqu'à `dur` (s).
+ * Il n'agit pas et ne prend aucun coup pendant ce temps.
+ */
+const INTRO = { champion: { burst: 0.45, dur: 1.2 }, boss: { burst: 0.7, dur: 1.9 } };
+/**
+ * Évolution d'un membre (Combat.evolve) : la silhouette blanchit en pulsant
+ * jusqu'à l'échange de forme, puis la nouvelle reprend ses couleurs (s).
+ * Écart voulu : le jeu Godot change d'espèce sur place, sans mise en scène.
+ */
+export const EVOLVE = { dur: 1.6, swapAt: 0.85 };
 /** Durée du fondu de K.O. avant retrait (EnemyAI.gd:1351-1373). */
 export const DEATH_TIME = 0.5;
 
@@ -76,26 +94,50 @@ const STATUS_ROLL: Record<string, [Status, number]> = {
   ghost: ['sleep', 0.1],
 };
 
-interface Orb {
-  /** Tiré par un sauvage : il vise le joueur, à sa propre vitesse et en virant moins sec. */
+/**
+ * Attaques de zone des champions et de leur as (EnemyBrain), posées au sol
+ * puis résolues contre toute l'équipe : un disque, une bande qui part du
+ * lanceur (rayon), ou un cône devant lui (souffle). Directions unitaires.
+ * Écart voulu avec le jeu, qui n'en a aucune : un boss ne faisait que tirer ou
+ * frapper une cible, et une équipe de quatre l'encerclait sans jamais bouger
+ * (retour de test). Ici chaque zone s'annonce assez tôt pour qu'on en sorte.
+ */
+export type AreaShape =
+  | { kind: 'circle'; r: number }
+  | { kind: 'line'; len: number; halfW: number; dx: number; dy: number }
+  | { kind: 'cone'; r: number; half: number; dx: number; dy: number }
+  /** Couronne entre r0 et r autour du centre : les ondes de Séisme, l'anneau de feu d'Auguste (signatures, enemy.ts). */
+  | { kind: 'ring'; r0: number; r: number };
+/** Marge pour le corps du Pokémon : touché si le bord de la zone l'effleure. */
+const AREA_BODY = 0.3;
+
+/** Une zone en attente : qui la lance, avec quoi ; dégâts calculés par cible à l'impact. */
+interface Area {
+  shape: AreaShape;
+  source: Actor;
+  power: number;
+  cls: string;
+}
+
+interface Strike {
+  /** Tiré par un sauvage : marque fixe, qu'on peut quitter avant qu'elle frappe. */
   hostile: boolean;
-  /** Direction de vol au sol (orbes ennemis), et plus courte distance atteinte à la cible. */
-  vx: number;
-  vy: number;
-  closest: number;
-  speed: number;
+  /** Attaque de zone d'un champion : (x, y) est son centre (disque) ou son origine (rayon, cône). */
+  area?: Area;
+  /** Cible visée ; null pour un tir dans le vide en (x, y). */
+  target: Actor | null;
+  /** Centre de la marque au sol (suit la cible pour un coup de l'équipe). */
   x: number;
   y: number;
-  h: number;
-  /** Cible suivie (guidage total) ; null pour un tir dans le vide vers (tx, ty). */
-  target: Actor | null;
-  tx: number;
-  ty: number;
-  life: number;
-  /** Case de départ : un obstacle qui la touche n'arrête pas le tir (on ne se tire pas dans le rocher d'à côté). */
+  /** D'où part le coup : sens du recul, et ligne de vue vers la marque. */
+  fromX: number;
+  fromY: number;
+  /** Case du tireur : un obstacle qui la touche n'arrête pas le coup (on ne se tire pas dans le rocher d'à côté). */
   startCell: number;
+  t: number;
+  dur: number;
   type: string;
-  /** Capacité tirée, pour sa planche d'animation à l'impact. */
+  /** Capacité lancée, pour sa planche d'animation à l'impact. */
   move?: string;
   /** Membre de l'équipe qui a tiré (ses dons, son XP). */
   owner?: Actor;
@@ -115,17 +157,34 @@ export class Combat {
   shake = 0;
   /** Temps depuis la dernière attaque du joueur : dans l'herbe, il reste repérable 2,5 s. */
   sinceAttack = Infinity;
-  private orbs: Orb[] = [];
+  private strikes: Strike[] = [];
+  /** Entrées en puissance des Pokémon de champion (dessinées par le renderer). */
+  readonly powerUps = new PowerUps();
   /** Run en cours : ses dons modifient le combat. */
   run: Run | null = null;
   /** Message d'état (ultime, Phénix…), branché sur le HUD de run. */
   notify: (text: string) => void = () => {};
   /** Un membre de l'équipe vient de monter de niveau. */
   levelUp: (member: Actor) => void = () => {};
+  /** Un ennemi tombe, quel que soit l'auteur du coup : le décompte des victoires (déblocage, main.ts). */
+  defeated: (e: Actor) => void = () => {};
+  /** Le Pokémon mené vient d'encaisser un coup (quête « Sans une égratignure », main.ts). */
+  hurt: () => void = () => {};
+  /** Bilan de run (meta/runstats.ts) : PV ôtés à un ennemi par `by` (null : on ne sait pas qui), et PV perdus par un membre. */
+  dealtBy: (by: Actor | null, amount: number) => void = () => {};
+  taken: (member: Actor, amount: number) => void = () => {};
+  /**
+   * Ce qui se casse sans être un ennemi (arbres à baies, run/berries.ts) :
+   * un coup porté en (x, y) avec une allonge en cases ; rend le point touché,
+   * ou null s'il n'y a rien.
+   */
+  breakables: (x: number, y: number, reach: number) => { x: number; y: number } | null = () => null;
   readonly hooks: BoonHooks;
   private player: Actor | null = null;
   private enemies: readonly Actor[] = [];
   private wasDashing = false;
+  /** Temps depuis la dernière usure de la météo (sable, grêle). */
+  private weatherT = 0;
   /** Psycho-Boost : vagues d'attaque restantes (délais en s). */
   private psyWaves: number[] = [];
 
@@ -154,8 +213,10 @@ export class Combat {
     this.st.reset();
     this.hitstop = this.shake = 0;
     this.sinceAttack = Infinity;
-    this.orbs = [];
+    this.strikes = [];
     this.psyWaves = [];
+    this.weatherT = 0;
+    this.powerUps.reset();
     this.fx.reset();
     this.hooks.reset();
   }
@@ -186,15 +247,88 @@ export class Combat {
     return true;
   }
 
-  /** Recul réduit d'un champion (×0,5) et de son as (×0,15). */
+  /**
+   * Un Pokémon de champion ne recule pas sous les coups.
+   * Écart voulu avec le jeu (recul ×0,5, ×0,15 pour l'as, et animation de
+   * douleur) : un boss qui bronche à chaque coup paraît fragile (retour de
+   * test). Le flash rouge et les chiffres disent qu'il est touché.
+   */
   private knockbackMult(e: Actor): number {
-    return e.role === 'boss' ? 0.15 : e.role === 'champion' ? 0.5 : 1;
+    return e.role === 'wild' ? 1 : 0;
+  }
+
+  /**
+   * Un Pokémon de champion vient d'apparaître : il se concentre, se ramasse,
+   * pulse à la couleur de son type, puis libère son énergie (onde, secousse,
+   * animation du type) avant d'agir.
+   */
+  bossIntro(e: Actor): void {
+    const mon = e.pokemon;
+    if (!mon || e.role === 'wild') return;
+    const big = e.role === 'boss';
+    const { burst, dur } = INTRO[big ? 'boss' : 'champion'];
+    e.intro = { t: 0, burst, dur };
+    e.brain?.cancelWindup();
+    e.playAction(['Charge', 'Rotate', 'Attack'], burst);
+    sfx('ballDrop');
+    this.powerUps.start(e.x, e.y, mon.types[0], big, burst, dur);
+  }
+
+  /** Avance les entrées en puissance ; la libération secoue l'écran et joue l'animation du type. */
+  private updateIntros(dt: number, enemies: readonly Actor[]): void {
+    for (const e of enemies) {
+      const it = e.intro;
+      if (!it) continue;
+      const before = it.t;
+      it.t += dt;
+      if (before < it.burst && it.t >= it.burst && e.pokemon) {
+        const big = e.role === 'boss';
+        const type = e.pokemon.types[0];
+        this.addShake(big ? 0.35 : 0.2);
+        this.fx.impact(e.x, e.y, typeColor(type));
+        this.fx.attackAnim(type, e.x, e.y);
+        if (big) for (let i = 0; i < 4; i++) this.fx.attackAnim(type, e.x + Math.cos(i * 1.57 + 0.78) * 1.6, e.y + Math.sin(i * 1.57 + 0.78) * 1.1);
+        e.playAction(['Shoot', 'Attack'], 0.5);
+        // Le cri à la sortie de la Ball, comme l'envoi d'un Pokémon adverse.
+        cry(e.speciesId, big ? 0 : -3);
+        e.flash = { color: '#ffffff', t: 0.18, dur: 0.18, alpha: 0.8 };
+      }
+      if (it.t >= it.dur) e.intro = null;
+    }
+    this.powerUps.update(dt);
+  }
+
+  /**
+   * Un membre évolue : `swap` échange sa forme au pic de blanc. D'ici là, et
+   * jusqu'à la fin, il n'attaque pas et ne prend aucun coup.
+   */
+  evolve(a: Actor, swap: () => void): void {
+    a.evolve = { t: 0, dur: EVOLVE.dur, swapAt: EVOLVE.swapAt, swap };
+    sfx('evoStart');
+    a.playAction(['Charge'], EVOLVE.swapAt);
+  }
+
+  private updateEvolutions(dt: number, team: readonly Actor[]): void {
+    for (const a of team) {
+      const ev = a.evolve;
+      if (!ev) continue;
+      ev.t += dt;
+      if (ev.swap && ev.t >= ev.swapAt) {
+        ev.swap();
+        ev.swap = null;
+        sfx('evoSuccess');
+        this.fx.attackAnim('fx_boost', a.x, a.y);
+        this.fx.impact(a.x, a.y, '#ffffff');
+        this.addShake(0.1);
+      }
+      if (ev.t >= ev.dur) a.evolve = null;
+    }
   }
 
   /** Dégâts d'un don (ricochet, zone, épines…) : ils ne redéclenchent pas on_hit. */
   boonDamage(e: Actor, damage: number, color: string, fromX: number, fromY: number): void {
     const mon = e.pokemon;
-    if (!mon || mon.fainted || e.deathT >= 0) return;
+    if (!mon || mon.fainted || e.deathT >= 0 || e.intro) return;
     const fatal = this.dealt(e, damage);
     e.flash = { color: '#ff4d4d', t: 0.12, dur: 0.12, alpha: 0.6 };
     e.brain?.provoke();
@@ -210,15 +344,20 @@ export class Combat {
     const len = Math.hypot(e.x - fromX, e.y - fromY) || 1;
     e.brain?.cancelWindup();
     e.brain?.interrupt();
+    // Un Pokémon de champion perd son anticipation mais ne recule pas (voir knockbackMult).
+    if (e.role !== 'wild') return;
     e.kbVx = ((e.x - fromX) / len) * KNOCKBACK * force * this.knockbackMult(e);
     e.kbVy = ((e.y - fromY) / len) * KNOCKBACK * force * this.knockbackMult(e);
     e.kbT = STAGGER_TIME;
     e.poiseT = POISE_TIME;
   }
 
+  /** 0 : secousses coupées dans le menu des réglages (options.shake). */
+  shakeMult = 1;
+
   /** CombatArena.add_camera_shake */
   addShake(amount: number): void {
-    this.shake = Math.min(0.45, this.shake + amount);
+    this.shake = Math.min(0.45, this.shake + amount * this.shakeMult);
   }
 
   /** Le gel le plus long l'emporte : une demande plus courte ne raccourcit jamais celui en cours. */
@@ -243,13 +382,42 @@ export class Combat {
    * lance l'emplacement choisi vers sa cible, avec ses propres recharges.
    */
   companionAttack(a: Actor, slot: number, target: Actor, enemies: readonly Actor[]): void {
-    if (!a.pokemon?.canAct || a.deathT >= 0 || !this.canLaunch(a, enemies, slot)) return;
+    if (!a.pokemon?.canAct || a.deathT >= 0 || a.evolve || !this.canLaunch(a, enemies, slot)) return;
     const prev = this.st;
     this.st = a.atk;
     a.atk.selected = slot;
     const len = Math.hypot(target.x - a.x, target.y - a.y) || 1;
     this.attack(a, { mx: (target.x - a.x) / len, my: (target.y - a.y) / len, dash: false, move: slot, interact: false, ult: false, swap: false }, enemies, slot);
     this.st = prev;
+  }
+
+  /**
+   * Coup d'un joueur en ligne (net/net.ts) : l'invité a pressé l'emplacement
+   * chez lui, l'hôte le lance ici, vers où il visait, avec ses propres recharges.
+   */
+  remoteAttack(a: Actor, slot: number, mx: number, my: number, enemies: readonly Actor[]): void {
+    if (!a.pokemon?.canAct || a.deathT >= 0 || a.evolve || a.trapped || !a.pokemon.moves[slot]) return;
+    a.atk.selected = slot;
+    if (!a.atk.ready(slot) || !this.minRangeOk(a, enemies, slot)) return;
+    const prev = this.st;
+    this.st = a.atk;
+    this.attack(a, { mx, my, dash: false, move: slot, interact: false, ult: false, swap: false }, enemies, slot);
+    this.st = prev;
+  }
+
+  /** L'emplacement et les recharges que lisent le HUD et l'anneau de portée (invité en ligne : son propre Pokémon). */
+  focus(a: Actor): void {
+    this.st = a.atk;
+  }
+
+  /** Marques au sol en cours, pour les invités en ligne (seul ce qui sert à les dessiner). */
+  exportStrikes(): StrikeSnap[] {
+    return this.strikes.map((o) => ({ x: +o.x.toFixed(2), y: +o.y.toFixed(2), t: +o.t.toFixed(2), dur: o.dur, color: o.color, hostile: o.hostile, shape: o.area?.shape }));
+  }
+
+  /** Invité en ligne : les marques de l'hôte, dessinées telles quelles (jamais résolues ici). */
+  importStrikes(list: readonly StrikeSnap[]): void {
+    this.strikes = list.map((s) => ({ x: s.x, y: s.y, t: s.t, dur: s.dur, color: s.color, hostile: s.hostile, area: s.shape ? { shape: s.shape as AreaShape } : undefined }) as unknown as Strike);
   }
 
   /** Portée effective de l'emplacement, allongée par Séisme et Portée. */
@@ -280,7 +448,7 @@ export class Combat {
     const dashing = player.dashT > 0;
     if (dashing && !this.wasDashing) this.hooks.onDashStart(player, player.dashDx, player.dashDy, enemies);
     this.wasDashing = dashing;
-    if (input.ult && mon && player.deathT < 0) {
+    if (input.ult && mon && player.deathT < 0 && !player.evolve && !player.trapped) {
       this.hooks.ultimate(player, enemies, world, () => this.psyWaves.push(0.35 * this.psyWaves.length));
     }
     if (this.psyWaves.length) {
@@ -290,7 +458,7 @@ export class Combat {
         if (mon?.moves[this.st.selected]) this.attack(player, input, enemies, this.st.selected);
       }
     }
-    if (input.move >= 0 && mon?.moves[input.move] && mon.canAct && player.deathT < 0) {
+    if (input.move >= 0 && mon?.moves[input.move] && mon.canAct && player.deathT < 0 && !player.evolve && !player.trapped) {
       // Une touche sélectionne l'emplacement, puis le lance s'il est prêt et que rien n'est trop près.
       this.st.selected = input.move;
       if (this.ready(input.move) && this.minRangeOk(player, enemies, input.move)) this.attack(player, input, enemies, input.move);
@@ -299,12 +467,15 @@ export class Combat {
     // Les sauvages choisissent leur cible dans toute l'équipe sur le terrain (EnemyAI._find_target).
     const team = [player, ...allies];
     for (const e of enemies) e.brain?.update(dt, team, enemies, world, this);
-    this.updateOrbs(dt, world);
+    this.updateIntros(dt, enemies);
+    this.updateEvolutions(dt, team);
+    this.updateStrikes(dt, world, team);
     for (const e of enemies) this.updateEnemy(dt, e);
     this.hooks.tick(dt, player, enemies);
     for (const m of team) {
       const pm = m.pokemon;
-      if (!pm || m.deathT >= 0) continue;
+      // En pleine évolution, l'ancienne forme ne s'use plus : la nouvelle repart PV pleins.
+      if (!pm || m.deathT >= 0 || m.evolve) continue;
       pm.tickBuffs(dt);
       const dot = pm.tickStatus(dt);
       if (dot > 0) {
@@ -312,11 +483,32 @@ export class Combat {
         if (pm.fainted) m.deathT = 0;
       }
     }
+    this.weatherTick(dt, team, enemies);
     this.fx.update(dt);
   }
 
+  /**
+   * Usure de la tempête de sable et de la grêle (world/weather.ts) : toutes
+   * les CHIP.every secondes, une part des PV max pour chaque Pokémon qui n'y
+   * résiste pas, des deux côtés. Écart voulu : jamais sous 1 PV.
+   */
+  private weatherTick(dt: number, team: readonly Actor[], enemies: readonly Actor[]): void {
+    const w = currentWeather();
+    if (w !== 'sand' && w !== 'hail') return;
+    this.weatherT += dt;
+    if (this.weatherT < CHIP.every) return;
+    this.weatherT = 0;
+    for (const a of [...team, ...this.alive(enemies)]) {
+      const mon = a.pokemon;
+      if (!mon || mon.fainted || a.deathT >= 0 || a.evolve || !chips(w, mon.types) || mon.hp <= 1) continue;
+      const dmg = Math.min(mon.hp - 1, Math.max(1, Math.round(mon.maxHp * CHIP.share)));
+      mon.hp -= dmg;
+      this.fx.number(team.includes(a) ? 'player' : 'normal', a.x, a.y, dmg);
+    }
+  }
+
   private alive(enemies: readonly Actor[]): Actor[] {
-    return enemies.filter((e) => e.pokemon && !e.pokemon.fainted && e.deathT < 0);
+    return enemies.filter((e) => e.pokemon && !e.pokemon.fainted && e.deathT < 0 && !e.intro);
   }
 
   /** Mêlée d'un sauvage : dégâts calculés au moment du coup (EnemyAI._do_attack). */
@@ -330,32 +522,106 @@ export class Combat {
     this.hitPlayer(target, res.damage, e.x, e.y, type, res.crit ? 'crit' : 'player');
   }
 
-  /** Tir d'un sauvage : orbe à guidage total, à 10 cases/s, dégâts figés au tir. */
+  /** Tir d'un sauvage : une marque fixe sous sa cible, dégâts figés au tir. */
   enemyShot(e: Actor, target: Actor, move: Move): void {
     if (!e.pokemon || !target.pokemon) return;
     const res = calculateDamage(e.pokemon, target.pokemon, move.power, move.type, 'special', this.random);
-    // Précision baissée (Jet de Sable…) : le tir part quand même, mais il est voué à rater.
+    // Précision baissée (Jet de Sable…) : le coup part quand même, mais il est voué à rater.
     const miss = this.random() < e.pokemon.missChance;
-    const len = Math.hypot(target.x - e.x, target.y - e.y) || 1;
-    this.orbs.push({
+    this.strikes.push({
       hostile: true,
-      vx: (target.x - e.x) / len,
-      vy: (target.y - e.y) / len,
-      closest: Infinity,
-      speed: ENEMY_ORB_SPEED,
-      x: e.x,
-      y: e.y,
-      h: ORB_FROM_H,
       target,
-      tx: 0,
-      ty: 0,
-      life: ORB_LIFE,
+      x: target.x,
+      y: target.y,
+      fromX: e.x,
+      fromY: e.y,
       startCell: Math.floor(e.y) * 4096 + Math.floor(e.x),
+      t: 0,
+      dur: ENEMY_STRIKE_DELAY,
       type: move.type,
       color: typeColor(move.type),
       damage: res.damage,
       kind: miss ? 'dodge' : res.crit ? 'crit' : 'player',
     });
+  }
+
+
+  /**
+   * Attaque de zone d'un champion ou de son as : posée tout de suite, elle
+   * frappe après `delay` tous les membres encore dedans (dash et Abri
+   * l'évitent, via hitPlayer). `x, y` : centre du disque, ou origine du rayon
+   * et du cône. Une fois posée, elle part même si le lanceur est repoussé —
+   * seul son K.O. l'annule.
+   */
+  enemyArea(e: Actor, shape: AreaShape, x: number, y: number, move: Move | null, power: number, delay: number): void {
+    if (!e.pokemon) return;
+    const type = move?.type ?? e.pokemon.types[0];
+    this.strikes.push({
+      hostile: true,
+      area: { shape, source: e, power, cls: move?.damageClass === 'special' ? 'special' : 'physical' },
+      target: null,
+      x,
+      y,
+      fromX: e.x,
+      fromY: e.y,
+      startCell: -1,
+      t: 0,
+      dur: delay,
+      type,
+      move: move && move.power > 0 ? move.api : undefined,
+      color: typeColor(type),
+      damage: 0,
+      kind: 'player',
+    });
+  }
+
+  /** Nom de l'attaque signature d'un champion, au-dessus du lanceur, au moment où il la pose. */
+  callout(e: Actor, text: string): void {
+    this.fx.number('super', e.x, e.y - 0.4, 0, text);
+  }
+
+  /** Le point (px, py) est-il dans la zone ? */
+  private inArea(o: Strike, shape: AreaShape, px: number, py: number): boolean {
+    const rx = px - o.x;
+    const ry = py - o.y;
+    const d = Math.hypot(rx, ry);
+    switch (shape.kind) {
+      case 'circle':
+        return d <= shape.r + AREA_BODY;
+      case 'line': {
+        // Projection sur l'axe du rayon (comme le dash des dons, boonhooks.onDashStart).
+        const along = rx * shape.dx + ry * shape.dy;
+        const side = Math.abs(rx * shape.dy - ry * shape.dx);
+        return along >= -AREA_BODY && along <= shape.len + AREA_BODY && side <= shape.halfW + AREA_BODY;
+      }
+      case 'cone': {
+        if (d > shape.r + AREA_BODY) return false;
+        if (d < 0.6) return true;
+        const cos = (rx * shape.dx + ry * shape.dy) / d;
+        // Le corps élargit un peu l'angle, d'autant plus qu'on est près du lanceur.
+        return Math.acos(Math.max(-1, Math.min(1, cos))) <= shape.half + Math.atan2(AREA_BODY, d);
+      }
+      case 'ring':
+        return d >= shape.r0 - AREA_BODY && d <= shape.r + AREA_BODY;
+    }
+  }
+
+  /** Une zone frappe : chaque membre dedans, dégâts selon sa propre défense ; l'animation couvre la forme. */
+  private resolveArea(o: Strike, area: Area, team: readonly Actor[]): void {
+    const src = area.source.pokemon!;
+    for (const m of team) {
+      if (!m.pokemon || m.pokemon.fainted || m.deathT >= 0 || !this.inArea(o, area.shape, m.x, m.y)) continue;
+      if (this.random() < src.missChance) {
+        this.fx.number('dodge', m.x, m.y);
+        continue;
+      }
+      const res = calculateDamage(src, m.pokemon, area.power, o.type, area.cls, this.random);
+      // Le recul part du centre du disque, ou du lanceur pour un rayon et un cône.
+      this.hitPlayer(m, res.damage, o.x, o.y, o.type, res.crit ? 'crit' : 'player');
+    }
+    for (const [x, y] of areaPoints(o.x, o.y, area.shape)) this.fx.attackAnim(o.type, x, y, o.move);
+    this.fx.impact(o.x, o.y, o.color);
+    this.addShake(0.14);
   }
 
   private minRangeOk(player: Actor, enemies: readonly Actor[], slot: number): boolean {
@@ -437,11 +703,13 @@ export class Combat {
       case 'buff':
         for (const [stat, mult] of effect.stats) mon.applyBuff(stat, mult, BUFF_TIME);
         this.fx.attackAnim('fx_boost', player.x, player.y);
+        sfx(effect.stats.some(([, m]) => m >= 1) ? 'statUp' : 'statDown');
         this.fx.number('buff', player.x, player.y, 0, effect.stats.map(([st, m]) => `${BUFF_LABEL[st]} ${m >= 1 ? '↑' : '↓'}`).join(' '));
         break;
       case 'debuff': {
         // Tous les sauvages à portée de la capacité, cachés compris (c'est un cri, pas un tir).
         const reach = this.reach(player, slot);
+        sfx('statDown');
         for (const e of this.alive(enemies)) {
           if (Math.hypot(e.x - player.x, e.y - player.y) > reach) continue;
           e.pokemon!.applyBuff(effect.stat, effect.mult, BUFF_TIME);
@@ -477,6 +745,7 @@ export class Combat {
       }
       case 'protect':
         player.protectT = Math.max(player.protectT, effect.dur);
+        sfx('protect');
         this.fx.impact(player.x, player.y, '#8cd9ff');
         break;
       case 'cleanse':
@@ -531,7 +800,9 @@ export class Combat {
         }
       }
     } else {
-      const p = this.swingPoint(player, input, Math.min(reach, 2));
+      // Pas d'ennemi à portée : un arbre à baies tout près prend le coup (sa
+      // case est bloquée, on se tient au moins à une case de son centre).
+      const p = this.breakables(player.x, player.y, Math.max(reach, 1.4)) ?? this.swingPoint(player, input, Math.min(reach, 2));
       aimX = p.x;
       aimY = p.y;
       this.fx.attackAnim(type, aimX, aimY, moveApi);
@@ -558,24 +829,26 @@ export class Combat {
       }
     }
     const startCell = Math.floor(player.y) * 4096 + Math.floor(player.x);
-    const orb: Orb = { hostile: false, vx: 0, vy: 0, closest: Infinity, speed: ORB_SPEED, x: player.x, y: player.y, h: ORB_FROM_H, target: best, tx: 0, ty: 0, life: ORB_LIFE, startCell, type, color, damage: 0, kind: 'normal', owner: player };
+    const strike: Strike = { hostile: false, target: best, x: 0, y: 0, fromX: player.x, fromY: player.y, startCell, t: 0, dur: STRIKE_DELAY, type, color, damage: 0, kind: 'normal', owner: player };
     if (best) {
       // Dégâts, critique et sorte de chiffre sont figés au tir (TeamMember.gd:1785-1794).
-      orb.type = this.hooks.morph(type, best);
-      orb.color = typeColor(orb.type);
-      const res = calculateDamage(player.pokemon!, best.pokemon!, power, orb.type, 'special', this.random);
-      orb.damage = Math.max(1, Math.round(res.damage * this.hooks.dmgOut(player, best)));
-      orb.kind = res.crit ? 'crit' : kindFromMultiplier(res.effectiveness);
+      strike.type = this.hooks.morph(type, best);
+      strike.color = typeColor(strike.type);
+      const res = calculateDamage(player.pokemon!, best.pokemon!, power, strike.type, 'special', this.random);
+      strike.damage = Math.max(1, Math.round(res.damage * this.hooks.dmgOut(player, best)));
+      strike.kind = res.crit ? 'crit' : kindFromMultiplier(res.effectiveness);
+      strike.x = best.x;
+      strike.y = best.y;
       this.face(player, best.x, best.y);
     } else {
       const p = this.swingPoint(player, input, Math.min(reach, 7));
-      orb.tx = p.x;
-      orb.ty = p.y;
+      strike.x = p.x;
+      strike.y = p.y;
       this.face(player, p.x, p.y);
     }
     // Morphing a pu changer le type : la planche propre à la capacité ne vaut que pour son type d'origine.
-    if (orb.type === type) orb.move = moveApi;
-    this.orbs.push(orb);
+    if (strike.type === type) strike.move = moveApi;
+    this.strikes.push(strike);
     return player.playAction(['Shoot', 'Charge', 'Attack'], 0.4);
   }
 
@@ -583,83 +856,82 @@ export class Combat {
     if (Math.hypot(x - a.x, y - a.y) > 0.05) a.dir = dirFromVector(x - a.x, y - a.y);
   }
 
-  /** Orbe ennemi : il vire vers le joueur sans dépasser ENEMY_ORB_TURN, puis file tout droit s'il l'a manqué. */
-  private steerHostile(o: Orb, t: Actor, dt: number): boolean {
-    const d = Math.hypot(t.x - o.x, t.y - o.y);
-    o.closest = Math.min(o.closest, d);
-    if (d <= ORB_HIT + 0.15) {
-      if (o.kind === 'dodge') this.fx.number('dodge', t.x, t.y);
-      else this.hitPlayer(t, o.damage, o.x, o.y, o.type, o.kind);
-      return false;
-    }
-    const committed = o.closest < ENEMY_ORB_COMMIT && d > o.closest + 0.2;
-    if (!committed) {
-      const want = Math.atan2(t.y - o.y, t.x - o.x);
-      const cur = Math.atan2(o.vy, o.vx);
-      let turn = want - cur;
-      turn = Math.atan2(Math.sin(turn), Math.cos(turn));
-      const a = cur + Math.max(-ENEMY_ORB_TURN * dt, Math.min(ENEMY_ORB_TURN * dt, turn));
-      o.vx = Math.cos(a);
-      o.vy = Math.sin(a);
-    }
-    o.x += o.vx * o.speed * dt;
-    o.y += o.vy * o.speed * dt;
-    o.h += (ORB_TO_H - o.h) * Math.min(1, dt * 3);
-    return true;
-  }
-
-  private updateOrbs(dt: number, world: WorldMap): void {
-    this.orbs = this.orbs.filter((o) => {
-      o.life -= dt;
-      const t = o.target;
-      if (t && (!t.pokemon || t.pokemon.fainted || t.deathT >= 0)) return false; // cible disparue : l'orbe s'éteint
-      if (o.life <= 0) return false;
-      if (o.hostile && t) return this.steerHostile(o, t, dt) && !this.absorbed(o, world);
-      const tx = t ? t.x : o.tx;
-      const ty = t ? t.y : o.ty;
-      const dx = tx - o.x;
-      const dy = ty - o.y;
-      const dh = ORB_TO_H - o.h;
-      const dist = Math.hypot(dx, dy, dh);
-      const step = o.speed * dt;
-      if (dist <= Math.max(ORB_HIT, step)) {
-        if (t && o.hostile) this.hitPlayer(t, o.damage, o.x, o.y, o.type, o.kind);
-        else if (t) this.hitEnemy(t, o.damage, o.x, o.y, o.type, o.color, false, o.kind, true, o.move, o.owner ?? null);
-        else {
-          this.fx.impact(tx, ty, o.color);
-          this.fx.attackAnim(o.type, tx, ty, o.move);
-        }
+  private updateStrikes(dt: number, world: WorldMap, team: readonly Actor[]): void {
+    this.strikes = this.strikes.filter((o) => {
+      if (o.area) {
+        // Le lanceur est tombé : sa zone s'éteint sans frapper.
+        if (o.area.source.deathT >= 0 || !o.area.source.pokemon) return false;
+        o.t += dt;
+        if (o.t < o.dur) return true;
+        this.resolveArea(o, o.area, team);
         return false;
       }
-      o.x += (dx / dist) * step;
-      o.y += (dy / dist) * step;
-      o.h += (dh / dist) * step;
-      return !this.absorbed(o, world);
+      const t = o.target;
+      const alive = !!t && !!t.pokemon && !t.pokemon.fainted && t.deathT < 0;
+      // Un coup de l'équipe suit sa cible ; si elle tombe entre-temps, il finit dans le vide.
+      if (!o.hostile && t && alive) {
+        o.x = t.x;
+        o.y = t.y;
+      }
+      o.t += dt;
+      if (o.t < o.dur) return true;
+      const wall = this.lineBlocked(o, world);
+      if (wall) {
+        this.fx.impact(wall.x, wall.y, o.color);
+        // Un tir de l'équipe qui bute sur un arbre à baies le frappe.
+        if (!o.hostile) this.breakables(wall.x, wall.y, 0.9);
+        return false;
+      }
+      if (o.hostile && t && alive && Math.hypot(t.x - o.x, t.y - o.y) <= ENEMY_STRIKE_RADIUS) {
+        if (o.kind === 'dodge') this.fx.number('dodge', t.x, t.y);
+        else this.hitPlayer(t, o.damage, o.fromX, o.fromY, o.type, o.kind);
+        this.fx.attackAnim(o.type, t.x, t.y, o.move);
+      } else if (!o.hostile && t && alive) {
+        this.hitEnemy(t, o.damage, o.fromX, o.fromY, o.type, o.color, false, o.kind, true, o.move, o.owner ?? null);
+      } else {
+        this.fx.impact(o.x, o.y, o.color);
+        this.fx.attackAnim(o.type, o.x, o.y, o.move);
+        if (!o.hostile) this.breakables(o.x, o.y, 0.9);
+      }
+      return false;
     });
   }
 
-  /** Un tronc, un rocher ou un mur absorbe le tir (Projectile.gd:119-123). */
-  private absorbed(o: Orb, world: WorldMap): boolean {
-    const cx = Math.floor(o.x);
-    const cy = Math.floor(o.y);
-    const own = cy * 4096 + cx === o.startCell;
-    if (!own && cx >= 0 && cy >= 0 && cx < world.w && cy < world.h && world.blocked[cy * world.w + cx] && !world.water[cy * world.w + cx]) {
-      this.fx.impact(o.x, o.y, o.color);
-      return true;
+  /**
+   * Un tronc, un rocher ou un mur entre le tireur et la marque arrête le coup
+   * (Projectile.gd:119-123, que l'orbe vérifiait en vol) : on renvoie le point
+   * d'arrêt, ou null si la voie est libre.
+   */
+  private lineBlocked(o: Strike, world: WorldMap): { x: number; y: number } | null {
+    const len = Math.hypot(o.x - o.fromX, o.y - o.fromY);
+    const steps = Math.ceil(len / 0.25);
+    for (let i = 1; i <= steps; i++) {
+      const x = o.fromX + ((o.x - o.fromX) * i) / steps;
+      const y = o.fromY + ((o.y - o.fromY) * i) / steps;
+      const cx = Math.floor(x);
+      const cy = Math.floor(y);
+      if (cy * 4096 + cx === o.startCell || cx < 0 || cy < 0 || cx >= world.w || cy >= world.h) continue;
+      const c = cy * world.w + cx;
+      if (world.blocked[c] && !world.water[c]) return { x, y };
     }
-    return false;
+    return null;
   }
 
   /** EnemyAI.take_damage (+ stagger_from pour le finisher). */
   /**
-   * `ranged` : orbe (null pour un coup qui ne vient pas d'une attaque) ;
+   * `ranged` : attaque spéciale (null pour un coup qui ne vient pas d'une attaque) ;
    * `by` : le membre qui frappe — seuls les coups du Pokémon joué figent l'écran
    * et déclenchent ses dons.
    */
   private hitEnemy(e: Actor, damage: number, fromX: number, fromY: number, type: string, color: string, finisher: boolean, kind: NumberKind, ranged: boolean | null, moveApi?: string, by: Actor | null = null): void {
+    // En pleine entrée en puissance : le coup (déjà parti) se perd.
+    if (e.intro) return;
+    this.dealtBy(by, Math.min(damage, e.pokemon?.hp ?? 0));
     const fatal = this.dealt(e, damage);
     if (by) e.hitBy.add(by);
-    e.playAction(['Hurt'], 0.3);
+    // Un Pokémon de champion ne joue pas la douleur (voir knockbackMult).
+    const boss = e.role !== 'wild';
+    if (!boss) e.playAction(['Hurt'], 0.3);
     e.flash = { color: '#ff4d4d', t: 0.12, dur: 0.12, alpha: 0.65 };
     let dx = e.x - fromX;
     let dy = e.y - fromY;
@@ -670,7 +942,7 @@ export class Combat {
     // Le finisher brise l'anticipation en cours ; un coup normal ne repousse pas un sauvage qui prépare son attaque.
     if (finisher) e.brain?.cancelWindup();
     const windingUp = (e.brain?.windupLeft() ?? 0) > 0;
-    if (finisher || (!fatal && e.poiseT <= 0 && !windingUp)) {
+    if (!boss && (finisher || (!fatal && e.poiseT <= 0 && !windingUp))) {
       e.brain?.interrupt();
       const v = (finisher ? STAGGER : KNOCKBACK) * this.knockbackMult(e);
       e.kbVx = dx * v;
@@ -681,6 +953,8 @@ export class Combat {
     this.fx.impact(e.x - dx * 0.35, e.y - dy * 0.35, color, dx, dy);
     this.fx.attackAnim(type, e.x, e.y, moveApi);
     this.fx.number(kind, e.x, e.y, damage);
+    // Le « pac » des jeux selon l'efficacité, coup fatal compris (le cri du K.O. suit, dans kill).
+    sfx(kind === 'super' || kind === 'crit' ? 'hitSuper' : kind === 'weak' || kind === 'immune' ? 'hitWeak' : 'hit');
     const own = by === this.player;
     if (own) this.freeze(fatal ? 0.09 : 0.045);
     if (!fatal) {
@@ -709,6 +983,11 @@ export class Combat {
     e.kbT = 0;
     this.fx.poof(e.x, e.y);
     this.addShake(0.05);
+    // Écart voulu : le cri du Pokémon qui tombe, plus grave (les jeux) ; un
+    // Pokémon de champion y ajoute le bruit du K.O., comme en combat de dresseur.
+    if (e.role !== 'wild') sfx('faint');
+    cry(e.speciesId, e.role === 'wild' ? -5 : 0, 0.85);
+    this.defeated(e);
     if (!this.player) return;
     if (!by || by === this.player) this.hooks.onKill(this.player, e, this.enemies);
     // XP : niveau de l'ennemi × 12 (EnemyAI.gd:1365), augmentée par Cendres.
@@ -724,6 +1003,7 @@ export class Combat {
         if (!n) return;
         this.fx.attackAnim('fx_boost', m.x, m.y);
         this.fx.number('buff', m.x, m.y, 0, `Niv. ${mon.level} !`);
+        sfx('levelup');
         this.levelUp(m);
       });
     }
@@ -736,7 +1016,7 @@ export class Combat {
    */
   hitPlayer(player: Actor, damage: number, fromX: number, fromY: number, type: string, kind: NumberKind = 'player'): void {
     const mon = player.pokemon;
-    if (!mon || mon.fainted || player.deathT >= 0) return;
+    if (!mon || mon.fainted || player.deathT >= 0 || player.evolve || player.trapped) return;
     const own = player === this.player;
     // Esquivé : en plein dash (et juste après), sous Abri, ou par chance (Reflet).
     const dashing = player.dashT > 0 || (own && player.sinceDash < DASH_IFRAMES_AFTER + this.hooks.dashGrace());
@@ -751,7 +1031,11 @@ export class Combat {
       this.fx.number('dodge', player.x, player.y, 0, 'ABSORBÉ');
       return;
     }
+    this.taken(player, Math.min(damage, mon.hp));
     mon.hp = Math.max(0, mon.hp - damage);
+    // Un compagnon touché sonne plus bas que le Pokémon joué (TeamMember.gd:1966) ;
+    // les deux un peu plus graves que les coups portés, pour les distinguer à l'oreille.
+    sfx('hurt', own ? 0 : -6, own ? 0.9 : 0.85);
     player.playAction(['Hurt'], 0.3);
     player.flash = { color: '#ff4d4d', t: 0.15, dur: 0.15, alpha: 0.65 };
     const len = Math.hypot(player.x - fromX, player.y - fromY) || 1;
@@ -762,10 +1046,13 @@ export class Combat {
       this.addShake(0.12);
       // Phénix, Souhait, Renaissance peuvent encore empêcher le K.O. ; Épines renvoie.
       this.hooks.onHurt(player, damage, this.enemies);
+      this.hurt();
     }
     const roll = STATUS_ROLL[type];
     if (!mon.fainted && roll && this.random() < roll[1]) mon.applyStatus(roll[0]);
     if (mon.fainted) {
+      sfx('faint', own ? 0 : -4);
+      cry(player.speciesId, own ? 0 : -4, 0.85);
       player.deathT = 0;
       player.atk.comboStep = 0;
       if (own) this.addShake(0.2);
@@ -783,9 +1070,55 @@ export class Combat {
     }
   }
 
-  /** Orbes en vol, pour le rendu. */
-  drawOrbs(b: CanvasRenderingContext2D, camX: number, camY: number, k: number): void {
-    for (const o of this.orbs) this.fx.drawOrb(b, camX, camY, k, o.x, o.y, o.h, o.color);
+  /** Marques au sol des attaques spéciales sur le point de frapper, sous les Pokémon. */
+  drawStrikes(b: CanvasRenderingContext2D, camX: number, camY: number, k: number): void {
+    this.powerUps.drawGround(b, camX, camY, k);
+    for (const o of this.strikes) {
+      if (o.area) this.fx.drawArea(b, camX, camY, k, o.x, o.y, o.area.shape, o.t / o.dur, o.color);
+      else this.fx.drawMark(b, camX, camY, k, o.x, o.y, o.hostile ? ENEMY_STRIKE_RADIUS : STRIKE_RADIUS, o.t / o.dur, o.color, o.hostile);
+    }
+  }
+}
+
+/** Où jouer l'animation de la capacité quand une zone frappe : le centre, puis de quoi couvrir la forme. */
+function areaPoints(x: number, y: number, shape: AreaShape): [number, number][] {
+  switch (shape.kind) {
+    case 'circle': {
+      const pts: [number, number][] = [[x, y]];
+      if (shape.r < 1.5) return pts;
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * Math.PI * 2;
+        pts.push([x + Math.cos(a) * shape.r * 0.6, y + Math.sin(a) * shape.r * 0.6]);
+      }
+      return pts;
+    }
+    case 'line': {
+      const pts: [number, number][] = [];
+      for (let d = 1; d <= shape.len; d += 1.6) pts.push([x + shape.dx * d, y + shape.dy * d]);
+      return pts;
+    }
+    case 'ring': {
+      // Une animation tous les ~1,8 case sur le cercle médian, 12 au plus.
+      const mid = (shape.r0 + shape.r) / 2;
+      const n = Math.min(12, Math.max(4, Math.round((2 * Math.PI * mid) / 1.8)));
+      const pts: [number, number][] = [];
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2;
+        pts.push([x + Math.cos(a) * mid, y + Math.sin(a) * mid]);
+      }
+      return pts;
+    }
+    case 'cone': {
+      const pts: [number, number][] = [];
+      const base = Math.atan2(shape.dy, shape.dx);
+      for (const f of [0.45, 0.8]) {
+        for (const s of [-0.6, 0, 0.6]) {
+          const a = base + s * shape.half;
+          pts.push([x + Math.cos(a) * shape.r * f, y + Math.sin(a) * shape.r * f]);
+        }
+      }
+      return pts;
+    }
   }
 }
 

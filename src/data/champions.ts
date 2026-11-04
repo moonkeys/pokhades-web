@@ -80,6 +80,15 @@ export const CHAMPIONS: Record<string, Champion> = {
     sprite: 'trainer_LEADER_Giovanni.png',
     intro: 'La liberté ? Le pouvoir se prend, il ne se distribue pas. Les Pokémon m’appartiennent — toi le premier.',
   },
+  // Ajout (biome de glace) : Olga, du Conseil 4 de Kanto (Rouge Feu), réduite à
+  // deux vagues comme les premiers champions : Lamantine puis Lippoutou.
+  Olga: {
+    name: 'Olga',
+    type: 'ice',
+    team: [[87, 86], [124, 238]],
+    sprite: 'trainer_ELITEFOUR_Lorelei.png',
+    intro: 'Tu as grimpé jusqu’ici pour parler de liberté ? Le froid fige tout, même les rêves. Tes Pokémon resteront pris dans la glace.',
+  },
   Blanche: {
     name: 'Blanche',
     type: 'normal',
@@ -102,6 +111,7 @@ export const BIOME_CHAMPIONS: Partial<Record<BiomeId, string[]>> = {
   // Absents du jeu : la Plage et l'Océan ne sont jamais tirés en run.
   plage: ['Ondine'],
   ocean: ['Ondine'],
+  glace: ['Olga'],
 };
 
 /** Répliques du Dresseur Final, le champion du dernier acte (PokePools.FINAL_BOSS_*). */

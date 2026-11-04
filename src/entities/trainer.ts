@@ -10,6 +10,10 @@ import { TILE } from '../world/tiles';
 // Écarts voulus avec le jeu : il reste sur les cases franchissables (le jeu ne
 // testait rien et pouvait sortir de la carte), et sa fuite le fait vraiment
 // quitter la salle (le jeu le renvoyait sur son propre point d'ancrage).
+//
+// Sert aussi au sbire des grottes (run/cave.ts) : ancré au cœur de l'arène,
+// il s'arrête et se tourne vers sa cible pour lancer ses Poké Balls (`aim`),
+// puis s'enfuit par la bouche de la grotte (`fleeTo`).
 
 const FRAME_W = 32;
 const FRAME_H = 48;
@@ -33,16 +37,24 @@ export class Trainer {
   image: HTMLImageElement | null = null;
   private readonly anchorX: number;
   private readonly anchorY: number;
+  /** Arrêté (s) : il vise, puis reprend ses cent pas. */
+  private holdT = 0;
+
+  /** Le dresseur d'un champion : deux cases devant la sortie, côté salle (visible, sans boucher le passage). */
+  static atExit(sprite: string, exit: Exit): Trainer {
+    const inX = exit.side === 'W' ? 2.5 : exit.side === 'E' ? -2.5 : 0;
+    const inY = exit.side === 'N' ? 2.5 : exit.side === 'S' ? -2.5 : 0;
+    return new Trainer(sprite, { x: exit.x + inX, y: exit.y + inY }, exit);
+  }
 
   constructor(
     sprite: string,
-    private readonly exit: Exit,
+    anchor: { x: number; y: number },
+    private readonly exit: Exit | null = null,
+    private readonly wanderRadius = WANDER_RADIUS,
   ) {
-    // Deux cases devant la sortie, côté salle : visible, sans boucher le passage.
-    const inX = exit.side === 'W' ? 2.5 : exit.side === 'E' ? -2.5 : 0;
-    const inY = exit.side === 'N' ? 2.5 : exit.side === 'S' ? -2.5 : 0;
-    this.anchorX = this.x = exit.x + inX;
-    this.anchorY = this.y = exit.y + inY;
+    this.anchorX = this.x = anchor.x;
+    this.anchorY = this.y = anchor.y;
     void loadImage(`/game/assets/essentials/trainers/${sprite}`)
       .then((img) => (this.image = img))
       .catch(() => {});
@@ -50,16 +62,39 @@ export class Trainer {
 
   /** TrainerNPC.flee_to : il part en courant par la sortie, au-delà du bord de la carte. */
   flee(world: WorldMap): void {
-    this.fleeing = true;
     const e = this.exit;
+    if (!e) return;
+    this.fleeing = true;
     this.target = {
       x: e.side === 'W' ? -2 : e.side === 'E' ? world.w + 2 : e.x,
       y: e.side === 'N' ? -2 : e.side === 'S' ? world.h + 2 : e.y,
     };
   }
 
+  /** Fuite vers un point précis (la bouche d'une grotte) : il disparaît en l'atteignant. */
+  fleeTo(x: number, y: number): void {
+    this.fleeing = true;
+    this.holdT = 0;
+    this.target = { x, y };
+  }
+
+  /** Il s'arrête `t` s, tourné vers (x, y) : le temps de viser et de lancer. */
+  aim(x: number, y: number, t: number): void {
+    if (this.fleeing) return;
+    this.holdT = t;
+    this.target = null;
+    this.moving = false;
+    const dx = x - this.x;
+    const dy = y - this.y;
+    this.row = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 1 : 2) : dy < 0 ? 3 : 0;
+  }
+
   update(dt: number, world: WorldMap, random: () => number): void {
     this.animT += dt;
+    if (this.holdT > 0) {
+      this.holdT -= dt;
+      return;
+    }
     if (!this.target) {
       this.moving = false;
       this.waitT -= dt;
@@ -67,7 +102,7 @@ export class Trainer {
       // Prochaine étape : un point au hasard autour de l'ancre, sur une case franchissable.
       for (let tries = 0; tries < 8; tries++) {
         const a = random() * Math.PI * 2;
-        const d = 1 + random() * (WANDER_RADIUS - 1);
+        const d = 1 + random() * (this.wanderRadius - 1);
         const x = this.anchorX + Math.cos(a) * d;
         const y = this.anchorY + Math.sin(a) * d;
         const cx = Math.floor(x);

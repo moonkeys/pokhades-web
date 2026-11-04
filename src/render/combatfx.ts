@@ -1,10 +1,13 @@
+import { moveSfx, sfx } from '../audio/audio';
 import { loadImage } from '../assets/pmd';
 import { MOVE_SHEETS, TYPE_SHEETS } from '../data/attackanims';
 import { TILE } from '../world/tiles';
+import type { AreaShape } from '../combat/combat';
 
 // Retour visuel du combat, repris de CombatVFX.gd et AttackAnim.gd : impacts
 // et étincelles à la couleur du type, nuage de K.O., planches d'attaque
-// d'Essentials, orbes des attaques spéciales, chiffres de dégâts.
+// d'Essentials, marques au sol des attaques spéciales et zones des champions,
+// chiffres de dégâts.
 //
 // Positions en cases (comme les acteurs), avec une hauteur `h` en cases
 // au-dessus du sol : vu de dessus, elle remonte simplement à l'écran.
@@ -166,7 +169,14 @@ export class CombatFx {
    * Planche d'attaque jouée une fois sur la cible (ou au point du coup dans
    * le vide) : celle de la capacité si elle en a une, sinon celle du type.
    */
-  attackAnim(type: string, x: number, y: number, move?: string): void {
+  attackAnim(type: string, x: number, y: number, move?: string, silent = false): void {
+    // Le son de la capacité part avec son animation (écart voulu, voir
+    // audio/sounds.ts) ; fx_boost reste muet : chaque appelant a le sien
+    // (montée de niveau, coffre, évolution…). `silent` : l'appelant a déjà fait le bruit.
+    if (!silent && type !== 'fx_boost') {
+      if (type === 'fx_heal') sfx('heal');
+      else moveSfx(type, move);
+    }
     const def = (move && MOVE_SHEETS[move]) || TYPE_SHEETS[type] || TYPE_SHEETS.normal;
     const key = `${def.file}|${def.tint ?? ''}|${def.frames ?? ''}`;
     let pending = this.sheets.get(key);
@@ -304,21 +314,89 @@ export class CombatFx {
     }
   }
 
-  /** Orbe d'attaque spéciale (Projectile.gd:62-82) : halo à la couleur du type et cœur blanc. */
-  drawOrb(b: CanvasRenderingContext2D, camX: number, camY: number, k: number, x: number, y: number, h: number, color: string): void {
+  /**
+   * Marque au sol d'une attaque spéciale qui va frapper (Combat.drawStrikes) :
+   * un anneau aplati comme les ombres, à la couleur du type, qui se remplit
+   * du centre vers le bord ; le coup tombe quand il est plein (`u` = 1). Celle
+   * d'un sauvage a un liseré rouge : c'est une zone à quitter.
+   */
+  drawMark(b: CanvasRenderingContext2D, camX: number, camY: number, k: number, x: number, y: number, radius: number, u: number, color: string, hostile: boolean): void {
     const cx = Math.round((x * TILE - camX) * k);
-    const cy = Math.round((y * TILE - h * TILE - camY) * k);
-    b.globalCompositeOperation = 'lighter';
-    const r = 0.35 * TILE * k;
-    const g = b.createRadialGradient(cx, cy, 0, cx, cy, r);
-    g.addColorStop(0, withAlpha(color, 0.95));
-    g.addColorStop(1, withAlpha(color, 0));
-    b.fillStyle = g;
-    b.fillRect(cx - r, cy - r, r * 2, r * 2);
-    b.globalCompositeOperation = 'source-over';
-    b.fillStyle = '#fff';
-    const c = Math.max(1, Math.round(1.5 * k));
-    b.fillRect(cx - c, cy - c, c * 2, c * 2);
+    const cy = Math.round((y * TILE - camY) * k);
+    const r = radius * TILE * k;
+    const fill = Math.min(1, u);
+    b.fillStyle = withAlpha(color, 0.22);
+    b.beginPath();
+    b.ellipse(cx, cy, r, r * 0.55, 0, 0, Math.PI * 2);
+    b.fill();
+    b.fillStyle = withAlpha(color, 0.5);
+    b.beginPath();
+    b.ellipse(cx, cy, r * fill, r * fill * 0.55, 0, 0, Math.PI * 2);
+    b.fill();
+    b.lineWidth = Math.max(1, Math.round(k));
+    b.strokeStyle = hostile ? 'rgba(255,56,38,0.85)' : withAlpha(color, 0.9);
+    b.beginPath();
+    b.ellipse(cx, cy, r, r * 0.55, 0, 0, Math.PI * 2);
+    b.stroke();
+  }
+
+  /**
+   * Zone d'un champion sur le point de frapper : la forme exacte qui touchera
+   * (pas aplatie comme les marques : c'est elle qu'on doit lire pour en
+   * sortir), voile à la couleur du type qui se remplit jusqu'à l'impact,
+   * liseré rouge qui s'épaissit et clignote sur la dernière fraction.
+   */
+  drawArea(b: CanvasRenderingContext2D, camX: number, camY: number, k: number, x: number, y: number, shape: AreaShape, u: number, color: string): void {
+    const px = (x * TILE - camX) * k;
+    const py = (y * TILE - camY) * k;
+    const s = TILE * k;
+    const fill = Math.min(1, u);
+    const path = (f: number) => {
+      b.beginPath();
+      switch (shape.kind) {
+        case 'circle':
+          b.arc(px, py, shape.r * s * f, 0, Math.PI * 2);
+          break;
+        case 'line': {
+          // Bande qui grandit depuis le lanceur.
+          const len = shape.len * s * f;
+          const nx = -shape.dy * shape.halfW * s;
+          const ny = shape.dx * shape.halfW * s;
+          b.moveTo(px + nx, py + ny);
+          b.lineTo(px + nx + shape.dx * len, py + ny + shape.dy * len);
+          b.lineTo(px - nx + shape.dx * len, py - ny + shape.dy * len);
+          b.lineTo(px - nx, py - ny);
+          b.closePath();
+          break;
+        }
+        case 'cone': {
+          const a = Math.atan2(shape.dy, shape.dx);
+          b.moveTo(px, py);
+          b.arc(px, py, shape.r * s * f, a - shape.half, a + shape.half);
+          b.closePath();
+          break;
+        }
+        case 'ring': {
+          // Couronne qui s'épaissit vers l'extérieur ; le trou se découpe en sens inverse (règle non nulle).
+          const inner = shape.r0 * s;
+          b.arc(px, py, inner + (shape.r - shape.r0) * s * f, 0, Math.PI * 2);
+          b.moveTo(px + inner, py);
+          b.arc(px, py, inner, 0, Math.PI * 2, true);
+          break;
+        }
+      }
+    };
+    b.fillStyle = withAlpha(color, 0.16);
+    path(1);
+    b.fill();
+    b.fillStyle = withAlpha(color, 0.42);
+    path(fill);
+    b.fill();
+    const blink = u > 0.7 && Math.floor(u * 20) % 2 === 0;
+    b.lineWidth = Math.max(1, Math.round(k * (u > 0.7 ? 1.5 : 1)));
+    b.strokeStyle = blink ? 'rgba(255,240,220,0.95)' : 'rgba(255,56,38,0.9)';
+    path(1);
+    b.stroke();
   }
 
   /** Les chiffres suivent la caméra : à repositionner à chaque image. */

@@ -5,6 +5,7 @@ import {
   BIOME_IDS,
   CAMP_NPCS,
   DONOR_SPECIES,
+  EVOLVED_SPECIES,
   FAUNA,
   ISLAND_NPCS,
   MERC_POOLS,
@@ -13,6 +14,7 @@ import {
   SHOP_IDLER,
   SHOP_SLEEPER,
   SHOP_STROLLERS,
+  STARTER_IDS,
   type BiomeId,
 } from '../data/species';
 
@@ -185,6 +187,8 @@ export const ROLES = new Map<number, string[]>();
     }
   };
   add(PLAYER_SPECIES.map((s) => s.id), 'Jouable');
+  add(STARTER_IDS, 'Starter');
+  add(EVOLVED_SPECIES, 'Évolution en cours de run');
   add(MERC_POOLS.scout, 'Mercenaire · Éclaireur');
   add(MERC_POOLS.veteran, 'Mercenaire · Vétéran');
   add(MERC_POOLS.champion, 'Mercenaire · Champion sauvage');

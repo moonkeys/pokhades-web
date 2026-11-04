@@ -1,7 +1,9 @@
+import { sfx } from '../audio/audio';
 import { loadMove, type Move } from './moves';
 import type { Fighter } from './damage';
 import { growthOf, xpAt } from '../data/growth';
 import { sheetOf } from '../data/bestiary';
+import { fetchJson } from '../assets/json';
 
 // Un Pokémon en combat : stats, PV et capacités équipées, comme
 // PokemonInstance.gd. Les stats d'attaque et de défense sont les stats de
@@ -74,7 +76,8 @@ export class Pokemon implements Fighter {
 
   private constructor(
     readonly id: number,
-    readonly name: string,
+    /** Nom de l'espèce, ou le surnom donné au Repaire (rename). */
+    public name: string,
     public level: number,
     readonly types: readonly string[],
     private readonly baseAttack: number,
@@ -91,6 +94,16 @@ export class Pokemon implements Fighter {
   ) {
     this.hp = this.maxHp;
     this.xp = xpForLevel(level, id);
+  }
+
+  /** Vrai si `name` est un surnom : il passe à la forme évoluée. */
+  nicknamed = false;
+
+  /** Donne un surnom (vide : il garde le nom de son espèce). */
+  rename(nick: string | undefined): void {
+    if (!nick) return;
+    this.name = nick;
+    this.nicknamed = true;
   }
 
   /** Expérience cumulée (PokemonInstance.current_xp). */
@@ -133,6 +146,28 @@ export class Pokemon implements Fighter {
     return gained;
   }
 
+  /**
+   * Reprend l'état de run de la forme précédente (PokemonInstance.evolve_to) :
+   * dons, objet tenu, bonus en cours et attaques. L'XP garde sa proportion
+   * dans le niveau (la courbe dépend de l'espèce) ; PV pleins, statut levé.
+   * Le niveau aussi : la forme a été chargée avant l'échange, et l'ancienne a
+   * pu en gagner d'autres pendant ce temps.
+   */
+  inherit(prev: Pokemon): void {
+    // Un surnom survit à l'évolution, comme dans les jeux principaux.
+    if (prev.nicknamed) this.rename(prev.name);
+    this.level = prev.level;
+    Object.assign(this.mult, prev.mult);
+    this.hpMult = prev.hpMult;
+    this.baseCrit = prev.baseCrit;
+    for (const [stat, b] of prev.buffs) this.buffs.set(stat, { ...b });
+    this.moves.splice(0, this.moves.length, ...prev.moves);
+    this.movesVersion = prev.movesVersion + 1;
+    const from = xpForLevel(this.level, this.id);
+    this.xp = from + prev.xpRatio * (xpForLevel(this.level + 1, this.id) - from);
+    this.hp = this.maxHp;
+  }
+
   buff(stat: BuffStat): number {
     return this.buffs.get(stat)?.mult ?? 1;
   }
@@ -149,6 +184,12 @@ export class Pokemon implements Fighter {
   /** Stat de Vitesse (elle règle la cadence des capacités). */
   get speed(): number {
     return Math.floor(this.baseSpeed * this.mult.speed);
+  }
+
+  /** PV max imposés (jeu en ligne : ceux que l'hôte ou l'invité a calculés chez lui), PV courants inchangés. */
+  fitMaxHp(n: number): void {
+    const cur = this.maxHp;
+    if (cur > 0 && n > 0 && cur !== n) this.hpMult *= n / cur;
   }
 
   /** PokemonInstance.apply_hp_boost : les PV gagnés en max le sont aussi en PV courants. */
@@ -210,6 +251,8 @@ export class Pokemon implements Fighter {
   /** Un statut actif n'est jamais écrasé (PokemonInstance.apply_status). `duration` : allongée par un don. */
   applyStatus(kind: Status, duration: number = STATUS[kind].duration): boolean {
     if (this.status || this.fainted) return false;
+    // Écart voulu : le son de l'animation du statut dans les jeux (StatusFx du jeu Godot était muet).
+    sfx(kind);
     this.status = kind;
     this.statusTime = duration;
     this.dotTimer = 0;
@@ -239,9 +282,7 @@ export class Pokemon implements Fighter {
    * `withMoves` : faux pour les sauvages, dont les fiches de capacités ne sont pas embarquées.
    */
   static async load(id: number, level: number = BASE_TEAM_LEVEL, withMoves = true): Promise<Pokemon> {
-    const d: PokemonJson = await fetch(`/game/data/pokeapi/pokemon/${id}.json`)
-      .then((r) => (r.ok ? r.json() : {}))
-      .catch(() => ({}));
+    const d: PokemonJson = (await fetchJson<PokemonJson>(`/game/data/pokeapi/pokemon/${id}.json`)) ?? {};
     const s = d.stats ?? {};
     // Attaques imposées par le bestiaire (page de config), sinon celles apprises jusqu'au niveau.
     const imposed = withMoves ? sheetOf(id)?.moves : undefined;

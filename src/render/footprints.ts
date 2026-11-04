@@ -1,12 +1,12 @@
 import type { Actor } from '../entities/actor';
 import type { WorldMap } from '../world/generate';
-import { GROUND, TILE, type Tile } from '../world/tiles';
+import { BLOB, GROUND, TILE, type Tile } from '../world/tiles';
 
 // Traces de pas : elles dépendent du sol (sable, terre, boue, herbe couchée,
 // sillage dans l'eau) et de la morphologie du Pokémon (petites pattes,
 // grosses empreintes, serpent qui ondule, ou rien pour ceux qui flottent).
 
-type Surface = 'sand' | 'dirt' | 'mud' | 'grass' | 'dry' | 'water';
+type Surface = 'sand' | 'dirt' | 'mud' | 'grass' | 'dry' | 'snow' | 'water';
 type Gait = 'paw' | 'big' | 'slither' | 'none';
 
 interface Print {
@@ -30,6 +30,8 @@ const SURFACES: Record<Exclude<Surface, 'water'>, { color: string; life: number;
   mud: { color: '#2f251a', life: 10, alpha: 0.75 },
   grass: { color: '#6f9f5e', life: 1.8, alpha: 0.55 },
   dry: { color: '#9a8f40', life: 2.6, alpha: 0.6 },
+  /** Neige : des creux bleutés qui tiennent longtemps. */
+  snow: { color: '#8fa8c0', life: 9, alpha: 0.7 },
 };
 
 /** Serpents et apparentés : une trace continue qui ondule. */
@@ -45,6 +47,7 @@ function surfaceOfTile(tile: Tile | undefined): Exclude<Surface, 'water'> | null
   if (same(tile, GROUND.mud)) return 'mud';
   if (same(tile, GROUND.grass)) return 'grass';
   if (same(tile, GROUND.dry)) return 'dry';
+  if (same(tile, GROUND.snow)) return 'snow';
   return null;
 }
 
@@ -57,8 +60,9 @@ function surfaceAt(world: WorldMap, x: number, y: number): Surface | null {
   if (world.water[i]) return b.water?.swim ? 'water' : null;
   if (world.tall[i]) return null;
   // Remplissage implicite : le sentier de sable « cuit » n'a pas de fill, c'est du sable.
-  if (world.path[i] && b.path) return surfaceOfTile(b.path.blob.fill);
-  if (world.patch[i] && b.patch) return surfaceOfTile(b.patch.blob.fill);
+  // Gravier et glace (Montagne glacée) ne marquent pas : sans remplissage, ils passaient pour du sable.
+  if (world.path[i] && b.path) return b.path.blob === BLOB.gravel ? null : surfaceOfTile(b.path.blob.fill);
+  if (world.patch[i] && b.patch) return b.patch.ice ? null : surfaceOfTile(b.patch.blob.fill);
   return surfaceOfTile(b.ground.base);
 }
 

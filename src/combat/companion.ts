@@ -66,7 +66,7 @@ export class CompanionBrain {
     let best: Actor | null = null;
     let bestD = AI_SEEK_RADIUS;
     for (const e of enemies) {
-      if (!e.pokemon || e.pokemon.fainted || e.deathT >= 0 || e.hidden) continue;
+      if (!e.pokemon || e.pokemon.fainted || e.deathT >= 0 || e.hidden || e.intro) continue;
       const d = Math.hypot(e.x - a.x, e.y - a.y);
       if (d < bestD) {
         best = e;

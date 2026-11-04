@@ -19,9 +19,12 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { attackSheetFiles } from '../src/data/attackanims.ts';
 import { CHAMPIONS, championSpecies } from '../src/data/champions.ts';
-import { DONOR_SPECIES, MERC_SPECIES, PLAYER_SPECIES, allSpecies } from '../src/data/species.ts';
-import { CANDY, HELD_ITEMS, TMS, UPGRADES } from '../src/meta/catalog.ts';
+import { gruntSpecies, gruntSprites } from '../src/data/grunts.ts';
+import { trainerSprites } from '../src/data/trainers.ts';
+import { DONOR_SPECIES, EVOLVED_SPECIES, FAUNA, MERC_SPECIES, PLAYER_SPECIES, QUEST_SPECIES, STARTER_IDS, allSpecies } from '../src/data/species.ts';
+import { CANDY, HELD_ITEMS, RESOURCES, SHARDS, TMS, UPGRADES } from '../src/meta/catalog.ts';
 import bestiary from '../src/data/bestiary.json' with { type: 'json' };
+import { ANIM_FILES, CRIES_DIR, essentialsName, MUSIC, SOUNDS, cryPath, servedPath } from '../src/audio/sounds.ts';
 import { cacheDir, fetchRemote } from './remote.ts';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -71,11 +74,19 @@ const WILD_ACTIONS = ['Hurt', 'Sleep', 'Idle', 'Eat', 'Hop'];
 const CAMP_POSES = ['Sit', 'Laying', 'Idle', 'Hop'];
 /** Planches de pose attendues, et leurs dimensions selon notre AnimData.xml (vérifiées après copie). */
 const poseSheets: { out: string; width: number; fh: number }[] = [];
-const isPlayer = new Set(PLAYER_SPECIES.map((p) => p.id));
+// Les starters aussi : celui qu'on choisit vit au Repaire dès la première visite.
+const isPlayer = new Set([...PLAYER_SPECIES.map((p) => p.id), ...STARTER_IDS]);
 // Les mercenaires se battent dans l'équipe : ils ont besoin des mêmes actions que les Pokémon jouables.
-const playable = new Set([...PLAYER_SPECIES.map((p) => p.id), ...MERC_SPECIES]);
+const playable = new Set([...isPlayer, ...MERC_SPECIES]);
+// Une forme évoluée se bat aussi (data/evolutions.ts), mais peut par ailleurs être
+// sauvage ou figurant (Dracolosse au Repaire, Roucarnage…) : elle garde les deux jeux.
+// Toute la faune aussi : chaque sauvage peut être libéré ou dompté en grotte
+// (run/cave.ts) puis rejoindre l'équipe — il lui faut ses attaques (Attack,
+// Shoot, Charge), et ses poses de sauvage (Idle, Hop) pour la salle. Les
+// récompenses des quêtes de Kangourex rejoignent l'équipe et vivent au camp : pareil.
+const evolved = new Set([...EVOLVED_SPECIES, ...Object.values(FAUNA).flat(), ...QUEST_SPECIES]);
 // Espèces jouées, sauvages, légendaires donateurs et Pokémon des champions.
-const species = [...new Set([...allSpecies(), ...championSpecies()])].sort((a, b) => a - b);
+const species = [...new Set([...allSpecies(), ...championSpecies(), ...gruntSpecies()])].sort((a, b) => a - b);
 for (const id of species) {
   const dir = `data/pmd/${String(id).padStart(4, '0')}`;
   files.push(`${dir}/AnimData.xml`, `${dir}/Walk-Anim.png`, `data/pokeapi/pokemon/${id}.json`);
@@ -83,7 +94,7 @@ for (const id of species) {
   if (!xmlPath) continue;
   const xml = fs.readFileSync(xmlPath, 'utf8');
   const sheets = new Set<string>();
-  for (const action of playable.has(id) ? PLAYER_ACTIONS : WILD_ACTIONS) {
+  for (const action of evolved.has(id) ? [...PLAYER_ACTIONS, ...WILD_ACTIONS] : playable.has(id) ? PLAYER_ACTIONS : WILD_ACTIONS) {
     const file = animFile(xml, action);
     if (file && file !== 'Walk') sheets.add(file);
   }
@@ -91,9 +102,10 @@ for (const id of species) {
   if (!isPlayer.has(id)) continue;
   for (const pose of CAMP_POSES) {
     const file = animFile(xml, pose);
-    if (!file || file === 'Walk' || sheets.has(file)) continue;
+    if (!file || file === 'Walk') continue;
+    // Déjà demandée comme action (forme évoluée, cf. plus haut) : on la vérifie quand même.
+    if (!sheets.has(file)) files.push(`${dir}/${file}-Anim.png`);
     sheets.add(file);
-    files.push(`${dir}/${file}-Anim.png`);
     // Une planche PMD : une colonne par image de l'animation, une rangée par direction — 8, ou
     // une seule pour les poses vues de face (Sit) : le rendu prend alors toujours celle-là.
     const block = xml.match(new RegExp(`<Anim>\\s*<Name>${file}</Name>([\\s\\S]*?)</Anim>`))?.[1] ?? '';
@@ -110,26 +122,56 @@ for (const name of attackSheetFiles()) {
   renamed.push([`${ESSENTIALS}/Animations/${name}.png`, `assets/essentials/animations/${name}.png`]);
 }
 renamed.push([`${ESSENTIALS}/UI/Party/overlay_hp.png`, 'assets/essentials/ui/overlay_hp.png']);
+// Le « ! » des dresseurs qui vous repèrent : le repère de nouveauté du Repaire (run/camp.ts).
+renamed.push([`${ESSENTIALS}/Animations/!.png`, 'assets/essentials/animations/exclaim.png']);
 // Champions d'arène (PokePools.CHAMPION_SPRITE) et Poké Ball de leurs envois (PokeballFX.gd).
 // Le portrait de combat (Graphics/Trainers, 128 px) sert au dialogue et à l'affiche.
 for (const c of Object.values(CHAMPIONS)) {
   renamed.push([`${ESSENTIALS}/Characters/${c.sprite}`, `assets/essentials/trainers/${c.sprite}`]);
   renamed.push([`${ESSENTIALS}/Trainers/${c.sprite.replace(/^trainer_/, '')}`, `assets/essentials/trainers/battle/${c.sprite.replace(/^trainer_/, '')}`]);
 }
+// Sbires des grottes (src/data/grunts.ts) : planche de marche et portrait du dialogue, comme les champions.
+for (const sprite of gruntSprites()) {
+  renamed.push([`${ESSENTIALS}/Characters/${sprite}`, `assets/essentials/trainers/${sprite}`]);
+  renamed.push([`${ESSENTIALS}/Trainers/${sprite.replace(/^trainer_/, '')}`, `assets/essentials/trainers/battle/${sprite.replace(/^trainer_/, '')}`]);
+}
+// Dresseurs des salles de run (src/data/trainers.ts) : planche de marche seulement (pas de dialogue).
+for (const sprite of trainerSprites()) renamed.push([`${ESSENTIALS}/Characters/${sprite}`, `assets/essentials/trainers/${sprite}`]);
+// Poké Ball lancée par les sbires (run/capture.ts).
+for (const f of ['ball_POKEBALL', 'ball_POKEBALL_open']) renamed.push([`${ESSENTIALS}/Battle animations/${f}.png`, `assets/essentials/battle/${f}.png`]);
 // Illustrations officielles des légendaires donateurs (data/artwork, PMDSprites.get_artwork) : l'écran des dons.
 for (const dex of DONOR_SPECIES) files.push(`data/artwork/${dex}.png`);
-// Icônes de l'étal de la boutique (ShopStock.gd, Graphics/Items).
-for (const f of ['POTION', 'SUPERPOTION', 'HYPERPOTION', 'MAXPOTION', 'REVIVE', 'MAXREVIVE', 'machine_NORMAL', 'COINCASE']) {
+// Icônes de l'étal de la boutique (ShopStock.gd, Graphics/Items), et la pièce du butin (portes, src/ui/rewardicons.ts).
+for (const f of ['POTION', 'SUPERPOTION', 'HYPERPOTION', 'MAXPOTION', 'REVIVE', 'MAXREVIVE', 'machine_NORMAL', 'COINCASE', 'AMULETCOIN']) {
   renamed.push([`${ESSENTIALS}/Items/${f}.png`, `assets/essentials/items/${f}.png`]);
 }
 // Repaire : les CT (une icône par type), les objets tenus et les améliorations (src/meta/catalog.ts).
 const TYPES = ['NORMAL', 'FIRE', 'WATER', 'ELECTRIC', 'GRASS', 'ICE', 'FIGHTING', 'POISON', 'GROUND', 'FLYING', 'PSYCHIC', 'BUG', 'ROCK', 'GHOST', 'DRAGON', 'DARK', 'STEEL', 'FAIRY'];
-for (const f of [...TYPES.map((t) => `machine_${t}`), ...HELD_ITEMS.map((i) => i.icon), ...UPGRADES.map((u) => u.icon), CANDY.icon]) {
+for (const f of [...TYPES.map((t) => `machine_${t}`), ...HELD_ITEMS.map((i) => i.icon), ...UPGRADES.map((u) => u.icon), CANDY.icon, SHARDS.icon]) {
   renamed.push([`${ESSENTIALS}/Items/${f}.png`, `assets/essentials/items/${f}.png`]);
 }
+// L'artisanat (src/meta/crafting.ts) : sachets de graines, plantes du potager, matériaux de biome
+// et nectars. Lus dans le source (`icon: '…'`), comme les baies plus bas : crafting.ts importe
+// sans extension.
+const CRAFT_SRC = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '../src/meta/crafting.ts'), 'utf8');
+for (const [, f] of CRAFT_SRC.matchAll(/icon: '(\w+)'/g)) renamed.push([`${ESSENTIALS}/Items/${f}.png`, `assets/essentials/items/${f}.png`]);
+// Arbres à baies (src/run/berries.ts) : la planche de l'arbre et l'icône de la baie, pour chaque baie de biome.
+// Lues dans le source de biomes.ts (`berry: '…'`) : node n'y importe pas ses dépendances sans extension.
+const BIOMES_SRC = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '../src/world/biomes.ts'), 'utf8');
+for (const [, berry] of BIOMES_SRC.matchAll(/^\s*berry: '(\w+)',/gm)) {
+  renamed.push([`${ESSENTIALS}/Characters/berrytree_${berry}.png`, `assets/essentials/berries/berrytree_${berry}.png`]);
+  renamed.push([`${ESSENTIALS}/Items/${berry}.png`, `assets/essentials/items/${berry}.png`]);
+}
+// Coffres de run (src/run/chests.ts) : les obstacles levés par les CS, et les icônes des ressources qu'on y trouve.
+for (const f of ['Object tree 1.png', 'Object rock.png']) renamed.push([`${ESSENTIALS}/Characters/${f}`, `assets/essentials/objects/${f}`]);
+for (const r of Object.values(RESOURCES)) if (r.icon) renamed.push([`${ESSENTIALS}/Items/${r.icon}.png`, `assets/essentials/items/${r.icon}.png`]);
 for (const f of ['ball_BEASTBALL', 'ball_BEASTBALL_open', 'ballBurst_particle', 'ballBurst_particle_s', 'ballBurst_dazzle']) {
   renamed.push([`${ESSENTIALS}/Battle animations/${f}.png`, `assets/essentials/battle/${f}.png`]);
 }
+
+// Sons et musiques (src/audio/sounds.ts), tous d'Essentials : à plat dans audio/.
+// Les sons d'attaque vont dans audio/anim/ (servedPath).
+for (const f of [...Object.values(SOUNDS).flatMap((d) => d.files), ...Object.values(MUSIC).map((m) => m.file), ...ANIM_FILES]) renamed.push([f, servedPath(f)]);
 
 // Capacités apprises par montée de niveau, jouables comme sauvages : leurs
 // fiches (type, puissance, classe) alimentent le combat, et celles des
@@ -149,9 +191,25 @@ for (const tm of TMS) moves.add(tm.api);
 for (const sheet of Object.values(bestiary.species) as { moves?: string[] }[]) for (const name of sheet.moves ?? []) moves.add(name);
 for (const name of moves) files.push(`data/pokeapi/move/${name}.json`);
 
+// Cris des espèces du jeu, renommés par numéro de Pokédex (le jeu ne connaît
+// pas les noms internes d'Essentials). Générations 6+ : pas de cri, le jeu
+// joue un son de remplacement (CRY_FALLBACK).
+for (const id of species) {
+  const src = await source(`data/pokeapi/pokemon/${id}.json`);
+  if (!src) continue;
+  const { name_en } = JSON.parse(fs.readFileSync(src, 'utf8')) as { name_en?: string };
+  if (!name_en) continue;
+  // « basculin-red-striped » : la forme n'a pas de cri à elle, l'espèce si.
+  for (const name of [essentialsName(name_en), essentialsName(name_en.split('-')[0])]) {
+    if (!fs.existsSync(path.join(GODOT, CRIES_DIR, `${name}.ogg`))) continue;
+    renamed.push([`${CRIES_DIR}/${name}.ogg`, cryPath(id)]);
+    break;
+  }
+}
+
 const OUT = path.join(WEB, 'public', 'game');
 // On repart de zéro (sauf le fichier extrait à la main) : une espèce retirée de la liste disparaît aussi.
-for (const sub of ['assets/tilesets', 'assets/cs', 'assets/fx', 'assets/essentials/animations', 'assets/essentials/ui', 'assets/essentials/trainers', 'assets/essentials/battle', 'assets/essentials/items', 'data']) fs.rmSync(path.join(OUT, sub), { recursive: true, force: true });
+for (const sub of ['assets/tilesets', 'assets/cs', 'assets/fx', 'assets/essentials/animations', 'assets/essentials/ui', 'assets/essentials/trainers', 'assets/essentials/battle', 'assets/essentials/items', 'audio', 'data']) fs.rmSync(path.join(OUT, sub), { recursive: true, force: true });
 
 let copied = 0;
 let remote = 0;

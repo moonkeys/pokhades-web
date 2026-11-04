@@ -9,6 +9,29 @@
         "dev"
       ],
       "port": 5173
+    },
+    {
+      "name": "dev-test",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "vite",
+        "--port",
+        "5174",
+        "--strictPort",
+        "--host",
+        "127.0.0.1"
+      ],
+      "port": 5174,
+      "url": "http://127.0.0.1:5174"
+    },
+    {
+      "name": "pages-preview",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "BASE_PATH=/pokhades-web/ npx vite preview --port 4173 --strictPort"
+      ],
+      "port": 4173
     }
   ]
 }

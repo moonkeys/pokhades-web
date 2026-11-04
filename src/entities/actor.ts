@@ -1,3 +1,4 @@
+import { sfx } from '../audio/audio';
 import type { ActionAnim, PmdSheet, SpeciesInfo } from '../assets/pmd';
 import { AttackState } from '../combat/attackstate';
 import type { CompanionBrain } from '../combat/companion';
@@ -23,6 +24,11 @@ const DASH_OVERRUN = 0.15;
 /** Dash contre un obstacle infranchissable : rebond en arrière (cases/s, amorti) et sa durée (s), ~½ case. */
 const BONK_SPEED = 8;
 const BONK_TIME = 0.18;
+/**
+ * Glace (Montagne glacée) : on y file un peu plus vite qu'à pied, sans pouvoir
+ * tourner. Ajout : absent du jeu Godot.
+ */
+const ICE_SPEED = 11;
 /** Dans un escalier, on monte marche à marche : vitesse réduite. */
 const STAIRS_SPEED = 0.55;
 /** Durée du fondu à pied ↔ sur la monture, en secondes. */
@@ -83,6 +89,8 @@ export class Actor {
    * les sauvages restent « wild ».
    */
   role: 'wild' | 'champion' | 'boss' = 'wild';
+  /** Champion qui l'envoie (clé de CHAMPIONS) : ses Pokémon lancent son attaque signature (combat/signatures.ts). */
+  signature: string | null = null;
   /** Barres de PV : à 0 PV, s'il en reste, le Pokémon remonte au maximum (changement de phase). */
   bars = 1;
   barsLeft = 1;
@@ -103,8 +111,27 @@ export class Actor {
   wander = true;
   /** Anticipation d'une attaque (écrasement et blanchiment du sprite) : temps écoulé, durée, taille finale de l'anneau. */
   windup = { t: 0, dur: 0, ring: 1.4 };
+  /**
+   * Entrée en puissance d'un Pokémon de champion (Combat.bossIntro) : temps
+   * écoulé, instant de la libération, durée. Tant qu'elle dure, il n'agit pas
+   * et ne prend aucun coup. null : aucune en cours.
+   */
+  intro: { t: number; burst: number; dur: number } | null = null;
+  /**
+   * Évolution en cours (Combat.evolve) : temps écoulé, durée, instant de
+   * l'échange de forme (le sprite est alors tout blanc) et l'échange
+   * lui-même, appelé une fois. Il n'attaque pas et ne prend aucun coup
+   * pendant ce temps. null : aucune en cours.
+   */
+  evolve: { t: number; dur: number; swapAt: number; swap: (() => void) | null } | null = null;
   /** Caché dans l'herbe haute : ni dessiné, ni visé par les tirs. */
   hidden = false;
+  /**
+   * Enfermé dans la Poké Ball d'un sbire (run/capture.ts) : ni dessiné (la
+   * Ball l'est à sa place), ni visé, ni frappé, et il ne commande plus rien
+   * le temps de s'en débattre.
+   */
+  trapped = false;
   /** Abri : tout coup reçu est annulé tant qu'il dure (s). */
   protectT = 0;
   /** Temps écoulé depuis la fin du dernier dash (invulnérabilité juste après). */
@@ -137,8 +164,24 @@ export class Actor {
   /** Hauteur du sol sous les pieds, en étages, lissée (sert à l'effet de hauteur). */
   height = 0;
   onStairs = false;
+  /**
+   * Glissade sur la glace : direction (un axe pur, ±1) ; 0, 0 si l'on ne
+   * glisse pas. Seul le Pokémon joué glisse : les compagnons, qui le suivent
+   * pas à pas, traversent la glace à pied (écart voulu : sinon ils se
+   * perdaient sur la patinoire au lieu de le rejoindre).
+   */
+  slideDx = 0;
+  slideDy = 0;
+  /**
+   * Depuis combien de temps il glisse (s), 0 s'il ne glisse pas : le rendu
+   * l'accroupit et le fait tanguer, FieldFx sème des éclats de glace et deux
+   * traces de patin. Ajout (retour de test : « une animation sur la glissade »).
+   */
+  slideT = 0;
   /** 0..1 : à l'ombre d'un bâtiment ou d'un arbre (lissé par le rendu). */
   shade = 0;
+  /** Couché sur un décor (un rondin du Repaire) : le sprite monte d'autant (px du monde), sans ombre au sol. */
+  perch = 0;
   /** Point de départ du dash et prolongement déjà consommé (fin de dash dans un obstacle). */
   private dashFromX = 0;
   private dashFromY = 0;
@@ -153,10 +196,17 @@ export class Actor {
   private wanderDx = 0;
   private wanderDy = 0;
 
+  /**
+   * `speciesId` : l'espèce dessinée, qui change quand le Pokémon évolue en
+   * cours de run. `baseId` : pour un membre de l'équipe du Repaire, son uid
+   * (meta/mons.ts), clé de tout ce que la sauvegarde lui attache (nature,
+   * objet tenu, attaques choisies, Super Bonbon) ; sinon, son espèce.
+   */
   constructor(
-    readonly speciesId: number,
+    public speciesId: number,
     x: number,
     y: number,
+    readonly baseId = speciesId,
   ) {
     this.x = this.prevX = x;
     this.y = this.prevY = y;
@@ -182,6 +232,19 @@ export class Actor {
       }
     }
     return false;
+  }
+
+  /**
+   * Les pieds sont sur une plaque de glace (biome à plaques `ice`). Le sentier
+   * de gravier, dessiné par-dessus, donne prise : on s'y arrête.
+   */
+  private onIce(world: WorldMap): boolean {
+    if (!world.biome.patch?.ice) return false;
+    const cx = Math.floor(this.x);
+    const cy = Math.floor(this.y - BODY_H / 2);
+    if (cx < 0 || cy < 0 || cx >= world.w || cy >= world.h) return false;
+    const i = cy * world.w + cx;
+    return world.patch[i] === 1 && !world.path[i];
   }
 
   /** Poussée externe (deux Pokémon qui se chevauchent s'écartent), avec les mêmes collisions. */
@@ -268,6 +331,14 @@ export class Actor {
   runAlly = false;
 
   /**
+   * Partie en ligne (net/net.ts), chez l'hôte : le Pokémon d'un invité, piloté
+   * depuis son navigateur (identifiant de pair). null : un Pokémon d'ici.
+   */
+  remote: string | null = null;
+  /** Commande reçue de l'invité, appliquée au pas suivant (main.ts). */
+  remoteIn: { x: number; y: number; dir: number; moving: boolean; dashT: number; swimming: boolean } | null = null;
+
+  /**
    * Pose d'un figurant (boutique) : une animation PMD qui boucle — Sleep,
    * Idle, Eat… — sans grisaille ; une action ponctuelle (Hop) y revient.
    */
@@ -325,10 +396,11 @@ export class Actor {
       this.deathT += dt;
       this.moving = false;
       this.dashT = 0;
+      this.slideT = 0;
       return;
     }
     // Gelé ou endormi : il ne bouge plus, mais ses charges de dash reviennent.
-    const frozen = this.pokemon ? !this.pokemon.canAct : false;
+    const frozen = this.trapped || (this.pokemon ? !this.pokemon.canAct : false);
     if (frozen) input = { ...input, mx: 0, my: 0, dash: false };
     // Les charges reviennent une par une (TeamMember.gd:677-683).
     if (this.dashCharges < this.dashMax) {
@@ -354,6 +426,7 @@ export class Actor {
       this.dashDy = input.my / len;
       this.dashT = DASH_TIME;
       this.dashCharges--;
+      sfx('dash');
       this.sinceDash = 0;
       this.dashOver = 0;
       this.dashFromX = this.x;
@@ -381,12 +454,32 @@ export class Actor {
         } else this.backOff(world);
       }
       this.moving = true;
+      this.slideT = 0;
+    } else if ((this.slideDx || this.slideDy) && this.onIce(world)) {
+      // Comme dans les jeux Pokémon : tout droit, sans commande, jusqu'au
+      // premier obstacle ou au bout de la glace. Pas d'animation de marche :
+      // il glisse, figé dans sa pose (le dash, lui, reste possible pour s'en sortir).
+      const step = ICE_SPEED * dt;
+      const bx = this.x;
+      const by = this.y;
+      this.move(world, this.slideDx * step, this.slideDy * step);
+      this.moving = false;
+      this.slideT += dt;
+      if (Math.hypot(this.x - bx, this.y - by) < step * 0.4) this.slideDx = this.slideDy = this.slideT = 0;
     } else {
+      this.slideDx = this.slideDy = this.slideT = 0;
       this.moving = wantsMove;
       if (wantsMove) {
         this.face(dirFromVector(input.mx, input.my), dt);
         const speed = PLAYER_SPEED * (this.onStairs ? STAIRS_SPEED : 1) * (this.pokemon?.speedMult ?? 1);
         this.move(world, input.mx * speed * dt, input.my * speed * dt);
+        // Un pas sur la glace lance la glissade, selon l'axe dominant de la commande.
+        if (this.onIce(world)) {
+          const horiz = Math.abs(input.mx) >= Math.abs(input.my);
+          this.slideDx = horiz ? Math.sign(input.mx) : 0;
+          this.slideDy = horiz ? 0 : Math.sign(input.my);
+          this.dir = dirFromVector(this.slideDx, this.slideDy);
+        }
       }
     }
     this.animT += dt;

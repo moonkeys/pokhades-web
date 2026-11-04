@@ -1,12 +1,13 @@
 import { FAUNA, type BiomeId } from '../data/species';
-import { BLOB, GROUND, LILIES, PROPS, SEA, TALL_GRASS, TREES, withFill, type Blob, type SpriteDef, type TallGrassDef, type Tile } from './tiles';
+import { BLOB, CAVE, GROUND, LILIES, PROPS, SEA, TALL_GRASS, TREES, withFill, type Blob, type SpriteDef, type TallGrassDef, type Tile } from './tiles';
 
 // Six biomes du jeu, reconstruits avec le seul tileset Pokémon. Les densités
 // reprennent l'esprit de MapGenerator._theme_config (forêt dense, prairie
 // ouverte, marais aéré…) ; elles ne sont pas une traduction exacte, le
 // générateur du prototype étant volontairement simplifié.
 
-export type ParticleKind = 'pollen' | 'leaves' | 'fireflies' | 'embers' | 'motes';
+/** Les trois derniers sont ceux de la météo (world/weather.ts), sur une couche à part. */
+export type ParticleKind = 'pollen' | 'leaves' | 'fireflies' | 'embers' | 'motes' | 'rain' | 'snow' | 'sand';
 
 export interface Ambiance {
   /** Teinte multipliée sur toute l'image (assombrit et colore). */
@@ -43,8 +44,11 @@ export interface Biome {
   id: BiomeId;
   name: string;
   ground: { base: Tile; variants: readonly Tile[]; variantRate: number };
-  /** Plaques d'un autre sol (sable, terre, boue). */
-  patch: { blob: Blob; threshold: number; nearWaterOnly?: boolean } | null;
+  /**
+   * Plaques d'un autre sol (sable, terre, boue). `ice` : ce sont des plaques
+   * de glace, où l'on glisse (entities/actor.ts).
+   */
+  patch: { blob: Blob; threshold: number; nearWaterOnly?: boolean; ice?: boolean } | null;
   path: { blob: Blob; radius: number } | null;
   /**
    * `swim` : on peut y nager (monture Surf) ; sinon l'eau bloque (lave).
@@ -69,12 +73,27 @@ export interface Biome {
   props: readonly PropRule[];
   fauna: readonly number[];
   ambiance: Ambiance;
+  /**
+   * Baie de ses arbres à baies (nom Essentials : planche
+   * Characters/berrytree_<BAIE>.png, icône Items/<BAIE>.png). Absente : pas
+   * d'arbre à baies (Volcan, Rocailleux, Océan : pas de végétation à baies).
+   */
+  berry?: string;
+  /**
+   * Ce qui garde le coffre de ses salles (A-FAIRE 1.5) : un arbuste à couper
+   * (CS Coupe) ou un rocher fissuré (CS Éclate-Roc), selon le thème comme
+   * MapGenerator. Écart voulu : Godot faisait casser ses rochers par Force ;
+   * ici c'est Éclate-Roc, et Force (pousser) viendra plus tard.
+   */
+  guard: 'cut' | 'rock-smash';
 }
 
 export const BIOMES: Record<BiomeId, Biome> = {
   prairie: {
     id: 'prairie',
     name: 'Prairie',
+    guard: 'cut',
+    berry: 'ORANBERRY',
     ground: { base: GROUND.grass, variants: [GROUND.grassFlowers], variantRate: 0.04 },
     patch: null,
     path: { blob: BLOB.sandPath, radius: 1.5 },
@@ -94,6 +113,8 @@ export const BIOMES: Record<BiomeId, Biome> = {
   foret: {
     id: 'foret',
     name: 'Forêt',
+    guard: 'cut',
+    berry: 'CHERIBERRY',
     ground: { base: GROUND.grass, variants: [], variantRate: 0 },
     patch: null,
     path: { blob: withFill(BLOB.ringGrass, GROUND.dirt), radius: 1.4 },
@@ -121,6 +142,8 @@ export const BIOMES: Record<BiomeId, Biome> = {
   automne: {
     id: 'automne',
     name: 'Automne',
+    guard: 'cut',
+    berry: 'SITRUSBERRY',
     ground: { base: GROUND.dry, variants: GROUND.dryVariants, variantRate: 0.08 },
     patch: null,
     path: { blob: withFill(BLOB.ringDry, GROUND.dirt), radius: 1.4 },
@@ -146,6 +169,8 @@ export const BIOMES: Record<BiomeId, Biome> = {
   lac: {
     id: 'lac',
     name: 'Lac',
+    guard: 'cut',
+    berry: 'MAGOBERRY',
     ground: { base: GROUND.grass, variants: [], variantRate: 0 },
     patch: { blob: BLOB.sandPath, threshold: 0, nearWaterOnly: true },
     path: { blob: BLOB.sandPath, radius: 1.4 },
@@ -164,6 +189,8 @@ export const BIOMES: Record<BiomeId, Biome> = {
   marais: {
     id: 'marais',
     name: 'Marais',
+    guard: 'cut',
+    berry: 'AGUAVBERRY',
     ground: { base: GROUND.dry, variants: GROUND.dryVariants, variantRate: 0.1 },
     patch: { blob: withFill(BLOB.ringDry, GROUND.mud), threshold: 0.55 },
     path: null,
@@ -183,6 +210,7 @@ export const BIOMES: Record<BiomeId, Biome> = {
   volcan: {
     id: 'volcan',
     name: 'Volcan',
+    guard: 'rock-smash',
     // Herbe sèche roussie par l'étalonnage : c'est elle qui permet un vrai chemin
     // de terre à bords raccordés (l'anneau d'herbe sèche n'existe que sur ce sol).
     ground: { base: GROUND.dry, variants: GROUND.dryVariants, variantRate: 0.06 },
@@ -205,6 +233,7 @@ export const BIOMES: Record<BiomeId, Biome> = {
   rocailleux: {
     id: 'rocailleux',
     name: 'Rocailleux',
+    guard: 'rock-smash',
     ground: { base: GROUND.grass, variants: [], variantRate: 0 },
     patch: { blob: withFill(BLOB.ringGrass, GROUND.dirt), threshold: 0.6 },
     path: { blob: withFill(BLOB.ringGrass, GROUND.dirt), radius: 1.5 },
@@ -226,6 +255,8 @@ export const BIOMES: Record<BiomeId, Biome> = {
   village: {
     id: 'village',
     name: 'Village',
+    guard: 'rock-smash',
+    berry: 'LEPPABERRY',
     ground: { base: GROUND.grass, variants: [GROUND.grassFlowers], variantRate: 0.02 },
     patch: null,
     // Rues et place dessinées par le village lui-même (revêtements rectangulaires, cf. town.ts).
@@ -245,6 +276,8 @@ export const BIOMES: Record<BiomeId, Biome> = {
   plage: {
     id: 'plage',
     name: 'Plage',
+    guard: 'rock-smash',
+    berry: 'NANABBERRY',
     ground: { base: GROUND.grass, variants: [GROUND.grassFlowers], variantRate: 0.03 },
     // Sable clair (celui de la berge du rivage) bordé d'herbe côté terre ; le
     // sentier d'arrivée est du même sable, d'un seul tenant avec la plage.
@@ -266,9 +299,40 @@ export const BIOMES: Record<BiomeId, Biome> = {
     fauna: FAUNA.plage,
     ambiance: { tint: '#fff2d8', tintAlpha: 0.04, light: '#fff8e8', lightAlpha: 0.1, desat: 0, vignette: 0.1, particles: 'motes' },
   },
+  /**
+   * Ajout (absent du jeu Godot, demandé en test) : un col de montagne sous la
+   * neige. Sol de neige, falaises coiffées de blanc, sapins et feuillus
+   * enneigés, et des plaques de glace où l'on glisse tout droit jusqu'au
+   * premier obstacle, comme dans les jeux Pokémon. Ni herbe haute ni baies :
+   * rien ne pousse là-haut.
+   */
+  glace: {
+    id: 'glace',
+    name: 'Montagne glacée',
+    guard: 'rock-smash',
+    ground: { base: GROUND.snow, variants: [], variantRate: 0 },
+    patch: { blob: BLOB.ice, threshold: 0.56, ice: true },
+    path: { blob: BLOB.gravel, radius: 1.1 },
+    water: null,
+    trees: { interior: TREES.snowy, border: TREES.snowy, density: 0.06 },
+    cliffs: { blob: BLOB.cliffSnow, treeRate: 0.3 },
+    mesas: { blob: BLOB.cliffSnow, threshold: 0.56, levels: 2 },
+    tallGrass: null,
+    flowers: 0,
+    props: [
+      { sprites: PROPS.snowRocks, rate: 0.016, offPatch: true },
+      { sprites: PROPS.snowBoulder, rate: 0.008, offPatch: true },
+      { sprites: PROPS.paleRocks, rate: 0.006, offPatch: true },
+      { sprites: PROPS.paleStones, rate: 0.012, offPatch: true },
+      { sprites: PROPS.iceCrystals, rate: 0.008, cluster: true, offPatch: true },
+    ],
+    fauna: FAUNA.glace,
+    ambiance: { tint: '#c8dcff', tintAlpha: 0.12, light: '#eef6ff', lightAlpha: 0.1, desat: 0.12, vignette: 0.2, particles: 'snow' },
+  },
   ocean: {
     id: 'ocean',
     name: 'Océan',
+    guard: 'rock-smash',
     // Le « sol » est la mer ; les îlots sont des plaques de sable cerclées d'eau.
     ground: { base: SEA.flat, variants: [], variantRate: 0 },
     patch: { blob: BLOB.island, threshold: 1 },
@@ -286,7 +350,7 @@ export const BIOMES: Record<BiomeId, Biome> = {
 };
 
 /** Ordre de la progression clair → sombre (DA_bible §4), aussi l'ordre des touches 1-9 puis 0. */
-export const BIOME_ORDER: BiomeId[] = ['prairie', 'village', 'plage', 'ocean', 'foret', 'lac', 'rocailleux', 'automne', 'marais', 'volcan'];
+export const BIOME_ORDER: BiomeId[] = ['prairie', 'village', 'plage', 'ocean', 'foret', 'lac', 'rocailleux', 'automne', 'marais', 'volcan', 'glace'];
 
 /** Couleur de chaque biome dans l'interface (nom de zone, combo) : une teinte qui évoque le lieu. */
 export const BIOME_COLOR: Record<BiomeId, string> = {
@@ -300,6 +364,7 @@ export const BIOME_COLOR: Record<BiomeId, string> = {
   automne: '#e0803a',
   marais: '#8a9a3a',
   volcan: '#ff6a2a',
+  glace: '#8fd0f0',
 };
 
 /**
@@ -316,6 +381,38 @@ export const REPAIRE: Biome = {
   mesas: undefined,
   // Un sous-bois clairsemé : le camp se voit d'un poste à l'autre, et respire.
   trees: { ...BIOMES.foret.trees, density: 0.04 },
-  tallGrass: { def: TALL_GRASS.green, threshold: 0.88 },
+  // Écart voulu (retour de test : « pas forcément des hautes herbes, plutôt les petites ») :
+  // ni herbe haute ni grandes touffes au Repaire, des fougères et des petites herbes.
+  tallGrass: null,
+  props: [
+    { sprites: PROPS.fern, rate: 0.05 },
+    { sprites: PROPS.leafy, rate: 0.05 },
+    { sprites: PROPS.mushrooms, rate: 0.008 },
+  ],
   ambiance: { tint: '#7d8fd0', tintAlpha: 0.3, light: '#ffb070', lightAlpha: 0.03, desat: 0.1, vignette: 0.42, particles: 'fireflies', night: 0.85 },
+};
+
+/**
+ * L'intérieur d'une grotte (src/world/cave.ts) : de la terre battue entre des
+ * massifs de roche, ni eau ni arbres ni herbe, une nuit presque complète que
+ * seuls les torches et les cristaux percent. Il hérite du Rocailleux pour le
+ * reste (la faune, notamment, est celle du biome dehors : cf. CaveDirector).
+ */
+export const GROTTE: Biome = {
+  ...BIOMES.rocailleux,
+  name: 'Grotte',
+  ground: { base: GROUND.dirt, variants: [GROUND.mud], variantRate: 0.05 },
+  patch: null,
+  path: null,
+  water: null,
+  trees: { interior: [], border: [], density: 0 },
+  cliffs: { blob: BLOB.caveRock, treeRate: 0 },
+  mesas: undefined,
+  tallGrass: null,
+  flowers: 0,
+  props: [
+    { sprites: CAVE.pebbles, rate: 0.02 },
+    { sprites: PROPS.mushrooms, rate: 0.01 },
+  ],
+  ambiance: { tint: '#4a4468', tintAlpha: 0.4, light: '#9ec8ff', lightAlpha: 0.03, desat: 0.2, vignette: 0.6, particles: 'motes', night: 0.8 },
 };

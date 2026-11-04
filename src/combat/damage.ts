@@ -1,6 +1,17 @@
 // Table des types Gen 6 et formule de dégâts Gen 5+, reprises telles quelles
 // de scripts/combat/DamageCalculator.gd (sans STAB, comme le jeu). Seule
 // différence : le tirage aléatoire est injecté, pour des combats rejouables.
+// Ajout : la météo de la salle (world/weather.ts) pèse sur les attaques Eau et
+// Feu, des deux côtés ; elle est posée ici une fois par salle (setWeather).
+
+import { weatherMultiplier, type WeatherId } from '../world/weather';
+
+let weather: WeatherId = 'clear';
+/** Météo de la salle courante (temps clair hors run). */
+export const setWeather = (w: WeatherId): void => {
+  weather = w;
+};
+export const currentWeather = (): WeatherId => weather;
 
 /** Attaquant → { défenseur: multiplicateur }. Seules les valeurs ≠ 1 figurent. */
 export const TYPE_CHART: Record<string, Record<string, number>> = {
@@ -66,7 +77,7 @@ export function calculateDamage(
   const def = Math.max(1, special ? defender.spDefense : defender.defense);
   const base = (((2 * attacker.level) / 5 + 2) * power * atk) / def / 50 + 2;
   const effectiveness = typeMultiplier(type, defender.types);
-  let modifier = effectiveness;
+  let modifier = effectiveness * weatherMultiplier(weather, type);
   const roll = 0.85 + random() * 0.15;
   const crit = random() < attacker.critChance;
   if (crit) modifier *= 1.5;

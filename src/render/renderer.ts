@@ -1,14 +1,15 @@
 import { sizeMult } from '../assets/pmd';
+import { WEATHERS, type WeatherId } from '../world/weather';
 import { hash2 } from '../core/rng';
 import type { Actor } from '../entities/actor';
 import type { Options } from '../ui/options';
 import { blobTile, useGrid, type WorldMap, type WorldObject } from '../world/generate';
-import { SEA, SURF, TILE, type Blob, type Tile } from '../world/tiles';
+import { BLOB, SEA, SURF, TILE, type Blob, type Tile } from '../world/tiles';
 import type { FieldFx } from './fieldfx';
 import type { Combat } from '../combat/combat';
 import type { RoomDirector } from '../run/room';
 import { STATUS } from '../combat/pokemon';
-import type { Projector } from './combatfx';
+import { typeColor, type Projector } from './combatfx';
 import type { Footprints } from './footprints';
 import type { Particles } from './particles';
 import { ShoreWaves } from './shorewaves';
@@ -177,6 +178,19 @@ export class Renderer {
     } else {
       if (biome.patch) layer(world.patch, biome.patch.blob);
       if (biome.path) layer(world.path, biome.path.blob, world.water);
+    }
+    // Les allées du Repaire : leur sol, puis leur liseré d'herbe (hors de l'eau).
+    for (const lane of world.lanes ?? []) {
+      // Le bord se calcule avec le chemin de terre : l'allée s'y raccorde sans liseré d'herbe.
+      const edge = lane.mask.map((v, i) => (v || world.path[i] ? 1 : 0));
+      for (let y = 0; y < world.h; y++) {
+        for (let x = 0; x < world.w; x++) {
+          const i = y * world.w + x;
+          if (!lane.mask[i] || world.water[i] || world.path[i]) continue;
+          put(lane.fill.length === 4 ? lane.fill[(y % 2) * 2 + (x % 2)] : lane.fill[0], x, y);
+          put(blobTile(edge, x, y, BLOB.ringGrass), x, y);
+        }
+      }
     }
     if (world.paving.length) this.drawPaving(g, world, put);
     for (const f of world.fountains) this.paintFountain(g, f.x * TILE, f.y * TILE);
@@ -545,7 +559,7 @@ export class Renderer {
     const b = this.bctx;
     const k = this.k;
     for (const a of actors) {
-      if (a.hidden || a.deathT >= 0) continue;
+      if (a.hidden || a.trapped || a.deathT >= 0) continue;
       if (a.role !== 'wild') {
         // Anneau permanent d'un champion (rouge) ou de son as (doré), EnemyAI.gd:236-240, 280-294.
         const cx = Math.round((a.x * TILE - this.camX) * k);
@@ -585,7 +599,7 @@ export class Renderer {
     const k = this.k;
     for (const { a, x, y } of placed) {
       const mon = a.pokemon;
-      if (a === player || !mon || !a.sheet || a.deathT >= 0 || a.hidden) continue;
+      if (a === player || !mon || !a.sheet || a.deathT >= 0 || a.hidden || a.trapped) continue;
       const ratio = mon.hp / mon.maxHp;
       // Sans perte (ni barre entamée), un sauvage n'affiche rien : la salle reste lisible.
       a.hpShown = ratio > a.hpShown ? ratio : a.hpShown + (ratio - a.hpShown) * 0.08;
@@ -624,7 +638,7 @@ export class Renderer {
 
   /** Px de tampon par px de planche PMD, selon le mode d'échelle choisi. */
   spriteScale(a: Actor, opts: Options): number {
-    return this.baseSpriteScale(a, opts) * (a.role === 'boss' ? 1.7 : a.role === 'champion' ? 1.35 : 1);
+    return this.baseSpriteScale(a, opts) * (a.role === 'boss' ? 1.7 : a.role === 'champion' ? 1.35 : 1) * introScale(a);
   }
 
   /**
@@ -697,6 +711,8 @@ export class Renderer {
     opts: Options,
     alpha: number,
     time: number,
+    /** Météo de la salle (world/weather.ts) et ses particules, sur leur propre couche. */
+    sky: { weather: WeatherId; particles: Particles } | null = null,
   ): void {
     const b = this.bctx;
     const k = this.k;
@@ -756,7 +772,7 @@ export class Renderer {
 
     // Pokémon : positions interpolées (servent à l'herbe haute, aux ombres et au tri).
     const placed = actors
-      .filter((a) => a.sheet && !a.hidden)
+      .filter((a) => a.sheet && !a.hidden && !a.trapped)
       .map((a) => ({ a, x: lerp(a.prevX, a.x, alpha) * TILE, y: lerp(a.prevY, a.y, alpha) * TILE }));
     const tallDef = world.biome.tallGrass?.def;
     // Case d'herbe haute -> Pokémon qui s'y tient (ses pieds).
@@ -785,12 +801,17 @@ export class Renderer {
     footprints.draw(b, camX, camY, k);
     this.drawRangeRing(player, combat, alpha);
     this.drawTelegraphs(actors);
+    // Nappes des dons (Grêle, Continent, Vide) : portées du jeu mais jamais dessinées jusqu'ici.
+    combat.hooks.drawZones(b, camX, camY, k, time);
+    combat.drawStrikes(b, camX, camY, k);
     director.drawGround(b, camX, camY, k);
 
     if (opts.shadows) {
       b.fillStyle = 'rgba(16,24,12,0.28)';
       for (const p of placed) {
         if (p.a.swimming || p.a.swimBlend > 0.5) continue;
+        // Couché (endormi, ou juché sur un rondin) : une ombre ronde sous lui ferait un trou au sol.
+        if (p.a.perch > 0 || p.a.pose === 'Sleep' || p.a.pose === 'Laying') continue;
         const rx = Math.max(4, Math.round(p.a.sheet!.bodyWidth * 0.42 * this.spriteScale(p.a, opts)));
         const ry = Math.max(2, Math.round(rx * 0.4));
         const cx = Math.round((p.x - camX) * k);
@@ -861,9 +882,13 @@ export class Renderer {
           continue;
         }
         // Arbre devant le joueur qui le cache : translucide, comme l'« x-ray » du jeu 3D.
-        const hides = opts.treeFade && o.fades && playerBody && o.y > playerPlaced!.y && overlap(playerBody, { x: dx, y: dy, w: sw, h: sh * 0.85 });
+        // Pareil pour tout grand décor (hutte, maison, tipi, étal… au moins deux cases de haut),
+        // même posé sans `fades` : derrière, le Pokémon disparaîtrait.
+        const hides = opts.treeFade && (o.fades || sh >= 2 * TILE) && playerBody && o.y > playerPlaced!.y && overlap(playerBody, { x: dx, y: dy, w: sw, h: sh * 0.85 });
         b.globalAlpha = hides ? 0.45 : 1;
         b.drawImage(this.tileset, sx, sy, sw, sh, Math.round((dx - camX) * k), Math.round((dy - camY) * k), sw * k, sh * k);
+        // Chapeau de neige (Montagne glacée), du même cadre que l'arbre.
+        if (o.sprite.cap) b.drawImage(this.tileset, o.sprite.cap[0], o.sprite.cap[1], sw, sh, Math.round((dx - camX) * k), Math.round((dy - camY) * k), sw * k, sh * k);
         b.globalAlpha = 1;
       } else if (it.jet) {
         this.drawJet(it.jet.x * TILE, it.jet.y * TILE, time);
@@ -956,6 +981,19 @@ export class Renderer {
         if (status) layers.push([hexRgb(STATUS[status].color), 0.3 + 0.16 * Math.sin(time * 6)]);
         if (a.protectT > 0) layers.push(['140,217,255', 0.35 + 0.15 * Math.sin(time * 14)]);
         if (a.flash.t > 0) layers.push([hexRgb(a.flash.color), a.flash.alpha * (a.flash.t / a.flash.dur)]);
+        // Entrée en puissance : il pulse à la couleur de son type, de plus en plus vite jusqu'à la libération.
+        if (a.intro && a.pokemon) {
+          const { t, burst, dur } = a.intro;
+          const al = t < burst ? 0.25 + 0.35 * Math.abs(Math.sin(t * (8 + 14 * (t / burst)))) : 0.7 * Math.max(0, 1 - (t - burst) / Math.min(0.5, dur - burst));
+          layers.push([hexRgb(typeColor(a.pokemon.types[0])), al]);
+        }
+        // Évolution : il blanchit en pulsant de plus en plus vite jusqu'à l'échange
+        // de forme (silhouette pleine), puis la nouvelle forme reprend ses couleurs.
+        if (a.evolve) {
+          const { t, swapAt, dur } = a.evolve;
+          const al = t < swapAt ? Math.min(1, (t / swapAt) * (0.6 + 0.4 * Math.abs(Math.sin(t * (6 + 22 * (t / swapAt)))))) : Math.max(0, 1 - (t - swapAt) / (dur - swapAt));
+          layers.push(['255,255,255', al]);
+        }
         if (dying > 0) layers.push(['255,60,60', 0.6 * dying]);
         if (a.downed) layers.push(['70,72,96', 0.5]);
         if (layers.length) {
@@ -1005,6 +1043,19 @@ export class Renderer {
           dx = midX - (midX - dx) * sqx;
           dy = footY - (footY - dy) * sqy;
         }
+        // Glissade sur la glace : accroupi (plus encore au départ, l'élan), il tangue d'un
+        // côté à l'autre comme un patineur. Ajout (retour de test).
+        if (a.slideT > 0) {
+          const lunge = Math.max(0, 1 - a.slideT / 0.15);
+          const gx = 1.07 + 0.08 * lunge;
+          const gy = 0.92 - 0.08 * lunge;
+          const footY = dy + (footRow + 1) * s;
+          const midX = dx + (fw / 2) * s;
+          dx = midX - (midX - dx) * gx + Math.sin(a.slideT * 16) * 0.8 * k;
+          dy = footY - (footY - dy) * gy;
+          sqx *= gx;
+          sqy *= gy;
+        }
         // Enfoncement : la case descend et sa partie sous la ligne des pieds disparaît.
         const sink = a.deathT >= 0 && !a.downed ? Math.min(1, a.deathT / 0.4) * 0.45 * TILE * k : 0;
         const rows = sink > 0 ? Math.max(1, Math.min(fh, footRow + 1 - sink / s)) : fh;
@@ -1016,7 +1067,7 @@ export class Renderer {
           rows,
           Math.round(dx),
           // Dans les marches, un pixel de rebond à chaque pas.
-          Math.round(dy + sink) - (a.onStairs && a.moving ? (Math.floor(a.animT * 8) % 2) * k : 0) - hop,
+          Math.round(dy + sink) - (a.onStairs && a.moving ? (Math.floor(a.animT * 8) % 2) * k : 0) - hop - Math.round(a.perch * k),
           Math.round(fw * s * sqx),
           Math.round(rows * s * sqy),
         );
@@ -1056,7 +1107,30 @@ export class Renderer {
         b.fillStyle = rgba(amb.light, amb.lightAlpha * (1 - d));
         b.fillRect(0, 0, W, H);
       }
+      // Météo : un ciel couvert (multiply) ou un soleil ardent (screen) par-dessus celui du biome.
+      const wx = sky ? WEATHERS[sky.weather] : null;
+      if (wx?.tint) {
+        b.globalCompositeOperation = 'multiply';
+        b.fillStyle = rgba(wx.tint[0], wx.tint[1]);
+        b.fillRect(0, 0, W, H);
+      }
+      if (wx?.light) {
+        b.globalCompositeOperation = 'screen';
+        b.fillStyle = rgba(wx.light[0], wx.light[1]);
+        b.fillRect(0, 0, W, H);
+      }
       b.globalCompositeOperation = 'source-over';
+    }
+    // La pluie, la neige et le sable passent après l'étalonnage : ils restent visibles sous un ciel sombre.
+    if (sky && opts.particles) sky.particles.draw(b, camX, camY, k);
+    const haze = sky ? (WEATHERS[sky.weather].haze ?? 0) : 0;
+    if (haze > 0) {
+      // Brouillard : un voile laiteux, presque clair autour du joueur, épais sur les bords.
+      const fog = b.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.12, W / 2, H / 2, Math.max(W, H) * 0.6);
+      fog.addColorStop(0, `rgba(226,232,236,${haze * 0.35})`);
+      fog.addColorStop(1, `rgba(226,232,236,${Math.min(0.92, haze * 2.1)})`);
+      b.fillStyle = fog;
+      b.fillRect(0, 0, W, H);
     }
 
     // Lampadaires : ils s'allument quand la nuit tombe (curseur clair → sombre).
@@ -1064,6 +1138,23 @@ export class Renderer {
     if (night > 0) {
       b.globalCompositeOperation = 'lighter';
       for (const o of world.objects) {
+        const glow = o.sprite.glow;
+        if (glow) {
+          // Cristaux de grotte (et sortie au jour) : une lueur froide qui respire
+          // lentement, au cœur du sprite, sans flaque au sol (ils ne pendent pas en l'air).
+          const gx = (o.x - camX) * k;
+          const [, , sw, sh] = o.sprite.rect;
+          const gy = (o.y - o.sprite.foot + sh / 2 - camY) * k;
+          const r = Math.max(sw, sh) * 1.1 * k;
+          if (gx < -r || gx > W + r || gy < -r || gy > H + r) continue;
+          const pulse = 0.8 + 0.2 * Math.sin(time * 1.6 + o.x * 0.37);
+          const g = b.createRadialGradient(gx, gy, 0, gx, gy, r);
+          g.addColorStop(0, `rgba(${glow},${0.45 * night * pulse})`);
+          g.addColorStop(1, `rgba(${glow},0)`);
+          b.fillStyle = g;
+          b.fillRect(gx - r, gy - r, r * 2, r * 2);
+          continue;
+        }
         if (!o.sprite.light) continue;
         const hx = (o.x - camX) * k;
         const hy = (o.y - o.sprite.foot + 7 - camY) * k;
@@ -1119,9 +1210,9 @@ export class Renderer {
       if (opts.particles) particles.drawGlow(b, camX, camY, k, strength);
     }
 
-    // Combat : orbes en vol et effets, au-dessus de l'étalonnage (ils émettent leur propre lumière).
-    combat.drawOrbs(b, camX, camY, k);
+    // Combat : effets, au-dessus de l'étalonnage (ils émettent leur propre lumière).
     combat.fx.draw(b, camX, camY, k);
+    combat.powerUps.draw(b, camX, camY, k);
     this.drawHpBars(placed, player, opts);
 
     if (opts.vignette) {
@@ -1149,4 +1240,16 @@ export class Renderer {
 
     this.sctx.drawImage(this.buf, 0, 0, this.screen.width, this.screen.height);
   }
+}
+
+/**
+ * Taille pendant l'entrée en puissance d'un Pokémon de champion : il se
+ * ramasse en concentrant son énergie, gonfle d'un coup à la libération, puis
+ * revient à sa taille.
+ */
+function introScale(a: Actor): number {
+  if (!a.intro) return 1;
+  const { t, burst } = a.intro;
+  if (t < burst) return 0.9 + 0.05 * (t / burst) ** 2;
+  return 1 + 0.18 * Math.exp(-(t - burst) * 7);
 }

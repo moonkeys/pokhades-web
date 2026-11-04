@@ -206,13 +206,14 @@
 }
 
 /* ── HUD de combat ────────────────────────────────────────────────────── */
-/* La carte du Pokémon, ses attaques collées juste à droite, à la même hauteur. */
+/* La carte du Pokémon, ses attaques collées juste à droite, à la même hauteur. Tenues
+   basses (retour de test) : elles ne mangent plus le bas de l'écran où l'on se bat. */
 .hud {
   position: absolute;
-  left: calc(2.5 * var(--u));
-  bottom: calc(2 * var(--u));
+  left: calc(2 * var(--u));
+  bottom: calc(1.3 * var(--u));
   display: flex;
-  gap: calc(1.4 * var(--u));
+  gap: calc(1 * var(--u));
   align-items: stretch;
   font-family: var(--body);
   pointer-events: none;
@@ -224,15 +225,15 @@
 .modal .hud-combo {
   opacity: 0;
 }
-/* L'équipe, à gauche (dès deux Pokémon) : celui qu'on joue en avant, les K.O. en gris. */
+/* L'équipe, en haut à gauche sous le lieu (dès deux Pokémon) : celui qu'on joue en avant,
+   les K.O. en gris. Un clic sur un membre le fait jouer. */
 .hud-team {
   position: absolute;
-  left: calc(2.5 * var(--u));
-  top: 45%;
-  width: calc(15 * var(--u));
+  left: calc(2 * var(--u));
+  top: calc(5.4 * var(--u));
+  width: calc(14 * var(--u));
   display: grid;
-  gap: calc(0.8 * var(--u));
-  translate: 0 -50%;
+  gap: calc(0.5 * var(--u));
   font-family: var(--body);
   pointer-events: none;
   transition: opacity 0.3s;
@@ -246,26 +247,38 @@
 }
 .hud-team .lbl {
   font-family: var(--marker);
-  font-size: calc(1.3 * var(--u));
+  font-size: calc(1.1 * var(--u));
   color: #fff;
   text-shadow: 0 calc(0.15 * var(--u)) calc(0.3 * var(--u)) rgba(0, 0, 0, 0.6);
 }
 .hud-team .member {
+  position: relative;
   display: grid;
-  grid-template-columns: calc(4.4 * var(--u)) 1fr;
+  grid-template-columns: calc(3.4 * var(--u)) 1fr;
   gap: calc(0.5 * var(--u));
   align-items: center;
-  padding: calc(0.4 * var(--u)) calc(1.6 * var(--u)) calc(0.5 * var(--u)) calc(0.5 * var(--u));
+  padding: calc(0.3 * var(--u)) calc(1.4 * var(--u)) calc(0.4 * var(--u)) calc(0.4 * var(--u));
   opacity: 0.85;
-  transition: translate 0.2s;
+  cursor: pointer;
+  pointer-events: auto;
+  transition:
+    translate 0.2s,
+    opacity 0.15s;
+}
+.hud-team .member:hover {
+  opacity: 1;
+}
+.hud-team .member.ko {
+  cursor: default;
 }
 .hud-team .member img {
-  width: calc(4.8 * var(--u));
-  margin: calc(-0.6 * var(--u)) calc(-0.3 * var(--u));
+  width: calc(3.8 * var(--u));
+  margin: calc(-0.5 * var(--u)) calc(-0.2 * var(--u));
+  pointer-events: none;
 }
 .hud-team .nm {
   font-family: var(--head);
-  font-size: calc(1.5 * var(--u));
+  font-size: calc(1.25 * var(--u));
   line-height: 1;
   letter-spacing: 0.04em;
 }
@@ -302,10 +315,10 @@
 .hud-team .member.ko img {
   filter: grayscale(1);
 }
-/* Carte du Pokémon : sans étiquettes, PV, XP, dashs, ultime et dons se reconnaissent à leur forme. */
+/* Carte du Pokémon : sans étiquettes, PV, XP, dashs et ultime se reconnaissent à leur forme. */
 .hud-card {
-  width: calc(30 * var(--u));
-  padding: var(--u) calc(2.6 * var(--u)) calc(1.1 * var(--u)) calc(1.4 * var(--u));
+  width: calc(24 * var(--u));
+  padding: calc(0.6 * var(--u)) calc(2 * var(--u)) calc(0.7 * var(--u)) calc(1.1 * var(--u));
   rotate: -1deg;
 }
 .hud-name {
@@ -313,7 +326,7 @@
   gap: calc(0.7 * var(--u));
   align-items: baseline;
   font-family: var(--head);
-  font-size: calc(2.4 * var(--u));
+  font-size: calc(1.8 * var(--u));
   line-height: 1;
   letter-spacing: 0.04em;
 }
@@ -332,7 +345,19 @@
   grid-template-columns: 1fr auto;
   gap: calc(0.7 * var(--u));
   align-items: center;
-  margin-top: calc(0.55 * var(--u));
+  margin-top: calc(0.35 * var(--u));
+}
+.hud-card .da-gauge:not(.xp) {
+  height: calc(1.15 * var(--u));
+}
+.hud-card .da-gauge:not(.xp) :is(b, i) {
+  inset: calc(0.15 * var(--u)) auto calc(0.15 * var(--u)) calc(0.15 * var(--u));
+}
+.hud-card .da-gauge.xp {
+  height: calc(0.6 * var(--u));
+}
+.hud-card .da-gauge.xp b {
+  inset: calc(0.1 * var(--u)) auto calc(0.1 * var(--u)) calc(0.1 * var(--u));
 }
 /* Jauges : barres d'encre au bout coupé en biais ; le fantôme rattrape les dégâts. */
 .da-gauge {
@@ -366,14 +391,14 @@
   inset: calc(0.15 * var(--u)) auto calc(0.15 * var(--u)) calc(0.15 * var(--u));
 }
 .hud-val {
-  min-width: calc(4.6 * var(--u));
+  min-width: calc(4.2 * var(--u));
   text-align: right;
   font-family: var(--head);
-  font-size: calc(1.6 * var(--u));
+  font-size: calc(1.3 * var(--u));
   letter-spacing: 0.04em;
 }
 .hud-val.xp {
-  font-size: calc(1.15 * var(--u));
+  font-size: calc(0.95 * var(--u));
   color: var(--muted);
 }
 /* Dashs : une grosse pastille d'encre par charge ; celle qui recharge se remplit. */
@@ -383,8 +408,8 @@
 }
 .hud-dashes i {
   position: relative;
-  width: calc(2.8 * var(--u));
-  height: calc(1.5 * var(--u));
+  width: calc(2.2 * var(--u));
+  height: calc(1 * var(--u));
   background: rgba(20, 16, 14, 0.16);
   clip-path: polygon(25% 0, 100% 0, 75% 100%, 0 100%);
 }
@@ -404,7 +429,7 @@
 .hud-buffs span {
   padding: 0 calc(0.5 * var(--u));
   font-family: var(--head);
-  font-size: calc(1.15 * var(--u));
+  font-size: calc(1 * var(--u));
   letter-spacing: 0.05em;
   color: #fff;
   background: #2f9d4e;
@@ -419,8 +444,8 @@
 }
 .hud-ult {
   position: relative;
-  height: calc(2.2 * var(--u));
-  margin-top: calc(0.55 * var(--u));
+  height: calc(1.6 * var(--u));
+  margin-top: calc(0.4 * var(--u));
   overflow: hidden;
   background: var(--ink);
   clip-path: polygon(0 0, 98% 0, 100% 50%, 98% 100%, 0 100%);
@@ -444,8 +469,8 @@
   display: block;
   padding: 0 calc(0.8 * var(--u));
   font-family: var(--head);
-  font-size: calc(1.5 * var(--u));
-  line-height: calc(2.2 * var(--u));
+  font-size: calc(1.15 * var(--u));
+  line-height: calc(1.6 * var(--u));
   letter-spacing: 0.06em;
   color: #fff;
   text-shadow: 0 calc(0.12 * var(--u)) 0 rgba(0, 0, 0, 0.6);
@@ -454,43 +479,20 @@
   color: var(--ink);
   text-shadow: none;
 }
-.hud-boons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: calc(0.5 * var(--u));
-  margin-top: calc(0.55 * var(--u));
-}
-.hud-boons:empty {
-  display: none;
-}
-.hud-boons i {
-  display: grid;
-  place-items: center;
-  width: calc(2.4 * var(--u));
-  height: calc(2.4 * var(--u));
-  font-style: normal;
-  font-size: calc(1.3 * var(--u));
-  color: #fff;
-  background: var(--c);
-  border-radius: 50%;
-  box-shadow:
-    0 0 0 calc(0.2 * var(--u)) var(--paper),
-    0 0 0 calc(0.35 * var(--u)) var(--ink);
-}
 /* Attaques en 2 × 2, comme dans les jeux Pokémon : une bande de papier chacune, un trait
    de feutre à la couleur du type, le type collé au nom, la touche sur ruban noir. */
 .hud-moves {
   display: grid;
-  grid-template-columns: repeat(2, calc(22 * var(--u)));
+  grid-template-columns: repeat(2, calc(18 * var(--u)));
   grid-template-rows: 1fr 1fr;
-  gap: calc(1.1 * var(--u));
+  gap: calc(0.6 * var(--u));
 }
 .hud-move {
   position: relative;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: calc(0.7 * var(--u)) calc(2 * var(--u));
+  padding: calc(0.35 * var(--u)) calc(1.4 * var(--u)) calc(0.35 * var(--u)) calc(1.7 * var(--u));
 }
 .hud-move:nth-child(odd) {
   rotate: 0.5deg;
@@ -501,10 +503,10 @@
 .hud-move::before {
   content: '';
   position: absolute;
-  left: calc(0.6 * var(--u));
-  top: calc(0.6 * var(--u));
-  bottom: calc(0.6 * var(--u));
-  width: calc(0.6 * var(--u));
+  left: calc(0.5 * var(--u));
+  top: calc(0.4 * var(--u));
+  bottom: calc(0.4 * var(--u));
+  width: calc(0.5 * var(--u));
   background: var(--c, #999);
   border-radius: calc(0.3 * var(--u));
 }
@@ -522,26 +524,26 @@
 }
 .hud-move .mname {
   font-family: var(--head);
-  font-size: calc(2 * var(--u));
+  font-size: calc(1.5 * var(--u));
   line-height: 1;
   letter-spacing: 0.04em;
 }
 .hud-move .pill {
-  font-size: var(--u);
+  font-size: calc(0.85 * var(--u));
   transform: none;
 }
 .hud-move .key {
   margin-left: auto;
   padding: 0 calc(0.5 * var(--u));
   font-family: var(--head);
-  font-size: calc(1.1 * var(--u));
+  font-size: calc(0.95 * var(--u));
   letter-spacing: 0.06em;
   color: var(--paper);
   background: var(--ink);
 }
 .hud-move .minfo {
-  margin-top: calc(0.4 * var(--u));
-  font-size: calc(0.95 * var(--u));
+  margin-top: calc(0.15 * var(--u));
+  font-size: calc(0.85 * var(--u));
   font-weight: 700;
   white-space: nowrap;
   color: var(--muted);
@@ -557,10 +559,10 @@
 }
 .hud-move .cross {
   position: absolute;
-  right: calc(2.4 * var(--u));
-  bottom: calc(0.4 * var(--u));
+  right: calc(1.4 * var(--u));
+  bottom: calc(0.2 * var(--u));
   font-family: var(--head);
-  font-size: calc(1.4 * var(--u));
+  font-size: calc(1.1 * var(--u));
   color: var(--ink);
 }
 /* Combo : pas de cadre ; « combo » et le chiffre dans la police d'accent, le chiffre à la
@@ -630,6 +632,73 @@
 }
 .run-bar .da-stamp {
   font-size: calc(1.7 * var(--u));
+}
+/* Rappels de l'équipe : l'icône du Rappel et le compte, sur une bande de papier. */
+.run-revives {
+  display: flex;
+  gap: calc(0.2 * var(--u));
+  align-items: center;
+  padding: 0 calc(0.8 * var(--u)) 0 calc(0.2 * var(--u));
+  rotate: 1.5deg;
+}
+.run-revives[hidden] {
+  display: none;
+}
+.run-revives img {
+  width: calc(2.6 * var(--u));
+  margin: calc(-0.3 * var(--u)) 0;
+  image-rendering: pixelated;
+}
+.run-revives b {
+  font-family: var(--head);
+  font-size: calc(1.7 * var(--u));
+  font-weight: normal;
+  letter-spacing: 0.04em;
+}
+.run-revives.none {
+  opacity: 0.55;
+}
+.run-revives.none img {
+  filter: grayscale(1);
+}
+/* Stock du Repaire (Bois, Pierre, Nourriture, Éclats), à côté des Baies : les pastilles .cs-res des écrans. */
+.run-stock {
+  display: flex;
+  gap: calc(0.9 * var(--u));
+  align-items: center;
+  padding: calc(0.2 * var(--u)) calc(0.8 * var(--u));
+  font-size: calc(1.5 * var(--u));
+  rotate: 1deg;
+}
+.run-stock[hidden] {
+  display: none;
+}
+.run-stock .cs-res {
+  font-size: calc(1.7 * var(--u));
+  letter-spacing: 0.04em;
+}
+.run-stock .cs-res-ico {
+  height: calc(2.2 * var(--u));
+}
+/* Chrono du Défi (salle spéciale, src/run/room.ts) : en rouge dans les dix dernières secondes. */
+.run-timer {
+  padding: 0 calc(0.8 * var(--u));
+  font-family: var(--head);
+  font-size: calc(1.7 * var(--u));
+  letter-spacing: 0.04em;
+  rotate: -1.5deg;
+}
+.run-timer[hidden] {
+  display: none;
+}
+.run-timer.hurry {
+  color: #c8322a;
+  animation: run-timer-beat 0.5s ease-in-out infinite alternate;
+}
+@keyframes run-timer-beat {
+  to {
+    scale: 1.08;
+  }
 }
 /* Message central : salle libérée, victoire, défaite. */
 .run-toast {
@@ -1517,6 +1586,237 @@
   text-align: right;
 }
 
+/* ── Bilan de fin de run (ui/runsummary.ts) : la même affiche, en rapport ── */
+.poster.summary .mvp {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  width: calc(12 * var(--u));
+  padding: calc(0.6 * var(--u));
+  background: color-mix(in srgb, var(--trainer) 22%, transparent);
+}
+.poster.summary .mvp img {
+  width: calc(9 * var(--u));
+  aspect-ratio: 1;
+  object-fit: contain;
+}
+.poster.summary .mvp b {
+  font: normal calc(1.8 * var(--u)) var(--head);
+  letter-spacing: 0.04em;
+}
+.poster.summary .mvp .spr {
+  inset: -14%;
+  width: 128%;
+  height: 128%;
+}
+/* Le bilan tient dans l'écran, même bas : au pire, il défile. */
+.poster.summary {
+  max-height: calc(100vh - 4 * var(--u));
+  overflow-y: auto;
+}
+.poster.summary p {
+  font-size: calc(1.5 * var(--u));
+}
+/* Les chiffres de la run, comme écrits au feutre sur l'affiche : chacun sur son
+   papier plus clair, le chiffre en grand, l'étiquette lisible dessous. */
+.poster .sum-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: calc(0.8 * var(--u));
+  margin-top: calc(1.4 * var(--u));
+}
+.poster .sum-stat {
+  display: grid;
+  align-content: center;
+  gap: calc(0.2 * var(--u));
+  padding: calc(0.6 * var(--u)) var(--u);
+  background: var(--paper-hi);
+  border-left: calc(0.35 * var(--u)) solid var(--ink);
+}
+.poster .sum-stat b {
+  font: normal calc(2.6 * var(--u))/1 var(--head);
+  letter-spacing: 0.03em;
+}
+.poster .sum-stat small {
+  font-size: calc(1.15 * var(--u));
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--ink);
+  opacity: 0.75;
+}
+/* Part des dégâts de chaque membre, relative au meilleur. */
+.poster .mon .bar {
+  width: 86%;
+  height: calc(0.45 * var(--u));
+  margin: calc(0.3 * var(--u)) 0 calc(0.1 * var(--u));
+  background: linear-gradient(90deg, var(--ink) var(--w), rgba(20, 16, 14, 0.15) var(--w));
+}
+.poster.summary .mon small {
+  font-size: calc(1.1 * var(--u));
+  color: var(--ink);
+  opacity: 0.75;
+}
+.poster.summary .keys {
+  font-size: calc(1.1 * var(--u));
+}
+.poster .mon.ko img {
+  filter: grayscale(1);
+  opacity: 0.55;
+}
+
+/* ── Menu des réglages (ui/settingsmenu.ts, Échap) : une feuille de l'affiche ── */
+.optmenu .poster-wrap {
+  width: calc(56 * var(--u));
+}
+.opt-head {
+  display: flex;
+  align-items: center;
+  gap: calc(1.6 * var(--u));
+}
+.opt-head h3 {
+  margin: 0;
+}
+/* Onglets : au feutre sur le papier, celui qu'on lit souligné à la bombe jaune. */
+.opt-tabs {
+  display: flex;
+  gap: calc(0.6 * var(--u));
+  margin: calc(1.2 * var(--u)) 0 calc(0.8 * var(--u));
+  padding-bottom: calc(0.3 * var(--u));
+  border-bottom: calc(0.25 * var(--u)) solid var(--ink);
+}
+.opt-tabs button {
+  padding: calc(0.3 * var(--u)) calc(1.2 * var(--u)) calc(0.1 * var(--u));
+  font: normal calc(1.7 * var(--u)) var(--head);
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.opt-tabs button.sel {
+  color: var(--ink);
+  background: linear-gradient(transparent 62%, var(--yel) 62%, var(--yel) 92%, transparent 92%);
+}
+.opt-tabs.focus button.sel {
+  outline: calc(0.2 * var(--u)) dashed var(--ink);
+  outline-offset: calc(0.1 * var(--u));
+}
+.opt-body {
+  min-height: calc(26 * var(--u));
+}
+.opt-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: calc(1.2 * var(--u));
+  padding: calc(0.45 * var(--u)) calc(0.9 * var(--u));
+  border-left: calc(0.35 * var(--u)) solid transparent;
+}
+/* La ligne choisie : un trait de marqueur à gauche et un voile jaune. */
+.opt-row.sel {
+  border-left-color: var(--ink);
+  background: color-mix(in srgb, var(--yel) 30%, transparent);
+}
+.opt-label b {
+  display: block;
+  font-size: calc(1.4 * var(--u));
+}
+.opt-label small {
+  font-size: var(--u);
+  font-weight: 700;
+  color: var(--muted);
+}
+.opt-ctrl {
+  display: flex;
+  align-items: center;
+  gap: calc(0.6 * var(--u));
+}
+/* Jauge de volume : dix crans de bombe, de plus en plus hauts. */
+.opt-gauge {
+  display: flex;
+  align-items: flex-end;
+  gap: calc(0.25 * var(--u));
+  height: calc(2 * var(--u));
+}
+.opt-gauge i {
+  width: calc(1 * var(--u));
+  height: calc(40% + var(--n, 0) * 6%);
+  background: rgba(20, 16, 14, 0.15);
+  cursor: pointer;
+}
+.opt-gauge i.on {
+  background: var(--ink);
+}
+.opt-row.sel .opt-gauge i.on {
+  background: #c0392b;
+}
+.opt-value {
+  min-width: calc(4.6 * var(--u));
+  font: normal calc(1.4 * var(--u)) var(--head);
+  text-align: right;
+}
+.opt-value.wide {
+  min-width: calc(11 * var(--u));
+  text-align: center;
+}
+.opt-switch,
+.opt-arrow {
+  font: normal calc(1.35 * var(--u)) var(--head);
+  letter-spacing: 0.05em;
+  color: var(--ink);
+  background: none;
+  border: calc(0.2 * var(--u)) solid var(--ink);
+  cursor: pointer;
+}
+.opt-switch {
+  min-width: calc(5 * var(--u));
+  padding: calc(0.1 * var(--u)) calc(0.8 * var(--u));
+}
+.opt-switch.on {
+  color: var(--ink);
+  background: var(--yel);
+}
+.opt-arrow {
+  width: calc(2.2 * var(--u));
+  padding: 0;
+  border: none;
+  font-size: calc(2 * var(--u));
+}
+/* Commandes : les touches en capuchons, l'action à côté. */
+.opt-keys {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: calc(0.5 * var(--u)) calc(2 * var(--u));
+}
+.opt-keyline {
+  display: grid;
+  grid-template-columns: calc(11 * var(--u)) 1fr;
+  align-items: center;
+  gap: var(--u);
+  font-size: calc(1.2 * var(--u));
+}
+.opt-caps {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: calc(0.3 * var(--u));
+}
+.opt-caps kbd {
+  min-width: calc(2 * var(--u));
+  padding: calc(0.15 * var(--u)) calc(0.5 * var(--u));
+  font: normal calc(1.2 * var(--u)) var(--head);
+  text-align: center;
+  color: var(--paper);
+  background: var(--ink);
+  box-shadow: 0 calc(0.25 * var(--u)) 0 #0006;
+}
+.opt-caps .or {
+  font-size: var(--u);
+  color: var(--muted);
+}
+
 /* ── Boutique : étiquettes de prix, fiche d'article, bulles, mercenaires ── */
 /* Prix de l'étal : une petite ardoise cerclée de bois, le prix à la craie ; elle
    passe au jaune devant l'article qu'on regarde. */
@@ -2053,8 +2353,158 @@
   width: calc(12 * var(--u));
   filter: drop-shadow(0 calc(0.6 * var(--u)) calc(0.8 * var(--u)) rgba(0, 0, 0, 0.3));
 }
+/* Pokédex (poste de Porygon) : une grille de petites cartes, la fiche à droite.
+   Verrouillée, l'espèce n'est qu'une silhouette d'encre (PokedexScreen). */
+.cs-dex-filters button {
+  font-size: calc(1.3 * var(--u));
+}
+.cs-dex {
+  display: grid;
+  grid-template-columns: 1fr calc(34 * var(--u));
+  gap: calc(2 * var(--u));
+  align-items: start;
+}
+.cs-dex-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(calc(9.5 * var(--u)), 1fr));
+  gap: calc(0.6 * var(--u));
+}
+.cs-dex-card {
+  display: grid;
+  justify-items: center;
+  padding: calc(0.4 * var(--u)) calc(0.3 * var(--u)) calc(0.5 * var(--u));
+  font-family: var(--body);
+  color: var(--paper);
+  background: #fff1;
+  border: calc(0.12 * var(--u)) solid transparent;
+  cursor: pointer;
+}
+.cs-dex-card:hover {
+  background: #fff3;
+}
+.cs-dex-card.own {
+  color: var(--ink);
+  background: var(--paper);
+}
+.cs-dex-card.sel {
+  border-color: var(--spray);
+}
+.cs-dex-card img {
+  width: calc(5.5 * var(--u));
+  height: calc(5.5 * var(--u));
+  object-fit: contain;
+}
+.cs-dex-card .no {
+  font-size: calc(0.75 * var(--u));
+  opacity: 0.7;
+}
+.cs-dex-card b {
+  max-width: 100%;
+  overflow: hidden;
+  font-family: var(--head);
+  font-size: calc(1.3 * var(--u));
+  font-weight: normal;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.cs-dex-card .state {
+  font-size: calc(0.8 * var(--u));
+  font-weight: 700;
+  color: var(--yel);
+}
+.cs-dex-card.own .state {
+  color: var(--muted);
+}
+.cs-dex-card img.shadow,
+.cs-big.shadow {
+  filter: brightness(0) opacity(0.85);
+}
+.cs-dex-detail {
+  position: sticky;
+  top: 0;
+  margin-top: calc(3 * var(--u));
+}
+.cs-dex-detail .cs-head {
+  margin-right: calc(10 * var(--u));
+}
+.cs-dex-detail .cs-head b {
+  font-size: calc(3 * var(--u));
+}
+.cs-dex-text {
+  margin: calc(1 * var(--u)) calc(10 * var(--u)) 0 0;
+  font-family: var(--marker);
+  font-size: calc(1.15 * var(--u));
+  line-height: 1.35;
+}
+.cs-dex-bar {
+  position: relative;
+  margin: calc(1.4 * var(--u)) calc(10 * var(--u)) 0 0;
+  height: calc(2 * var(--u));
+  background: #14100e22;
+}
+.cs-dex-bar::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--w);
+  background: var(--yel);
+}
+.cs-dex-bar small {
+  position: relative;
+  display: block;
+  padding-left: calc(0.6 * var(--u));
+  font-family: var(--head);
+  font-size: calc(1.4 * var(--u));
+  line-height: calc(2 * var(--u));
+  letter-spacing: 0.04em;
+}
+.cs-dex-go {
+  margin-top: calc(1.2 * var(--u));
+  padding: calc(0.35 * var(--u)) calc(1.4 * var(--u));
+  font-family: var(--head);
+  font-size: calc(1.6 * var(--u));
+  letter-spacing: 0.04em;
+  color: var(--paper);
+  background: var(--ink);
+  border: none;
+  cursor: pointer;
+}
 .cs-detail > .cs-head b {
   font-size: calc(3 * var(--u));
+}
+/* Le nom de la fiche d'équipe est un champ : on y tape un surnom sur place.
+   Au repos il se lit comme un titre ; un trait d'encre en pointillé dit qu'on
+   peut y écrire, plein (couleur bombe) pendant la frappe. Vide, le nom de
+   l'espèce s'affiche en placeholder, à l'encre pleine aussi. */
+.cs-nick {
+  /* À la mesure du nom quand le navigateur le sait, sinon la place de 12 lettres. */
+  width: 12ch;
+  field-sizing: content;
+  min-width: 4ch;
+  padding: 0;
+  font-family: var(--head);
+  font-size: calc(3 * var(--u));
+  line-height: 1;
+  letter-spacing: 0.03em;
+  color: var(--ink);
+  background: transparent;
+  border: none;
+  border-bottom: calc(0.2 * var(--u)) dashed transparent;
+  outline: none;
+  cursor: text;
+}
+.cs-nick::placeholder {
+  color: var(--ink);
+  opacity: 1;
+}
+.cs-nick:hover {
+  border-bottom-color: var(--ink);
+}
+.cs-nick:focus {
+  background: var(--paper-hi);
+  border-bottom-style: solid;
+  border-bottom-color: var(--spray);
 }
 .cs-actions {
   display: flex;
@@ -2392,12 +2842,119 @@
   grid-template-columns: 1fr 1fr;
   gap: calc(1.4 * var(--u));
 }
+/*
+ * Leçons de Bouldeneu (campscreen.ts, renderLore) : des fiches de papier
+ * plus larges, du texte à lire et rien à acheter — ni icône à gauche, ni
+ * prix à droite, ni main au survol.
+ */
+.lore-tabs {
+  flex-wrap: wrap;
+}
+.lore-grid {
+  grid-template-columns: repeat(auto-fill, minmax(calc(32 * var(--u)), 1fr));
+  align-items: start;
+}
+.lore-card {
+  grid-template-columns: 1fr;
+  align-items: start;
+  align-content: start;
+  padding: var(--u) calc(1.4 * var(--u)) var(--u) calc(1.6 * var(--u));
+  cursor: default;
+}
+.lore-card > * {
+  grid-column: 1;
+}
+.lore-card .cs-head {
+  display: flex;
+  align-items: center;
+  gap: var(--u);
+}
+.lore-text {
+  margin: calc(0.5 * var(--u)) 0 0;
+  font-size: calc(1.2 * var(--u));
+  line-height: 1.35;
+  color: var(--ink);
+}
+.lore-line {
+  display: block;
+}
+
 .cs-online .cs-card {
   min-height: calc(12 * var(--u));
   grid-template-columns: 1fr;
 }
 .cs-online .cs-card > * {
   grid-column: 1;
+}
+/* Relais de Roucarnage (campscreen.ts, renderOnline) : boutons, code de partie, joueurs. */
+.cs-net-btn {
+  justify-self: start;
+  margin-top: var(--u);
+  padding: calc(0.4 * var(--u)) calc(1.4 * var(--u));
+  font-family: var(--head);
+  font-size: calc(1.8 * var(--u));
+  letter-spacing: 0.06em;
+  color: var(--yel);
+  background: var(--ink);
+  border: none;
+  cursor: pointer;
+}
+.cs-net-btn:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+.cs-net-btn.quit {
+  color: #fff;
+  background: #0006;
+}
+.cs-net-lead {
+  display: flex;
+  align-items: center;
+  gap: var(--u);
+  margin-top: calc(1.4 * var(--u));
+  color: #fff;
+  font-size: calc(1.3 * var(--u));
+}
+.cs-net-lead img {
+  width: calc(6 * var(--u));
+}
+.cs-net-room {
+  display: grid;
+  justify-items: start;
+  gap: calc(0.3 * var(--u));
+  padding: var(--u) calc(1.6 * var(--u));
+  color: var(--ink);
+}
+.cs-net-code {
+  font-family: var(--head);
+  font-size: calc(5 * var(--u));
+  font-weight: normal;
+  letter-spacing: 0.3em;
+  line-height: 1;
+  user-select: all;
+}
+.cs-net-empty {
+  align-self: center;
+  height: calc(8 * var(--u));
+  display: grid !important;
+  place-items: center;
+  font-family: var(--head);
+  font-size: calc(3 * var(--u));
+  color: #fff4;
+  border: calc(0.15 * var(--u)) dashed #fff3;
+}
+.cs-net-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(1.4 * var(--u));
+}
+.cs-net-row .cs-go:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.cs-net-row .cs-info {
+  color: #fff;
 }
 .cs-code {
   width: calc(12 * var(--u));
@@ -2546,4 +3103,1074 @@
 .nav-focus {
   outline: calc(0.3 * var(--u)) solid var(--yel);
   outline-offset: calc(-0.45 * var(--u));
+}
+
+/* ── Fiche des statistiques (touche C, src/ui/statsheet.ts) ─────────── */
+/* Un voile d'encre, et les bandes de papier de l'équipe en rang, comme épinglées au mur. */
+.stats {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  overflow: auto;
+  font-family: var(--body);
+  background: rgba(20, 16, 14, 0.72);
+}
+.stats[hidden] {
+  display: none;
+}
+.stats-page {
+  width: min(94vw, calc(96 * var(--u)));
+  padding: calc(2 * var(--u)) 0;
+  display: grid;
+  gap: calc(1.4 * var(--u));
+}
+.stats-head {
+  display: flex;
+  gap: var(--u);
+  align-items: center;
+}
+.stats-head .da-tape {
+  font-size: calc(2.2 * var(--u));
+  rotate: -1.5deg;
+}
+.stats-keys {
+  margin-left: auto;
+  font-family: var(--marker);
+  font-size: calc(1.1 * var(--u));
+  color: var(--paper);
+}
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: calc(1.4 * var(--u));
+}
+.stats-card {
+  position: relative;
+  padding: calc(1 * var(--u)) calc(2 * var(--u)) calc(1.1 * var(--u)) calc(1.4 * var(--u));
+  box-shadow: inset calc(0.5 * var(--u)) 0 0 var(--c);
+}
+.stats-card:nth-child(odd) {
+  rotate: -0.6deg;
+}
+.stats-card:nth-child(even) {
+  rotate: 0.5deg;
+}
+.stats-card.ko {
+  opacity: 0.7;
+}
+.stats-card.ko .art {
+  filter: grayscale(1);
+}
+.stats-card .art {
+  position: absolute;
+  right: calc(1.4 * var(--u));
+  top: calc(0.4 * var(--u));
+  width: calc(7 * var(--u));
+  filter: drop-shadow(0 calc(0.2 * var(--u)) calc(0.3 * var(--u)) rgba(0, 0, 0, 0.35));
+}
+.stats-card .nm {
+  font-family: var(--head);
+  font-size: calc(2 * var(--u));
+  line-height: 1;
+  letter-spacing: 0.04em;
+}
+.stats-card .nm small {
+  margin-left: calc(0.6 * var(--u));
+  font-family: var(--body);
+  font-size: calc(1 * var(--u));
+  font-weight: 700;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+.stats-card .types {
+  display: flex;
+  gap: calc(0.4 * var(--u));
+  align-items: center;
+  margin-top: calc(0.4 * var(--u));
+}
+.stats-card .tag {
+  padding: 0 calc(0.5 * var(--u));
+  font-family: var(--head);
+  font-size: calc(1 * var(--u));
+  letter-spacing: 0.05em;
+  color: var(--paper);
+  background: var(--muted);
+}
+.stats-card .tag.ko {
+  background: var(--ink);
+}
+.stats-card .hp {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: calc(0.6 * var(--u));
+  align-items: center;
+  margin: calc(1.2 * var(--u)) calc(7 * var(--u)) 0 0;
+}
+.stats-card .hp .da-gauge {
+  height: calc(1.1 * var(--u));
+}
+.stats-card .hp .da-gauge b {
+  inset: calc(0.15 * var(--u)) auto calc(0.15 * var(--u)) calc(0.15 * var(--u));
+}
+.stats-card .hp span {
+  font-family: var(--head);
+  font-size: calc(1.3 * var(--u));
+  letter-spacing: 0.04em;
+}
+.stats-card .rows {
+  display: grid;
+  gap: calc(0.25 * var(--u));
+  margin-top: calc(0.7 * var(--u));
+}
+.stats-card .rows > div {
+  display: grid;
+  grid-template-columns: calc(3.6 * var(--u)) calc(3 * var(--u)) 1fr;
+  gap: calc(0.5 * var(--u));
+  align-items: center;
+}
+.stats-card .rows small {
+  font-size: calc(0.9 * var(--u));
+  font-weight: 700;
+  color: var(--muted);
+}
+.stats-card .rows b {
+  font-family: var(--head);
+  font-size: calc(1.35 * var(--u));
+  font-weight: normal;
+  text-align: right;
+}
+.stats-card .rows i {
+  height: calc(0.55 * var(--u));
+  background: #0001;
+}
+.stats-card .rows i::before {
+  content: '';
+  display: block;
+  width: var(--w);
+  height: 100%;
+  background: #4a3e36;
+}
+.stats-card .rows .up b {
+  color: #2f8a3a;
+}
+.stats-card .rows .up b::after {
+  content: ' ▲';
+  font-size: 0.6em;
+}
+.stats-card .extra {
+  margin-top: calc(0.5 * var(--u));
+  font-size: calc(0.9 * var(--u));
+  font-weight: 700;
+  color: #2f8a3a;
+}
+.stats-card .held {
+  display: flex;
+  gap: calc(0.3 * var(--u));
+  align-items: center;
+  margin-top: calc(0.6 * var(--u));
+  font-size: calc(0.95 * var(--u));
+  font-weight: 700;
+}
+.stats-card .held img {
+  width: calc(2 * var(--u));
+  margin: calc(-0.3 * var(--u)) 0;
+  image-rendering: pixelated;
+}
+.stats-card .moves {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: calc(0.3 * var(--u)) calc(0.8 * var(--u));
+  margin-top: calc(0.6 * var(--u));
+}
+.stats-card .moves div {
+  display: flex;
+  gap: calc(0.4 * var(--u));
+  align-items: baseline;
+  padding-left: calc(0.6 * var(--u));
+  border-left: calc(0.35 * var(--u)) solid var(--c);
+}
+.stats-card .moves span {
+  font-family: var(--head);
+  font-size: calc(1.15 * var(--u));
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.stats-card .moves small {
+  margin-left: auto;
+  font-size: calc(0.85 * var(--u));
+  font-weight: 700;
+  color: var(--muted);
+}
+/* Fiche de recrutement (grotte) : la bande du Pokémon, et à côté son surnom et le choix. */
+.recruit-page {
+  width: min(94vw, calc(66 * var(--u)));
+}
+.recruit-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: calc(1.4 * var(--u));
+  align-items: start;
+}
+.recruit-side {
+  display: grid;
+  gap: calc(0.9 * var(--u));
+  padding: calc(1.2 * var(--u)) calc(2.4 * var(--u)) calc(1.4 * var(--u)) calc(1.6 * var(--u));
+  rotate: 0.6deg;
+  box-shadow: inset calc(0.5 * var(--u)) 0 0 #8fa8ff;
+}
+.recruit-quote {
+  margin: 0;
+  font-family: var(--marker);
+  font-size: calc(1.2 * var(--u));
+  line-height: 1.3;
+}
+.recruit-nick {
+  display: grid;
+  gap: calc(0.2 * var(--u));
+}
+.recruit-nick small {
+  font-size: calc(0.9 * var(--u));
+  font-weight: 700;
+  color: var(--muted);
+}
+.recruit-nick input {
+  padding: calc(0.3 * var(--u)) calc(0.7 * var(--u));
+  font-family: var(--head);
+  font-size: calc(1.8 * var(--u));
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  background: var(--paper-hi);
+  border: none;
+  border-bottom: calc(0.25 * var(--u)) solid var(--ink);
+  outline: none;
+}
+.recruit-nick input:focus {
+  border-bottom-color: var(--spray);
+}
+.recruit-ask {
+  font-family: var(--head);
+  font-size: calc(1.8 * var(--u));
+  letter-spacing: 0.04em;
+}
+.recruit-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(0.6 * var(--u));
+}
+.recruit-acts button {
+  padding: calc(0.35 * var(--u)) calc(1.4 * var(--u));
+  font-family: var(--head);
+  font-size: calc(1.6 * var(--u));
+  letter-spacing: 0.04em;
+  border: none;
+  cursor: pointer;
+}
+.recruit-yes {
+  color: var(--ink);
+  background: var(--yel);
+}
+.recruit-yes:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.recruit-no {
+  color: var(--paper);
+  background: var(--ink);
+}
+.recruit-hint {
+  font-size: calc(0.85 * var(--u));
+  line-height: 1.35;
+  color: var(--muted);
+}
+/* Choix du starter (StarterScreen) : neuf bandes de papier sur fond d'encre, le Repaire figé derrière. */
+.starter {
+  background: rgba(20, 16, 14, 0.92);
+}
+.starter-page {
+  width: min(94vw, calc(70 * var(--u)));
+}
+.starter-quote {
+  margin: 0;
+  font-family: var(--marker);
+  font-size: calc(1.3 * var(--u));
+  line-height: 1.35;
+  color: var(--paper);
+}
+.starter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: calc(1.2 * var(--u));
+}
+.starter-card {
+  display: grid;
+  grid-template-columns: calc(7 * var(--u)) 1fr;
+  grid-template-rows: auto auto;
+  column-gap: var(--u);
+  align-items: center;
+  padding: calc(0.8 * var(--u)) calc(2 * var(--u)) calc(0.8 * var(--u)) calc(1.2 * var(--u));
+  text-align: left;
+  border: none;
+  cursor: pointer;
+  box-shadow: inset calc(0.5 * var(--u)) 0 0 var(--c, var(--muted));
+  transition: transform 0.12s;
+}
+.starter-card:nth-child(odd) {
+  rotate: -0.6deg;
+}
+.starter-card:nth-child(even) {
+  rotate: 0.5deg;
+}
+.starter-card .art {
+  grid-row: span 2;
+  width: 100%;
+  filter: drop-shadow(0 calc(0.2 * var(--u)) calc(0.3 * var(--u)) rgba(0, 0, 0, 0.35));
+}
+.starter-card .nm {
+  align-self: end;
+  font-family: var(--head);
+  font-size: calc(2 * var(--u));
+  letter-spacing: 0.04em;
+}
+.starter-card .types {
+  align-self: start;
+  display: flex;
+  gap: calc(0.4 * var(--u));
+}
+.starter-card.sel {
+  background: var(--paper-hi);
+  outline: calc(0.3 * var(--u)) solid var(--spray);
+  transform: scale(1.04);
+}
+/* Mini-tuto du prologue (RunHud.tutorial) : les touches, au-dessus des attaques. */
+.run-tuto {
+  position: fixed;
+  left: 50%;
+  bottom: calc(13 * var(--u));
+  transform: translate(-50%, 0);
+  z-index: 6;
+  display: grid;
+  gap: calc(0.4 * var(--u));
+  padding: calc(0.9 * var(--u)) calc(1.4 * var(--u));
+  font-size: calc(1.1 * var(--u));
+  color: var(--ink);
+  rotate: -0.6deg;
+  pointer-events: none;
+}
+.run-tuto .da-tape {
+  justify-self: start;
+}
+.run-tuto .row {
+  display: flex;
+  align-items: center;
+  gap: calc(0.8 * var(--u));
+}
+.run-tuto .keys {
+  display: flex;
+  gap: calc(0.25 * var(--u));
+  min-width: calc(11 * var(--u));
+}
+.run-tuto kbd {
+  padding: 0 calc(0.4 * var(--u));
+  font-family: var(--head);
+  font-size: calc(1.1 * var(--u));
+  background: var(--paper-hi);
+  border: 1px solid var(--ink);
+  border-bottom-width: 2px;
+}
+/* Questionnaire du premier lancement (QuizScreen) : une question à l'encre, quatre réponses sur papier. */
+.quiz-q {
+  margin: 0;
+  font-family: var(--head);
+  font-size: calc(2.4 * var(--u));
+  letter-spacing: 0.03em;
+  color: var(--paper);
+}
+.quiz-answers {
+  display: grid;
+  gap: calc(0.6 * var(--u));
+}
+.quiz-a {
+  padding: calc(0.7 * var(--u)) calc(1.4 * var(--u));
+  font-family: var(--body);
+  font-size: calc(1.3 * var(--u));
+  text-align: left;
+  color: var(--ink);
+  border: none;
+  cursor: pointer;
+}
+.quiz-a:nth-child(odd) {
+  rotate: -0.4deg;
+}
+.quiz-a:nth-child(even) {
+  rotate: 0.4deg;
+}
+.quiz-a.sel {
+  background: var(--paper-hi);
+  outline: calc(0.3 * var(--u)) solid var(--spray);
+}
+.quiz-result {
+  display: grid;
+  grid-template-columns: calc(14 * var(--u)) 1fr;
+  align-items: center;
+  gap: calc(1.4 * var(--u));
+  padding: calc(1.2 * var(--u));
+  border-left: calc(0.5 * var(--u)) solid var(--c);
+}
+.quiz-result .art {
+  width: 100%;
+  filter: drop-shadow(0 calc(0.2 * var(--u)) calc(0.3 * var(--u)) rgba(0, 0, 0, 0.35));
+}
+.quiz-result .quiz-q,
+.recruit-side .quiz-q {
+  color: var(--ink);
+}
+.quiz-result .types {
+  display: flex;
+  gap: calc(0.4 * var(--u));
+  margin: calc(0.4 * var(--u)) 0;
+}
+.quiz-nature {
+  font-size: calc(1.1 * var(--u));
+  color: var(--muted);
+}
+.starter-go.sel {
+  outline: calc(0.3 * var(--u)) solid var(--paper);
+}
+/* Les boutons du bas : valider, et (à l'exil) renvoyer la recrue. */
+.starter-actions {
+  display: flex;
+  justify-content: center;
+  gap: calc(1.2 * var(--u));
+}
+.starter-go.cancel {
+  background: var(--paper);
+  rotate: 1deg;
+}
+.starter-card .sub {
+  font-size: calc(0.9 * var(--u));
+  color: var(--muted);
+}
+.starter-go {
+  justify-self: center;
+  padding: calc(0.4 * var(--u)) calc(2.4 * var(--u));
+  font-family: var(--head);
+  font-size: calc(2.2 * var(--u));
+  letter-spacing: 0.05em;
+  color: var(--ink);
+  background: var(--yel);
+  border: none;
+  rotate: -1deg;
+  cursor: pointer;
+}
+/* Dons reçus : leur pastille de donateur, le nom, la rareté et ce qu'ils font. */
+.stats-boons {
+  padding: calc(1 * var(--u)) calc(2.4 * var(--u)) calc(1.2 * var(--u)) calc(1.4 * var(--u));
+  rotate: -0.3deg;
+}
+.stats-boons .lbl {
+  font-family: var(--marker);
+  font-size: calc(1.3 * var(--u));
+}
+.stats-boons .none {
+  font-size: calc(1 * var(--u));
+  color: var(--muted);
+}
+.stats-boons .list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: calc(0.6 * var(--u)) calc(2 * var(--u));
+  margin-top: calc(0.6 * var(--u));
+}
+.stats-boons .boon {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: calc(0.7 * var(--u));
+  align-items: center;
+}
+.stats-boons .boon.ult {
+  grid-template-columns: auto auto 1fr;
+  margin-top: calc(0.5 * var(--u));
+}
+.stats-boons .boon i {
+  display: grid;
+  place-items: center;
+  width: calc(2.2 * var(--u));
+  height: calc(2.2 * var(--u));
+  font-style: normal;
+  font-size: calc(1.2 * var(--u));
+  color: #fff;
+  background: var(--c);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 calc(0.2 * var(--u)) var(--paper),
+    0 0 0 calc(0.35 * var(--u)) var(--ink);
+}
+.stats-boons .boon b {
+  font-family: var(--head);
+  font-size: calc(1.3 * var(--u));
+  font-weight: normal;
+  letter-spacing: 0.04em;
+}
+.stats-boons .boon .rar {
+  margin-left: calc(0.5 * var(--u));
+  padding: 0 calc(0.4 * var(--u));
+  font-size: calc(0.9 * var(--u));
+  color: var(--ink);
+  background: var(--r);
+}
+.stats-boons .boon small {
+  display: block;
+  font-size: calc(0.9 * var(--u));
+  color: var(--muted);
+}
+
+/* Ressources de construction (coffres de run → aménagements du bâtisseur) :
+   le stock sous la bourse, le coût sous chaque construction. */
+.cs-stock {
+  position: absolute;
+  top: calc(6.4 * var(--u));
+  left: calc(3 * var(--u));
+  display: flex;
+  gap: calc(0.8 * var(--u));
+  padding: calc(0.3 * var(--u)) calc(0.7 * var(--u));
+  rotate: -1.5deg;
+}
+.cs-cost {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(0.7 * var(--u));
+  margin-top: calc(0.3 * var(--u));
+}
+.cs-res {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(0.2 * var(--u));
+  font-family: var(--head);
+  font-size: calc(1.3 * var(--u));
+  line-height: 1;
+  color: var(--ink);
+}
+.cs-res b {
+  font-weight: normal;
+}
+.cs-res.short {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+.cs-res-ico {
+  height: calc(1.8 * var(--u));
+  image-rendering: pixelated;
+}
+.cs-res-ico.tile {
+  display: inline-block;
+  background-image: url('/game/assets/tilesets/tileset%20pokemon.png');
+  background-repeat: no-repeat;
+}
+
+/* Les matériaux en réserve (atelier, potager), en casiers : le compte en gros ;
+   grisés, ceux qu'on n'a pas, avec le biome où les trouver. (Retour de test.) */
+.cs-mats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(calc(8.5 * var(--u)), 1fr));
+  gap: calc(0.6 * var(--u));
+  margin-top: calc(0.4 * var(--u));
+}
+.cs-mat {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: calc(0.4 * var(--u));
+  padding: calc(0.4 * var(--u)) calc(0.6 * var(--u));
+  background: var(--paper-hi);
+  border-left: calc(0.25 * var(--u)) solid var(--ink);
+  color: var(--ink);
+}
+.cs-mat-ico {
+  grid-row: 1 / 3;
+  height: calc(3.2 * var(--u));
+  image-rendering: pixelated;
+}
+.cs-mat b {
+  font-family: var(--head);
+  font-weight: normal;
+  font-size: calc(2.2 * var(--u));
+  line-height: 1;
+}
+.cs-mat small {
+  font-size: calc(1 * var(--u));
+  line-height: 1.1;
+  opacity: 0.8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cs-mat.none {
+  opacity: 0.45;
+  border-left-color: var(--muted);
+}
+.cs-mat.none .cs-mat-ico {
+  filter: grayscale(1);
+}
+
+/* Missions de Démolosse : le tableau des places, puis l'envoi (quelle mission, qui part). */
+.cs-mission .cs-icon {
+  width: calc(4 * var(--u));
+}
+.cs-mission-ico {
+  display: grid;
+  place-items: center;
+}
+.cs-mission-ico .cs-res-ico {
+  height: calc(3 * var(--u));
+}
+.cs-mission.away {
+  cursor: default;
+}
+.cs-mission.away:hover {
+  translate: none;
+  background: var(--paper);
+}
+.cs-mission.done {
+  box-shadow: inset calc(0.5 * var(--u)) 0 0 var(--yel);
+}
+/* Quêtes de Kangourex : remplie, le liseré jaune appelle à réclamer ; réclamée, elle s'efface. */
+.cs-quest.q-ready {
+  box-shadow: inset calc(0.5 * var(--u)) 0 0 var(--yel);
+}
+.cs-quest.q-active {
+  cursor: default;
+}
+.cs-quest.q-active:hover,
+.cs-quest.q-done:hover {
+  translate: none;
+  background: var(--paper);
+}
+.cs-quest.q-done {
+  cursor: default;
+  opacity: 0.75;
+}
+.cs-quest .cs-icon.shadow {
+  filter: brightness(0) opacity(0.85);
+}
+.cs-quest .cs-dex-bar {
+  margin: calc(0.6 * var(--u)) 0 0;
+}
+.cs-recall {
+  position: absolute;
+  top: 50%;
+  right: var(--u);
+  translate: 0 -50%;
+  padding: calc(0.3 * var(--u)) calc(0.7 * var(--u));
+  font-family: var(--head);
+  font-size: calc(1.2 * var(--u));
+  color: var(--ink);
+  background: none;
+  border: calc(0.15 * var(--u)) solid var(--ink);
+  rotate: -3deg;
+}
+.cs-recall:hover,
+.cs-recall.nav-focus {
+  color: var(--paper);
+  background: var(--ink);
+}
+/* Au camp, celui qui est en mission : grisé, il ne peut pas entrer dans l'équipe. */
+.cs-chip.away {
+  opacity: 0.4;
+  filter: grayscale(1);
+}
+
+/* Poids d'équipe (meta/weight.ts) : la jauge de l'équipe, le poids de chacun,
+   celui des grosses attaques ; en rouge bombé quand l'équipe est trop lourde. */
+.cs-weight.over,
+.cs-load.over {
+  color: #ff5a4a;
+}
+.cs-chip {
+  position: relative;
+}
+.cs-wt {
+  position: absolute;
+  right: calc(0.1 * var(--u));
+  bottom: 0;
+  font-family: var(--head);
+  font-style: normal;
+  font-size: calc(0.9 * var(--u));
+  color: var(--paper);
+  -webkit-text-stroke: calc(0.25 * var(--u)) var(--ink);
+  paint-order: stroke fill;
+}
+.cs-moves .wt {
+  position: absolute;
+  right: calc(0.6 * var(--u));
+  bottom: calc(0.4 * var(--u));
+  font-family: var(--head);
+  font-style: normal;
+  font-size: calc(1 * var(--u));
+  color: var(--muted);
+}
+.cs-weigh {
+  display: block;
+  margin-top: calc(0.3 * var(--u));
+}
+.cs-load {
+  margin: 0 0 calc(1.2 * var(--u));
+  font-family: var(--head);
+  font-size: calc(1.6 * var(--u));
+  letter-spacing: 0.04em;
+}
+/* Trop lourde, l'équipe ne part pas : le ruban s'éteint et ne pousse plus. */
+.cs-go.heavy {
+  opacity: 0.45;
+  filter: grayscale(1);
+  cursor: not-allowed;
+}
+.cs-go.heavy:hover,
+.cs-go.heavy:hover .cs-go-arrow {
+  translate: none;
+}
+.cs-go.heavy:hover::before {
+  scale: 0 1;
+}
+/* Prix en Éclats de Champion (Bracelet de charge) : l'éclat suit le chiffre. */
+.cs-price .cs-res-ico {
+  height: 1.1em;
+  margin-left: 0.15em;
+  vertical-align: -0.15em;
+}
+
+/* ── Lutte dans la Poké Ball du sbire (run/capture.ts) ──────────────────── */
+/* Bas de l'écran, au-dessus du Pokémon pris : ← et → en alternance remplissent la jauge. */
+.capture-qte {
+  position: fixed;
+  left: 50%;
+  bottom: calc(14 * var(--u));
+  translate: -50% 0;
+  z-index: 12;
+  display: grid;
+  justify-items: center;
+  gap: calc(0.8 * var(--u));
+  padding: calc(1.2 * var(--u)) calc(3.2 * var(--u)) calc(1.4 * var(--u)) calc(2.4 * var(--u));
+  font-family: var(--body);
+  rotate: -1deg;
+  animation: da-slap 0.35s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+  pointer-events: none;
+}
+.capture-qte[hidden] {
+  display: none;
+}
+.capture-qte b {
+  font: normal calc(2.6 * var(--u)) var(--accent);
+  letter-spacing: 0.04em;
+  color: #e84040;
+  text-shadow: 0 calc(0.2 * var(--u)) 0 var(--ink);
+}
+.capture-row {
+  display: flex;
+  align-items: center;
+  gap: calc(1 * var(--u));
+}
+.capture-row kbd {
+  min-width: calc(3.2 * var(--u));
+  padding: calc(0.3 * var(--u)) calc(0.6 * var(--u));
+  font: normal calc(2 * var(--u)) var(--head);
+  text-align: center;
+  color: var(--paper);
+  background: var(--ink);
+  opacity: 0.45;
+  box-shadow: 0 calc(0.3 * var(--u)) 0 #0006;
+  transition: opacity 0.08s, translate 0.08s;
+}
+/* La flèche attendue s'allume (l'autre vient d'être pressée). */
+.capture-row kbd.on {
+  opacity: 1;
+  color: var(--ink);
+  background: var(--yel);
+  translate: 0 calc(-0.2 * var(--u));
+}
+.capture-bar {
+  width: calc(22 * var(--u));
+  height: calc(1.6 * var(--u));
+  background: var(--ink);
+  border: calc(0.25 * var(--u)) solid var(--ink);
+}
+.capture-bar i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #5fb83e, #a8e05f);
+  transition: width 0.06s linear;
+}
+/* Presque refermée : la jauge vire au rouge et clignote. */
+.capture-qte.low .capture-bar i {
+  background: linear-gradient(90deg, #c02828, #ff6a4a);
+  animation: capture-blink 0.3s steps(2) infinite;
+}
+@keyframes capture-blink {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* Missions et quêtes : le tampon (Envoyer, Récolter, Accepter…) et « Rappeler » sous le texte,
+   et non plus par-dessus (retour de test : « Envoyer » couvrait la ligne d'aide). */
+.cs-mission {
+  padding-right: var(--u);
+}
+.cs-mission .cs-price,
+.cs-mission .cs-recall {
+  position: static;
+  translate: none;
+  justify-self: end;
+  margin-top: calc(0.5 * var(--u));
+}
+.cs-mission .cs-price {
+  font-size: calc(1.5 * var(--u));
+}
+.cs-mission .cs-tag {
+  position: static;
+  translate: none;
+  justify-self: end;
+  margin-top: calc(0.5 * var(--u));
+}
+.cs-reward {
+  align-items: center;
+}
+/* La place libre : un « + » à la place du Pokémon parti. */
+.cs-free-ico,
+.cs-teaser {
+  height: calc(4 * var(--u));
+  font-family: var(--head);
+  font-size: calc(3 * var(--u));
+  color: var(--muted);
+  border: calc(0.15 * var(--u)) dashed var(--muted);
+  display: grid;
+  place-items: center;
+}
+.cs-free .cs-res-ico {
+  height: calc(1.6 * var(--u));
+}
+
+/*
+ * Repère « ! » au-dessus d'un gardien du Repaire qui a du neuf (meta/news.ts) :
+ * la bulle « ! » des dresseurs qui vous repèrent (Essentials, Animations/!.png,
+ * trois images de 192 px), à l'échelle des pixels du jeu (--px, posé par
+ * Camp.placeLabels). Elle éclot (images 1 à 3 de la planche), puis flotte d'un
+ * pixel à l'autre, sans lissage. Écart voulu (retour de test) : une pastille
+ * ronde dessinée en CSS jurait avec le pixel art ; puis, à 28 px de décor, la
+ * bulle était trop grosse : --k la ramène à 20 (0,7 pixel de planche par pixel
+ * de décor, arrondi par le navigateur). Près du gardien, elle reste et se
+ * détache (.sel : liseré blanc d'un pixel, saut plus vif), à la place de la
+ * flèche jaune (.camp-mark.news).
+ */
+.camp-news {
+  --px: 2px;
+  --k: calc(0.7 * var(--px));
+  display: block;
+  width: calc(28 * var(--k));
+  height: calc(28 * var(--k));
+  background: url('/game/assets/essentials/animations/exclaim.png') no-repeat;
+  background-size: calc(768 * var(--k)) calc(384 * var(--k));
+  background-position: calc(-466 * var(--k)) calc(-82 * var(--k));
+  image-rendering: pixelated;
+  filter: drop-shadow(0 var(--px) 0 rgba(26, 16, 8, 0.55));
+  animation:
+    camp-news-pop 0.3s steps(1, end),
+    camp-news-bob 1.1s 0.3s steps(1, end) infinite;
+}
+@keyframes camp-news-pop {
+  0% {
+    background-position: calc(-82 * var(--k)) calc(-82 * var(--k));
+  }
+  33% {
+    background-position: calc(-274 * var(--k)) calc(-82 * var(--k));
+  }
+  66%,
+  100% {
+    background-position: calc(-466 * var(--k)) calc(-82 * var(--k));
+  }
+}
+@keyframes camp-news-bob {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  25% {
+    translate: 0 calc(-1 * var(--px));
+  }
+  50% {
+    translate: 0 calc(-2 * var(--px));
+  }
+  75% {
+    translate: 0 calc(-1 * var(--px));
+  }
+}
+@keyframes camp-news-hop {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 calc(-3 * var(--px));
+  }
+}
+.camp-news[hidden] {
+  display: none;
+}
+.camp-news.sel {
+  filter: drop-shadow(var(--px) 0 0 #fff) drop-shadow(calc(-1 * var(--px)) 0 0 #fff) drop-shadow(0 var(--px) 0 #fff)
+    drop-shadow(0 calc(-1 * var(--px)) 0 #fff) drop-shadow(0 var(--px) 0 rgba(26, 16, 8, 0.55));
+  animation: camp-news-hop 0.5s steps(2, jump-none) infinite;
+}
+.camp-mark.open.news {
+  opacity: 0;
+}
+
+/*
+ * « ! » de ce qui est neuf dans l'écran d'un poste (meta/news.ts) : la même
+ * bulle que le repère du camp (Essentials, Animations/!.png), au coin haut
+ * gauche de la carte, du Pokémon ou de l'emplacement, à 1,5 px par pixel.
+ */
+.cs-new {
+  --px: calc(0.09 * var(--u));
+  position: absolute;
+  z-index: 2;
+  top: calc(0.2 * var(--u));
+  left: calc(0.2 * var(--u));
+  width: calc(28 * var(--px));
+  height: calc(28 * var(--px));
+  background: url('/game/assets/essentials/animations/exclaim.png') no-repeat;
+  background-size: calc(768 * var(--px)) calc(384 * var(--px));
+  background-position: calc(-466 * var(--px)) calc(-82 * var(--px));
+  image-rendering: pixelated;
+  pointer-events: none;
+  animation: camp-news-bob 1.1s steps(1, end) infinite;
+}
+.cs-card > .cs-new {
+  grid-column: auto;
+}
+.cs-dex-card {
+  position: relative;
+}
+/* Retirer un Super Bonbon : un bouton discret, en papier, à côté du « + ». */
+.cs-candy .cs-candy-back {
+  color: var(--ink);
+  background: transparent;
+  border: calc(0.12 * var(--u)) solid var(--ink);
+}
+
+/*
+ * Jeu en ligne (ui/netbadge.ts) : le bandeau de la partie en haut au centre
+ * (un clic copie le code) et, au Repaire, les joueurs présents sur le côté.
+ */
+.net-badge {
+  position: absolute;
+  top: calc(1.2 * var(--u));
+  right: calc(1.6 * var(--u));
+  z-index: 15;
+  background: var(--paper);
+  box-shadow: 0 calc(0.3 * var(--u)) calc(0.8 * var(--u)) #0007;
+  display: flex;
+  align-items: center;
+  gap: calc(0.8 * var(--u));
+  padding: calc(0.3 * var(--u)) calc(1.2 * var(--u));
+  color: var(--ink);
+  border: none;
+  rotate: -1deg;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.net-badge[hidden],
+.net-players[hidden] {
+  display: none;
+}
+.net-badge small {
+  font-size: calc(1.1 * var(--u));
+}
+.net-dot {
+  width: calc(0.9 * var(--u));
+  height: calc(0.9 * var(--u));
+  border-radius: 50%;
+  background: #3fc46a;
+  box-shadow: 0 0 calc(0.6 * var(--u)) #3fc46a;
+  animation: net-pulse 1.6s ease-in-out infinite;
+}
+@keyframes net-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+.net-code {
+  font-family: var(--head);
+  font-size: calc(2.4 * var(--u));
+  font-weight: normal;
+  letter-spacing: 0.25em;
+  line-height: 1;
+}
+.net-count {
+  font-family: var(--head);
+  font-size: calc(1.5 * var(--u));
+  padding: 0 calc(0.5 * var(--u));
+  color: var(--paper);
+  background: #7ac0e8;
+}
+.net-tip {
+  opacity: 0.6;
+}
+.net-players {
+  position: absolute;
+  left: calc(2 * var(--u));
+  top: calc(6 * var(--u));
+  z-index: 15;
+  display: grid;
+  gap: calc(0.5 * var(--u));
+  width: calc(19 * var(--u));
+  pointer-events: none;
+}
+.net-players-title {
+  justify-self: start;
+  rotate: -2deg;
+}
+.net-player {
+  display: flex;
+  align-items: center;
+  gap: calc(0.6 * var(--u));
+  padding: calc(0.3 * var(--u)) calc(0.8 * var(--u));
+  color: #fff;
+  background: #0009;
+  border-left: calc(0.35 * var(--u)) solid #7ac0e8;
+  animation: net-in 0.35s ease-out;
+  pointer-events: none;
+}
+.net-player.me {
+  border-left-color: var(--yel);
+}
+@keyframes net-in {
+  from {
+    translate: calc(-4 * var(--u)) 0;
+    opacity: 0;
+  }
+}
+.net-player img {
+  width: calc(4 * var(--u));
+  filter: drop-shadow(0 calc(0.2 * var(--u)) calc(0.3 * var(--u)) #0008);
+}
+.net-player b {
+  display: block;
+  font-family: var(--head);
+  font-size: calc(1.6 * var(--u));
+  font-weight: normal;
+  letter-spacing: 0.05em;
+}
+.net-player small {
+  font-size: calc(1.05 * var(--u));
+  opacity: 0.8;
+}
+.net-hint {
+  color: #fff;
+  font-size: calc(1.05 * var(--u));
+  text-shadow: 0 1px 2px #000;
 }

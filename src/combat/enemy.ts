@@ -1,10 +1,12 @@
 import { dirFromVector, type Actor } from '../entities/actor';
 import type { WorldMap } from '../world/generate';
-import type { Combat } from './combat';
+import type { AreaShape, Combat } from './combat';
 import { typeMultiplier } from './damage';
 import type { Move } from './moves';
 import { NavAgent } from './nav';
 import type { BuffStat } from './pokemon';
+import { SIGNATURES } from './signatures';
+import { sfx } from '../audio/audio';
 
 // IA d'un sauvage, reprise d'EnemyAI.gd. Distances en cases (= unités Godot).
 //
@@ -45,8 +47,39 @@ const SUPPORT_KEEPAWAY = 6;
 const CHANT_EVERY = 5;
 const BUFF_MULT = 1.25;
 const BUFF_TIME = 7;
-/** Orbe ennemi : plus lent que celui du joueur (10 contre 14 cases/s). */
-export const ENEMY_ORB_SPEED = 10;
+/**
+ * Champions et as : ils attaquent plus souvent (recharge ×0,75) et lancent
+ * des attaques de zone (Combat.enemyArea). Écart voulu avec le jeu : à quatre
+ * Pokémon, un boss qui ne faisait que viser une cible toutes les 1,8 s
+ * tombait sans jamais inquiéter l'équipe (retour de test).
+ */
+const BOSS_COOLDOWN_MULT = 0.75;
+/** Première zone peu après l'entrée en scène, puis une toutes les AREA_COOLDOWN s. */
+const AREA_FIRST = 3.5;
+const AREA_COOLDOWN = { champion: 6, boss: 4.5 };
+/** Temps entre la pose de la zone et l'impact : plus long qu'un tir (0,45 s), la zone étant bien plus grande. */
+const AREA_DELAY = { champion: 0.85, boss: 0.75 };
+/** Puissance d'une zone (× celle de la capacité), et de chaque disque de la pluie. */
+const AREA_POWER = 1.25;
+const RAIN_POWER = 0.6;
+/** Disque autour du lanceur : il faut quelqu'un à moins de SHOCK_TRIGGER pour qu'il le lance. */
+const SHOCK_RADIUS = 2.6;
+const SHOCK_TRIGGER = 3.2;
+const BEAM_LEN = 9;
+const BEAM_HALF_WIDTH = 0.6;
+const CONE_RADIUS = 5;
+const CONE_HALF = (35 * Math.PI) / 180;
+const RAIN_RADIUS = 1.1;
+/**
+ * Forme de zone selon le type de la capacité : le sol et la roche font
+ * trembler autour du lanceur, le feu, le poison, les ténèbres… soufflent
+ * devant lui ; le reste (électrik, glace, psy, eau, dragon…) part en rayon.
+ */
+const AREA_OF: Record<string, AreaShape['kind']> = {
+  ground: 'circle', rock: 'circle', fighting: 'circle', steel: 'circle',
+  fire: 'cone', poison: 'cone', dark: 'cone', flying: 'cone', grass: 'cone', bug: 'cone', ghost: 'cone',
+};
+
 /** Herbe : un Pokémon y est invisible à plus de 3,6 cases de l'autre camp. */
 export const GRASS_REVEAL_DIST = 3.6;
 /** Le joueur reste repérable 2,5 s après avoir attaqué, même dans l'herbe. */
@@ -74,6 +107,14 @@ export class EnemyBrain {
   aggro = false;
   private wakeDelay = Math.random() * 1.2;
   private attackT = 0;
+  /** Prochaine attaque de zone (champions et as). */
+  private areaT = AREA_FIRST;
+  /** L'anticipation en cours est la pose d'une zone (déjà au sol) : rien à lancer à la fin. */
+  private areaCasting = false;
+  /** La prochaine zone sera la signature du champion (la première l'est : on la reconnaît d'entrée). */
+  private signatureNext = true;
+  /** Suites d'une signature (salves de Prémonition, Roulades…), en s restantes. */
+  private pending: { t: number; fn: () => void }[] = [];
   /** Anticipation en cours (s restantes), et cible verrouillée pendant ce temps. */
   private windup = 0;
   private windupTarget: Actor | null = null;
@@ -106,6 +147,11 @@ export class EnemyBrain {
     return this.actor.role === 'boss' ? 1.6 : this.actor.role === 'champion' ? 1.25 : 1;
   }
 
+  /** Recharge entre deux attaques, raccourcie pour un champion et son as. */
+  private get cooldown(): number {
+    return this.actor.role === 'wild' ? ATTACK_COOLDOWN : ATTACK_COOLDOWN * BOSS_COOLDOWN_MULT;
+  }
+
   get attackRange(): number {
     return this.ranged ? RANGED_RANGE : ATTACK_RANGE;
   }
@@ -120,10 +166,14 @@ export class EnemyBrain {
     this.aggro = false;
     this.wakeDelay = Math.random() * 1.2;
     this.cancelWindup();
+    this.pending = [];
     this.chargeT = 0;
     this.attackT = 0;
     this.retreatT = 0;
     this.chantCd = 0;
+    // Pas de zone ni de signature dès le réveil : le délai d'ouverture repart.
+    this.areaT = AREA_FIRST;
+    this.signatureNext = true;
     this.nav.reset();
   }
 
@@ -132,6 +182,7 @@ export class EnemyBrain {
     this.windup = 0;
     this.windupTarget = null;
     this.chargePending = false;
+    this.areaCasting = false;
     this.actor.windup = { t: 0, dur: 0, ring: 1.4 };
   }
 
@@ -151,11 +202,21 @@ export class EnemyBrain {
     if (!mon || a.deathT >= 0) return;
     mon.tickBuffs(dt);
     this.attackT -= dt;
+    this.areaT -= dt;
+    // Les suites d'une signature partent même endormi ou repoussé : la figure est lancée.
+    if (this.pending.length) {
+      for (const p of this.pending) p.t -= dt;
+      const due = this.pending.filter((p) => p.t <= 0);
+      this.pending = this.pending.filter((p) => p.t > 0);
+      for (const p of due) p.fn();
+    }
     this.chantCd -= dt;
     this.retreatT -= dt;
     this.fled = this.fleeing * dt;
     this.fleeing = 0;
     this.stop();
+    // Entrée en puissance (Combat.bossIntro) : il ne fait rien d'autre.
+    if (a.intro) return;
 
     // Caché dans l'herbe tant qu'il n'a pas attaqué et que personne n'est tout près.
     const dPlayer = Math.min(...team.map((m) => Math.hypot(m.x - a.x, m.y - a.y)));
@@ -188,7 +249,11 @@ export class EnemyBrain {
     const target = this.findTarget(team, combat, world);
     if (!this.aggro) {
       this.wakeDelay -= dt;
-      if (this.wakeDelay <= 0 && target && Math.hypot(target.x - a.x, target.y - a.y) <= AGGRO_RANGE) this.aggro = true;
+      if (this.wakeDelay <= 0 && target && Math.hypot(target.x - a.x, target.y - a.y) <= AGGRO_RANGE) {
+        this.aggro = true;
+        // Écart voulu : le « ! » des dresseurs qui vous repèrent (limité à un toutes les 0,5 s).
+        sfx('alert');
+      }
       else {
         a.wander = !onTallGrass(world, a);
         return;
@@ -197,6 +262,7 @@ export class EnemyBrain {
     a.wander = false;
     if (!target) return;
 
+    if (a.role !== 'wild' && this.areaT <= 0 && this.tryArea(target, team, combat)) return;
     const d = Math.hypot(target.x - a.x, target.y - a.y);
     switch (this.supportFallback(enemies)) {
       case 'chaser':
@@ -261,7 +327,7 @@ export class EnemyBrain {
     let nearest: Actor | null = null;
     let nearestD = Infinity;
     team.forEach((m, i) => {
-      if (!m.pokemon || m.pokemon.fainted || m.deathT >= 0) return;
+      if (!m.pokemon || m.pokemon.fainted || m.deathT >= 0 || m.trapped) return;
       const d = Math.hypot(m.x - a.x, m.y - a.y);
       if (i === 0 && d >= GRASS_REVEAL_DIST && onTallGrass(world, m) && combat.sinceAttack >= GRASS_REVEAL_TIME) return;
       if (d < nearestD) {
@@ -328,6 +394,13 @@ export class EnemyBrain {
     const t = this.windupTarget;
     a.windup = { t: 0, dur: 0, ring: 1.4 };
     this.windupTarget = null;
+    if (this.areaCasting) {
+      // La zone frappe d'elle-même : le lanceur se détend, l'animation part avec elle.
+      this.areaCasting = false;
+      a.playAction(['Shoot', 'Attack'], 0.4);
+      a.flash = { color: '#ffffff', t: 0.1, dur: 0.1, alpha: 0.55 };
+      return;
+    }
     if (this.chargePending) {
       // Ruée vers la position de la cible à cet instant, sans test de portée.
       this.chargePending = false;
@@ -337,24 +410,110 @@ export class EnemyBrain {
       this.chargeDx = (tx - a.x) / len;
       this.chargeDy = (ty - a.y) / len;
       this.chargeT = CHARGE_TIME;
-      this.attackT = ATTACK_COOLDOWN;
+      this.attackT = this.cooldown;
       return;
     }
-    const alive = t && t.pokemon && !t.pokemon.fainted && t.deathT < 0;
+    const alive = t && t.pokemon && !t.pokemon.fainted && t.deathT < 0 && !t.trapped;
     if (!t || !alive || Math.hypot(t.x - a.x, t.y - a.y) > this.attackRange * RANGE_SLACK) {
       // Raté : la cible est sortie de portée. Recharge raccourcie, fente dans le vide.
-      this.attackT = ATTACK_COOLDOWN * 0.6;
+      this.attackT = this.cooldown * 0.6;
       if (t) this.lunge(t.x, t.y);
       return;
     }
     this.doAttack(t, combat);
   }
 
+  /**
+   * Attaque de zone d'un champion ou de son as, selon le type de sa capacité
+   * (AREA_OF) ; l'as sur ses deux dernières barres fait aussi pleuvoir des
+   * disques sous chaque membre. Rend faux si la forme n'atteindrait personne
+   * (on réessaiera au pas suivant).
+   */
+  private tryArea(target: Actor, team: readonly Actor[], combat: Combat): boolean {
+    const a = this.actor;
+    const mon = a.pokemon!;
+    const role = a.role === 'boss' ? 'boss' : 'champion';
+    const move = this.ranged ?? mon.moves.find((m) => m.power > 0) ?? null;
+    const type = move?.type ?? mon.types[0];
+    const power = Math.max(40, move?.power ?? 40);
+    const delay = AREA_DELAY[role];
+    const alive = team.filter((m) => m.pokemon && !m.pokemon.fainted && m.deathT < 0);
+    const sig = a.signature ? SIGNATURES[a.signature] : undefined;
+    if (sig && this.signatureNext) {
+      const dur = sig.cast({
+        caster: a,
+        target,
+        alive,
+        delay,
+        area: (shape, x, y, pow, t) => combat.enemyArea(a, shape, x, y, move, power * pow, t),
+        later: (t, fn) => this.pending.push({ t, fn }),
+        quake: (t) => this.pending.push({ t, fn: () => sfx('quake') }),
+      });
+      if (dur !== null) {
+        this.castArea(target, dur);
+        this.signatureNext = false;
+        combat.callout(a, sig.name);
+        sfx('ability');
+        return true;
+      }
+      // Hors de portée de sa figure : la zone de son type à la place, la signature attendra.
+    }
+    if (role === 'boss' && a.barsLeft <= 2 && Math.random() < 0.5) {
+      // Pluie : un disque sur chaque membre, deux autour, en cascade.
+      let n = 0;
+      for (const m of alive) {
+        for (let j = 0; j < 3; j++) {
+          const ang = Math.random() * Math.PI * 2;
+          const off = j === 0 ? 0 : 0.8 + Math.random() * 1.2;
+          combat.enemyArea(a, { kind: 'circle', r: RAIN_RADIUS }, m.x + Math.cos(ang) * off, m.y + Math.sin(ang) * off, move, power * RAIN_POWER, delay + n++ * 0.12);
+        }
+      }
+      this.castArea(target, delay);
+      return true;
+    }
+    const d = Math.hypot(target.x - a.x, target.y - a.y);
+    const dx = (target.x - a.x) / (d || 1);
+    const dy = (target.y - a.y) / (d || 1);
+    switch (AREA_OF[type] ?? 'line') {
+      case 'circle':
+        if (!alive.some((m) => Math.hypot(m.x - a.x, m.y - a.y) <= SHOCK_TRIGGER)) return false;
+        combat.enemyArea(a, { kind: 'circle', r: SHOCK_RADIUS }, a.x, a.y, move, power * AREA_POWER, delay);
+        break;
+      case 'cone':
+        if (d > CONE_RADIUS + 0.5) return false;
+        combat.enemyArea(a, { kind: 'cone', r: CONE_RADIUS, half: CONE_HALF, dx, dy }, a.x, a.y, move, power * AREA_POWER, delay);
+        break;
+      case 'line':
+        if (d > BEAM_LEN) return false;
+        combat.enemyArea(a, { kind: 'line', len: BEAM_LEN, halfW: BEAM_HALF_WIDTH, dx, dy }, a.x, a.y, move, power * AREA_POWER, delay);
+        break;
+    }
+    this.castArea(target, delay);
+    return true;
+  }
+
+  /** Le lanceur tient la pose (sans anneau : la zone au sol suffit) jusqu'à l'impact. */
+  private castArea(target: Actor, delay: number): void {
+    const a = this.actor;
+    this.areaT = AREA_COOLDOWN[a.role === 'boss' ? 'boss' : 'champion'];
+    // Une zone de type posée : la suivante sera la signature (tryArea la remet à faux après la sienne).
+    this.signatureNext = true;
+    this.attackT = Math.max(this.attackT, delay + 0.35);
+    this.revealed = true;
+    a.hidden = false;
+    this.windup = delay;
+    this.windupTarget = null;
+    this.areaCasting = true;
+    a.windup = { t: 0, dur: delay, ring: 0.4 };
+    this.face(target.x, target.y);
+    a.playAction(['Charge', 'Attack'], 0.4);
+  }
+
   /** EnemyAI._do_attack */
   private doAttack(target: Actor, combat: Combat): void {
     const a = this.actor;
     const mon = a.pokemon!;
-    this.attackT = ATTACK_COOLDOWN;
+    this.attackT = this.cooldown;
     this.revealed = true;
     a.hidden = false;
     this.face(target.x, target.y);
@@ -385,6 +544,7 @@ export class EnemyBrain {
         combat.fx.attackAnim('fx_boost', ally.x, ally.y);
       }
       a.playAction(['Charge', 'Attack'], 0.5);
+      sfx('statUp', -4);
       a.flash = { color: '#ffe0a0', t: 0.25, dur: 0.25, alpha: 0.6 };
     }
     // Il ne frappe pas tant qu'il a des alliés : il garde ses distances.
