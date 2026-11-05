@@ -55,8 +55,8 @@ export function rollLoot(seed: number, x: number, y: number, act: number, guarde
   let n = 0;
   const r = (k: number) => Math.floor(hash2(x, y, seed + 977 * ++n) * k);
   return guarded
-    ? { baies: 25 + 10 * act + r(11), res: { [main]: 8 + r(7), food: 3 + r(4) } }
-    : { baies: 15 + 5 * act + r(11), res: { [main]: 4 + r(4), food: r(3) } };
+    ? { baies: 10 + 4 * act + r(6), res: { [main]: 8 + r(7), food: 3 + r(4) } }
+    : { baies: 6 + 2 * act + r(5), res: { [main]: 4 + r(4), food: r(3) } };
 }
 
 export interface ChestHost {

@@ -64,8 +64,8 @@ export class BossPreview {
     done?.();
   }
 
-  /** `bossRoom` : index de la salle du boss, pour les niveaux (RunManager.boss_wave_level). */
-  show(champ: Champion, final: boolean, bossRoom: number, onClose: () => void): void {
+  /** `levels` : le niveau de chaque Pokémon du champion au combat (Run.bossLevel). */
+  show(champ: Champion, final: boolean, levels: readonly number[], onClose: () => void): void {
     sfx('menuOpen');
     this.onClose = onClose;
     this.root.replaceChildren();
@@ -99,7 +99,7 @@ export class BossPreview {
       img.src = `/game/artwork/${id}.png`;
       img.alt = '';
       const name = el('b', '', c, '…');
-      el('small', '', c, `Niv. ${18 + Math.floor(bossRoom * 0.7) + Math.floor(i * 1.4)}`);
+      el('small', '', c, `Niv. ${levels[i] ?? '?'}`);
       if (ace) {
         el('small', 'ace-tag', c, '★ son as');
         // Entouré à la bombe par la rébellion, en deux arcs.
