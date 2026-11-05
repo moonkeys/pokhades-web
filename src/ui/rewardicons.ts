@@ -1,4 +1,6 @@
+import { loadSheet } from '../assets/pmd';
 import { DONORS, type DonorId } from '../combat/boons';
+import { MERCHANT_SPECIES } from '../data/species';
 import { typeColor } from '../render/combatfx';
 import type { Reward } from '../run/run';
 
@@ -8,11 +10,11 @@ import type { Reward } from '../run/run';
 // tant qu'on n'avait pas lu l'étiquette.
 //   - butin : la Pièce Rune d'Essentials (Items/AMULETCOIN), la pièce d'or ;
 //   - nouvelle attaque : une CT (Items/machine_NORMAL), le disque des jeux ;
-//   - don d'un légendaire : un badge rond à sa tête (son illustration
-//     officielle, public/game/artwork), cerclé de papier et d'encre comme les
-//     pastilles de la DA, sur la couleur de son type. Toujours en HTML, même
-//     au-dessus de la récompense posée : dessinée dans le tampon du canvas
-//     (270 px de haut), l'illustration sortait pixellisée (retour de test).
+//   - don d'un légendaire : sa silhouette en pixels (sa planche PMD), dans une
+//     vignette carrée d'encre et de papier à la couleur de son type (retour de
+//     test : l'illustration officielle jurait avec le pixel art). En HTML,
+//     même au-dessus de la récompense posée ;
+//   - boutique : Perrserker, le marchand, dans la même vignette.
 // Écart voulu avec le jeu : la porte d'un don annonce déjà son donateur
 // (Run.offers le tire), le jeu ne le révélait qu'en prenant la récompense.
 
@@ -21,42 +23,57 @@ const ICON_URL: Record<Exclude<Reward, 'boon'>, string> = {
   loot: `${ITEMS}/AMULETCOIN.png`,
   skill: `${ITEMS}/machine_NORMAL.png`,
 };
-const artUrl = (donor: DonorId) => `/game/artwork/${DONORS[donor].dex}.png`;
 
 /**
- * Cadrage de la tête dans chaque illustration (475 px de côté, la pose varie
- * tout le temps : Sulfura file vers la droite, Rayquaza se tord) : centre de
- * la tête et largeur de la fenêtre, en fraction de l'image. Relevé à l'œil.
+ * Un Pokémon en pixels : la première image de sa planche PMD (de face), recadrée sur son
+ * corps, dans un canvas agrandi sans lissage. Retour de test : les illustrations officielles
+ * des badges « ne vont pas avec la DA du jeu », qui est en pixel art.
  */
-const FACES: Record<DonorId, [x: number, y: number, w: number]> = {
-  electhor: [0.46, 0.34, 0.36],
-  sulfura: [0.73, 0.64, 0.32],
-  artikodin: [0.33, 0.32, 0.3],
-  mew: [0.43, 0.3, 0.4],
-  darkrai: [0.38, 0.42, 0.4],
-  groudon: [0.8, 0.38, 0.4],
-  celebi: [0.42, 0.55, 0.6],
-  hooh: [0.71, 0.37, 0.32],
-  rayquaza: [0.2, 0.3, 0.34],
-  jirachi: [0.5, 0.47, 0.52],
-};
+export function pixelMon(species: number): HTMLElement {
+  const box = document.createElement('span');
+  box.className = 'rw-px';
+  const canvas = document.createElement('canvas');
+  box.append(canvas);
+  void loadSheet(species).then((sh) => {
+    if (!sh) return;
+    const half = Math.ceil(Math.max(sh.bodyWidth, sh.footRow + 1 - sh.topRow) / 2) + 1;
+    const cx = Math.round(sh.centerCol);
+    const cy = Math.round((sh.topRow + sh.footRow + 1) / 2);
+    canvas.width = canvas.height = half * 2;
+    const g = canvas.getContext('2d')!;
+    g.imageSmoothingEnabled = false;
+    g.drawImage(sh.image, cx - half, cy - half, half * 2, half * 2, 0, 0, half * 2, half * 2);
+  });
+  return box;
+}
 
-/** Le badge d'un légendaire : pastille à la couleur de son type, sa tête cadrée dedans, un reflet. */
+/**
+ * Le badge d'un légendaire : son illustration, en grand, détourée d'encre, avec un halo à la
+ * couleur de son type (retour de test : « le petit sprite qui flotte, c'est pas très beau ;
+ * mets le Pokémon plus gros, l'image dessinée »).
+ */
 export function donorBadge(donor: DonorId): HTMLElement {
   const badge = document.createElement('span');
-  badge.className = 'rw-badge';
+  badge.className = 'rw-badge art';
   badge.style.setProperty('--c', typeColor(DONORS[donor].type));
   const img = document.createElement('img');
-  img.alt = '';
-  img.src = artUrl(donor);
-  const [x, y, face] = FACES[donor];
-  // Un peu plus serré que la fenêtre relevée : liseré et reflet mangent le bord.
-  const w = face * 0.82;
-  img.style.width = `${100 / w}%`;
-  img.style.left = `${50 - (x * 100) / w}%`;
-  img.style.top = `${50 - (y * 100) / w}%`;
+  img.alt = DONORS[donor].name;
+  img.src = `/game/artwork/${DONORS[donor].dex}.png`;
+  img.draggable = false;
   badge.append(img);
   return badge;
+}
+
+/** La boutique : Perrserker, le marchand, dans la même vignette. */
+export function shopIcon(): HTMLElement {
+  const wrap = document.createElement('span');
+  wrap.className = 'rw-ico shop';
+  const badge = document.createElement('span');
+  badge.className = 'rw-badge';
+  badge.style.setProperty('--c', '#c8963c');
+  badge.append(pixelMon(MERCHANT_SPECIES));
+  wrap.append(badge);
+  return wrap;
 }
 
 /** Images partagées par le canvas : chargées une fois, dessinées dès qu'elles sont prêtes. */
@@ -87,7 +104,7 @@ export function rewardIcon(reward: Reward, donor?: DonorId): HTMLElement {
   const wrap = document.createElement('span');
   wrap.className = `rw-ico ${reward}`;
   if (reward === 'boon') {
-    wrap.append(donorBadge(donor ?? 'mew'));
+    if (donor) wrap.append(donorBadge(donor));
     return wrap;
   }
   const img = document.createElement('img');

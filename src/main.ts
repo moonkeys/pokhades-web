@@ -284,12 +284,13 @@ async function boot(): Promise<void> {
       // Les matériaux d'artisan (meta/crafting.ts) : avant `earn`, qui sauvegarde.
       for (const [m, n] of Object.entries(mats)) save.materials[m] = (save.materials[m] ?? 0) + n;
       earn(baies);
-      const parts = [
-        `+${baies} Baies`,
-        ...RESOURCE_IDS.filter((r) => res[r]).map((r) => `+${res[r]} ${RESOURCES[r].name}`),
-        ...Object.entries(mats).map(([m, n]) => `+${n} ${materialName(m)}`),
-      ];
-      runHud.notify({ title: 'Coffre', text: `${parts.join(' · ')} pour le Repaire`, color: 'var(--yel)' });
+      // Une notification par gain, son icône et sa quantité, à la suite (retour de test : un seul
+      // bandeau « +12 Baies · +5 Bois · … » se lisait mal).
+      runHud.notifyAll([
+        ...(baies ? [{ title: 'Baies', text: 'Pour le Repaire', item: 'ORANBERRY', qty: `+${baies}`, color: 'var(--yel)' }] : []),
+        ...RESOURCE_IDS.filter((r) => res[r]).map((r) => ({ title: RESOURCES[r].name, text: 'Ressource de construction', res: r, qty: `+${res[r]}`, color: 'var(--yel)' })),
+        ...Object.entries(mats).map(([m, n]) => ({ title: materialName(m), text: 'Matériau d’artisan', item: MATERIALS[m]?.icon ?? NECTARS[m]?.icon, qty: `+${n}`, color: 'var(--yel)' })),
+      ]);
     },
   });
   // Marchand ambulant (salle spéciale) : Miaouss, son pari et son échange.
