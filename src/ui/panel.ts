@@ -9,6 +9,16 @@ import type { Options } from './options';
 // ont changé ; main.ts décide quoi reconstruire. Seule exception, pour tester
 // vite : « Aller à une salle » demande à main.ts de sauter à un combat, à la
 // boutique ou au boss d'un acte.
+//
+// Le jeu publié (GitHub Pages, `import.meta.env.PROD`) n'en garde que les
+// trois boutons « Repaire (tests) » : retour au camp, +1000 Baies et remise
+// à zéro (retour de test : « je ne veux pas que les gens aient accès au jeu
+// et fassent ce qu'ils veulent »). Plus de biome forcé, de graine, de forme
+// des salles, d'équipe composée à la main ni de saut de salle, et leurs
+// raccourcis (N, Pg↑/Pg↓) sont coupés ; le serveur de dev garde tout.
+
+/** Le jeu publié : le panneau réduit aux outils du Repaire. */
+export const PUBLIC_BUILD = import.meta.env.PROD;
 
 type Key = keyof Options;
 type OnChange = (changed: Key) => void;
@@ -167,7 +177,14 @@ export class Panel {
     const field = (label: string, control: Node, hint?: string) =>
       el('div', { className: 'field' }, [el('span', { className: 'label', textContent: label }), control, ...(hint ? [el('small', { textContent: hint })] : [])]);
 
-    this.root.append(
+    const repaire = field('Repaire (tests)', el('div', { className: 'row' }, [go('camp', 'Retour au camp'), go('baies', '+1000 Baies, +100 ressources, +20 Éclats'), go('reset', 'Tout remettre à zéro')]), 'La progression est gardée dans le navigateur.');
+    if (PUBLIC_BUILD) {
+      this.root.append(
+        el('header', {}, [el('h1', { textContent: 'Tests' }), el('span', { className: 'tag', textContent: 'H' })]),
+        el('section', {}, [repaire]),
+        el('footer', {}, [el('p', { className: 'keys', innerHTML: '<kbd>H</kbd> masquer ce panneau · <kbd>M</kbd> son · <kbd>Échap</kbd> réglages' }), this.status]),
+      );
+    } else this.root.append(
       el('header', {}, [el('h1', { textContent: 'Prototype 2D' }), el('span', { className: 'tag', textContent: 'DA' })]),
       el('section', {}, [
         field('Biome de la run', this.biomeSelect),
@@ -184,8 +201,8 @@ export class Panel {
         field('Graine', el('div', { className: 'row' }, [this.seedInput, reroll])),
         field('Équipe', teamBox, 'Tab : changer de Pokémon en jeu. Le premier part devant.'),
         field('Aller à une salle', el('div', { className: 'row' }, [actSelect, go('combat', 'Combat'), go('shop', 'Boutique'), go('boss', 'Boss')]), 'Dans le biome de la run choisi au-dessus.'),
-        field('Salle spéciale', el('div', { className: 'row' }, [go('challenge', 'Défi'), go('trap', 'Piège'), go('merchant', 'Marchand')]), 'La 2ᵉ salle de l’acte choisi, comme si l’on avait pris sa porte.'),
-        field('Repaire (tests)', el('div', { className: 'row' }, [go('camp', 'Retour au camp'), go('baies', '+1000 Baies, +100 ressources, +20 Éclats'), go('reset', 'Tout remettre à zéro')]), 'La progression est gardée dans le navigateur.'),
+        field('Salle spéciale', el('div', { className: 'row' }, [go('challenge', 'Défi'), go('trap', 'Piège')]), 'La 2ᵉ salle de l’acte choisi, comme si l’on avait pris sa porte.'),
+        repaire,
       ]),
       el('section', {}, [
         field(
@@ -239,12 +256,12 @@ export class Panel {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
       if (e.code === 'KeyH') this.root.classList.toggle('hidden');
       // R lance l'ultime, comme le jeu : la nouvelle run passe sur N.
-      else if (e.code === 'KeyN') this.nextSeed();
+      else if (e.code === 'KeyN' && !PUBLIC_BUILD) this.nextSeed();
       else if (e.code === 'KeyM') {
         this.muteBox.checked = !this.muteBox.checked;
         set('muted', this.muteBox.checked);
       }
-      else if (e.code === 'PageUp' || e.code === 'PageDown') {
+      else if ((e.code === 'PageUp' || e.code === 'PageDown') && !PUBLIC_BUILD) {
         // Les chiffres lancent désormais les capacités : on parcourt les biomes page par page.
         e.preventDefault();
         const order = ['run', ...BIOME_ORDER, 'grotte'] as const;
