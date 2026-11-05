@@ -60,6 +60,7 @@ import { COMBATS_PER_ACT, ROOMS_PER_ACT, Run } from './run/run';
 import { Hud } from './ui/hud';
 import { loadOptions, saveOptions, type Options } from './ui/options';
 import { Panel } from './ui/panel';
+import { Journal } from './ui/journal';
 import { RewardScreen } from './ui/rewardscreen';
 import { RunHud } from './ui/runhud';
 import { RecruitScreen } from './ui/recruitscreen';
@@ -154,9 +155,13 @@ async function boot(): Promise<void> {
   const hud = new Hud(document.body, (i) => pickMember(i));
   const rewardScreen = new RewardScreen(document.body);
   const statSheet = new StatSheet(document.body);
+  /** Le plan du monde (panneau de l’arche) et le carnet des exploits (Xatu) : ui/journal.ts, meta/feats.ts. */
+  const journal = new Journal(document.body, atlas);
   const recruitScreen = new RecruitScreen(document.body);
   const starterScreen = new StarterScreen(document.body);
   const quizScreen = new QuizScreen(document.body);
+  /** Le menu principal, au lancement (ui/titlescreen.ts) : montré plus bas, juste avant le premier enterCamp. */
+  const titleScreen = new TitleScreen(document.body);
   const dialogue = new Dialogue(document.body);
   /** Dresseur du champion, en salle de boss. */
   let trainer: Trainer | null = null;
@@ -481,7 +486,7 @@ async function boot(): Promise<void> {
     cry(player.speciesId, -4);
   };
   /** Un écran ouvert par-dessus le jeu : la simulation se fige. */
-  const paused = () => rewardScreen.open || bossPreview.open || runSummary.open || settingsMenu.open || campScreen.open || statSheet.open || recruitScreen.open || starterScreen.open || quizScreen.open;
+  const paused = () => rewardScreen.open || bossPreview.open || runSummary.open || settingsMenu.open || campScreen.open || statSheet.open || recruitScreen.open || starterScreen.open || quizScreen.open || journal.open || titleScreen.open;
   /** Clic sur un membre du HUD : comme Tab, mais vers celui-là, s'il est debout et qu'on l'est aussi. */
   const pickMember = (i: number) => {
     const m = team[i];
@@ -524,6 +529,20 @@ async function boot(): Promise<void> {
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement) return;
     void openStats();
   });
+  /** Le plan du monde (panneau de l'arche) ou le carnet des exploits (Xatu) : au Repaire seulement. */
+  const openJournal = (page: 'map' | 'feats', fromDialogue = false) => {
+    if (paused() || (dialogue.open && !fromDialogue)) return;
+    journal.show(
+      page,
+      save,
+      (text) => {
+        writeSave(save);
+        refreshNews();
+        runHud.notify({ title: 'Exploit', text, icon: '✦', color: 'var(--yel)' });
+      },
+      () => input.flush(),
+    );
+  };
 
   const spawnEnemy = (id: number, level: number, x: number, y: number, role: Actor['role'] = 'wild') => {
     const a = new Actor(id, x, y);
@@ -594,9 +613,22 @@ async function boot(): Promise<void> {
     if (roomWeather !== before && roomWeather !== 'clear') runHud.notify({ title: WEATHERS[roomWeather].name, text: WEATHERS[roomWeather].hint, icon: WEATHERS[roomWeather].icon });
     director.start(world, run, opts.wild, first);
     // Le boss a sa musique (CombatArena.gd:1610) ; les autres salles, boutique comprise, la leur (écart voulu, sounds.ts).
-    audio.playMusic(run.isBoss() ? 'boss' : 'room');
+    audio.playMusic(roomMusic());
     document.documentElement.style.setProperty('--biome', BIOME_COLOR[run.biome]);
-    if (run.isBiomeEntry) runHud.announce(BIOMES[run.biome].name, BIOME_COLOR[run.biome]);
+    // Record de la salle la plus loin atteinte (affiché chez Xatu).
+    if (run.room + 1 > save.bestRoom) {
+      save.bestRoom = run.room + 1;
+      writeSave(save);
+    }
+    if (run.isBiomeEntry) {
+      runHud.announce(run.placeName, BIOME_COLOR[run.biome]);
+      // Le carnet note les biomes atteints (la Prairie, d'où l'on part, compte d'office).
+      const where = run.onVictoryRoad ? 'victoire' : run.biome;
+      if (!save.visited.includes(where)) {
+        save.visited.push(where);
+        writeSave(save);
+      }
+    }
     boonOffer = null;
     skillOffer = null;
     trainer = null;
@@ -783,10 +815,23 @@ async function boot(): Promise<void> {
     const ripe = save.built.includes('field') ? save.garden.filter((p) => p && p.left <= 0).length : 0;
     if (ripe) runHud.notify({ title: 'Potager', text: `${ripe > 1 ? `${ripe} parcelles sont mûres` : 'Une parcelle est mûre'} : récolte chez Héliatronc.`, art: CAMP_NPCS.garden, color: 'var(--yel)' });
     if (save.nectar && save.nectar.left <= 0) runHud.notify({ title: 'Nectar', text: 'Un visiteur attend devant l’atelier.', art: save.nectar.visitor, color: 'var(--yel)' });
+    // Une fois : où trouver la carte du monde (retour de test : « je ne sais pas si tu as fait la carte »).
+    if (save.started && !save.intros.includes('journal-hint')) {
+      save.intros.push('journal-hint');
+      writeSave(save);
+      runHud.notify({ title: 'Plan du monde', text: 'Le panneau près de l’arche montre la carte du monde ; Xatu, à côté, tient le carnet des exploits.', icon: '✦', color: 'var(--yel)' });
+    }
+    const feats = readyFeats(save).length;
+    if (feats) runHud.notify({ title: 'Exploits', text: `${feats > 1 ? `${feats} exploits sont` : 'Un exploit est'} à réclamer auprès de Xatu, près de l’arche.`, art: CAMP_NPCS.feats, color: 'var(--yel)' });
     welcomeStory();
     askStarter();
   };
 
+  /** « Le Repaire · 5/6 Pokémon · 2 en attente » : la jauge des places, en haut à gauche. */
+  const campPlaces = () => {
+    const waiting = save.candidates.length;
+    return `${REPAIRE.name} · ${roster(save).length}/${capacity(save)} Pokémon${waiting ? ` · ${waiting} en attente` : ''}`;
+  };
   /** Les espèces de l'équipe, et celles des libérés qui restent au camp (ni dans l'équipe, ni en mission). */
   const campTeam = () => save.team.map((uid) => speciesOf(save, uid));
   const campDwellers = () => roster(save).filter((uid) => !save.team.includes(uid) && !busy(save, uid)).map((uid) => speciesOf(save, uid));
@@ -981,9 +1026,11 @@ async function boot(): Promise<void> {
   };
 
   /** Parler au gardien d'un poste : sa présentation la première fois, puis son écran. */
-  const talkTo = (station: Station) => {
+  const talkTo = (station: Station, arg?: number) => {
     if (dialogue.open || campScreen.open) return;
     const openScreen = () => {
+      // Xatu : le carnet des exploits, pas un écran de poste.
+      if (station === 'feats') return openJournal('feats', true);
       // Ce qui y est apparu est vu (l'écran le marque d'un « ! » cette fois-ci encore) ; ce qui
       // attend un geste (récolter, réclamer) se revérifie à la fermeture.
       const news = freshNews(save, station);
@@ -1080,10 +1127,16 @@ async function boot(): Promise<void> {
         shareLoot({ shards: k, text: `Champion vaincu : +${k} Éclat${k > 1 ? 's' : ''} de Champion` });
         stats.shards += k;
         stats.champions.push(run.champion.name);
+        // Le carnet des exploits (meta/feats.ts) : un champion de plus vaincu au moins une fois.
+        beatChampion(run.champion.name);
         earn(n);
         // Jusqu'au changement de salle (CombatArena.gd:1796).
         audio.playMusic('victory');
-        runHud.notify({ title: 'Champion vaincu', text: `+${n} Baies · +${k} Éclat${k > 1 ? 's' : ''} de Champion pour le Repaire.`, art: run.champion.team.at(-1)?.[0], color: 'var(--yel)' });
+        runHud.notify({ title: 'Champion vaincu', text: `${run.champion.name} est tombé.`, art: run.champion.team.at(-1)?.[0], color: 'var(--yel)' });
+        runHud.notifyAll([
+          { title: 'Baies', text: 'Pour le Repaire', item: 'ORANBERRY', qty: `+${n}`, color: 'var(--yel)' },
+          { title: `Éclat${k > 1 ? 's' : ''} de Champion`, text: 'Pour le Repaire', item: SHARDS.icon, qty: `+${k}`, color: 'var(--yel)' },
+        ]);
       }
       // Son équipe vaincue, le champion quitte la salle par la sortie.
       if (run.isBoss()) trainer?.flee(world);
