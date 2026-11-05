@@ -4,15 +4,17 @@ import type { Actor } from '../entities/actor';
 import type { InputSample } from '../input/input';
 import type { CombatFx, Projector } from '../render/combatfx';
 import { withAlpha } from '../render/combatfx';
-import type { Exit, WorldMap } from '../world/generate';
+import { landReachable, type Exit, type WorldMap } from '../world/generate';
 import { TILE } from '../world/tiles';
-import { REWARD_COLOR, REWARD_LABEL, SPECIALS, donorLabel, type ExitOffer, type Reward, type Run, type SpecialId } from './run';
+import { REWARD_COLOR, SHOP_COLOR, SPECIALS, type ExitOffer, type Reward, type Run, type SpecialId } from './run';
 import { SWIMMERS, type BiomeId } from '../data/species';
 import type { DonorId } from '../combat/boons';
-import { donorBadge, drawRewardIcon, itemIcon, rewardIcon } from '../ui/rewardicons';
+import { donorBadge, drawRewardIcon, itemIcon, rewardIcon, shopIcon } from '../ui/rewardicons';
 import { BIOMES, BIOME_COLOR } from '../world/biomes';
 import { CS_LIST } from '../meta/catalog';
+import { VICTORY_ROAD } from '../world/worldmap';
 import { Trainer } from '../entities/trainer';
+import { CaptureThreat } from './capture';
 import { ACES, TRAINER_CLASSES, pickClass, pickMember, type TrainerClassId } from '../data/trainers';
 
 // Déroulé d'une salle, repris de CombatArena.gd (_start_zone, vagues,
@@ -154,7 +156,25 @@ export interface RoomHost {
   specialDone(special: SpecialId, success: boolean): void;
   /** Ligne de front : une vague arrive, le sol tremble (secousse d'écran). */
   rumble(): void;
+  /** Village : un dresseur a capturé ce membre (il quitte l'équipe jusqu'à sa défaite). */
+  capture(a: Actor, by: string): void;
+  /** Ses Pokémon battus, le dresseur rend ses prises. */
+  release(captives: Actor[], x: number, y: number): void;
+  /** Le Pokémon joué peut-il être visé par une Ball ? (Toujours, aujourd'hui : un point d'accroche pour l'équilibrage.) */
+  canBeCaptured(): boolean;
 }
+
+/**
+ * Le Village (retour de test : « chaque biome a son gameplay ; dans les villages, les
+ * dresseurs peuvent te capturer ») : ses dresseurs lancent des Poké Balls sur le Pokémon joué,
+ * comme le sbire des grottes (run/capture.ts) ; on en sort, ou l'on se débat. Une prise revient
+ * quand l'équipe de son dresseur est battue. Une Ball toutes les tant de secondes (moins aux
+ * actes suivants), après un temps de visée.
+ */
+const VILLAGE_THROW_EVERY = 6;
+const VILLAGE_THROW_PER_ACT = 0.7;
+const VILLAGE_THROW_MIN = 3;
+const VILLAGE_WINDUP = 0.6;
 
 export class RoomDirector {
   phase: Phase = 'over';
@@ -181,6 +201,8 @@ export class RoomDirector {
   private boss = false;
   /** Opacité du voile noir (0 → 1) ; il s'éclaircit tout seul en arrivant dans une salle. */
   fade = 0;
+  /** L'équipe nage dans cette salle (CS Surf, ou salle sans chemin à pied) : main.ts le règle avant start(). */
+  swim = true;
   private rng = new Rng(1);
   private readonly layer: HTMLElement;
   /** Étiquette « ⛰ Grotte » au-dessus de la bouche, et fondu en cours vers la grotte. */
@@ -193,6 +215,13 @@ export class RoomDirector {
   private failed = false;
   /** Ligne de front : d'où vient la vague annoncée, la flèche qui la montre, temps restant. */
   private incoming: { x: number; y: number; t: number; el: HTMLElement } | null = null;
+  /** Village : les Balls des dresseurs, leurs prises (et de qui), le prochain lancer. */
+  private readonly capture: CaptureThreat;
+  private captives: { a: Actor; group: TrainerGroup }[] = [];
+  private throwT = VILLAGE_THROW_EVERY;
+  private aim: { g: TrainerGroup; t: number } | null = null;
+  private catcher: TrainerGroup | null = null;
+  private village = false;
 
   constructor(
     parent: HTMLElement,
@@ -202,6 +231,52 @@ export class RoomDirector {
     this.layer = document.createElement('div');
     this.layer.className = 'room-labels';
     parent.append(this.layer);
+    this.capture = new CaptureThreat(parent, fx, {
+      captured: (a) => {
+        const g = this.catcher;
+        if (!g) return;
+        this.captives.push({ a, group: g });
+        this.host.capture(a, TRAINER_CLASSES[g.cls].name);
+      },
+      freed: (a) => this.host.message(`${a.pokemon?.name ?? '…'} fait éclater la Ball !`),
+    });
+  }
+
+  /** Les Balls en vol et la Ball qui retient un Pokémon, à dessiner avec le reste. */
+  captureExtras(): ReturnType<CaptureThreat['extras']> {
+    return this.capture.extras();
+  }
+
+  /** Rend les prises d'un dresseur (ou toutes), là où il se tient. */
+  private releaseCaptives(g: TrainerGroup | null, at: { x: number; y: number }): void {
+    const back = this.captives.filter((c) => !g || c.group === g);
+    if (!back.length) return;
+    this.captives = this.captives.filter((c) => !back.includes(c));
+    this.host.release(back.map((c) => c.a), at.x, at.y);
+  }
+
+  /** Village : un dresseur en jeu vise le Pokémon joué, puis lance. */
+  private updateThrows(dt: number, run: Run, player: Actor): void {
+    const ready = player.deathT < 0 && !player.trapped && !this.capture.busy;
+    if (this.aim) {
+      this.aim.t -= dt;
+      if (this.aim.t > 0) return;
+      const g = this.aim.g;
+      this.aim = null;
+      if (ready && !g.done && !g.trainer.gone) {
+        this.catcher = g;
+        this.capture.throwAt(g.trainer.x, g.trainer.y - 0.6, player.x, player.y);
+      }
+      return;
+    }
+    this.throwT -= dt;
+    if (this.throwT > 0 || !ready || !this.host.canBeCaptured()) return;
+    const live = this.groups.filter((g) => g.thrown && !g.done && !g.trainer.gone);
+    if (!live.length) return;
+    const g = live[Math.floor(Math.random() * live.length)];
+    this.throwT = Math.max(VILLAGE_THROW_MIN, VILLAGE_THROW_EVERY - VILLAGE_THROW_PER_ACT * run.act);
+    this.aim = { g, t: VILLAGE_WINDUP };
+    g.trainer.aim(player.x, player.y, VILLAGE_WINDUP + 0.25);
   }
 
   /** Nouvelle salle (carte déjà générée, joueur déjà placé). */
@@ -217,6 +292,11 @@ export class RoomDirector {
     this.waves = [];
     this.special = run.special;
     this.failed = false;
+    this.village = world.biome.id === 'village' && !run.isBoss() && !run.isShop();
+    this.capture.reset();
+    this.captives = [];
+    this.aim = null;
+    this.throwT = VILLAGE_THROW_EVERY;
     this.host.setTimer(null);
     const plan = run.waves();
     this.level = plan.level;
@@ -293,6 +373,8 @@ export class RoomDirector {
   }
 
   update(dt: number, input: InputSample, world: WorldMap, run: Run, player: Actor, enemies: readonly Actor[]): void {
+    this.capture.update(dt, input, player);
+    if (this.village && this.phase === 'waves') this.updateThrows(dt, run, player);
     for (const e of enemies) {
       if (e.deathT >= 0 && !this.counted.has(e)) {
         this.counted.add(e);
@@ -365,6 +447,9 @@ export class RoomDirector {
         break;
       }
       case 'cleared':
+        // (Une prise dont le dresseur a filé sans être battu revient quand même : la salle est libérée.)
+        if (this.captives.length) this.releaseCaptives(null, player);
+        this.capture.reset();
         if (this.t > 0) break;
         if (!this.paid) {
           // La salle est libérée : ₽ (×3 après un boss), puis 0,8 s avant d'ouvrir.
@@ -528,6 +613,9 @@ export class RoomDirector {
   private flee(g: TrainerGroup, world: WorldMap): void {
     g.done = true;
     const t = g.trainer;
+    // Ses Pokémon battus, il rend ce qu'il a pris.
+    this.releaseCaptives(g, t);
+    if (this.catcher === g) this.capture.reset();
     const e = [...world.exits].sort((a, b) => Math.hypot(a.x - t.x, a.y - t.y) - Math.hypot(b.x - t.x, b.y - t.y))[0];
     if (!e) return t.fleeTo(t.x, -2);
     t.fleeTo(e.side === 'W' ? -2 : e.side === 'E' ? world.w + 2 : e.x, e.side === 'N' ? -2 : e.side === 'S' ? world.h + 2 : e.y);
@@ -580,10 +668,13 @@ export class RoomDirector {
     const cy = world.h / 2;
     let best: { x: number; y: number } | null = null;
     let bestD = Infinity;
+    // Sans Surf, jamais sur l'îlot du Lac (retour de test : « si le mec n'a pas Surf, il ne
+    // pourra jamais prendre la récompense ») : la case la plus centrale qu'on atteint à pied.
+    const reach = this.swim ? world.reachable : landReachable(world);
     for (let y = 2; y < world.h - 2; y++) {
       for (let x = 2; x < world.w - 2; x++) {
         const i = y * world.w + x;
-        if (!world.reachable[i] || world.blocked[i] || world.water[i]) continue;
+        if (!reach[i] || world.blocked[i] || world.water[i]) continue;
         const d = Math.hypot(x - cx, y - cy);
         if (d < bestD) {
           bestD = d;

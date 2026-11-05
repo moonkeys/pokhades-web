@@ -97,7 +97,8 @@ export function onTallGrass(world: WorldMap, a: Actor): boolean {
   if (!world.biome.tallGrass) return false;
   const cx = Math.floor(a.x);
   const cy = Math.floor(a.y - 0.05);
-  return cx >= 0 && cy >= 0 && cx < world.w && cy < world.h && world.tall[cy * world.w + cx] === 1;
+  // (Les vraies hautes herbes, `hide` : les petites herbes ne cachent plus personne.)
+  return cx >= 0 && cy >= 0 && cx < world.w && cy < world.h && world.hide[cy * world.w + cx] === 1;
 }
 
 export class EnemyBrain {

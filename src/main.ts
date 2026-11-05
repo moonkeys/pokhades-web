@@ -51,6 +51,7 @@ import { Renderer } from './render/renderer';
 import { isTouch, TouchControls } from './input/touch';
 import { RoomDirector } from './run/room';
 import { BerryGrove } from './run/berries';
+import { Hazards } from './run/hazards';
 import { CaveDirector } from './run/cave';
 import { ChestSite } from './run/chests';
 import { Merchant } from './run/merchant';
@@ -246,6 +247,8 @@ async function boot(): Promise<void> {
     },
   });
   const outside = () => mode === 'run' && !outdoor;
+  /** Les dangers du terrain : la lave du Volcan (avec Surf), les tourbillons des Rocailleux (run/hazards.ts). */
+  const hazards = new Hazards(fx);
   combat.breakables = (x, y, reach) => (outside() ? berries.hit(x, y, reach) : null);
   // Coffre de la salle (A-FAIRE 1.5) : des Baies et des ressources de
   // construction, versées tout de suite à la sauvegarde comme les Baies.
@@ -407,7 +410,10 @@ async function boot(): Promise<void> {
     // Parti au-delà d'un seuil (Super Bonbon) : il part sous sa forme évoluée,
     // mais reste rangé dans la sauvegarde sous son uid.
     const p = new Actor(evolvedStart(outfit ? speciesOf(save, id) : id, level), x, y, id);
-    p.canSwim = true;
+    // Comme le reste de l'équipe dans cette salle (loadRoom) ; au Repaire, buildTeam décide.
+    p.canSwim = mode === 'run' ? director.swim : true;
+    // La lave du Volcan, seulement avec la CS Surf (run/hazards.ts : elle brûle).
+    p.lavaOk = mode === 'run' && save.cs.includes('surf');
     p.ally = new CompanionBrain(p);
     attach(p, true, level, outfit, nick);
     return p;
@@ -430,7 +436,7 @@ async function boot(): Promise<void> {
       const m = newMember(id, x, y, startLevel(save, id, BASE_TEAM_LEVEL), true);
       // Charges de dash achetées au Repaire ; au camp, on ne nage qu'avec la CS Surf (en run, toujours).
       m.dashMax = m.dashCharges = 1 + level(save, 'dash');
-      m.canSwim = mode === 'run' || save.cs.includes('surf');
+      m.canSwim = mode === 'run' ? director.swim : save.cs.includes('surf');
       return m;
     });
     revives = mode === 'run' ? level(save, 'revives') : 0;
@@ -557,6 +563,11 @@ async function boot(): Promise<void> {
     questProgress({ kind: 'act', act: run.act });
     director.setHidden(false);
     renderer.bake(world);
+    // Nager : seulement avec la CS Surf (retour de test : « je pouvais déjà aller dans l'eau
+    // à la plage et au lac, alors que non »). Repli : une salle dont une porte ne s'atteint
+    // pas à pied laisse nager, pour qu'on n'y reste jamais coincé.
+    director.swim = swimRoom(world);
+    for (const m of team) m.canSwim = director.swim;
     player.x = player.prevX = world.spawn.x;
     player.y = player.prevY = world.spawn.y;
     gatherTeam();
@@ -744,6 +755,7 @@ async function boot(): Promise<void> {
     cave.clear();
     berries.clear();
     chests.clear();
+    hazards.clear();
     outdoor = null;
     buildCampWorld();
     refreshNews();
@@ -1134,19 +1146,27 @@ async function boot(): Promise<void> {
     },
     // Ligne de front : la vague qui arrive fait trembler le sol (coupé avec les secousses, comme les autres).
     rumble: () => combat.addShake(0.25),
+    capture: (a, by) => captureMember(a, by),
+    release: (captives, x, y) => releaseMembers(captives, x, y),
+    // Retour de test : même seul, on peut être capturé — « il n'a qu'à faire le QTE pour s'en sortir ».
+    canBeCaptured: () => true,
     bossIntro: (exit) => {
       const champ = run.champion;
       const final = run.isFinal;
-      trainer = exit ? Trainer.atExit(champ.sprite, exit) : null;
-      runHud.announce(champ.name, typeColor(champ.type), final ? 'DRESSEUR FINAL' : "CHAMPION D'ARÈNE");
+      // Dans son arène, le champion se tient au bord nord du terrain, face à l'entrée ; il fuira par la sortie.
+      trainer = exit ? (roomKey.kind === 'room' && roomKey.arena ? new Trainer(champ.sprite, { x: world.hub.x, y: world.hub.y - 7.5 }, exit) : Trainer.atExit(champ.sprite, exit)) : null;
+      runHud.announce(champ.name, typeColor(champ.type), run.onVictoryRoad ? 'MAÎTRE DE LA LIGUE' : final ? 'DRESSEUR FINAL' : "CHAMPION D'ARÈNE");
       // L'éclair du « VS » des combats de dresseur.
       sfx('vs');
       combat.addShake(0.15);
-      dialogue.show(speaker(champ, final), final ? FINAL_BOSS_INTRO : champ.intro);
-      if (net.role === 'host' && net.inRun) net.broadcast({ t: 'dialogue', speaker: speaker(champ, final), text: final ? FINAL_BOSS_INTRO : champ.intro });
+      const line = final ? finalLines().intro : champ.intro;
+      dialogue.show(speaker(champ, final), line);
+      if (net.role === 'host' && net.inRun) net.broadcast({ t: 'dialogue', speaker: speaker(champ, final), text: line });
     },
     victory: () => {
       questProgress({ kind: 'victory' });
+      beatChampion(run.champion.name);
+      save.wins++;
       endT = 0;
       runWon = true;
       // Le jingle du badge attend le bilan : joué ici, il couvrirait la musique de victoire.
@@ -1268,36 +1288,51 @@ async function boot(): Promise<void> {
     },
     leave: () => exitCave(),
     challenge: (who, text, done) => dialogue.show(who, text, done),
-    capture: (a, by) => {
-      const name = a.pokemon?.name ?? '?';
-      runHud.notify({ title: 'Capturé !', text: `${name} a été capturé par le ${by} — bats son équipe pour le libérer.`, art: a.speciesId, ko: true, color: '#e84040' });
-      if (a === player) {
-        const next = nextAlive();
-        // Le dernier debout : la run s'arrête là (il reste dans la Ball, invisible).
-        if (next < 0) {
-          if (endT < 0) defeat();
-          return;
-        }
-        switchTo(next);
-      }
-      // Il quitte l'équipe (HUD compris) jusqu'à ce qu'on batte le sbire.
-      a.ally?.reset();
-      team.splice(team.indexOf(a), 1);
-      active = team.indexOf(player);
-    },
-    release: (captives, x, y) => {
-      captives.forEach((c, k) => {
-        c.trapped = false;
-        const ang = (k / Math.max(1, captives.length)) * Math.PI * 2;
-        c.x = c.prevX = x + Math.cos(ang) * 0.8;
-        c.y = c.prevY = y + Math.sin(ang) * 0.5;
-        fx.ballSend(c.x, c.y);
-        if (!team.includes(c)) team.push(c);
-      });
-      const names = captives.map((c) => c.pokemon?.name ?? '?').join(', ');
-      runHud.notify({ title: 'Libérés', text: `${names} ${captives.length > 1 ? 'reviennent' : 'revient'} dans l’équipe !`, art: captives[0].speciesId, color: '#8fa8ff' });
-    },
+    capture: (a, by) => captureMember(a, by),
+    release: (captives, x, y) => releaseMembers(captives, x, y),
   });
+  /** Un membre capturé (sbire des grottes, dresseurs du Village) : il quitte l'équipe jusqu'à la défaite du ravisseur. */
+  function captureMember(a: Actor, by: string): void {
+    const name = a.pokemon?.name ?? '?';
+    // En ligne : capturé, on est simplement K.O. ; on se relève à 1 PV si la salle est libérée
+    // (retour de test : sinon un joueur se retrouvait sans Pokémon).
+    if (net.inRun && a.pokemon) {
+      a.trapped = false;
+      a.pokemon.hp = 0;
+      if (a.deathT < 0) a.deathT = 0;
+      runHud.notify({ title: 'Capturé !', text: `${name} est K.O. jusqu’à la fin de la salle.`, art: a.speciesId, ko: true, color: '#e84040' });
+      return;
+    }
+    runHud.notify({ title: 'Capturé !', text: `${name} a été capturé par ${/^[AEIOUÉ]/.test(by) ? 'l’' : 'le '}${by} — bats son équipe pour le libérer.`, art: a.speciesId, ko: true, color: '#e84040' });
+    if (a === player) {
+      const next = nextAlive();
+      // Le dernier debout : la run s'arrête là (il reste dans la Ball, invisible).
+      if (next < 0) {
+        if (endT < 0) defeat();
+        return;
+      }
+      switchTo(next);
+    }
+    // Il quitte l'équipe (HUD compris) jusqu'à ce qu'on batte son ravisseur.
+    a.ally?.reset();
+    team.splice(team.indexOf(a), 1);
+    active = team.indexOf(player);
+  }
+
+  /** Le ravisseur battu rend ses prises : elles ressortent de leur Ball autour de lui. */
+  function releaseMembers(captives: readonly Actor[], x: number, y: number): void {
+    captives.forEach((c, k) => {
+      c.trapped = false;
+      const ang = (k / Math.max(1, captives.length)) * Math.PI * 2;
+      c.x = c.prevX = x + Math.cos(ang) * 0.8;
+      c.y = c.prevY = y + Math.sin(ang) * 0.5;
+      fx.ballSend(c.x, c.y);
+      if (!team.includes(c)) team.push(c);
+    });
+    const names = captives.map((c) => c.pokemon?.name ?? '?').join(', ');
+    runHud.notify({ title: 'Libérés', text: `${names} ${captives.length > 1 ? 'reviennent' : 'revient'} dans l’équipe !`, art: captives[0].speciesId, color: '#8fa8ff' });
+  }
+
   const enterCave = () => {
     outdoor = { world, x: player.x, y: player.y };
     const layout = generateCave(run.mapSeed);
@@ -1626,7 +1661,7 @@ async function boot(): Promise<void> {
     ...shop.extras(time),
     ...merchant.extras(time),
     ...cave.extras(),
-    ...(outside() ? [...berries.extras(), ...chests.extras()] : []),
+    ...(outside() ? [...berries.extras(), ...chests.extras(), ...hazards.extras(time), ...director.captureExtras()] : []),
   ];
 
   /** Hôte : un gain de la run, versé aussi dans la sauvegarde de chaque invité. */
@@ -2240,6 +2275,7 @@ async function boot(): Promise<void> {
       }
     }
     if (outside()) berries.update(dt, player, level(save, 'magnet') > 0);
+    if (outside()) hazards.update(dt, world, team);
     if (outside()) chests.update(dt, sample, player, run);
     else chests.hide();
     shop.update(dt, sample, player, world);
@@ -2383,6 +2419,7 @@ async function boot(): Promise<void> {
         },
         renderer,
         combat,
+        hazards,
         opts,
         /** Les écrans, pour les ouvrir à la main (vérifier la DA sans jouer une salle entière). */
         ui: { hud, runHud, rewardScreen, dialogue, bossPreview, speaker },
