@@ -30,6 +30,8 @@ jobs:
       - run: npm run build
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
+          # Dernier chiffre de la version affichée au menu : monte à chaque mise en prod.
+          DEPLOY_NUMBER: ${{ github.run_number }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

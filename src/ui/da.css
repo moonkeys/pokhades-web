@@ -4627,6 +4627,18 @@
   font-size: calc(0.9 * var(--u));
   color: color-mix(in srgb, var(--paper) 35%, transparent);
 }
+/* Le numéro de version, discret dans le coin (titlescreen.ts). */
+.title-version {
+  position: absolute;
+  right: calc(env(safe-area-inset-right, 0px) + 1.6 * var(--u));
+  top: calc(env(safe-area-inset-top, 0px) + 1.2 * var(--u));
+  margin: 0;
+  font-family: var(--accent);
+  font-size: max(12px, calc(1.2 * var(--u)));
+  letter-spacing: 0.06em;
+  color: color-mix(in srgb, var(--paper) 45%, transparent);
+}
+
 /* Questionnaire et choix du starter : des planchers en pixels (retour de test : « c'est tout
  * petit, pas très agréable »), pour que tout se lise et se touche sur un petit écran. */
 .starter-go {
