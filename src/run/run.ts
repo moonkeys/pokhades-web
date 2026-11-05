@@ -176,7 +176,15 @@ export class Run {
    * n'importe lequel du biome : toute une run au Lac, c'était Ondine ×4).
    */
   private pushAct(biome: BiomeId): void {
-    const pool = BIOME_CHAMPIONS[biome] ?? ['Blanche'];
+    const act = this.biomes.length;
+    if (act === this.victoryAct) {
+      this.biomes.push(biome);
+      this.champions.push(this.reinforce(CHAMPIONS[LEAGUE_MASTER], act));
+      return;
+    }
+    // Route Victoire ouverte : au dernier étage, le Conseil peut garder le biome à la place du champion.
+    const elite = this.league && act === ACTS - 1 ? ELITE_BY_BIOME[biome] : undefined;
+    const pool = elite && !this.faced.has(elite) && this.rng.chance(0.5) ? [elite] : (BIOME_CHAMPIONS[biome] ?? ['Blanche']);
     const fresh = pool.filter((n) => !this.faced.has(n));
     const others = Object.keys(CHAMPIONS).filter((n) => !this.faced.has(n));
     const name = this.rng.pick(fresh.length ? fresh : others.length ? others : pool);
@@ -210,7 +218,9 @@ export class Run {
   private linksFrom(act: number): BiomeLink[] {
     if (this.biomeOverride) return [{ to: this.biomeOverride }];
     const from = this.biomes[act];
-    const links = BIOME_LINKS[from];
+    // Au bout de la carte, la Route Victoire si elle est ouverte (une seule porte, au nord).
+    if (act + 1 === this.victoryAct) return [{ to: VICTORY_ROAD.look }];
+    const links = WORLD_LINKS[from];
     return links.length ? [...links] : LAST_BIOMES.filter((b) => b !== from).map((to) => ({ to }));
   }
 
@@ -236,7 +246,7 @@ export class Run {
   }
 
   get act(): number {
-    return Math.min(ACTS - 1, Math.floor(this.room / ROOMS_PER_ACT));
+    return Math.min(this.acts - 1, Math.floor(this.room / ROOMS_PER_ACT));
   }
   get biome(): BiomeId {
     this.ensureAct(this.act);
@@ -249,11 +259,11 @@ export class Run {
     return room % ROOMS_PER_ACT === ROOMS_PER_ACT - 1;
   }
   get isFinal(): boolean {
-    return this.isBoss() && this.act >= ACTS - 1;
+    return this.isBoss() && this.act >= this.acts - 1;
   }
   /** Première salle d'un acte dont le biome change : on l'annonce en grand. */
   get isBiomeEntry(): boolean {
-    return this.room % ROOMS_PER_ACT === 0 && (this.room === 0 || this.biomes[this.act - 1] !== this.biome);
+    return this.room % ROOMS_PER_ACT === 0 && (this.room === 0 || this.onVictoryRoad || this.biomes[this.act - 1] !== this.biome);
   }
   /** Graine de la carte de la salle courante. */
   get mapSeed(): number {
@@ -262,10 +272,10 @@ export class Run {
 
   /** « Prairie — Acte 1 · Salle 3/5 », « … · Boutique », « … · Boss » (CombatArena._zone_label). */
   get zoneLabel(): string {
-    const name = BIOMES[this.biome].name;
+    const name = this.placeName;
     const act = `Acte ${this.act + 1}`;
     if (this.isShop()) return `${name} — ${act} · Boutique`;
-    if (this.isBoss()) return `${name} — ${act} · ${this.isFinal ? 'DRESSEUR FINAL' : 'Boss'}`;
+    if (this.isBoss()) return `${name} — ${act} · ${this.onVictoryRoad ? 'MAÎTRE DE LA LIGUE' : this.isFinal ? 'DRESSEUR FINAL' : 'Boss'}`;
     return `${name} — ${act} · Salle ${(this.room % ROOMS_PER_ACT) + 1}/${COMBATS_PER_ACT}`;
   }
 
@@ -314,9 +324,10 @@ export class Run {
       const boss = this.isBoss(this.room + 1);
       // Le donateur est tiré dès la porte, pour qu'elle porte son badge (aucun : la récompense part en ₽).
       const donor = reward === 'boon' && !boss ? (this.boons.pickDonor(this.rng) ?? undefined) : undefined;
-      const label = boss ? `${this.act >= ACTS - 1 ? '☠ DRESSEUR FINAL' : '☠ BOSS'} · ${this.champion.name}` : donor ? donorLabel(donor) : REWARD_LABEL[reward];
+      const head = this.act === this.victoryAct ? '☠ MAÎTRE DE LA LIGUE' : this.act >= this.acts - 1 ? '☠ DRESSEUR FINAL' : '☠ BOSS';
+      const label = boss ? `${head} · ${this.champion.name}` : donor ? donorLabel(donor) : REWARD_LABEL[reward];
       const link = links[i];
-      out.push({ reward, label, donor, biome: link?.to, locked: link && this.missingCs(link) });
+      out.push({ reward, label, donor, biome: link?.to, locked: link && this.missingCs(link), exit: exits[i], victory: link && this.act + 1 === this.victoryAct ? true : undefined });
     }
     // Une porte sur plusieurs peut mener à une salle spéciale : jamais vers la boutique ou le boss,
     // ni en ouvrant un acte, ni dans les deux premières salles (sauvages de niveau 4 à 8 : un Piège

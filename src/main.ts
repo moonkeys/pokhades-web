@@ -7,20 +7,22 @@ import '@fontsource/bebas-neue';
 import '@fontsource/permanent-marker';
 import '@fontsource/bangers';
 import { audio, cry, sfx } from './audio/audio';
+import { MUSIC, type MusicId } from './audio/sounds';
 import { buildAtlas } from './assets/atlas';
 import { PLAYER_ACTIONS, WILD_ACTIONS, loadImage, loadInfo, loadSheet } from './assets/pmd';
-import { FINAL_BOSS_DEFEAT, FINAL_BOSS_INTRO, type Champion } from './data/champions';
+import { FINAL_BOSS_DEFEAT, FINAL_BOSS_INTRO, MASTER_DEFEAT, type Champion } from './data/champions';
 import { Trainer } from './entities/trainer';
 import { Shop } from './run/shop';
 import { Camp, CAMP_SEED, campPockets, STATIONS, stationId, type Station } from './run/camp';
-import { CampScreen, movePool, type CampCtx } from './ui/campscreen';
+import { CampScreen, movePool, teamWeight, type CampCtx } from './ui/campscreen';
 import { NetBadge } from './ui/netbadge';
-import { BAIES, FIELD_FOOD, RESOURCES, RESOURCE_IDS, SHARDS, applyHeld, heldItem, teamSlots } from './meta/catalog';
+import { BAIES, FIELD_FOOD, RESOURCES, RESOURCE_IDS, SHARDS, UPGRADES, applyHeld, heldItem, teamSlots } from './meta/catalog';
 import { addMon, capacity, exile, isFull, level, loadSave, markSeen, monName, ownedSpecies, ownsSpecies, recordDefeat, resetSave, roster, speciesOf, startLevel, welcomeMon, writeSave } from './meta/save';
 import { applyTraits, natureText } from './meta/mons';
 import { quest, questEvent, type QuestEvent } from './meta/quests';
+import { leagueOpen, readyFeats } from './meta/feats';
 import { busy, mission, rewardText, tick as tickMissions } from './meta/missions';
-import { materialName, tickCraft } from './meta/crafting';
+import { MATERIALS, NECTARS, materialName, tickCraft } from './meta/crafting';
 import { campNews, fresh as freshNews, markSeen as markNewsSeen } from './meta/news';
 import { BossPreview } from './ui/bosspreview';
 import { RunSummary } from './ui/runsummary';
@@ -174,7 +176,7 @@ async function boot(): Promise<void> {
         m.runAlly = true;
         team.push(m);
       },
-      openPoster: () => bossPreview.show(run.champions[run.act], run.act >= 3, run.room + 1, () => input.flush()),
+      openPoster: () => bossPreview.show(run.champion, run.isFinal || run.act === run.acts - 1, run.champion.team.map((_, w) => run.bossLevel(w, run.room + 1)), () => input.flush()),
       openMoves: (price, paid) => {
         const mons = teamMons();
         if (!mons.length) return;
@@ -306,7 +308,9 @@ async function boot(): Promise<void> {
 
   // Les CS apprises au départ ouvrent les branches gardées du graphe des biomes (Surf : l'Océan).
   // Test de la grotte (panneau) : une run au Rocailleux, dont le biome GROTTE hérite (faune, falaises du dehors).
-  const newRunState = () => new Run(opts.seed, opts.biome === 'run' ? null : opts.biome === 'grotte' ? 'rocailleux' : opts.biome, [...save.cs]);
+  // La Route Victoire s'ouvre une fois tous les champions vaincus (meta/feats.ts) ; la taille de l'équipe règle les effectifs.
+  const newRunState = () =>
+    new Run(opts.seed, opts.biome === 'run' ? null : opts.biome === 'grotte' ? 'rocailleux' : opts.biome, { cs: [...save.cs], league: leagueOpen(save), teamSize: save.team.length });
   let run = newRunState();
   /** Au Repaire entre deux runs, ou en run. */
   let mode: 'camp' | 'run' = 'camp';
@@ -1151,10 +1155,29 @@ async function boot(): Promise<void> {
       // Le jeu changeait de scène avant la fin de la réplique de défaite : on attend qu'elle soit lue.
       endDelay = Math.max(VICTORY_TIME, Dialogue.duration(FINAL_BOSS_DEFEAT) + 0.5);
       combat.addShake(0.2);
-      dialogue.show(speaker(run.champion, true), FINAL_BOSS_DEFEAT);
-      runHud.announce('Victoire !', '#ffd23f', 'MAÎTRE DE LA LIGUE');
+      dialogue.show(speaker(run.champion, true), finalLines().defeat);
+      runHud.announce('Victoire !', '#ffd23f', run.onVictoryRoad ? 'NOUVEAU MAÎTRE' : 'LA CHAÎNE EST BRISÉE');
     },
   });
+
+  /**
+   * Un champion vaincu, noté au carnet (une fois par nom). La dixième victoire de la
+   * liste ouvre la Route Victoire : on le dit tout de suite.
+   */
+  function beatChampion(name: string): void {
+    if (save.beaten.includes(name)) return;
+    const was = leagueOpen(save);
+    save.beaten.push(name);
+    writeSave(save);
+    runHud.notify({ title: 'Exploit', text: `${name} vaincu pour la première fois : réclame l’exploit à Xatu, au Repaire.`, icon: '✦', color: 'var(--yel)' });
+    if (!was && leagueOpen(save)) runHud.notify({ title: 'Route Victoire', text: 'Tous les champions sont tombés. La Route Victoire s’ouvre au bout de la carte du monde.', icon: '★', color: 'var(--yel)' });
+  }
+
+  /** Les répliques du dernier boss : le Dresseur final, ou le Maître au bout de la Route Victoire. */
+  function finalLines(): { intro: string; defeat: string } {
+    if (run.onVictoryRoad) return { intro: run.champion.intro, defeat: MASTER_DEFEAT };
+    return { intro: FINAL_BOSS_INTRO, defeat: FINAL_BOSS_DEFEAT };
+  }
 
   /**
    * La grotte (A-FAIRE 1.6) : une carte à part, générée à la volée depuis la
@@ -1827,7 +1850,7 @@ async function boot(): Promise<void> {
         }
       : null;
   };
-  const placeName = () => (cave.active ? cave.title : run.isShop() ? 'Boutique' : `${BIOMES[run.biome].name}${weatherNow() !== 'clear' ? ` · ${WEATHERS[weatherNow()].name}` : ''}`);
+  const placeName = () => (cave.active ? cave.title : run.isShop() ? 'Boutique' : `${run.placeName}${weatherNow() !== 'clear' ? ` · ${WEATHERS[weatherNow()].name}` : ''}`);
 
   /** Hôte : l'instantané du terrain, à tous les invités. */
   const sendSnap = () => {
