@@ -106,18 +106,27 @@ const BY_TYPE: Record<string, readonly number[]> = {
 };
 const ALL_FAUNA: readonly number[] = [...new Set(Object.values(FAUNA).flat())];
 
-/** Une classe pour ce biome : souvent la sienne, parfois une itinérante. */
-export const pickClass = (rng: Rng, biome: BiomeId): TrainerClassId => (rng.chance(0.65) ? rng.pick(BIOME_TRAINERS[biome]) : rng.pick(ROAMING));
+/** Les Pokémon d'un type dans la faune de la Ligue (renforts des champions, run.ts). */
+export const typeMates = (type: string): number[] => [...(BY_TYPE[type] ?? [])];
 
 /**
- * L'espèce d'un Pokémon de l'équipe : la faune du biome (`pool`), ou, deux fois
- * sur cinq, un Pokémon du type de prédilection de la classe, d'où qu'il vienne.
- * Un top dresseur pioche dans toute la faune de la Ligue.
+ * Une classe pour ce biome : souvent la sienne, parfois une itinérante. `roaming` : la
+ * part d'itinérants (aucun au premier acte : on n'y croise que les gens du coin).
  */
-export function pickMember(rng: Rng, cls: TrainerClassId, pool: readonly number[]): number {
+export const pickClass = (rng: Rng, biome: BiomeId, roaming = 0.35): TrainerClassId => (rng.chance(roaming) ? rng.pick(ROAMING) : rng.pick(BIOME_TRAINERS[biome]));
+
+/**
+ * L'espèce d'un Pokémon de l'équipe : la faune du biome (`pool`), ou, avec la chance
+ * `variety` (Run.variety : 0 au premier acte, jusqu'à deux sur cinq ensuite), un Pokémon
+ * du type de prédilection de la classe, d'où qu'il vienne. Un top dresseur pioche dans
+ * toute la faune de la Ligue. Retour de test : « on a mis trop de variété dans les
+ * dresseurs, il y a des Pokémon très forts dès le début » — d'où le premier acte limité
+ * à la faune du lieu, qui permet aussi d'en vaincre assez d'une espèce pour la recruter.
+ */
+export function pickMember(rng: Rng, cls: TrainerClassId, pool: readonly number[], variety = 0.4): number {
   const types: readonly string[] = TRAINER_CLASSES[cls].types;
   if (!types.length) return rng.pick(ALL_FAUNA);
-  if (rng.chance(0.4)) return rng.pick(BY_TYPE[rng.pick(types)] ?? pool);
+  if (rng.chance(variety)) return rng.pick(BY_TYPE[rng.pick(types)] ?? pool);
   return rng.pick(pool);
 }
 
