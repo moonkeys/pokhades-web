@@ -65,7 +65,7 @@ export type ClientMsg =
 
 /** De quoi régénérer la carte chez l'invité : la génération est déterministe. */
 export type WorldKey =
-  | { kind: 'room'; biome: string; seed: number; store: boolean; cave: boolean; layout?: string; mouthUsed: boolean }
+  | { kind: 'room'; biome: string; seed: number; store: boolean; cave: boolean; layout?: string; mouthUsed: boolean; entry?: 'N' | 'S' | 'E' | 'W'; arena?: boolean }
   | { kind: 'cave'; seed: number };
 
 /** Un Pokémon sur le terrain, tel que l'hôte le voit (net/sync.ts). */

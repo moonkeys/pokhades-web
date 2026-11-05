@@ -534,14 +534,18 @@ async function boot(): Promise<void> {
 
   /** Génère la salle courante de la run et y place le joueur (PV et statuts conservés). */
   const loadRoom = (first: boolean) => {
-    // Boutique : toujours la même pour un biome donné (graine fixe), quelle que soit la run.
-    const seed = run.isShop() ? 7001 + BIOME_ORDER.indexOf(run.biome) * 131 : run.mapSeed;
+    // Boutique et arène du champion : toujours les mêmes pour un biome donné (graine fixe), quelle que soit la run.
+    const arena = run.isBoss();
+    const seed = run.isShop() ? 7001 + BIOME_ORDER.indexOf(run.biome) * 131 : arena ? 9001 + BIOME_ORDER.indexOf(run.biome) * 137 : run.mapSeed;
     // Une grotte s'ouvre parfois dans une falaise (Run.hasCave) ; jamais à la boutique.
-    world = generate(BIOMES[run.biome], seed, { store: run.isShop(), cave: run.hasCave(), layout: opts.layout === 'auto' ? undefined : opts.layout });
-    roomKey = { kind: 'room', biome: run.biome, seed, store: run.isShop(), cave: run.hasCave(), layout: opts.layout === 'auto' ? undefined : opts.layout, mouthUsed: false };
+    // On entre par le bord d'en face de la porte prise (Run.entrySide) : la boutique et l'arène gardent leur allée du sud.
+    const layout = opts.layout === 'auto' ? undefined : opts.layout;
+    roomKey = { kind: 'room', biome: run.biome, seed, store: run.isShop(), cave: run.hasCave(), layout, mouthUsed: false, entry: arena ? 'S' : run.entrySide, arena };
+    world = roomWorld(roomKey);
     outdoor = null;
     cave.clear();
     berries.build(world, BIOMES[run.biome].berry);
+    hazards.build(world, run.mapSeed, run.isBoss());
     chests.build(world);
     roomHurt = false;
     questProgress({ kind: 'act', act: run.act });
@@ -1006,20 +1010,29 @@ async function boot(): Promise<void> {
     message: (text) => runHud.message(text),
     toast: (text, stamp) => runHud.toast(text, stamp),
     nextRoom: (offer) => {
-      run.advance(offer);
+      // Le bord de la porte prise : la salle suivante s'ouvre du bord d'en face (Run.entrySide).
+      run.advance(offer, offer.exit !== undefined ? world.exits[offer.exit]?.side : undefined);
       loadRoom(false);
     },
     roomCleared: () => {
       combat.hooks.onRoomClear(player, run);
-      // En ligne : la salle libérée, les joueurs à terre se relèvent (à 30 % de leurs PV) pour gagner la porte.
-      if (net.inRun) {
-        for (const m of team) {
-          if (m.deathT < 0 || !m.pokemon) continue;
-          m.getUp();
-          m.pokemon.status = null;
-          m.pokemon.hp = Math.max(1, Math.round(m.pokemon.maxHp * 0.3));
-          fx.ballSend(m.x, m.y);
-        }
+      // Le ciel se dégage une fois la salle libérée (retour de test : sous la grêle, on ne pouvait
+      // ni fouiller ni prendre son don sans perdre trop de PV).
+      if (roomWeather !== 'clear') {
+        roomWeather = 'clear';
+        setWeather(weatherNow());
+        runHud.notify({ title: 'Éclaircie', text: 'Le ciel se dégage.', icon: '☀' });
+      }
+      // La salle libérée, les membres à terre se relèvent avec 1 PV pour la suivante (retour de
+      // test : « quand un Pokémon meurt et qu'on finit la zone, il revient avec un seul point de
+      // vie » — en ligne, celui qui est tombé ne fait plus rien jusqu'à la fin de la salle, puis
+      // repart). Les mercenaires, eux, ne reviennent jamais.
+      for (const m of team) {
+        if (m.deathT < 0 || !m.pokemon || m.runAlly) continue;
+        m.getUp();
+        m.pokemon.status = null;
+        m.pokemon.hp = 1;
+        fx.ballSend(m.x, m.y);
       }
       questProgress({ kind: 'room', hurt: roomHurt });
       if (run.isBoss()) questProgress({ kind: 'champion' });
@@ -1895,7 +1908,7 @@ async function boot(): Promise<void> {
     const k = msg.key;
     if (k.kind === 'cave') world = generateCave(k.seed).world;
     else {
-      world = generate(BIOMES[k.biome as keyof typeof BIOMES], k.seed, { store: k.store, cave: k.cave, layout: k.layout as LayoutId | undefined });
+      world = roomWorld(k);
       if (k.mouthUsed && world.cave) world.cave.used = true;
     }
     if (msg.blocked.length === world.blocked.length) for (let i = 0; i < msg.blocked.length; i++) world.blocked[i] = msg.blocked.charCodeAt(i) - 48;

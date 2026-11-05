@@ -2,7 +2,7 @@ import { fbm } from '../core/noise';
 import { Rng } from '../core/rng';
 import type { Biome } from './biomes';
 import { BLOB, CAVE, CHEST, FLOWERS, GROUND, PROPS, TILE, TOWN_STYLES, type Blob, type SpriteDef, type Tile } from './tiles';
-import { coreDepth, LAYOUT_NAMES, pickLayout, shapeDepth, type LayoutId, type Shape } from './layouts';
+import { coreDepth, LAYOUT_NAMES, orientShape, pickLayout, shapeDepth, type LayoutId, type Shape } from './layouts';
 import { furnishTown, layoutStreets, type Paving } from './town';
 
 // Générateur de zone simplifié pour juger la DA : une zone jouable bordée
@@ -190,7 +190,7 @@ export interface Exit {
  * bord n'y est que de l'eau, et sans cela la salle n'avait aucune sortie (en
  * run, on nage toujours).
  */
-function findExits(W: number, H: number, reachable: Uint8Array, water: Uint8Array, entrySide: Side, swimExits = false): Exit[] {
+export function findExits(W: number, H: number, reachable: Uint8Array, water: Uint8Array, entrySide: Side, swimExits = false): Exit[] {
   const sides: Side[] = ['N', 'E', 'S', 'W'];
   const exits: Exit[] = [];
   for (const side of sides) {
@@ -494,6 +494,8 @@ export function generate(
     coastSea = new Uint8Array(N);
     coastSand = new Uint8Array(N);
     seaSide = rng.int(4);
+    // On arrive du côté opposé à la mer : elle se met en face du bord d'entrée demandé.
+    if (options.entry) seaSide = { S: 0, N: 1, E: 2, W: 3 }[want];
     const vertical = seaSide >= 2;
     const len = vertical ? H : W;
     const deep = vertical ? W : H;
@@ -571,7 +573,9 @@ export function generate(
           : { x: 0.5, y: H / 2 + rng.range(-4, 4) }
       : routed
         ? shape!.entry
-        : { x: plan ? plan.entryX : W / 2 + rng.range(-5, 5), y: H - 0.5 };
+        : plan
+          ? { x: plan.entryX, y: H - 0.5 }
+          : sideEntry(want, W, H, rng, lake);
   /** La case d'arrivée, une case dans la carte (le bord où l'on entre). */
   const door = { x: Math.min(W - 1, Math.max(0, Math.floor(entry.x))), y: Math.min(H - 1, Math.max(0, Math.floor(entry.y))) };
   const hub = routed
@@ -590,7 +594,9 @@ export function generate(
     const radius = biome.path?.radius ?? 1.5;
     // (Au Repaire, pas d'allée d'entrée : le lac occupe le sud, on arrive près du feu.)
     if (!options.camp) carvePath(path, { x: W / 2 + rng.range(-3, 3), y: H - 0.5 }, hub, radius, rng, s);
-    carvePath(path, hub, { x: W / 2 + rng.range(-6, 6), y: 0.5 }, radius, rng, s);
+    carvePath(path, hub, { x: W / 2 + (arena ? 0 : rng.range(-6, 6)), y: 0.5 }, radius, rng, s);
+    // L'arène s'ouvre aussi à l'ouest et à l'est : les routes vers les biomes voisins.
+    if (arena) for (const x of [0.5, W - 0.5]) carvePath(path, hub, { x, y: hub.y }, radius, rng, s);
     // L'allée de la clairière défrichée : son propre tirage, pour que le reste du camp ne bouge pas.
     if (glade) carvePath(path, hub, { x: hub.x + CAMP_GLADE.dx + 4, y: hub.y + CAMP_GLADE.dy + 1 }, 1.2, new Rng(seed * 48271 + 9), s);
     // (Celle de l'est part du sud-est de la place : en ligne droite, elle passerait sous la hutte de l'équipe.)
@@ -607,15 +613,20 @@ export function generate(
     for (const route of shape!.routes) for (let k = 1; k < route.length; k++) carvePath(path, route[k - 1], route[k], radius, rng, s, shape!.wobble);
     cleanThin(path, () => true, 'grow');
   } else {
+    // Les sorties : jamais sur le bord d'entrée. Au Lac, la rive : à l'ouest et à l'est
+    // (on y entre par le bas, ou par un côté : la sortie est alors l'autre côté).
+    const edgePt = (side: Side) =>
+      side === 'N' ? { x: rng.range(14, W - 14), y: 0.5 } : side === 'S' ? { x: rng.range(14, W - 14), y: H - 0.5 } : { x: side === 'W' ? 0.5 : W - 0.5, y: rng.range(10, H - 10) };
     const exits = lake
-      ? [{ x: 0.5, y: H - rng.range(11, 15) }, { x: W - 0.5, y: H - rng.range(11, 15) }]
-      : [{ x: rng.range(14, W - 14), y: 0.5 }];
+      ? [{ x: 0.5, y: H - rng.range(11, 15) }, { x: W - 0.5, y: H - rng.range(11, 15) }].filter((e) => (want === 'W' ? e.x > 1 : want === 'E' ? e.x < 1 : true))
+      : [edgePt(OPPOSITE[want])];
     if (!lake) {
       // Une sortie sur un côté, et dans 55 % des cas une troisième sur l'autre
       // (MapGenerator : 2 sorties à 45 %, 3 sinon).
-      const west = rng.chance(0.5);
-      exits.push(west ? { x: 0.5, y: rng.range(10, H - 10) } : { x: W - 0.5, y: rng.range(10, H - 10) });
-      if (rng.chance(0.55)) exits.push(west ? { x: W - 0.5, y: rng.range(10, H - 10) } : { x: 0.5, y: rng.range(10, H - 10) });
+      const flanks: Side[] = want === 'N' || want === 'S' ? ['W', 'E'] : ['N', 'S'];
+      const first = rng.chance(0.5);
+      exits.push(edgePt(flanks[first ? 0 : 1]));
+      if (rng.chance(0.55)) exits.push(edgePt(flanks[first ? 1 : 0]));
     }
     const radius = biome.path?.radius ?? 1.5;
     carvePath(path, entry, hub, radius, rng, s);

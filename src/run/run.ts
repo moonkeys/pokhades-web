@@ -4,6 +4,10 @@ import { BIOME_CHAMPIONS, CHAMPIONS, type Champion } from '../data/champions';
 import type { BiomeId } from '../data/species';
 import type { CsId } from '../meta/catalog';
 import { BIOMES } from '../world/biomes';
+import { OPPOSITE, type Side } from '../world/generate';
+import { VICTORY_ROAD, WORLD, WORLD_LINKS, type BiomeLink } from '../world/worldmap';
+import { preEvolutionOf } from '../data/evolutions';
+import { typeMates } from '../data/trainers';
 
 // Structure d'une run, reprise de RunManager.gd : 4 actes de 7 salles (5
 // combats, une boutique, un boss), un biome par acte. Les portes de sortie
@@ -12,41 +16,31 @@ import { BIOMES } from '../world/biomes';
 //
 // Écart voulu : le jeu tirait les quatre biomes au départ, dans une liste par
 // acte (RunManager._pool_for_act). Ici, chaque boss vaincu ouvre une porte
-// par biome voisin dans un graphe (BIOME_LINKS) et c'est le joueur qui trace
-// sa route ; certaines branches sont gardées par une CS.
+// par biome voisin sur la carte du monde (world/worldmap.ts), percée du côté
+// où il se trouve, et c'est le joueur qui trace sa route ; certaines branches
+// sont gardées par une CS. Une fois tous les champions vaincus, un cinquième
+// acte s'ouvre au bout : la Route Victoire.
+//
+// Difficulté (retour de test : « au début, on galère ; une fois à six, on les
+// éclate tous ; les boss deviennent trop faciles ») : le premier acte est
+// doux et peu varié (cinq espèces de base en Prairie, pas d'itinérants ni de
+// top dresseurs), puis chaque acte monte plus vite qu'avant — niveaux,
+// effectifs, Pokémon venus d'ailleurs, sbires des champions — et les salles
+// comptent la taille de l'équipe : six Pokémon affrontent plus de monde.
 
 export const COMBATS_PER_ACT = 5;
 export const ROOMS_PER_ACT = 7;
+/** Actes d'une run ordinaire ; la Route Victoire en ajoute un. */
 export const ACTS = 4;
-
-/** Une branche du graphe : le biome où elle mène, et la CS qu'il faut pour la prendre. */
-export interface BiomeLink {
-  to: BiomeId;
-  cs?: CsId;
-}
-
-/**
- * Graphe des biomes, du clair au sombre (DA_bible §4) : la Prairie ouvre
- * toujours la run (faune Normal, la plus douce, comme RunManager), et chaque
- * branche descend d'un cran, si bien qu'au quatrième acte on est toujours au
- * Marais, au Rocailleux, au Volcan ou à la Montagne glacée (ajout, absente du
- * jeu Godot : une troisième porte depuis l'Automne et le Lac). La Plage mène
- * à l'Océan avec Surf (on y nage d'un îlot à l'autre) ; sans Surf, la porte
- * reste visible mais fermée, et le Lac reste ouvert.
- */
-export const BIOME_LINKS: Record<BiomeId, readonly BiomeLink[]> = {
-  prairie: [{ to: 'foret' }, { to: 'village' }, { to: 'plage' }],
-  foret: [{ to: 'automne' }, { to: 'lac' }],
-  village: [{ to: 'lac' }, { to: 'automne' }],
-  plage: [{ to: 'ocean', cs: 'surf' }, { to: 'lac' }],
-  automne: [{ to: 'marais' }, { to: 'volcan' }, { to: 'glace' }],
-  lac: [{ to: 'marais' }, { to: 'rocailleux' }, { to: 'glace' }],
-  ocean: [{ to: 'rocailleux' }, { to: 'volcan' }],
-  marais: [],
-  rocailleux: [],
-  volcan: [],
-  glace: [],
-};
+export type { BiomeLink };
+/** Les champions qu'il faut avoir vaincus pour ouvrir la Route Victoire : tous ceux des biomes. */
+export const LEAGUE_GATE: readonly string[] = ['Blanche', 'Ondine', 'Major Bob', 'Erika', 'Pierre', 'Koga', 'Morgane', 'Auguste', 'Giovanni', 'Olga'];
+/** Le Maître de la Ligue, au bout de la Route Victoire. */
+export const LEAGUE_MASTER = 'Régis';
+/** Le Conseil, qui rejoint les champions du dernier étage une fois la Route Victoire ouverte. */
+const ELITE_BY_BIOME: Partial<Record<BiomeId, string>> = { rocailleux: 'Aldo', marais: 'Agatha', volcan: 'Peter', glace: 'Olga' };
+/** Taille minimale de l'équipe d'un champion selon l'acte : on complète par des Pokémon de son type. */
+const MIN_CHAMPION_TEAM = [2, 3, 4, 5, 6];
 /** Repli si l'on dépasse le graphe (salle forcée au panneau) : un biome de fin. */
 const LAST_BIOMES: BiomeId[] = ['marais', 'rocailleux', 'volcan', 'glace'];
 
@@ -100,6 +94,20 @@ export interface ExitOffer {
   locked?: CsId;
   /** Salle spéciale derrière la porte. */
   special?: SpecialId;
+  /** La sortie de la carte où la porte est percée (rang dans WorldMap.exits). */
+  exit?: number;
+  /** Sortie de boss vers la Route Victoire. */
+  victory?: boolean;
+}
+
+/** Ce que la run doit savoir du Repaire en partant. */
+export interface RunSetup {
+  /** Les CS apprises au départ, qui ouvrent les branches gardées. */
+  cs?: readonly CsId[];
+  /** Tous les champions vaincus : la Route Victoire s'ouvre (cinquième acte). */
+  league?: boolean;
+  /** Taille de l'équipe au départ : les salles et les boss en tiennent compte. */
+  teamSize?: number;
 }
 
 export class Run {
@@ -126,18 +134,39 @@ export class Run {
   readonly boons = new Boons();
   /** Tirages de la run (biomes, portes, vagues, dons). */
   readonly rng: Rng;
+  readonly cs: readonly CsId[];
+  /** Actes de la run : 4, ou 5 quand la Route Victoire est ouverte. */
+  readonly acts: number;
+  readonly league: boolean;
+  readonly teamSize: number;
+  /** Bord par lequel on entre dans la salle courante : en face de la porte prise. */
+  entrySide: Side = 'S';
+  /** Rang de l'acte de la Route Victoire, -1 sans elle. */
+  readonly victoryAct: number;
 
-  /**
-   * `biomeOverride` : toute la run dans ce biome (panneau de réglages).
-   * `cs` : les CS apprises au Repaire au départ, qui ouvrent les branches gardées.
-   */
+  /** `biomeOverride` : toute la run dans ce biome (panneau de réglages). */
   constructor(
     readonly seed: number,
     private readonly biomeOverride: BiomeId | null = null,
-    readonly cs: readonly CsId[] = [],
+    setup: RunSetup = {},
   ) {
     this.rng = new Rng(seed * 7919 + 17);
+    this.cs = setup.cs ?? [];
+    this.league = Boolean(setup.league);
+    this.acts = this.league ? ACTS + 1 : ACTS;
+    this.victoryAct = this.league ? ACTS : -1;
+    this.teamSize = Math.max(1, setup.teamSize ?? 1);
     this.pushAct(biomeOverride ?? 'prairie');
+  }
+
+  /** L'acte courant se joue sur la Route Victoire. */
+  get onVictoryRoad(): boolean {
+    return this.act === this.victoryAct;
+  }
+
+  /** Le nom du lieu de l'acte : son biome, ou la Route Victoire. */
+  get placeName(): string {
+    return this.onVictoryRoad ? VICTORY_ROAD.name : BIOMES[this.biome].name;
   }
 
   /**
@@ -263,7 +292,7 @@ export class Run {
    * si la carte a moins de portes que de branches, l'une au moins reste
    * ouverte (jamais rien que des portes gardées par une CS qu'on n'a pas).
    */
-  offers(count: number): ExitOffer[] {
+  offers(count: number, sides: readonly Side[] = []): ExitOffer[] {
     const pool = REWARD_WEIGHTS.flatMap(([r, w]) => Array<Reward>(w).fill(r));
     let links: BiomeLink[] = [];
     if (this.isBoss() && !this.isFinal) {
@@ -276,6 +305,7 @@ export class Run {
       const open = all.find((l) => !this.missingCs(l));
       if (links.length && open && links.every((l) => this.missingCs(l))) links[links.length - 1] = open;
     }
+    const exits = this.pickExits(count, sides, links);
     const out: ExitOffer[] = [];
     for (let i = 0; i < count && pool.length; i++) {
       const reward = this.rng.pick(pool);
@@ -311,12 +341,45 @@ export class Run {
     const reward: Reward = special === 'challenge' ? 'boon' : special === 'merchant' ? 'loot' : base.reward;
     const donor = reward === 'boon' ? (base.donor ?? this.boons.pickDonor(this.rng) ?? undefined) : undefined;
     const prize = special === 'merchant' ? '' : ` · ${donor ? donorLabel(donor) : REWARD_LABEL[reward]}`;
+    // Le Piège garde l'étiquette de la porte qu'il remplace : rien ne le trahit.
+    if (special === 'trap') return { ...base, special };
     return { reward, donor, special, label: `${SPECIALS[special].name}${prize}` };
   }
 
+  /**
+   * Quelle sortie de la carte porte chaque offre (rang dans `sides`). En sortie de boss,
+   * chaque route part du bord qui regarde son biome sur la carte du monde ; une porte
+   * unique (vers la boutique, le boss) est celle d'en face de l'entrée, tout droit ;
+   * sinon, dans l'ordre de la carte.
+   */
+  private pickExits(count: number, sides: readonly Side[], links: readonly BiomeLink[]): number[] {
+    const order = sides.map((_, i) => i);
+    if (!sides.length) return order.slice(0, count);
+    if (links.length) {
+      // Chaque route sur la sortie dont le bord regarde le mieux son biome : on essaie toutes
+      // les répartitions (trois portes au plus, six façons) et l'on garde la moins tordue.
+      const from = this.onVictoryRoad ? VICTORY_ROAD : WORLD[this.biome];
+      const dirs = links.map((l) => (this.act + 1 === this.victoryAct ? { x: 0, y: -1 } : { x: WORLD[l.to].x - from.x, y: WORLD[l.to].y - from.y }));
+      let best: number[] = order.slice(0, links.length);
+      let bestCost = Infinity;
+      for (const perm of permutations(order, links.length)) {
+        const cost = perm.reduce((c, k, i) => c + sideCost(sides[k], dirs[i]), 0);
+        if (cost < bestCost) [best, bestCost] = [perm, cost];
+      }
+      return best;
+    }
+    if (count === 1) {
+      const ahead = sides.indexOf(OPPOSITE[this.entrySide]);
+      return [ahead >= 0 ? ahead : 0];
+    }
+    return order.slice(0, count);
+  }
+
   /** On a franchi une porte (RunManager.advance) ; en sortie de boss, elle décide du biome de l'acte suivant. */
-  advance(offer: ExitOffer): void {
+  advance(offer: ExitOffer, side?: Side): void {
     this.room += 1;
+    // On entre dans la salle suivante par le bord d'en face : sorti à l'est, on arrive à l'ouest.
+    this.entrySide = side ? OPPOSITE[side] : 'S';
     if (offer.biome && this.biomes.length === this.act) this.pushAct(offer.biome);
     this.reward = offer.reward;
     this.donor = offer.donor;
