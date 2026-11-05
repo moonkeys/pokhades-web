@@ -1544,7 +1544,8 @@ async function boot(): Promise<void> {
    * choisit son starter, qui devient l'équipe (GameManager.STARTER_IDS).
    */
   const askStarter = () => {
-    if (save.started || quizScreen.open || starterScreen.open) return;
+    // Menu principal encore ouvert : « Jouer » rappellera askStarter (le questionnaire vient après lui).
+    if (save.started || quizScreen.open || starterScreen.open || titleScreen.open) return;
     // Le questionnaire d'abord (ui/quizscreen.ts) ; « Choisir un autre » ouvre les neuf starters.
     const pick = (id: number, nick: string) => {
       input.flush();
@@ -2312,6 +2313,24 @@ async function boot(): Promise<void> {
   addEventListener('orientationchange', () => setTimeout(() => renderer.resize(opts), 250));
   // Le panneau et la sauvegarde parlent de la même équipe.
   syncPanelTeam();
+  // Le menu principal d'abord, par-dessus le Repaire qui se charge derrière (figé : paused()).
+  // enterCamp n'ouvre pas le questionnaire tant qu'il est là : « Jouer » le fait. Sauté sous
+  // ?debug, pour les tests automatisés.
+  if (!new URLSearchParams(location.search).has('debug'))
+    titleScreen.show(
+      {
+        play: () => {
+          input.flush();
+          askStarter();
+        },
+        settings: (tab, back) =>
+          settingsMenu.show(() => {
+            input.flush();
+            back();
+          }, tab),
+      },
+      save.started,
+    );
   enterCamp();
 
   let time = 0;
