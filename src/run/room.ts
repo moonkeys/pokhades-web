@@ -4,15 +4,17 @@ import type { Actor } from '../entities/actor';
 import type { InputSample } from '../input/input';
 import type { CombatFx, Projector } from '../render/combatfx';
 import { withAlpha } from '../render/combatfx';
-import type { Exit, WorldMap } from '../world/generate';
+import { landReachable, type Exit, type WorldMap } from '../world/generate';
 import { TILE } from '../world/tiles';
-import { REWARD_COLOR, REWARD_LABEL, SPECIALS, donorLabel, type ExitOffer, type Reward, type Run, type SpecialId } from './run';
+import { REWARD_COLOR, SHOP_COLOR, SPECIALS, type ExitOffer, type Reward, type Run, type SpecialId } from './run';
 import { SWIMMERS, type BiomeId } from '../data/species';
 import type { DonorId } from '../combat/boons';
-import { donorBadge, drawRewardIcon, itemIcon, rewardIcon } from '../ui/rewardicons';
+import { donorBadge, drawRewardIcon, itemIcon, rewardIcon, shopIcon } from '../ui/rewardicons';
 import { BIOMES, BIOME_COLOR } from '../world/biomes';
 import { CS_LIST } from '../meta/catalog';
+import { VICTORY_ROAD } from '../world/worldmap';
 import { Trainer } from '../entities/trainer';
+import { CaptureThreat } from './capture';
 import { ACES, TRAINER_CLASSES, pickClass, pickMember, type TrainerClassId } from '../data/trainers';
 
 // Déroulé d'une salle, repris de CombatArena.gd (_start_zone, vagues,
@@ -154,7 +156,25 @@ export interface RoomHost {
   specialDone(special: SpecialId, success: boolean): void;
   /** Ligne de front : une vague arrive, le sol tremble (secousse d'écran). */
   rumble(): void;
+  /** Village : un dresseur a capturé ce membre (il quitte l'équipe jusqu'à sa défaite). */
+  capture(a: Actor, by: string): void;
+  /** Ses Pokémon battus, le dresseur rend ses prises. */
+  release(captives: Actor[], x: number, y: number): void;
+  /** Le Pokémon joué peut-il être visé par une Ball ? (Toujours, aujourd'hui : un point d'accroche pour l'équilibrage.) */
+  canBeCaptured(): boolean;
 }
+
+/**
+ * Le Village (retour de test : « chaque biome a son gameplay ; dans les villages, les
+ * dresseurs peuvent te capturer ») : ses dresseurs lancent des Poké Balls sur le Pokémon joué,
+ * comme le sbire des grottes (run/capture.ts) ; on en sort, ou l'on se débat. Une prise revient
+ * quand l'équipe de son dresseur est battue. Une Ball toutes les tant de secondes (moins aux
+ * actes suivants), après un temps de visée.
+ */
+const VILLAGE_THROW_EVERY = 6;
+const VILLAGE_THROW_PER_ACT = 0.7;
+const VILLAGE_THROW_MIN = 3;
+const VILLAGE_WINDUP = 0.6;
 
 export class RoomDirector {
   phase: Phase = 'over';
@@ -181,6 +201,8 @@ export class RoomDirector {
   private boss = false;
   /** Opacité du voile noir (0 → 1) ; il s'éclaircit tout seul en arrivant dans une salle. */
   fade = 0;
+  /** L'équipe nage dans cette salle (CS Surf, ou salle sans chemin à pied) : main.ts le règle avant start(). */
+  swim = true;
   private rng = new Rng(1);
   private readonly layer: HTMLElement;
   /** Étiquette « ⛰ Grotte » au-dessus de la bouche, et fondu en cours vers la grotte. */
@@ -193,6 +215,13 @@ export class RoomDirector {
   private failed = false;
   /** Ligne de front : d'où vient la vague annoncée, la flèche qui la montre, temps restant. */
   private incoming: { x: number; y: number; t: number; el: HTMLElement } | null = null;
+  /** Village : les Balls des dresseurs, leurs prises (et de qui), le prochain lancer. */
+  private readonly capture: CaptureThreat;
+  private captives: { a: Actor; group: TrainerGroup }[] = [];
+  private throwT = VILLAGE_THROW_EVERY;
+  private aim: { g: TrainerGroup; t: number } | null = null;
+  private catcher: TrainerGroup | null = null;
+  private village = false;
 
   constructor(
     parent: HTMLElement,
@@ -202,6 +231,52 @@ export class RoomDirector {
     this.layer = document.createElement('div');
     this.layer.className = 'room-labels';
     parent.append(this.layer);
+    this.capture = new CaptureThreat(parent, fx, {
+      captured: (a) => {
+        const g = this.catcher;
+        if (!g) return;
+        this.captives.push({ a, group: g });
+        this.host.capture(a, TRAINER_CLASSES[g.cls].name);
+      },
+      freed: (a) => this.host.message(`${a.pokemon?.name ?? '…'} fait éclater la Ball !`),
+    });
+  }
+
+  /** Les Balls en vol et la Ball qui retient un Pokémon, à dessiner avec le reste. */
+  captureExtras(): ReturnType<CaptureThreat['extras']> {
+    return this.capture.extras();
+  }
+
+  /** Rend les prises d'un dresseur (ou toutes), là où il se tient. */
+  private releaseCaptives(g: TrainerGroup | null, at: { x: number; y: number }): void {
+    const back = this.captives.filter((c) => !g || c.group === g);
+    if (!back.length) return;
+    this.captives = this.captives.filter((c) => !back.includes(c));
+    this.host.release(back.map((c) => c.a), at.x, at.y);
+  }
+
+  /** Village : un dresseur en jeu vise le Pokémon joué, puis lance. */
+  private updateThrows(dt: number, run: Run, player: Actor): void {
+    const ready = player.deathT < 0 && !player.trapped && !this.capture.busy;
+    if (this.aim) {
+      this.aim.t -= dt;
+      if (this.aim.t > 0) return;
+      const g = this.aim.g;
+      this.aim = null;
+      if (ready && !g.done && !g.trainer.gone) {
+        this.catcher = g;
+        this.capture.throwAt(g.trainer.x, g.trainer.y - 0.6, player.x, player.y);
+      }
+      return;
+    }
+    this.throwT -= dt;
+    if (this.throwT > 0 || !ready || !this.host.canBeCaptured()) return;
+    const live = this.groups.filter((g) => g.thrown && !g.done && !g.trainer.gone);
+    if (!live.length) return;
+    const g = live[Math.floor(Math.random() * live.length)];
+    this.throwT = Math.max(VILLAGE_THROW_MIN, VILLAGE_THROW_EVERY - VILLAGE_THROW_PER_ACT * run.act);
+    this.aim = { g, t: VILLAGE_WINDUP };
+    g.trainer.aim(player.x, player.y, VILLAGE_WINDUP + 0.25);
   }
 
   /** Nouvelle salle (carte déjà générée, joueur déjà placé). */
@@ -217,6 +292,11 @@ export class RoomDirector {
     this.waves = [];
     this.special = run.special;
     this.failed = false;
+    this.village = world.biome.id === 'village' && !run.isBoss() && !run.isShop();
+    this.capture.reset();
+    this.captives = [];
+    this.aim = null;
+    this.throwT = VILLAGE_THROW_EVERY;
     this.host.setTimer(null);
     const plan = run.waves();
     this.level = plan.level;
@@ -247,12 +327,25 @@ export class RoomDirector {
     if (!this.boss && this.waves.length) this.assignTrainers(world, run);
     this.total = this.waves.reduce((s, w) => s + w.length, 0);
     // Portes fermées dès l'arrivée : autant que la carte en offre, une seule autour de la boutique et du boss.
-    const offers = run.offers(run.exitCount(world.exits.length));
+    // Chaque offre dit sur quelle sortie elle s'ouvre (Run.pickExits : les routes du côté de leur biome).
+    const offers = run.offers(run.exitCount(world.exits.length), world.exits.map((e) => e.side));
     // Devant le boss, la porte n'annonce que lui : pas d'icône de récompense.
     this.doors = offers.map((offer, i) => ({
-      exit: world.exits[i],
+      exit: world.exits[offer.exit ?? i],
       offer,
-      label: offer.biome ? this.biomeLabel(offer) : offer.special ? this.specialLabel(offer) : this.label(offer.label, REWARD_COLOR[offer.reward], run.isBoss(run.room + 1) ? null : rewardIcon(offer.reward, offer.donor)),
+      // Le Piège ne s'annonce pas (retour de test : « il ne faut pas savoir si on tombe dans un piège ») :
+      // sa porte promet sa récompense, comme une autre. Retour de test : plus de texte sur les
+      // portes ordinaires (« pas obligé de mettre Don de Jirachi ») — l'icône seule, en grand ;
+      // la porte de la boutique le dit, celle du boss aussi.
+      label: offer.biome
+        ? this.biomeLabel(offer)
+        : offer.special && offer.special !== 'trap'
+          ? this.specialLabel(offer)
+          : run.isShop(run.room + 1)
+            ? this.label('Boutique', SHOP_COLOR, shopIcon())
+            : run.isBoss(run.room + 1)
+              ? this.label(offer.label, REWARD_COLOR[offer.reward])
+              : this.iconLabel(rewardIcon(offer.reward, offer.donor)),
     }));
     this.clock = CHALLENGE_BASE + CHALLENGE_PER_WAVE * this.waves.length;
     // La grotte ne s'ouvre qu'une fois la salle libérée (CombatArena : le déclencheur naît au nettoyage).
@@ -280,6 +373,8 @@ export class RoomDirector {
   }
 
   update(dt: number, input: InputSample, world: WorldMap, run: Run, player: Actor, enemies: readonly Actor[]): void {
+    this.capture.update(dt, input, player);
+    if (this.village && this.phase === 'waves') this.updateThrows(dt, run, player);
     for (const e of enemies) {
       if (e.deathT >= 0 && !this.counted.has(e)) {
         this.counted.add(e);
@@ -295,9 +390,10 @@ export class RoomDirector {
       g?.actors.push(a);
     }
     this.pending = this.pending.filter((q) => q.t < SPAWN_ANNOUNCE);
-    // Les dresseurs font les cent pas ; tous leurs Pokémon libérés, ils s'enfuient.
+    // Les dresseurs mènent leurs Pokémon (Trainer.direct) ; tous libérés, ils s'enfuient.
     this.groups.forEach((g, k) => {
-      g.trainer.update(dt, world, Math.random);
+      if (g.done) g.trainer.update(dt, world, Math.random);
+      else g.trainer.direct(dt, world, player, g.actors.filter((a) => a.deathT < 0), Math.random);
       if (g.thrown && !g.done && g.actors.length && g.actors.every((a) => a.deathT >= 0) && !this.pending.some((p) => p.group === k)) this.flee(g, world);
     });
     this.t -= dt;
@@ -351,6 +447,9 @@ export class RoomDirector {
         break;
       }
       case 'cleared':
+        // (Une prise dont le dresseur a filé sans être battu revient quand même : la salle est libérée.)
+        if (this.captives.length) this.releaseCaptives(null, player);
+        this.capture.reset();
         if (this.t > 0) break;
         if (!this.paid) {
           // La salle est libérée : ₽ (×3 après un boss), puis 0,8 s avant d'ouvrir.
@@ -484,7 +583,8 @@ export class RoomDirector {
   private assignTrainers(world: WorldMap, run: Run): void {
     const pool = run.fauna();
     const level = Math.max(...this.waves.flat().map((m) => m.level));
-    if (!this.special && run.room >= 2 && this.rng.chance(ACE_CHANCE)) {
+    // Pas de top dresseur au premier acte (retour de test : « tout ce qui est top dresseur arrive un peu plus tard »).
+    if (!this.special && run.act >= 1 && this.rng.chance(ACE_CHANCE + 0.05 * run.act)) {
       this.waves.push(Array.from({ length: ACE_TEAM }, () => ({ id: 0, level: level + ACE_LEVELS, role: 'wild' as const })));
     }
     const last = this.waves.length - 1;
@@ -493,13 +593,13 @@ export class RoomDirector {
       const n = ace ? 1 : wave.length > SOLO_MAX ? 2 : 1;
       const first = this.groups.length;
       for (let k = 0; k < n; k++) {
-        const cls = ace ? this.rng.pick(ACES) : pickClass(this.rng, run.biome);
+        const cls = ace ? this.rng.pick(ACES) : pickClass(this.rng, run.biome, run.act === 0 ? 0 : 0.35);
         const at = this.spawnPoint(world, world.spawn, false) ?? world.spawn;
         this.groups.push({ trainer: new Trainer(TRAINER_CLASSES[cls].sprite, at, null, 2.5), cls, wave: w, actors: [], thrown: false, done: false, ace });
       }
       wave.forEach((m, i) => {
         m.group = first + (i % n);
-        m.id = pickMember(this.rng, this.groups[m.group].cls, pool);
+        m.id = pickMember(this.rng, this.groups[m.group].cls, pool, run.variety);
       });
     });
   }
@@ -513,6 +613,9 @@ export class RoomDirector {
   private flee(g: TrainerGroup, world: WorldMap): void {
     g.done = true;
     const t = g.trainer;
+    // Ses Pokémon battus, il rend ce qu'il a pris.
+    this.releaseCaptives(g, t);
+    if (this.catcher === g) this.capture.reset();
     const e = [...world.exits].sort((a, b) => Math.hypot(a.x - t.x, a.y - t.y) - Math.hypot(b.x - t.x, b.y - t.y))[0];
     if (!e) return t.fleeTo(t.x, -2);
     t.fleeTo(e.side === 'W' ? -2 : e.side === 'E' ? world.w + 2 : e.x, e.side === 'N' ? -2 : e.side === 'S' ? world.h + 2 : e.y);
@@ -565,10 +668,13 @@ export class RoomDirector {
     const cy = world.h / 2;
     let best: { x: number; y: number } | null = null;
     let bestD = Infinity;
+    // Sans Surf, jamais sur l'îlot du Lac (retour de test : « si le mec n'a pas Surf, il ne
+    // pourra jamais prendre la récompense ») : la case la plus centrale qu'on atteint à pied.
+    const reach = this.swim ? world.reachable : landReachable(world);
     for (let y = 2; y < world.h - 2; y++) {
       for (let x = 2; x < world.w - 2; x++) {
         const i = y * world.w + x;
-        if (!world.reachable[i] || world.blocked[i] || world.water[i]) continue;
+        if (!reach[i] || world.blocked[i] || world.water[i]) continue;
         const d = Math.hypot(x - cx, y - cy);
         if (d < bestD) {
           bestD = d;
@@ -577,17 +683,20 @@ export class RoomDirector {
       }
     }
     if (!best) return;
+    // Un don sans donateur annoncé (première salle, sortie de boss, salle forcée) : on le tire
+    // maintenant, pour que le badge posé et l'écran des dons montrent le même légendaire (retour
+    // de test : le badge de Mew s'affichait par défaut, puis l'écran proposait Électhor).
+    if (run.reward === 'boon' && !run.donor) run.donor = run.boons.pickDonor(run.rng) ?? undefined;
     const color = REWARD_COLOR[run.reward];
-    const text = run.reward === 'boon' && run.donor ? donorLabel(run.donor) : REWARD_LABEL[run.reward];
     let badge: HTMLElement | null = null;
-    if (run.reward === 'boon') {
+    if (run.reward === 'boon' && run.donor) {
       badge = document.createElement('div');
       badge.className = 'rw-pedestal';
-      badge.append(donorBadge(run.donor ?? 'mew'));
+      badge.append(donorBadge(run.donor));
       this.layer.append(badge);
     }
-    this.pedestal = { ...best, color, reward: run.reward, donor: run.donor, label: this.label(`${text}  [E]`, color, rewardIcon(run.reward, run.donor)), badge };
-    this.pedestal.label.classList.add('open');
+    // Pas de texte au-dessus de la récompense : seulement [E], quand on s'en approche.
+    this.pedestal = { ...best, color, reward: run.reward, donor: run.donor, label: this.label('[E]', '#efe6d2'), badge };
     this.host.prepareReward(run.reward);
   }
 
@@ -603,7 +712,7 @@ export class RoomDirector {
     const p = this.pedestal;
     if (p) {
       const near = Math.hypot(player.x - p.x, player.y - p.y) < PICKUP_RADIUS + 0.6;
-      p.label.classList.toggle('near', near);
+      p.label.classList.toggle('open', near);
       if (near && input.interact) this.claim(run);
     }
     for (const d of this.doors) {
@@ -672,7 +781,7 @@ export class RoomDirector {
     const el =
       offer.special === 'merchant'
         ? this.label('Pari · Don contre des PV', sp.color)
-        : this.label(offer.donor ? donorLabel(offer.donor) : REWARD_LABEL[offer.reward], REWARD_COLOR[offer.reward], rewardIcon(offer.reward, offer.donor));
+        : this.label('', REWARD_COLOR[offer.reward], rewardIcon(offer.reward, offer.donor));
     el.classList.add('route');
     const name = document.createElement('span');
     name.className = 'room-biome';
@@ -695,14 +804,23 @@ export class RoomDirector {
   private biomeLabel(offer: ExitOffer): HTMLElement {
     const biome = offer.biome!;
     const cs = offer.locked && CS_LIST.find((c) => c.id === offer.locked);
-    const el = cs ? this.label(`CS ${cs.name} requise`, '#b9b2a4', itemIcon(cs.icon)) : this.label(offer.label, REWARD_COLOR[offer.reward], rewardIcon(offer.reward, offer.donor));
+    const place = offer.victory ? { name: VICTORY_ROAD.name, color: VICTORY_ROAD.color } : { name: BIOMES[biome].name, color: BIOME_COLOR[biome] };
+    // Sous le nom du biome, l'icône de la récompense seule (retour de test : moins de texte).
+    const el = cs ? this.label(`CS ${cs.name} requise`, '#b9b2a4', itemIcon(cs.icon)) : this.label('', REWARD_COLOR[offer.reward], rewardIcon(offer.reward, offer.donor));
     el.classList.add('route');
     el.classList.toggle('locked', !!cs);
     const name = document.createElement('span');
     name.className = 'room-biome';
-    name.textContent = `→ ${BIOMES[biome].name}`;
-    name.style.setProperty('--b', BIOME_COLOR[biome]);
+    name.textContent = `→ ${place.name}`;
+    name.style.setProperty('--b', place.color);
     el.prepend(name);
+    return el;
+  }
+
+  /** Une étiquette sans texte : l'icône de la récompense seule, en grand. */
+  private iconLabel(icon: HTMLElement): HTMLElement {
+    const el = this.label('', '#efe6d2', icon);
+    el.classList.add('icon-only');
     return el;
   }
 
@@ -864,8 +982,11 @@ export class RoomDirector {
       // Étiquette vers l'intérieur de la carte, pour qu'elle ne sorte pas de l'écran.
       // Une porte de route porte deux lignes (biome et récompense) : un peu plus loin du bord.
       const far = d.offer.biome ? 1.25 : 1;
-      const ox = e.side === 'W' ? 2.2 * far : e.side === 'E' ? -2.2 * far : 0;
-      const oy = e.side === 'N' ? 1.6 * far : e.side === 'S' ? -1.6 * far : -1;
+      // Une porte ordinaire : son icône flotte juste au-dessus de la sortie elle-même (retour de
+      // test), un peu en retrait du bord pour rester à l'écran.
+      const onDoor = d.label.classList.contains('icon-only');
+      const ox = e.side === 'W' ? (onDoor ? 0.9 : 2.2 * far) : e.side === 'E' ? (onDoor ? -0.9 : -2.2 * far) : 0;
+      const oy = e.side === 'N' ? (onDoor ? 0.6 : 1.6 * far) : e.side === 'S' ? (onDoor ? -1.8 : -1.6 * far) : onDoor ? -1.4 : -1;
       const p = proj.toCss(e.x + ox, e.y + oy);
       d.label.style.transform = `translate(${p.x}px, ${p.y}px) translate(-50%, -50%)`;
     }

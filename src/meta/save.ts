@@ -126,6 +126,22 @@ export interface Save {
    * espèce qu'à sa première défaite ; ici dès qu'elle apparaît.
    */
   seen: number[];
+  /**
+   * Carnet des exploits (meta/feats.ts, ajout) : les champions vaincus au moins une
+   * fois (par nom), les biomes atteints par une porte de route, les runs gagnées, et
+   * les exploits déjà réclamés.
+   */
+  beaten: string[];
+  visited: string[];
+  wins: number;
+  feats: string[];
+  /** Records (chez Xatu) : la salle la plus loin atteinte en run (1 à 35). */
+  bestRoom: number;
+  /**
+   * Les formes atteintes par évolution en run, et les lignées complétées (forme finale
+   * atteinte) : la prime de lignée ne tombe qu'une fois par lignée.
+   */
+  evolved: number[];
 }
 
 /** Longueur d'un surnom dans les jeux principaux (12 depuis la 6ᵉ génération). */
@@ -170,6 +186,12 @@ const DEFAULTS: Save = {
   recruited: {},
   defeats: {},
   seen: [],
+  beaten: [],
+  visited: [],
+  wins: 0,
+  feats: [],
+  bestRoom: 0,
+  evolved: [],
 };
 
 const KEY = 'pokhades-save';
@@ -244,6 +266,13 @@ export function migrate(save: Save): Save {
   save.candidates = Array.isArray(save.candidates) ? save.candidates.filter((c) => c && Number.isInteger(c.species)) : [];
   save.progress = save.progress && typeof save.progress === 'object' ? save.progress : {};
   save.recruited = save.recruited && typeof save.recruited === 'object' ? save.recruited : {};
+  const names = (v: unknown) => (Array.isArray(v) ? [...new Set(v.filter((x): x is string => typeof x === 'string'))] : []);
+  save.beaten = names(save.beaten);
+  save.visited = names(save.visited);
+  save.feats = names(save.feats);
+  save.wins = Math.max(0, Math.floor(Number(save.wins) || 0));
+  save.bestRoom = Math.max(0, Math.floor(Number(save.bestRoom) || 0));
+  save.evolved = Array.isArray(save.evolved) ? [...new Set(save.evolved.filter((n) => Number.isInteger(n)))] : [];
   return save;
 }
 

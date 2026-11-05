@@ -40,11 +40,11 @@ export interface TownPlan {
   center: { x: number; y: number };
   plazaRect: { x0: number; y0: number; x1: number; y1: number };
   entryX: number;
-  /** Fontaines (case haut-gauche d'un bassin de 4 × 3 cases). */
+  /** Fontaines (case haut-gauche d'un bassin de 3 × 3 cases, le bassin rond d'Essentials : FOUNTAIN). */
   fountains: { x: number; y: number }[];
 }
 
-export const FOUNTAIN_W = 4;
+export const FOUNTAIN_W = 3;
 export const FOUNTAIN_H = 3;
 
 /** Trace le plan des rues (étape 2 de generate) : rien n'y est encore construit. */
@@ -96,7 +96,8 @@ export function layoutStreets(W: number, H: number, rng: Rng): TownPlan {
   const plazaRect = { x0: xc - 6, y0: ym - 7, x1: xc + 6, y1: ym - 2 };
   rect(plaza, plazaRect.x0, plazaRect.y0, plazaRect.x1, plazaRect.y1);
   for (let i = 0; i < N; i++) if (plaza[i]) street[i] = 0;
-  const fountains = rng.chance(0.65) ? [{ x: xc - 2, y: plazaRect.y0 + 2 }] : [];
+  // (Centrée sur la colonne du carrefour.)
+  const fountains = rng.chance(0.65) ? [{ x: xc - 1, y: plazaRect.y0 + 2 }] : [];
   return { layout, street, plaza, alley: new Uint8Array(N), center: { x: xc, y: ym }, plazaRect, entryX: xc, fountains };
 }
 
@@ -150,7 +151,7 @@ export function furnishTown(ctx: TownContext, plan: TownPlan, houseCount: number
   tryPlace(style.center, plan.center.x - 4, y0 - 1) || tryPlace(style.center, plan.center.x - 5, y0 - 1);
   tryPlace(style.mart, plan.center.x + 3, y0 - 1) || tryPlace(style.mart, plan.center.x + 4, y0 - 1);
 
-  // 2) La place : une fontaine (dessinée au rendu) ou une statue, des bancs et des bacs fleuris.
+  // 2) La place : une fontaine (posée au rendu, cf. Renderer.paintFountain) ou une statue, des bancs et des bacs fleuris.
   //    Rien sur la rangée du haut : c'est là que s'ouvrent les portes du Centre et de la Boutique.
   for (const f of plan.fountains) {
     for (let y = f.y; y < f.y + FOUNTAIN_H; y++) for (let x = f.x; x < f.x + FOUNTAIN_W; x++) blocked[idx(x, y)] = 1;

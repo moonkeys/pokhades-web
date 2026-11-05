@@ -55,21 +55,56 @@ Commandes en jeu :
   et en run les dons reçus), en run comme au Repaire ;
 - Échap pour fermer un écran du Repaire ;
 - Page↑ / Page↓ pour forcer le biome de la run, N pour une nouvelle run, H pour
-  masquer le panneau de réglages.
+  masquer le panneau de réglages (ces deux raccourcis de test sont coupés dans le
+  jeu publié).
 
-Le Pokémon monte sur la monture Surf dès qu'il entre dans l'eau.
+Le Pokémon monte sur la monture Surf dès qu'il entre dans l'eau — en run comme au
+Repaire, seulement avec la CS Surf (retour de test : on nageait partout en run).
+Sans elle, la récompense d'une salle se pose là où l'on va à pied, jamais sur
+l'îlot du Lac (`landReachable`, `src/world/generate.ts`) ; une salle dont une
+porte ne s'atteint pas à pied (rare, une Plage sur vingt-cinq) laisse nager.
+
+Panneau de test (H) : dans le jeu publié (GitHub Pages, build de production), il
+ne garde que « Repaire (tests) » — retour au camp, +1000 Baies, tout remettre à
+zéro — et les réglages de test gardés dans le navigateur (biome forcé, forme des
+salles, météo) reviennent à ceux du jeu. Le serveur de dev garde tout.
 
 Run (portée de `RunManager.gd` et `CombatArena.gd`) : 4 actes de 7 salles
 (5 combats, une boutique, un boss). La run part toujours de la Prairie, et
-chaque boss vaincu ouvre une porte par biome voisin dans un graphe qui
-descend du clair au sombre (`BIOME_LINKS` dans `src/run/run.ts`) : Prairie →
-Forêt, Village ou Plage ; puis Automne, Lac ou Océan ; enfin Marais,
-Rocailleux, Volcan ou Montagne glacée (ajout, après l'Automne ou le Lac).
-Chaque porte de route annonce son biome en grand,
-au-dessus de la récompense de la salle d'après. La Plage mène à l'Océan
-seulement si l'on est parti avec la CS Surf : sans elle, la porte reste
-visible mais fermée (« CS Surf requise »), et le Lac reste ouvert. Le
-champion de l'acte est tiré quand on choisit son biome. Chaque
+chaque boss vaincu ouvre une porte par biome voisin sur la **carte du monde**
+(ajout, `src/world/worldmap.ts`, retour de test : « on passe du lac à la
+montagne en deux secondes, ce n'est pas logique ») : une carte fixe, quatre
+étages qui montent du sud au nord et du clair au sombre. Prairie → Plage
+(ouest), Village (nord) ou Forêt (est) ; puis Océan, Marais, Lac ou Automne ;
+enfin Volcan, Rocailleux ou Montagne glacée. Les routes suivent le paysage :
+la Forêt jaunit en Automne qui monte en Montagne, la Plage longe la mer
+(Océan, avec Surf) ou s'enlise au Marais, le Lac s'adosse aux Rocailleux,
+l'Océan finit sur une île volcanique. Chaque porte de route est percée sur le
+bord de la salle qui regarde son biome (`Run.pickExits`) et annonce son biome
+en grand, au-dessus de la récompense de la salle d'après. La Plage mène à
+l'Océan seulement si l'on est parti avec la CS Surf : sans elle, la porte
+reste visible mais fermée (« CS Surf requise »), et le Marais reste ouvert.
+
+Sens des salles (ajout, retour de test : « je sors par la droite et j'arrive
+par le haut ») : on entre dans une salle par le bord d'en face de la porte
+prise (`Run.entrySide`) — sorti à l'est, on arrive à l'ouest. Les formes à
+chemins pivotent d'un quart de tour pour mettre leur entrée de ce côté
+(`orientShape`, `src/world/layouts.ts`, la carte échange largeur et hauteur ;
+rien de dessiné ne tourne, les tuiles se choisissent après) ; la clairière,
+la Plage (la mer se met en face) et l'Océan placent leur entrée eux-mêmes.
+Restent entrés par le bas : le Village (ses rues), la boutique, et le Lac
+quand on arrive du nord (le lac occuperait l'entrée). Une porte unique (vers
+la boutique ou le boss) est celle d'en face, tout droit.
+
+**Route Victoire** (ajout, la zone ultime) : une fois les dix champions des
+biomes vaincus au moins une fois, la run compte un cinquième acte. Au
+quatrième étage, le Conseil (Aldo aux Rocailleux, Agatha au Marais, Peter
+au Volcan, Olga en Montagne) peut garder le biome à la place du champion ; sa
+sortie mène à la Route Victoire (décor des Rocailleux, faune des quatre
+biomes du dernier étage, +6 niveaux), au bout de laquelle attend Régis, le
+Maître de la Ligue, et ses six Pokémon. Le
+champion de l'acte est tiré quand on choisit son biome, rangé par étage
+(`BIOME_CHAMPIONS` : Giovanni garde les Rocailleux, plus le Village). Chaque
 salle lance ses vagues, se libère (+₽), pose une récompense au centre et
 ouvre ses portes : chacune annonce la récompense de la salle suivante. Une
 barrière ferme les sorties tant que la salle n'est pas libérée. Le Pokémon
@@ -118,11 +153,12 @@ Salles spéciales (ajout, `src/run/run.ts` et `room.ts`) : une porte sur
 plusieurs peut en annoncer une (35 %, deux par acte au plus, jamais vers la
 boutique ou le boss). **Défi** ⏱ : les vagues sous chrono (30 s + 10 s par
 vague) ; réussi, ₽ ×3 et un don garanti, raté, les sauvages s'enfuient sans
-récompense. **Piège** ⚠ : la récompense attend au centre d'une salle vide ;
-en approchant, trois vagues serrées à +3 niveaux surgissent (₽ ×2).
-**Marchand ambulant** ¤ (`src/run/merchant.ts`) : Miaouss, sans combat,
-propose un Pari (la moitié de ses ₽, pile ou face) et un Échange (un tiers des
-PV de l'équipe contre un don de légendaire), une fois chacun.
+récompense. **Piège** : sa porte ne le dit pas (retour de test), elle promet
+sa récompense comme une autre ; la récompense attend au centre d'une salle
+vide, et en approchant, trois vagues serrées à +3 niveaux surgissent (₽ ×2).
+Le **Marchand ambulant** (`src/run/merchant.ts`, Miaouss, son Pari et son
+Échange) n'est plus tiré (retour de test : « le marchand, j'en veux pas ») ;
+son code reste.
 
 Météo (ajout, `src/world/weather.ts`) : chaque salle de combat tire son ciel
 selon le biome — souvent clair, parfois Pluie, Soleil ardent, Tempête de
@@ -173,6 +209,11 @@ un sbire dresseur et ses captures plutôt qu'un demi-boss sauvage ; une carte
 agrandie (54 × 36) pour esquiver ses Balls ; prisonniers à libérer (absents
 du jeu) ; grottes aussi hors du Rocailleux ; escorte tirée de la faune faute
 de planches `CAVE_ELITE` ; trois barres au gardien au lieu de quatre.
+
+Départ : on part en passant l'arche au nord du Repaire, sans parler à Dracolosse ni
+passer par un écran (retour de test) ; une équipe trop lourde est refusée sur place,
+et chez un hôte en ligne, c'est lui qui lance la run. Dracolosse le rappelle si on lui
+parle.
 
 Le Repaire (portée de `HubWorld.gd`, redessinée) : le camp des rebelles, où
 le jeu s'ouvre et où l'on revient après chaque run. Une grande clairière de
@@ -291,29 +332,38 @@ une autre place (le premier mène), et les attaques dans leurs quatre
 emplacements — une zone ne s'allume que pour ce qu'elle accepte ; au clavier
 ou au double-clic, un Pokémon déjà choisi entre dans l'équipe ou en sort. La
 fiche montre les statistiques de tout Pokémon cliqué, même resté au camp.
-Son second onglet, le **Pokédex**, montre chaque espèce de la faune, des
-starters et des gardiens de grotte : débloquée, rencontrée (dès qu'elle
-apparaît) ou silhouette d'encre, avec les victoires qui lui manquent.
+Son second onglet, le **Pokédex**, montre chaque forme de base de la faune,
+des starters et des gardiens de grotte (retour de test : on ne recrute pas
+d'évolution, elles n'y ont plus de case) : débloquée, rencontrée (dès qu'elle
+apparaît) ou silhouette d'encre, avec les victoires qui lui manquent ; sa
+fiche montre sa **lignée** (chaque évolution et son niveau, `evolutionsOf`).
 
 Au premier lancement, on choisit son **starter** parmi les neuf du jeu
 (Pikachu, Zorua, Absol, Flamiaou, Grenousse, Ouisticram, Pandespiègle,
 Baggiguane, Riolu) : c'est le seul Pokémon débloqué. Les autres se gagnent
-en run — 20 victoires contre une espèce de base (une évolution ne se
+en run — 10 victoires contre une espèce de base la première fois (une évolution ne se
 débloque pas : elle se gagne en faisant évoluer sa lignée), le prisonnier
 d'une grotte libéré — et rejoignent le Repaire (« ★ X
-rejoint la rébellion ! »).
+rejoint la rébellion ! »). Le premier acte n'aligne que trois espèces de
+base dans ses deux premières salles, cinq ensuite, sans itinérants ni top
+dresseurs (`Run.fauna`, `Run.variety`) : de quoi en vaincre dix d'une même
+espèce dès la première run. La toute première recrue explique, en parlant,
+comment entrer dans l'équipe (bâtir l'Étude chez Charpenti, y acheter une
+place à Alakazam, puis Porygon) ; ce conseil revient sur sa fiche.
 
 Les Baies sont la monnaie permanente (200 au départ). En run, deux ou trois
 **arbres à baies** poussent dans chaque salle (une baie par biome, aucun au
 Volcan, en Rocailleux ni en Océan) : deux coups, au corps à corps ou au tir,
-en font tomber 2 à 4 baies de 3 Baies, à ramasser en marchant dessus avant
+en font tomber 2 à 4 baies d'1 Baie (3 dans le jeu), à ramasser en marchant dessus avant
 qu'elles ne pourrissent (25 s) ; l'Aimant à Baies les attire. Deux salles
 sur trois cachent un **coffre**, souvent au fond d'une alcôve fermée par un
 arbuste (CS Coupe) ou un rocher fissuré (CS Éclate-Roc) selon le biome : [E]
 le lève, puis ouvre le coffre — des Baies, et des **ressources** (Bois,
 Pierre, Nourriture) qui paient avec elles les aménagements du bâtisseur. Un champion vaincu en
-rapporte 120 + 80 par acte, le Dresseur final 300 de plus et la victoire
-500 + 30 par salle ; une défaite en laisse 15 par salle traversée. Gagnée
+rapporte 40 + 25 par acte, le Dresseur final 120 de plus et la victoire
+150 + 6 par salle ; une défaite en laisse 4 par salle traversée (écart voulu,
+retour de test : « une run gagnée, j'avais déjà 2000 Baies » — le jeu donnait
+120 + 80, 300, 500 + 30 et 15 ; les coffres donnent aussi moins). Gagnée
 ou perdue, la run se termine sur son **bilan** (ajout, `src/ui/runsummary.ts`,
 `src/meta/runstats.ts`) : salles, durée, K.O., dons, PV infligés et
 encaissés, Baies et Éclats rapportés, champions vaincus, la part de
@@ -598,3 +648,198 @@ Le jeu en ligne y fonctionne tel quel (HTTPS, signalisation PeerJS publique).
 Limite : entre deux réseaux très fermés (réseau d'entreprise, NAT
 symétrique), la connexion directe WebRTC peut échouer ; il faudrait alors un
 serveur relais TURN.
+
+## Plan du monde et exploits
+
+Ajout (`src/ui/journal.ts`, `src/meta/feats.ts`). Pas de touche (retour de test :
+« je ne vais pas ajouter encore une touche ») : tout se passe au Repaire, dans le
+coin du départ, à gauche de l'arche de Dracolosse.
+
+- **Le panneau du plan** (`Camp.board`) : E ouvre le plan du monde, peint avec
+  les tuiles du jeu (`src/ui/worldplan.ts`) d'après une image de référence du
+  joueur : au nord, des falaises en terrasses sur toute la largeur — le Volcan et
+  sa lave à l'ouest, les Rocailleux et leur mesa au centre, la Montagne glacée,
+  ses sapins enneigés et ses mares de glace à l'est, et la Route Victoire en
+  sommet enneigé au milieu ; les escaliers sont taillés dans des faces droites,
+  là où arrivent les chemins, et la lave et la glace restent au milieu des plateaux ; à l'ouest, la plage et ses
+  palmiers, et la mer de l'Océan ; au centre, le Village, ses maisons, sa rue de briques et sa fontaine, le Marais
+  et ses géants moussus, le Lac cerné d'arbres, et son îlot boisé ; à l'est, les bois d'Automne puis
+  la Forêt ; en bas, la Prairie et ses herbes hautes. Les positions des noms
+  (`PLACES`) ne valent que pour le plan : le sens des portes en run suit
+  `world/worldmap.ts`. Les routes sont de petits chemins de terre peints, tracés
+  à la main (`TRAILS`) : ils partent de la Prairie, se rejoignent comme des
+  sentiers et finissent au pied des escaliers des falaises ; seuls ceux qui
+  partent d'un biome déjà atteint apparaissent (la traversée vers l'Océan, en
+  pointillés d'écume). Chaque zone a son ambiance (`ZONES`) : le Volcan rougeoie
+  et crache des braises, une brume traîne sur le Marais, la neige et la grêle
+  tombent sur la Montagne, des feuilles en Automne, des reflets sur le Lac, et sur la
+  côte de l'Océan le même ressac qu'en run (`ShoreWaves`). Un
+  biome atteint porte son nom et ses champions (✓ une fois vaincus), les autres
+  un « ? ».
+- **Xatu, le chroniqueur** (poste `feats`) : le carnet des exploits, « à la
+  Hades » — chaque champion à battre une fois, le Conseil et le Maître, chaque
+  biome à atteindre, les runs gagnées, la taille de la rébellion. Une ligne par
+  exploit (nom, avancée, récompense) ; ceux qui sont faits se réclament d'un clic
+  ou tous ensemble (Entrée), les réclamés ne restent qu'au compte. Les exploits
+  se dévoilent au fil de l'avancée (`Feat.unlocked`) : le champion d'une zone et
+  les biomes voisins une fois la zone atteinte, le Conseil et le Maître une fois
+  la Route Victoire ouverte, les objectifs suivants de la rébellion une fois le
+  précédent atteint. Un « ! »
+  flotte au-dessus de Xatu quand il y a de quoi réclamer.
+
+## Difficulté
+
+Retour de test : la première run est dure, puis une équipe de six au niveau
+écrase tout, boss compris. Désormais (`src/run/run.ts`) :
+
+- **premier acte doux** : faune réduite (voir plus haut), sauvages de 4 à 8 dans
+  les deux premières salles, pas de top dresseur avant le deuxième acte, et un
+  champion sans sbires de renfort ;
+- **pente qui se raidit** : niveau des salles 10 + salle × 1,2 + acte × 3 (+6 sur
+  la Route Victoire) ;
+- **boss à la hauteur** : le champion part du niveau de son acte +3 (le jeu :
+  18 + salle × 0,7, plus faible que les sauvages du quatrième acte) ; son équipe
+  est complétée par des Pokémon de son type jusqu'à 2, 3, 4, 5 puis 6 selon
+  l'acte (`reinforce`) ; ses sbires passent de 2 au premier acte à 3 + 2 × acte,
+  plus un par paire de membres de l'équipe ; l'affiche de la boutique montre
+  les vrais niveaux (`Run.bossLevel`) ;
+- **l'équipe compte** : dès le deuxième acte, un sauvage de plus par vague par
+  paire de membres (7 au plus), et la part de Pokémon venus d'ailleurs dans les
+  équipes de dresseurs monte d'acte en acte (0, 20 %, 40 %).
+
+Les dresseurs des salles (`Trainer.direct`, `src/entities/trainer.ts`) ne font
+plus les cent pas au hasard : avant leur tour ils gardent leur place, tournés
+vers le joueur ; leurs Pokémon sortis, ils se postent derrière eux, à l'opposé
+du joueur, et reculent s'il fonce sur eux.
+
+## Repaire : places et recrues
+
+- La jauge des places est en haut à gauche : « Le Repaire · 5/6 Pokémon · 2 en
+  attente ».
+- Toutes les recrues en attente (dix au plus) flânent autour du feu, chacune
+  avec son « ! » ; on parle à celle qu'on veut. Repaire plein : « Plus tard » (ou
+  Échap) referme sans renvoyer personne.
+- Les poches de l'atelier du bâtisseur et de l'Étude d'Alakazam sont plus larges,
+  et une trouée sur leur allée les relie à la place (`yardWay`, `studyWay` dans
+  `src/run/camp.ts`).
+
+## Arènes des champions
+
+Ajout (`src/world/arena.ts`, option `arena` de `generate`) : chaque biome a son
+arène, toujours la même (graine fixe, comme la boutique). La clairière ronde
+garde la bordure du biome (anneau d'eau au Lac, de lave au Volcan, montagnes
+aux Rocailleux, île de sable à la Plage) et son sol ; un anneau de décor du lieu
+la cerne (palmiers à la Plage, rochers aux Rocailleux, sapins enneigés et
+cristaux en Montagne, arbres morts au Marais, lampadaires au Village…), ouvert
+seulement aux quatre sorties, que deux torches encadrent. On entre par le sud ;
+les routes de la carte partent au nord, à l'ouest et à l'est. Le champion attend
+au bord nord. (Le terrain pavé d'une première version est retiré : « le sol
+d'arène, c'est pas top ».)
+
+## Son
+
+- Volumes de départ plus bas (musique 30 %, bruitages 50 %), au premier lancement.
+- Plus de musique de combat dans les salles : chaque lieu a la sienne
+  (`BIOME_TRACKS`, `src/audio/sounds.ts`) — Route 1 en Prairie, Parc naturel en
+  Forêt, Route 2 au Lac, Grotte aux Rocailleux et dans les grottes, Plateau Indigo
+  sur la Route Victoire, Poké Mart à la boutique, Surfing à l'Océan… Le combat
+  (Battle trainer) ne joue plus que chez le champion. Ce sont des pistes .mid
+  d'Essentials, rendues en .mp3 une fois pour toutes par `node
+  scripts/midi-to-mp3.ts` (petit synthé façon console portable, ffmpeg requis)
+  dans `public/game/music/`.
+- La météo (grêle, sable…) se lève quand la salle est libérée : on peut fouiller
+  et prendre sa récompense sans perdre de PV.
+
+## Récompenses
+
+- Portes ordinaires : plus de texte, l'icône seule, en grand. La porte vers la
+  boutique le dit (« Boutique », Perrserker en vignette), celle du boss aussi.
+- Dons : chaque légendaire est sa silhouette en pixels (planche PMD) dans une
+  vignette carrée à la couleur de son type, au lieu de l'illustration officielle.
+  Au-dessus de la récompense posée, rien d'écrit : « [E] » apparaît quand on
+  s'approche.
+- Le donateur d'un don se tire dès que la récompense apparaît, même sans porte
+  qui l'annonce : le badge posé et l'écran des dons montrent le même légendaire
+  (avant, le badge de Mew s'affichait par défaut).
+- Couleurs : l'or pour les dons, l'orange pour les attaques, le papier pour le
+  butin (au lieu du cyan, du violet et du vert).
+
+## Tailles des salles
+
+Retour de test : « les zones sont beaucoup trop grandes… les couloirs beaucoup
+trop longs ; la montagne, un peu trop longue ». Les tailles de `layouts.ts`
+baissent : couloirs de 66 × 28 à 46 × 26 au plus, lignes de front de 66 × 26 à
+48 × 24, clairières reliées, carrefours, lacets et littoral d'environ 15 %. La
+Montagne glacée tire surtout des arènes et des carrefours, plus guère de
+couloirs. Le Lac (clairière et boucle) garde à peu près sa taille.
+
+## Butin
+
+Un coffre (ou un champion) annonce chaque gain à part, à la suite : l'icône de
+l'objet (Baies, ressource, matériau, Éclats) et la quantité en gros sur une
+étiquette jaune (`RunHud.notifyAll`).
+
+## Le terrain de chaque biome
+
+Ajout (retour de test : « le but, c'est que chaque biome ait vraiment son gameplay ») :
+
+- **Prairie (et biomes à herbe haute)** : les vraies hautes herbes, les touffes de deux
+  cases (`PROPS.bunches`), poussent en bosquets serrés dans les champs (`WorldMap.hide`,
+  `generate.ts` étape 12). Les sauvages ne se cachent plus que là (`onTallGrass`), et la
+  touffe s'agite quand l'un d'eux y bouge (`renderer.ts`, `rustled`). Les petites herbes
+  restent pour le décor et l'effet sous les pas.
+- **Marais** : la boue (ses plaques, hors chemin) ralentit à 55 % (`Actor.terrainMult`) —
+  sauvages compris ; les Vol et les Spectre n'y sont pas pris, le dash la traverse.
+- **Volcan** : avec la CS Surf, la lave se traverse (`Actor.lavaOk`), mais elle brûle :
+  6 % des PV toutes les 0,6 s, une chance de Brûlure, des flammèches autour du nageur ;
+  jamais de K.O., les Feu y sont insensibles (`run/hazards.ts`).
+- **Rocailleux** : une salle sur deux, deux ou trois tourbillons de sable errent au
+  hasard ; pris dedans, on encaisse 7 % des PV et l'on est éjecté (Roche, Sol, Acier y
+  résistent). Jamais dans l'arène.
+- **Village** : les dresseurs lancent des Poké Balls sur le Pokémon joué, comme le sbire
+  des grottes (`run/capture.ts`), même s'il est seul (le QTE suffit pour s'en sortir) ; la
+  prise revient quand l'équipe de son dresseur est battue. En ligne, être capturé met
+  simplement K.O. jusqu'à la fin de la salle.
+- **Automne** : de temps en temps, une rafale se lève dans une direction, emporte des
+  feuilles et pousse l'équipe (sans dégâts).
+- **Océan** : deux à quatre tourbillons dérivent sur la pleine eau (les ondes de *Water
+  pulse* d'Essentials jouées à l'envers, un œil sombre, une spirale d'écume) ; un nageur
+  pris dedans perd 5 % de ses PV et est recraché au hasard.
+- **Montagne glacée** : la grêle et la glissade, déjà là.
+
+Les Pokémon cachés dans les hautes herbes laissent dépasser le haut de leur tête. La lave
+ne rallume pas la Brûlure plus d'une fois toutes les 10 s (les statuts s'éteignent seuls).
+Une salle libérée relève les membres K.O. avec 1 PV (hors mercenaires).
+
+## Nage
+
+Plus de monture Surf : chaque Pokémon nage avec sa propre planche (attaques comprises),
+en pagayant sans cesse (sa marche en boucle, plus lente sur place), enfoncé de 10 pixels, une collerette d'écume qui respire, des vaguelettes et
+un sillage quand il avance (`Renderer.drawWake`) ; dans la lave, des flammèches.
+
+## Menu principal et logo
+
+`src/ui/titlescreen.ts` et `src/ui/logo.ts` : au lancement, le logo « POKHADES —
+Libérez-les tous ! » (l'illustration du jeu, `public/game/brand/logo.webp`) sur le Repaire
+flouté, et « Jouer », « Réglages », « Commandes ». Sauté sous `?debug`. Favicon et icône
+d'écran d'accueil : la Poké Ball enchaînée du logo (`public/favicon-32.png`,
+`favicon-64.png`, `apple-touch-icon.png` ; source détourée : `public/game/brand/ball.webp`).
+
+## Récompenses, records
+
+- Le don d'un légendaire se montre par son illustration, en grand, détourée d'encre sur un
+  halo de son type ; l'icône d'une porte ordinaire flotte au-dessus de la sortie.
+- Chez Xatu, les records : runs, victoires, salle la plus loin atteinte, champions battus.
+- Prime de lignée : la première fois qu'un membre atteint la forme finale de sa lignée en
+  run, +1 Éclat et 40 Baies (`Save.evolved`).
+
+## Arène du Village, fontaine
+
+- L'arène du champion du Village est une salle d'intérieur façon arène Pokémon
+  (`buildGym`, `src/world/arena.ts`, tuiles de `Gyms interior.png` d'Essentials, relevées
+  dans `GYM`, `tiles.ts`) : murs, sol d'arène, terrain tracé avec la Poké Ball au centre,
+  statues et paillasson à l'entrée, plantes ; trois couloirs de sortie. Ni météo ni
+  particules d'ambiance dedans.
+- La fontaine des villages (et du plan) est celle d'Essentials : le bassin d'`Outside.png`
+  et le jet animé de l'autotile `Fountain1.png`.
+

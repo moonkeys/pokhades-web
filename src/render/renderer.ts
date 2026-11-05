@@ -4,7 +4,7 @@ import { hash2 } from '../core/rng';
 import type { Actor } from '../entities/actor';
 import type { Options } from '../ui/options';
 import { blobTile, useGrid, type WorldMap, type WorldObject } from '../world/generate';
-import { BLOB, SEA, SURF, TILE, type Blob, type Tile } from '../world/tiles';
+import { BLOB, FOUNTAIN, SEA, TILE, type Blob, type Tile } from '../world/tiles';
 import type { FieldFx } from './fieldfx';
 import type { Combat } from '../combat/combat';
 import type { RoomDirector } from '../run/room';
@@ -43,13 +43,17 @@ interface Rect {
 
 const overlap = (a: Rect, b: Rect) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 
+/** Nage : de combien de pixels de planche le corps s'enfonce sous la surface. */
+const SWIM_SUBMERGE = 10;
+/** Les huit orientations des planches PMD (bas, bas-droite, droite…, comme Actor.dir), en vecteur. */
+const DIR_VEC: readonly [number, number][] = [[0, 1], [0.7, 0.7], [1, 0], [0.7, -0.7], [0, -1], [-0.7, -0.7], [-1, 0], [-0.7, 0.7]];
+
 export class Renderer {
   private readonly sctx: CanvasRenderingContext2D;
   private readonly buf = document.createElement('canvas');
   private bctx: CanvasRenderingContext2D;
   private ground: HTMLCanvasElement | null = null;
   private glowMap: HTMLCanvasElement | null = null;
-  private surfCenters: number[] | null = null;
   private readonly waves = new ShoreWaves();
   /** Pixels du sol à l'ombre d'un bâtiment ou d'un arbre (1 octet par px de décor). */
   private shadowMask: Uint8Array | null = null;
@@ -74,7 +78,8 @@ export class Renderer {
   constructor(
     private readonly screen: HTMLCanvasElement,
     private readonly tileset: CanvasImageSource,
-    private readonly surf: HTMLImageElement,
+    /** (La monture Surf n'est plus dessinée : on nage avec son propre sprite, cf. drawWake.) */
+    _surf: HTMLImageElement,
     private readonly fieldSheet: HTMLImageElement | null,
   ) {
     this.sctx = screen.getContext('2d')!;
@@ -86,7 +91,7 @@ export class Renderer {
    * pierre blanche vont avec des ruines) : on les peint au pixel, avec la
    * palette exacte de la paroi des plateaux (relevée sur les cases 52-53,32-34).
    */
-  private static paintStairs(rows: number): HTMLCanvasElement {
+  static paintStairs(rows: number): HTMLCanvasElement {
     const c = document.createElement('canvas');
     c.width = TILE * 2;
     c.height = TILE * rows;
@@ -193,7 +198,7 @@ export class Renderer {
       }
     }
     if (world.paving.length) this.drawPaving(g, world, put);
-    for (const f of world.fountains) this.paintFountain(g, f.x * TILE, f.y * TILE);
+    for (const f of world.fountains) Renderer.paintFountain(g, f.x * TILE, f.y * TILE, this.tileset);
     if (biome.water?.render === 'waves') {
       // Mer : houle partout, et sur la rangée qui touche le sable, le ressac d'écume.
       for (let y = 0; y < world.h; y++) {
@@ -254,64 +259,68 @@ export class Renderer {
   }
 
   /**
-   * Nage : seule la monture Surf est affichée, comme dans le jeu 3D (le
-   * Pokémon posé dessus se lisait mal). La planche est dessinée en ×2 : on la
-   * réduit de moitié, sans perte, pour retrouver le sprite 32 px d'origine.
-   */
-  private drawSurfer(a: Actor, x: number, y: number, s: number, time: number): void {
-    const row = [SURF.rows.down, SURF.rows.right, SURF.rows.up, SURF.rows.left][a.surfFacing];
-    const frame = Math.floor(time * 6) % 4;
-    const half = s / 2;
-    const bob = Math.round(Math.sin(time * 3.2) * this.k);
-    const F = SURF.frame;
-    // Enfoncée de 2 px : la monture touche l'eau au lieu de la survoler.
-    this.bctx.drawImage(
-      this.surf,
-      frame * F,
-      row * F,
-      F,
-      F,
-      Math.round((x - this.camX) * this.k - this.surfCenter(row) * half),
-      Math.round((y - this.camY) * this.k - (SURF.foot - 4) * half) + bob,
-      Math.round(F * half),
-      Math.round(F * half),
-    );
-  }
-
-  /**
-   * Centre horizontal du corps de la monture, ligne par ligne. Les profils
-   * ne sont pas centrés dans leur case de 64 px (la queue déborde d'un côté) :
-   * avec un centre fixe, la monture sautait de 2-3 px à chaque demi-tour.
-   */
-  private surfCenter(row: number): number {
-    if (!this.surfCenters) {
-      const F = SURF.frame;
-      const c = document.createElement('canvas');
-      c.width = F;
-      c.height = F * 4;
-      const g = c.getContext('2d', { willReadFrequently: true })!;
-      g.drawImage(this.surf, 0, 0, F, F * 4, 0, 0, F, F * 4);
-      this.surfCenters = [0, 1, 2, 3].map((r) => {
-        const px = g.getImageData(0, r * F, F, F).data;
-        let sum = 0;
-        let n = 0;
-        // Centroïde des pixels opaques : la queue, fine, pèse peu face au corps.
-        for (let i = 3; i < px.length; i += 4) {
-          if (px[i] > 128) {
-            sum += ((i - 3) / 4) % F;
-            n++;
-          }
-        }
-        return n ? sum / n : SURF.center;
-      });
-    }
-    return this.surfCenters[row];
-  }
-
-  /**
    * Gerbe d'eau à la mise à l'eau / à la sortie : deux ronds qui s'élargissent
    * à la surface et une poignée de gouttes en cloche. Deux tiers de seconde.
    */
+  /**
+   * La collerette d'un Pokémon qui nage : un anneau d'écume à la surface, qui respire, et des
+   * vaguelettes qui s'en éloignent ; derrière lui, quand il avance, un sillage. (cx, cy) : le
+   * milieu de la ligne d'eau, en pixels d'écran.
+   */
+  private drawWake(a: Actor, cx: number, cy: number, s: number, time: number, lava = false): void {
+    const b = this.bctx;
+    const k = this.k;
+    const w = Math.max(6, (a.sheet?.bodyWidth ?? 16) * 0.6) * s;
+    const al = Math.min(1, a.swimBlend * 1.4);
+    if (lava) {
+      // Dans la lave : pas d'écume, des flammèches qui montent autour de lui.
+      for (let i = 0; i < 6; i++) {
+        const u = (time * 1.6 + i / 6 + a.x * 0.1) % 1;
+        const px = cx + Math.sin(i * 2.3 + time) * w;
+        const py = cy - u * 14 * k;
+        b.fillStyle = u < 0.5 ? `rgba(255,210,80,${(1 - u) * al})` : `rgba(255,110,30,${(1 - u) * al})`;
+        b.fillRect(Math.round(px), Math.round(py), k * (u < 0.3 ? 2 : 1), k * 2);
+      }
+      b.strokeStyle = `rgba(255,170,60,${0.8 * al})`;
+      b.lineWidth = k;
+      b.beginPath();
+      b.ellipse(Math.round(cx), Math.round(cy), w, w * 0.32, 0, 0, Math.PI * 2);
+      b.stroke();
+      return;
+    }
+    // L'anneau d'écume, collé au corps.
+    b.strokeStyle = `rgba(240,250,255,${0.85 * al})`;
+    b.lineWidth = k;
+    b.beginPath();
+    b.ellipse(Math.round(cx), Math.round(cy), w + Math.sin(time * 4 + a.x) * k, (w + Math.sin(time * 4 + a.x) * k) * 0.32, 0, 0, Math.PI * 2);
+    b.stroke();
+    // Deux vaguelettes qui s'élargissent et s'effacent.
+    for (const off of [0, 0.5]) {
+      const u = (time * 0.9 + off + a.y * 0.37) % 1;
+      b.strokeStyle = `rgba(220,240,255,${0.55 * (1 - u) * al})`;
+      b.beginPath();
+      b.ellipse(Math.round(cx), Math.round(cy + k), w + u * 7 * k, (w + u * 7 * k) * 0.32, 0, 0, Math.PI * 2);
+      b.stroke();
+    }
+    // Des gouttes d'écume de part et d'autre.
+    b.fillStyle = `rgba(250,253,255,${0.9 * al})`;
+    for (const side of [-1, 1]) {
+      const ph = Math.floor(time * 6 + side) % 3;
+      b.fillRect(Math.round(cx + side * (w + k)), Math.round(cy - k - ph * k * 0.5), k, k);
+    }
+    // Le sillage quand il avance : deux traits qui s'ouvrent derrière lui.
+    if (a.moving) {
+      const [dx, dy] = DIR_VEC[a.dir] ?? [0, 1];
+      for (let i = 1; i <= 3; i++) {
+        const bx = cx - dx * (w * 0.6 + i * 4 * k);
+        const by = cy - dy * i * 2 * k;
+        b.fillStyle = `rgba(235,248,255,${(0.6 - i * 0.15) * al})`;
+        b.fillRect(Math.round(bx - (i + 1) * k), Math.round(by), k * 2, k);
+        b.fillRect(Math.round(bx + (i - 1) * k), Math.round(by), k * 2, k);
+      }
+    }
+  }
+
   private drawSplash(a: Actor): void {
     const t = a.splashAge / 0.65;
     if (t >= 1) return;
@@ -391,40 +400,14 @@ export class Renderer {
   }
 
   /**
-   * Fontaine de place (4 × 3 cases) : le tileset n'en a pas, on la peint au
-   * pixel. Margelle de pierre claire, eau du tileset, paroi avant plus sombre
-   * pour le volume, pilier central (le jet est animé au rendu).
+   * Fontaine de place (3 × 3 cases) : le bassin rond d'Essentials, recopié dans
+   * l'atlas (FOUNTAIN, world/tiles.ts). Il porte déjà un jet immobile : c'est
+   * lui que montre le plan du monde ; en salle, drawJet l'anime par-dessus.
+   * (Remplace la fontaine peinte au pixel, « trop chelou » au retour de test.)
    */
-  private paintFountain(g: CanvasRenderingContext2D, x: number, y: number): void {
-    const px = (ax: number, ay: number, w: number, h: number, c: string) => {
-      g.fillStyle = c;
-      g.fillRect(x + ax, y + ay, w, h);
-    };
-    // Ombre au sol, puis margelle (coins arrondis d'un pixel).
-    px(4, 40, 58, 6, 'rgba(30,26,20,0.22)');
-    px(3, 6, 58, 32, '#c9ccd4');
-    px(2, 7, 60, 30, '#c9ccd4');
-    px(3, 6, 58, 1, '#e6e8ee');
-    // Paroi avant : la margelle a une épaisseur.
-    px(2, 37, 60, 6, '#9ea3b0');
-    px(3, 43, 58, 1, '#6f7482');
-    px(2, 37, 60, 1, '#b3b8c4');
-    // Eau : la tuile d'eau des mares, découpée dans le bassin.
-    g.save();
-    g.beginPath();
-    g.rect(x + 8, y + 11, 48, 22);
-    g.clip();
-    for (let ty = 0; ty < 2; ty++) for (let tx = 0; tx < 3; tx++) g.drawImage(this.tileset, 46 * TILE, 26 * TILE, TILE, TILE, x + 8 + tx * TILE, y + 11 + ty * TILE, TILE, TILE);
-    g.restore();
-    // Rebord intérieur ombré (haut et gauche), reflet en bas.
-    px(8, 11, 48, 2, 'rgba(40,60,90,0.35)');
-    px(8, 11, 2, 22, 'rgba(40,60,90,0.25)');
-    px(8, 32, 48, 1, 'rgba(255,255,255,0.35)');
-    // Pilier central et vasque.
-    px(29, 14, 6, 16, '#b3b8c4');
-    px(29, 14, 2, 16, '#d8dbe2');
-    px(25, 12, 14, 4, '#c9ccd4');
-    px(25, 15, 14, 1, '#8f94a1');
+  static paintFountain(g: CanvasRenderingContext2D, x: number, y: number, tileset: CanvasImageSource): void {
+    const [c, r] = FOUNTAIN.basin;
+    g.drawImage(tileset, c * TILE, r * TILE, FOUNTAIN.w * TILE, FOUNTAIN.h * TILE, x, y, FOUNTAIN.w * TILE, FOUNTAIN.h * TILE);
   }
 
   /**
@@ -496,31 +479,16 @@ export class Renderer {
     g.restore();
   }
 
-  /** Jet de la fontaine : une colonne qui ondule et des gouttes qui retombent en gerbe. */
+  /**
+   * Jet de la fontaine : l'image courante de l'autotile Fountain1 (FOUNTAIN.jet,
+   * 1 × 2 cases), posée sur la colonne du milieu du bassin cuit au sol.
+   */
   private drawJet(x: number, y: number, time: number): void {
-    const b = this.bctx;
     const k = this.k;
-    const dot = (ax: number, ay: number, w: number, h: number, c: string) => {
-      b.fillStyle = c;
-      b.fillRect(Math.round((x + ax - this.camX) * k), Math.round((y + ay - this.camY) * k), w * k, h * k);
-    };
-    const top = 3 + Math.round(Math.sin(time * 5) * 1.5);
-    dot(31, top, 2, 12 - top, 'rgba(220,240,255,0.9)');
-    dot(30, top + 2, 1, 9 - top, 'rgba(160,200,240,0.8)');
-    // Gouttes : 10 trajectoires en arc, chacune à sa phase.
-    for (let i = 0; i < 10; i++) {
-      const t = (time * 1.4 + i / 10) % 1;
-      const side = i % 2 ? 1 : -1;
-      const spread = 4 + (i % 5) * 2.4;
-      const gx = 32 + side * spread * t;
-      const gy = top + 26 * t * t - 10 * t;
-      dot(Math.round(gx), Math.round(gy), 1, 1, t > 0.8 ? 'rgba(255,255,255,0.5)' : 'rgba(235,248,255,0.9)');
-    }
-    // Ronds dans l'eau, au pied du pilier.
-    const r = (time * 0.8) % 1;
-    b.strokeStyle = `rgba(255,255,255,${0.5 * (1 - r)})`;
-    b.lineWidth = k;
-    b.strokeRect(Math.round((x + 32 - 6 - r * 10 - this.camX) * k), Math.round((y + 26 - r * 3 - this.camY) * k), Math.round((12 + r * 20) * k), Math.round((4 + r * 4) * k));
+    const [c, r] = FOUNTAIN.jet[Math.floor(time / FOUNTAIN.frameTime) % FOUNTAIN.jet.length];
+    const dx = Math.round((x + FOUNTAIN.jetDx * TILE - this.camX) * k);
+    const dy = Math.round((y - this.camY) * k);
+    this.bctx.drawImage(this.tileset, c * TILE, r * TILE, TILE, 2 * TILE, dx, dy, TILE * k, 2 * TILE * k);
   }
 
   /**
@@ -832,6 +800,7 @@ export class Renderer {
       grassOver?: WorldObject;
       jet?: { x: number; y: number };
       extra?: (typeof extras)[number];
+      peek?: { a: Actor; x: number; y: number };
     };
     const items: Item[] = [];
     for (const o of world.objects) {
@@ -843,12 +812,23 @@ export class Renderer {
     for (const p of placed) items.push({ y: p.y, actor: p });
     for (const e of extras) items.push({ y: e.y, extra: e });
     for (const f of world.fountains) items.push({ y: (f.y + 3) * TILE - 1, jet: f });
+    // Caché dans les hautes herbes : le haut de sa tête dépasse des touffes (retour de test :
+    // « j'ai du mal à voir »), dessiné après la touffe qui le couvre.
+    for (const a of actors) {
+      if (!a.hidden || !a.sheet || a.trapped || a.deathT >= 0) continue;
+      items.push({ y: a.y * TILE + 20, peek: { a, x: lerp(a.prevX, a.x, alpha) * TILE, y: lerp(a.prevY, a.y, alpha) * TILE } });
+    }
     // Touffes et roseaux traversés : leur bas est redessiné par-dessus le Pokémon.
     const trampled = new Set<WorldObject>();
+    // Un sauvage caché dans les hautes herbes (enemy.ts) : on ne le voit pas, mais sa touffe
+    // s'agite quand il bouge (retour de test : « tu vois quand même quand ça bouge »).
+    const lurkers = actors.filter((a) => a.hidden && a.deathT < 0).map((a) => ({ x: lerp(a.prevX, a.x, alpha) * TILE, y: lerp(a.prevY, a.y, alpha) * TILE, moving: a.moving }));
+    const rustled = new Set<WorldObject>();
     for (const it of items) {
       const o = it.obj;
       if (!o?.sprite.grass) continue;
       const half = o.sprite.rect[2] / 2 - 2;
+      if (lurkers.some((l) => Math.abs(l.x - o.x) < half + 6 && l.y > o.y - 18 && l.y <= o.y + 6 && (l.moving || Math.sin(time * 1.3 + o.x) > 0.85))) rustled.add(o);
       for (const p of placed) {
         if (Math.abs(p.x - o.x) < half && p.y > o.y - 14 && p.y <= o.y + 2) {
           trampled.add(o);
@@ -873,7 +853,7 @@ export class Renderer {
         if (o.sprite.grass) {
           // Vent commun aux herbes ; la touffe qu'on traverse s'agite.
           const wind = Math.sin(time * 1.6 - (o.x / TILE) * 0.45 - (o.y / TILE) * 0.2) * 1.6;
-          const shake = trampled.has(o) ? Math.sin(time * 16) * 1.8 : 0;
+          const shake = trampled.has(o) ? Math.sin(time * 16) * 1.8 : rustled.has(o) ? Math.sin(time * 22 + o.x) * 2.2 : 0;
           // Joueur derrière la touffe (pieds au-dessus de sa base) : on l'éclaircit, comme les arbres.
           const behind = playerBody && playerPlaced!.y < o.y - 12 && overlap(playerBody, { x: dx, y: dy, w: sw, h: sh });
           b.globalAlpha = behind ? 0.5 : 1;
@@ -889,6 +869,15 @@ export class Renderer {
         b.drawImage(this.tileset, sx, sy, sw, sh, Math.round((dx - camX) * k), Math.round((dy - camY) * k), sw * k, sh * k);
         // Chapeau de neige (Montagne glacée), du même cadre que l'arbre.
         if (o.sprite.cap) b.drawImage(this.tileset, o.sprite.cap[0], o.sprite.cap[1], sw, sh, Math.round((dx - camX) * k), Math.round((dy - camY) * k), sw * k, sh * k);
+        b.globalAlpha = 1;
+      } else if (it.peek) {
+        const { a, x, y } = it.peek;
+        const sh = a.sheet!;
+        const s = this.spriteScale(a, opts);
+        const top = sh.topRow;
+        const show = Math.max(3, Math.round((sh.footRow + 1 - top) * 0.32));
+        b.globalAlpha = 0.92;
+        b.drawImage(sh.image, a.frame() * sh.fw, (sh.rows >= 8 ? a.dir : 0) * sh.fh + top, sh.fw, show, Math.round((x - camX) * k - sh.centerCol * s), Math.round((y - camY) * k - (sh.footRow + 1 - top) * s) - Math.round(4 * k), Math.round(sh.fw * s), Math.round(show * s));
         b.globalAlpha = 1;
       } else if (it.jet) {
         this.drawJet(it.jet.x * TILE, it.jet.y * TILE, time);
@@ -910,35 +899,16 @@ export class Renderer {
         const sheet = a.sheet!;
         const s = this.spriteScale(a, opts);
         const row = sheet.rows >= 8 ? a.dir : 0;
-        if (a.swimming && a.nativeSwimmer) {
-          // Pokémon aquatique : il nage lui-même, le bas du corps sous la surface.
-          const visible = Math.max(1, sheet.footRow + 1 - 7);
-          const bob = Math.round(Math.sin(time * 3 + x * 0.1) * k);
-          b.drawImage(
-            sheet.image,
-            a.frame() * sheet.fw,
-            row * sheet.fh,
-            sheet.fw,
-            visible,
-            Math.round((x - camX) * k - sheet.centerCol * s),
-            Math.round((y - camY) * k - visible * s) + bob,
-            Math.round(sheet.fw * s),
-            Math.round(visible * s),
-          );
-          continue;
-        }
         this.drawSplash(a);
-        // Passage terre ↔ eau : la monture apparaît pendant que le Pokémon
-        // bondit dessus en s'effaçant (et l'inverse à la sortie).
-        // (Un nageur natif n'a pas de monture : il plonge, il ne la quitte pas.)
-        const blend = a.nativeSwimmer ? 0 : a.swimBlend;
-        if (blend > 0) {
-          b.globalAlpha = Math.min(1, blend * 1.6);
-          this.drawSurfer(a, x, y, s, time);
-          b.globalAlpha = 1;
-          if (blend >= 1) continue;
-        }
-        const hop = Math.round(Math.sin(Math.PI * blend) * 6 * k);
+        // Nage (retour de test : « garder le sprite du Pokémon et juste des vagues autour… quand
+        // tu as six Pokémon dans l'eau, tu vois toujours le même sprite, et les attaques
+        // marchent mal ») : plus de monture Surf. Chacun garde sa planche, attaques comprises ;
+        // le bas du corps s'enfonce sous la surface (`wet`, en pixels de planche) et une
+        // collerette d'écume l'entoure (après le dessin).
+        const blend = 0;
+        const wet = a.swimBlend * SWIM_SUBMERGE;
+        const bob = wet > 0 ? Math.round(Math.sin(time * 3 + x * 0.1) * k * a.swimBlend) : 0;
+        const hop = -bob;
         // K.O. : fondu en 0,5 s pendant qu'il s'enfonce de 0,45 case en 0,4 s — sauf un membre
         // de l'équipe, qui reste couché, grisé, en attendant d'être ranimé.
         const dying = a.deathT >= 0 && !a.downed ? Math.min(1, a.deathT / 0.5) : 0;
@@ -950,7 +920,9 @@ export class Renderer {
         let src: CanvasImageSource = sheet.image;
         let fw = sheet.fw;
         let fh = sheet.fh;
-        let fx = a.frame() * fw;
+        // Dans l'eau, il pagaie toujours (retour de test : « il est en mode idle, il faut qu'il
+        // ait l'air de nager ») : la marche en boucle, plus lente quand il fait du surplace.
+        let fx = (wet > 0 && sheet.frames > 1 ? Math.floor(time * (a.moving ? 8 : 4) + a.x * 3) % sheet.frames : a.frame()) * fw;
         let fy = row * fh;
         let dx = (x - camX) * k - sheet.centerCol * s;
         let dy = (y - camY) * k - (sheet.footRow + 1) * s;
@@ -1058,7 +1030,10 @@ export class Renderer {
         }
         // Enfoncement : la case descend et sa partie sous la ligne des pieds disparaît.
         const sink = a.deathT >= 0 && !a.downed ? Math.min(1, a.deathT / 0.4) * 0.45 * TILE * k : 0;
-        const rows = sink > 0 ? Math.max(1, Math.min(fh, footRow + 1 - sink / s)) : fh;
+        const dry = sink > 0 ? Math.max(1, Math.min(fh, footRow + 1 - sink / s)) : fh;
+        // Dans l'eau : le corps s'enfonce de `wet` pixels, et on ne dessine que ce qui dépasse.
+        const rows = wet > 0 ? Math.max(1, Math.min(dry, Math.round(footRow + 1 - wet))) : dry;
+        if (wet > 0) dy += wet * s * sqy;
         b.drawImage(
           src,
           fx,
@@ -1072,6 +1047,7 @@ export class Renderer {
           Math.round(rows * s * sqy),
         );
         b.globalAlpha = 1;
+        if (wet > 0) this.drawWake(a, dx + (sheet.centerCol + (fw - sheet.fw) / 2) * s, dy + rows * s * sqy - hop, s, time, world.biome.water?.swim === false);
       }
     }
 

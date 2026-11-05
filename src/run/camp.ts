@@ -13,6 +13,8 @@ import { CAMP_ATELIER_GLADE, CAMP_EAST_GLADE, CAMP_GLADE, CAMP_W, cleanThin, cle
 import { BAR, CAMP_PROPS, CAMPFIRE, EXTRA, FENCES, LAMP, LANE, PLAZA_TILES, PROPS, TILE, TOWN_DECOR, type SpriteDef, type Tile } from '../world/tiles';
 import { Placer, type Spot } from './placement';
 import { drawDummy } from './shop';
+import { LEAGUE_GATE } from './run';
+import { MH as PLAN_H, MW as PLAN_W, paintPlan, type Region } from '../ui/worldplan';
 
 // Le Repaire, le camp des rebelles entre deux runs (HubWorld.gd, redessiné) :
 // une clairière de nuit autour d'un grand feu cerclé de torches, un lac au
@@ -67,7 +69,7 @@ import { drawDummy } from './shop';
 // sur 116 × 96 cases), des aménagements payés en Baies en plus du bois, de la
 // pierre et des vivres, et un camp qui s'agrandit sur la forêt.
 
-export type Station = 'start' | 'team' | 'builder' | 'missions' | 'quests' | 'lore' | 'moves' | 'upgrades' | 'items' | 'online' | 'garden' | 'craft' | 'visitor' | 'recruit';
+export type Station = 'start' | 'team' | 'builder' | 'missions' | 'quests' | 'lore' | 'moves' | 'upgrades' | 'items' | 'online' | 'garden' | 'craft' | 'visitor' | 'recruit' | 'feats' | 'map';
 
 export const STATIONS: Record<Station, { id: number; type: string; title: string; kicker: string; intro: string }> = {
   start: {
@@ -104,6 +106,24 @@ export const STATIONS: Record<Station, { id: number; type: string; title: string
     title: 'Quêtes',
     kicker: 'la doyenne',
     intro: 'J’ai vu passer bien des rebelles, petit. Les plus forts ne sont pas ceux qui frappent le plus fort, mais ceux qui relèvent les défis. Relève les miens, et des amis rares te rejoindront.',
+  },
+  // Ajout (retour de test : « au lieu d'appuyer sur une touche, créer un PNJ » ; « un panneau
+  // avec un plan, juste avant de partir ») : Xatu, qui voit le passé et l'avenir, tient le
+  // carnet des exploits près de l'arche du départ ; à côté, le plan du monde sur un panneau.
+  feats: {
+    id: CAMP_NPCS.feats,
+    type: 'psychic',
+    title: 'Exploits',
+    kicker: 'le chroniqueur',
+    intro: 'Je vois ce que tu as fait… et ce qu’il te reste à faire. Chaque champion qui tombe, chaque terre que tu foules, je l’inscris. Reviens me voir : la rébellion récompense ceux qui écrivent son histoire.',
+  },
+  map: {
+    // (Pas de gardien : le panneau du plan, à côté de l'arche.)
+    id: 0,
+    type: 'normal',
+    title: 'Plan du monde',
+    kicker: 'le panneau du départ',
+    intro: '',
   },
   lore: {
     id: CAMP_NPCS.lore,
@@ -192,6 +212,8 @@ const LINES = {
   trainer: ['Encore une série. Le champion, lui, ne se repose pas.', 'Ce mannequin a la tête de {champion}. Enfin, je l’imagine.', 'Frappe, esquive, recommence. C’est tout.'],
 };
 
+/** Recrues montrées au Repaire à la fois (les suivantes attendent leur tour, hors champ). */
+const MAX_CANDIDATES_SHOWN = 10;
 /** Portée d'un poste (on parle à son gardien ou on s'approche de l'arche) et d'un Pokémon à qui parler. */
 const POST_REACH = 2.4;
 const TALK_REACH = 2;
@@ -266,6 +288,11 @@ const POSTS = {
   lab: [-15, 19.5],
   relay: [8, -12.4],
   gate: [0.5, -14],
+  // Le coin du départ, à gauche de l'arche : le panneau du plan du monde et Xatu.
+  chronicle: [-6.5, -10.5],
+  // Les passages de la place vers l'atelier du bâtisseur et l'Étude : à mi-chemin, sur leur allée.
+  yardWay: [-4.5, 6.5],
+  studyWay: [-9, 3.4],
 } as const satisfies Record<string, readonly [number, number]>;
 
 /**
@@ -279,11 +306,16 @@ export function campPockets(built: readonly BuildingId[], hub: { x: number; y: n
   const has = (b: BuildingId) => built.includes(b);
   return [
     p('gate', 6, 3.5),
+    p('chronicle', 5.5, 3.8),
     p('relay', 5, 3.5),
     p('hut', 6, 4.5),
-    p('yard', 6.5, 4.5),
+    // Retour de test : « il y a un peu trop d'arbres qui gênent… je dois faire tout un détour »
+    // pour l'atelier du bâtisseur et l'Étude d'Alakazam. Leurs poches sont plus larges, et une
+    // trouée sur leur allée les relie à la place.
+    p('yard', 8, 5.5),
+    p('yardWay', 5, 4),
     p('lab', 6.5, 4.5),
-    ...(has('study') ? [p('study', 6, 4.5)] : []),
+    ...(has('study') ? [p('study', 7.5, 5.5), p('studyWay', 5.5, 4)] : []),
     ...(has('market') ? [p('market', 9, 4.5)] : []),
     ...(has('dorm') ? [p('dorm', 8.5, 4.5)] : []),
     ...(has('training') ? [p('training', 6.5, 4)] : []),
@@ -315,6 +347,10 @@ interface Post {
   rest: number;
   /** Repère « ! » : du neuf à son poste (meta/news.ts) ; caché sinon. */
   news: HTMLElement;
+  /** Recrue : son rang dans la file d'attente (Save.candidates). */
+  arg?: number;
+  /** Une recrue flâne autour du feu en attendant qu'on lui parle. */
+  wander?: { home: Spot; radius: number; goal: Spot; wait: number };
 }
 
 interface Talker {
@@ -349,6 +385,14 @@ export class Camp {
   /** Les parcelles mûres du potager : la plante à récolter, qui flotte au-dessus. */
   private beds: Bed[] = [];
   private near: Post | Talker | null = null;
+  /** Le panneau du plan du monde, à côté de l'arche ; on s'en approche (pas de gardien). */
+  private board: Spot | null = null;
+  /** On passe l'arche du départ (main.ts lance la run) ; `leaveT` évite de la relancer en boucle. */
+  onLeave: (() => void) | null = null;
+  private leaveT = 0;
+  /** Le plan en petit, peint sur le panneau. */
+  private boardArt: HTMLCanvasElement | null = null;
+  private atBoard = false;
   private lead = '';
   private readonly icons = new Map<string, HTMLImageElement>();
   private flame: HTMLImageElement | null = null;
@@ -359,7 +403,7 @@ export class Camp {
 
   constructor(
     parent: HTMLElement,
-    private readonly open: (station: Station) => void,
+    private readonly open: (station: Station, arg?: number) => void,
     /** Planche du décor : le temple et le ponton se dessinent à part (escalier, plancher praticables). */
     private readonly atlas: CanvasImageSource,
   ) {
@@ -384,6 +428,8 @@ export class Camp {
   clear(): void {
     this.active = false;
     this.posts = [];
+    this.board = null;
+    this.atBoard = false;
     this.talkers = [];
     this.stalls = [];
     this.jetty = null;
@@ -404,7 +450,12 @@ export class Camp {
    * mission), une par individu ;
    * `craft` : les parcelles du potager et le nectar posé devant l'atelier.
    */
-  build(world: WorldMap, built: readonly BuildingId[], unlocked: readonly number[] = [], craft: Pick<Save, 'garden' | 'nectar' | 'candidates'> = { garden: [], nectar: null, candidates: [] }): void {
+  build(
+    world: WorldMap,
+    built: readonly BuildingId[],
+    unlocked: readonly number[] = [],
+    craft: Pick<Save, 'garden' | 'nectar' | 'candidates'> & Partial<Pick<Save, 'visited' | 'beaten'>> = { garden: [], nectar: null, candidates: [] },
+  ): void {
     this.clear();
     this.active = true;
     this.layer.append(this.mark);
@@ -636,7 +687,9 @@ export class Camp {
       seats.push(s);
     }
 
-    // Le départ : l'arche de lierre. Au-delà, l'allée est barrée : on ne part qu'en parlant à Dracolosse.
+    // Le départ : l'arche de lierre. On part en la passant (retour de test : « dès qu'on passe la
+    // porte au nord, lancer la run, plus besoin de l'écran ») : l'allée au-delà reste barrée,
+    // et pousser vers le nord sous l'arche appelle `onLeave` (update).
     this.gate = { x: gx, y: gy + 0.95 };
     put(CAMP_PROPS.arch, gx, gy + 0.95, false);
     place.block(Math.floor(gx - 1.6), gy);
@@ -644,9 +697,27 @@ export class Camp {
     for (let y = 0; y < gy; y++) for (let x = 0; x < W; x++) if (isPath(x, y)) place.block(x, y);
     put(CAMP_PROPS.torch, gx - 2.6, gy + 0.95);
     put(CAMP_PROPS.torch, gx + 2.6, gy + 0.95);
-    const posts: [Station, Spot, number][] = [['start', place.freeSpot(Math.floor(gx) + 3, gy + 1, 3), 6]];
-    // La recrue qui attend (Save.candidates) : près du feu, là où l'on arrive, un « ! » au-dessus.
-    if (craft.candidates.length) posts.push(['recruit', place.freeSpot(hx + 3, hy + 4, 2), 0]);
+    const posts: [Station, Spot, number, number?][] = [['start', place.freeSpot(Math.floor(gx) + 3, gy + 1, 3), 6]];
+    // À gauche de l'arche : le panneau du plan du monde, et Xatu, le chroniqueur des exploits.
+    const corner = { x: hx + POSTS.chronicle[0], y: hy + POSTS.chronicle[1] };
+    // Le panneau porte le plan lui-même, en petit et en pixels (retour de test : « afficher la
+    // carte en pixelisé sur une pancarte, puis E pour la voir en grand ») : le plan du monde
+    // (ui/worldplan.ts), réduit, dans un cadre de bois sur deux poteaux.
+    this.board = { x: corner.x - 2, y: corner.y };
+    for (let dx = -2; dx <= 2; dx++) place.block(Math.floor(this.board.x + dx), Math.floor(this.board.y - 0.05));
+    const visited = craft.visited ?? [];
+    const league = LEAGUE_GATE.every((n) => craft.beaten?.includes(n));
+    this.boardArt = miniPlan(this.atlas, (r) => (r === 'victoire' ? league : r === 'prairie' || visited.includes(r)));
+    posts.push(['feats', place.freeSpot(Math.floor(corner.x + 1.5), Math.floor(corner.y + 0.5), 2), 0]);
+    // Les recrues qui attendent (Save.candidates) : toutes, autour du feu, là où l'on arrive, un
+    // « ! » au-dessus de chacune. Elles flânent sur la place en attendant qu'on leur parle.
+    // Écart voulu (retour de test : « il faudrait que tous les Pokémon que je débloque et qui
+    // attendent apparaissent et se baladent dans le hub, sinon je ne vois pas qui j'ai ») :
+    // avant, seule la première de la file se montrait.
+    craft.candidates.slice(0, MAX_CANDIDATES_SHOWN).forEach((_, k) => {
+      const a = (k / Math.max(1, Math.min(MAX_CANDIDATES_SHOWN, craft.candidates.length))) * Math.PI * 2 + 0.4;
+      posts.push(['recruit', place.freeSpot(Math.floor(hx + Math.cos(a) * 5.5), Math.floor(hy + 1 + Math.sin(a) * 4), 2), 0, k]);
+    });
 
     // La hutte de l'équipe, à l'est : le registre des libérés est épinglé au panneau d'à côté.
     put(CAMP_PROPS.thatchHut, hut.x, hut.y);
@@ -1033,12 +1104,14 @@ export class Camp {
     // (Dessiné centré sur ses deux colonnes d'escalier, pas sur l'île : les marches tombent pile sous les pieds.)
     this.temple = { x: sx + 1, y: island.y, top: Math.floor(island.y) - STEPS };
 
-    for (const [station, spot, rest] of posts) {
+    for (const [station, spot, rest, arg] of posts) {
       const news = document.createElement('div');
       news.className = 'room-label camp-news';
       news.hidden = true;
       this.layer.append(news);
-      this.posts.push({ station, actor: this.spawn(stationId(station, built, craft.nectar?.visitor, craft.candidates[0]?.species), spot, rest, ['Idle']), rest, news });
+      const id = stationId(station, built, craft.nectar?.visitor, craft.candidates[arg ?? 0]?.species);
+      const wander = station === 'recruit' ? { home: spot, radius: 2.2, goal: spot, wait: Math.random() * 2 } : undefined;
+      this.posts.push({ station, actor: this.spawn(id, spot, rest, ['Idle']), rest, news, arg, wander });
     }
 
     // Les libérés qu'on n'emmène pas, et eux seuls : ceux d'eau nagent dans le lac ; les autres
@@ -1194,12 +1267,21 @@ export class Camp {
   update(dt: number, input: InputSample, player: Actor, world: WorldMap): void {
     if (!this.active) return;
     this.lead = player.info?.name ?? 'toi';
+    // Sous l'arche, en marchant vers le nord : on part.
+    this.leaveT = Math.max(0, this.leaveT - dt);
+    // (On bute contre le seuil une case et demie sous la ligne de l'arche : c'est là qu'on la passe.)
+    if (this.onLeave && this.leaveT <= 0 && input.my < -0.3 && Math.abs(player.x - this.gate.x) < 1.4 && player.y < this.gate.y + 1.8) {
+      this.leaveT = 1.5;
+      this.onLeave();
+      return;
+    }
     // Le poste le plus proche (l'arche compte pour le départ), sinon un Pokémon à qui parler.
     // Celui à qui l'on parle déjà garde la main un peu plus loin : le repère ne saute pas
     // d'un voisin à l'autre au bord de la portée.
     const dist = (n: Post | Talker) => {
       const d = Math.hypot(player.x - n.actor.x, player.y - n.actor.y);
-      return 'station' in n && n.station === 'start' ? Math.min(d, Math.hypot(player.x - this.gate.x, player.y - this.gate.y)) : d;
+      // (L'arche ne compte plus pour Dracolosse : on part en la passant, sans lui parler.)
+      return d;
     };
     const keep = this.near && dist(this.near) < ('station' in this.near ? POST_REACH : TALK_REACH) + STICKY ? this.near : null;
     let near: Post | Talker | null = keep;
@@ -1221,9 +1303,17 @@ export class Camp {
         }
       }
     }
+    // Le panneau du plan : s'il est plus près que tout gardien, c'est lui qu'on regarde.
+    const db = this.board ? Math.hypot(player.x - this.board.x, player.y - (this.board.y + 0.6)) : Infinity;
+    this.atBoard = db < POST_REACH && (!near || db < dist(near));
+    if (this.atBoard) near = null;
     this.near = near;
     // Les gardiens se tournent vers qui vient leur parler.
     for (const p of this.posts) {
+      if (p.wander) {
+        this.stroll(p, p.wander, dt, world, p === near ? player : null);
+        continue;
+      }
       p.actor.dir = p === near ? dirFromVector(player.x - p.actor.x, player.y - p.actor.y) : p.rest;
       p.actor.tickTimers(dt);
     }
@@ -1247,8 +1337,9 @@ export class Camp {
     }
     this.mark.classList.toggle('open', Boolean(near && 'station' in near));
     this.renderPrompt();
+    if (input.interact && this.atBoard) return void this.open('map');
     if (!input.interact || !near) return;
-    if ('station' in near) this.open(near.station);
+    if ('station' in near) this.open(near.station, near.arg);
     else {
       near.bubble.textContent = fillLine(near.lines[near.talk++ % near.lines.length], { champion: 'la Ligue', zone: 'le Repaire', lead: this.lead });
       near.bubbleT = 3.5;
@@ -1261,7 +1352,7 @@ export class Camp {
    * son point d'attache, une pause, un autre but. Un nageur ne quitte pas
    * l'eau. On s'arrête pour écouter celui qui vient parler.
    */
-  private stroll(f: Talker, w: NonNullable<Talker['wander']>, dt: number, world: WorldMap, listener: Actor | null): void {
+  private stroll(f: { actor: Actor }, w: NonNullable<Talker['wander']>, dt: number, world: WorldMap, listener: Actor | null): void {
     const a = f.actor;
     let mx = 0;
     let my = 0;
@@ -1292,7 +1383,7 @@ export class Camp {
 
   private renderPrompt(): void {
     const n = this.near;
-    const hint = !n ? '' : 'station' in n ? `[E] ${n.actor.info?.name ?? '…'} — ${STATIONS[n.station].title}` : `[E] Parler à ${n.actor.info?.name ?? '…'}`;
+    const hint = this.atBoard ? '[E] Plan du monde' : !n ? '' : 'station' in n ? `[E] ${n.actor.info?.name ?? '…'} — ${STATIONS[n.station].title}` : `[E] Parler à ${n.actor.info?.name ?? '…'}`;
     if (this.prompt.dataset.key === hint && this.prompt.hidden === !hint) return;
     this.prompt.dataset.key = hint;
     this.prompt.hidden = !hint;
@@ -1308,6 +1399,9 @@ export class Camp {
       // Le temple se trie sur le haut de son escalier : qui le gravit passe devant lui.
       { y: this.temple.top * TILE, draw: (b, camX, camY, k) => this.drawSprite(b, camX, camY, k, CAMP_PROPS.ruins, this.temple.x, this.temple.y) },
     ];
+    const board = this.board;
+    const art = this.boardArt;
+    if (board && art) out.push({ y: board.y * TILE, draw: (b, camX, camY, k) => drawPlanBoard(b, art, Math.round((board.x * TILE - camX) * k), Math.round((board.y * TILE - camY) * k), k) });
     // Le ponton, au ras du sol : on marche sur son plancher.
     const jetty = this.jetty;
     if (jetty) out.push({ y: -Infinity, draw: (b, camX, camY, k) => this.drawSprite(b, camX, camY, k, CAMP_PROPS.jetty, jetty.x, jetty.y) });
@@ -1441,3 +1535,47 @@ export class Camp {
     }
   }
 }
+
+/** Le plan du monde en petit : peint en grand (ui/worldplan.ts), puis réduit à 1,5 px par case. */
+function miniPlan(atlas: CanvasImageSource, seen: (r: Region) => boolean): HTMLCanvasElement {
+  const big = document.createElement('canvas');
+  big.width = PLAN_W * TILE;
+  big.height = PLAN_H * TILE;
+  const g = big.getContext('2d')!;
+  g.imageSmoothingEnabled = false;
+  paintPlan(g, atlas, seen);
+  const mini = document.createElement('canvas');
+  mini.width = Math.round(PLAN_W * 1.5);
+  mini.height = Math.round(PLAN_H * 1.5);
+  const m = mini.getContext('2d')!;
+  // Réduit en moyennant les couleurs : en grand, on le redessine sans lissage, des pixels francs.
+  m.imageSmoothingEnabled = true;
+  m.imageSmoothingQuality = 'high';
+  m.drawImage(big, 0, 0, mini.width, mini.height);
+  return mini;
+}
+
+/** Le panneau du plan : un cadre de bois sombre, le plan dedans, deux poteaux ; pied en (px, py). */
+function drawPlanBoard(b: CanvasRenderingContext2D, art: HTMLCanvasElement, px: number, py: number, k: number): void {
+  const frame = 3;
+  const post = 9;
+  const w = art.width + frame * 2;
+  const h = art.height + frame * 2;
+  const x0 = px - Math.round((w / 2) * k);
+  const y0 = py - Math.round((h + post) * k);
+  b.fillStyle = 'rgba(16,24,12,0.28)';
+  b.fillRect(x0 + 2 * k, py - 2 * k, (w - 4) * k, 3 * k);
+  // Les poteaux.
+  b.fillStyle = '#4a2e18';
+  for (const ox of [6, w - 9]) b.fillRect(x0 + ox * k, y0 + (h - 2) * k, 3 * k, (post + 2) * k);
+  // Le cadre : une planche sombre, un liseré clair en haut.
+  b.fillStyle = '#3b2414';
+  b.fillRect(x0, y0, w * k, h * k);
+  b.fillStyle = '#8a5a32';
+  b.fillRect(x0 + k, y0 + k, (w - 2) * k, k);
+  const smooth = b.imageSmoothingEnabled;
+  b.imageSmoothingEnabled = false;
+  b.drawImage(art, x0 + frame * k, y0 + frame * k, art.width * k, art.height * k);
+  b.imageSmoothingEnabled = smooth;
+}
+

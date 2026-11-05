@@ -69,8 +69,8 @@ export const DEFAULTS: Options = {
   wild: true,
   debug: false,
   shake: true,
-  music: 0.6,
-  sfx: 0.8,
+  music: 0.3,
+  sfx: 0.5,
   muted: false,
   version: 3,
 };
@@ -89,7 +89,11 @@ export function loadOptions(): Options {
       delete saved.species;
       // Plus réglables depuis le menu (ui/settingsmenu.ts) : on revient au
       // rendu prévu, même si un ancien réglage les avait changés.
-      return { ...DEFAULTS, ...saved, size: DEFAULTS.size, shadows: true, treeFade: true, grading: true, version: DEFAULTS.version };
+      const opts = { ...DEFAULTS, ...saved, size: DEFAULTS.size, shadows: true, treeFade: true, grading: true, version: DEFAULTS.version };
+      // Jeu publié : le panneau n'a plus ces réglages de test (ui/panel.ts) ; un ancien
+      // réglage gardé dans le navigateur ne doit pas fausser la partie.
+      if (import.meta.env.PROD) Object.assign(opts, { biome: DEFAULTS.biome, weather: DEFAULTS.weather, layout: DEFAULTS.layout, wild: true, debug: false });
+      return opts;
     }
   } catch {
     // Stockage indisponible (navigation privée…) : réglages par défaut.

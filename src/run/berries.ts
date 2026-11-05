@@ -31,8 +31,8 @@ const CELL_H = 64;
 const SCALE = 0.5;
 /** BerryTree.gd : 2 coups. */
 const TREE_HP = 2;
-/** BerryPickup.VALUE */
-const VALUE = 3;
+/** BerryPickup.VALUE vaut 3. Écart voulu (retour de test : trop de Baies en fin de run) : 1. */
+const VALUE = 1;
 /** BerryPickup.LIFETIME, en secondes ; elles clignotent les 3 dernières. */
 const LIFETIME = 25;
 /** Distance de ramassage, en cases (Godot 1,1 en unités 3D : un peu moins ici, il faut marcher dessus). */

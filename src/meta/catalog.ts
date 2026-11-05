@@ -311,16 +311,23 @@ export type CsId = 'surf' | 'cut' | 'strength' | 'rock-smash';
  * coffres de run (run/chests.ts). Force (pousser un rocher) viendra plus tard.
  */
 export const CS_LIST: readonly { id: CsId; name: string; price: number; desc: string; ready: boolean; icon: string }[] = [
-  { id: 'surf', name: 'Surf', price: 250, desc: 'Nager à travers l’eau : le lac du Repaire, l’île qu’il garde, et en run la route de l’Océan depuis la Plage.', ready: true, icon: 'machine_WATER' },
+  { id: 'surf', name: 'Surf', price: 250, desc: 'Nager à travers l’eau : le lac du Repaire et l’île qu’il garde, et en run l’eau des salles (l’îlot du Lac, la mer de la Plage) et la route de l’Océan. Sans elle, on ne nage plus.', ready: true, icon: 'machine_WATER' },
   { id: 'cut', name: 'Coupe', price: 200, desc: 'Couper les arbustes qui gardent les coffres des prairies, forêts, marais et lacs.', ready: true, icon: 'machine_GRASS' },
   { id: 'rock-smash', name: 'Éclate-Roc', price: 180, desc: 'Briser les rochers fissurés qui gardent les coffres des volcans, rocailles, montagnes glacées, villages et plages.', ready: true, icon: 'machine_FIGHTING' },
   { id: 'strength', name: 'Force', price: 220, desc: 'Pousser les rochers qui bloquent l’accès à certains coffres.', ready: false, icon: 'machine_NORMAL' },
 ];
 
-/** Baies gagnées (CombatArena.gd) : boss, victoire finale, et consolation d'une défaite. */
+/**
+ * Baies gagnées (CombatArena.gd) : boss, victoire finale, et consolation d'une défaite.
+ * Écart voulu (retour de test : « on se fait de l'argent beaucoup trop facilement… une
+ * run gagnée, j'avais déjà 2000 Baies ») : divisées par trois environ — le jeu donnait
+ * 120 + 80 par acte au boss, 300 au Dresseur final et 500 + 30 par salle à la victoire.
+ * Les arbres (run/berries.ts) et les coffres (run/chests.ts) donnent moins aussi ; les
+ * exploits du carnet (meta/feats.ts) paient surtout en Éclats.
+ */
 export const BAIES = {
-  boss: (act: number) => 120 + act * 80,
-  finalBonus: 300,
-  victory: (rooms: number) => 500 + rooms * 30,
-  defeat: (rooms: number) => rooms * 15,
+  boss: (act: number) => 40 + act * 25,
+  finalBonus: 120,
+  victory: (rooms: number) => 150 + rooms * 6,
+  defeat: (rooms: number) => rooms * 4,
 };

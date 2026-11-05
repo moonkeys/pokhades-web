@@ -165,13 +165,20 @@ for (const [, berry] of BIOMES_SRC.matchAll(/^\s*berry: '(\w+)',/gm)) {
 // Coffres de run (src/run/chests.ts) : les obstacles levés par les CS, et les icônes des ressources qu'on y trouve.
 for (const f of ['Object tree 1.png', 'Object rock.png']) renamed.push([`${ESSENTIALS}/Characters/${f}`, `assets/essentials/objects/${f}`]);
 for (const r of Object.values(RESOURCES)) if (r.icon) renamed.push([`${ESSENTIALS}/Items/${r.icon}.png`, `assets/essentials/items/${r.icon}.png`]);
+// La fontaine du village (bassin d'Outside.png, jet animé de l'autotile Fountain1) et l'arène
+// d'intérieur du champion du Village (Gyms interior.png). Planches entières : src/assets/atlas.ts
+// en recopie les cases utiles, réduites de moitié, dans des cases vides de l'atlas
+// (cf. ESSENTIALS_BLOCKS dans src/world/tiles.ts). Découper ici demanderait une dépendance.
+renamed.push([`${ESSENTIALS}/Tilesets/Outside.png`, 'assets/essentials/tilesets/Outside.png']);
+renamed.push([`${ESSENTIALS}/Tilesets/Gyms interior.png`, 'assets/essentials/tilesets/Gyms interior.png']);
+renamed.push([`${ESSENTIALS}/Autotiles/Fountain1.png`, 'assets/essentials/autotiles/Fountain1.png']);
 for (const f of ['ball_BEASTBALL', 'ball_BEASTBALL_open', 'ballBurst_particle', 'ballBurst_particle_s', 'ballBurst_dazzle']) {
   renamed.push([`${ESSENTIALS}/Battle animations/${f}.png`, `assets/essentials/battle/${f}.png`]);
 }
 
 // Sons et musiques (src/audio/sounds.ts), tous d'Essentials : à plat dans audio/.
 // Les sons d'attaque vont dans audio/anim/ (servedPath).
-for (const f of [...Object.values(SOUNDS).flatMap((d) => d.files), ...Object.values(MUSIC).map((m) => m.file), ...ANIM_FILES]) renamed.push([f, servedPath(f)]);
+for (const f of [...Object.values(SOUNDS).flatMap((d) => d.files), ...Object.values(MUSIC).filter((m) => !m.served).map((m) => m.file), ...ANIM_FILES]) renamed.push([f, servedPath(f)]);
 
 // Capacités apprises par montée de niveau, jouables comme sauvages : leurs
 // fiches (type, puissance, classe) alimentent le combat, et celles des
@@ -209,7 +216,7 @@ for (const id of species) {
 
 const OUT = path.join(WEB, 'public', 'game');
 // On repart de zéro (sauf le fichier extrait à la main) : une espèce retirée de la liste disparaît aussi.
-for (const sub of ['assets/tilesets', 'assets/cs', 'assets/fx', 'assets/essentials/animations', 'assets/essentials/ui', 'assets/essentials/trainers', 'assets/essentials/battle', 'assets/essentials/items', 'audio', 'data']) fs.rmSync(path.join(OUT, sub), { recursive: true, force: true });
+for (const sub of ['assets/tilesets', 'assets/cs', 'assets/fx', 'assets/essentials/animations', 'assets/essentials/ui', 'assets/essentials/trainers', 'assets/essentials/battle', 'assets/essentials/items', 'assets/essentials/tilesets', 'assets/essentials/autotiles', 'audio', 'data']) fs.rmSync(path.join(OUT, sub), { recursive: true, force: true });
 
 let copied = 0;
 let remote = 0;
