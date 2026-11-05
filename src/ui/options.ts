@@ -69,8 +69,8 @@ export const DEFAULTS: Options = {
   wild: true,
   debug: false,
   shake: true,
-  music: 0.6,
-  sfx: 0.8,
+  music: 0.3,
+  sfx: 0.5,
   muted: false,
   version: 3,
 };
