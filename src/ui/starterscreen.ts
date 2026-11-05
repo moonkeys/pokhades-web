@@ -26,6 +26,12 @@ export interface PickOptions {
   go: string;
   /** Un second bouton, qui referme sans choisir (onPick reçoit -1). */
   cancel?: string;
+  /**
+   * Un troisième bouton, « plus tard », qui referme sans rien décider (onPick reçoit -2) ;
+   * c'est alors lui que prend Échap. Ajout (retour de test : « si je fais Échap, je ne
+   * peux pas juste annuler, je suis obligé de choisir qui part »).
+   */
+  later?: string;
 }
 
 const STARTER: PickOptions = {
@@ -53,6 +59,7 @@ export class StarterScreen {
   private sel = 0;
   private ids: readonly number[] = STARTER_IDS;
   private cancelable = false;
+  private deferrable = false;
 
   constructor(parent: HTMLElement) {
     this.root = el('div', 'stats starter', parent);
@@ -70,6 +77,7 @@ export class StarterScreen {
         else if (e.code === 'ArrowUp') this.select((this.sel + n - COLS) % n);
         else if (e.code === 'ArrowDown') this.select((this.sel + COLS) % n);
         else if (e.code === 'Enter' || e.code === 'NumpadEnter' || e.code === 'Space' || e.code === 'KeyE') this.pick();
+        else if (e.code === 'Escape' && this.deferrable) this.pick(true, true);
         else if (e.code === 'Escape' && this.cancelable) this.pick(true);
       },
       { capture: true },
@@ -84,11 +92,12 @@ export class StarterScreen {
     this.onPick = onPick;
     this.ids = o.ids;
     this.cancelable = !!o.cancel;
+    this.deferrable = !!o.later;
     this.root.replaceChildren();
     const page = el('div', 'stats-page starter-page', this.root);
     const head = el('div', 'stats-head', page);
     el('span', 'da-tape', head, o.tape);
-    el('small', 'stats-keys', head, 'Flèches ou clic : choisir · Entrée : valider');
+    el('small', 'stats-keys', head, `Flèches ou clic : choisir · Entrée : valider${o.later ? ' · Échap : plus tard' : ''}`);
     el('p', 'starter-quote', page, o.quote);
     const grid = el('div', 'starter-grid', page);
     this.cards = o.ids.map((id, i) => {
@@ -114,6 +123,7 @@ export class StarterScreen {
     const go = el('button', 'starter-go', row, o.go);
     go.addEventListener('click', () => this.pick());
     if (o.cancel) el('button', 'starter-go cancel', row, o.cancel).addEventListener('click', () => this.pick(true));
+    if (o.later) el('button', 'starter-go cancel', row, o.later).addEventListener('click', () => this.pick(true, true));
     this.select(0);
     this.root.hidden = false;
   }
@@ -123,9 +133,9 @@ export class StarterScreen {
     this.cards.forEach((c, k) => c.classList.toggle('sel', k === i));
   }
 
-  private pick(cancel = false): void {
+  private pick(cancel = false, later = false): void {
     if (this.root.hidden) return;
-    const index = cancel ? -1 : this.sel;
+    const index = later ? -2 : cancel ? -1 : this.sel;
     const id = cancel ? -1 : this.ids[this.sel];
     this.root.hidden = true;
     this.root.replaceChildren();

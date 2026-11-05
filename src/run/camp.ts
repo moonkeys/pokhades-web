@@ -212,6 +212,8 @@ const LINES = {
   trainer: ['Encore une série. Le champion, lui, ne se repose pas.', 'Ce mannequin a la tête de {champion}. Enfin, je l’imagine.', 'Frappe, esquive, recommence. C’est tout.'],
 };
 
+/** Recrues montrées au Repaire à la fois (les suivantes attendent leur tour, hors champ). */
+const MAX_CANDIDATES_SHOWN = 10;
 /** Portée d'un poste (on parle à son gardien ou on s'approche de l'arche) et d'un Pokémon à qui parler. */
 const POST_REACH = 2.4;
 const TALK_REACH = 2;
@@ -304,11 +306,16 @@ export function campPockets(built: readonly BuildingId[], hub: { x: number; y: n
   const has = (b: BuildingId) => built.includes(b);
   return [
     p('gate', 6, 3.5),
+    p('chronicle', 5.5, 3.8),
     p('relay', 5, 3.5),
     p('hut', 6, 4.5),
-    p('yard', 6.5, 4.5),
+    // Retour de test : « il y a un peu trop d'arbres qui gênent… je dois faire tout un détour »
+    // pour l'atelier du bâtisseur et l'Étude d'Alakazam. Leurs poches sont plus larges, et une
+    // trouée sur leur allée les relie à la place.
+    p('yard', 8, 5.5),
+    p('yardWay', 5, 4),
     p('lab', 6.5, 4.5),
-    ...(has('study') ? [p('study', 6, 4.5)] : []),
+    ...(has('study') ? [p('study', 7.5, 5.5), p('studyWay', 5.5, 4)] : []),
     ...(has('market') ? [p('market', 9, 4.5)] : []),
     ...(has('dorm') ? [p('dorm', 8.5, 4.5)] : []),
     ...(has('training') ? [p('training', 6.5, 4)] : []),
@@ -340,6 +347,10 @@ interface Post {
   rest: number;
   /** Repère « ! » : du neuf à son poste (meta/news.ts) ; caché sinon. */
   news: HTMLElement;
+  /** Recrue : son rang dans la file d'attente (Save.candidates). */
+  arg?: number;
+  /** Une recrue flâne autour du feu en attendant qu'on lui parle. */
+  wander?: { home: Spot; radius: number; goal: Spot; wait: number };
 }
 
 interface Talker {
@@ -676,7 +687,9 @@ export class Camp {
       seats.push(s);
     }
 
-    // Le départ : l'arche de lierre. Au-delà, l'allée est barrée : on ne part qu'en parlant à Dracolosse.
+    // Le départ : l'arche de lierre. On part en la passant (retour de test : « dès qu'on passe la
+    // porte au nord, lancer la run, plus besoin de l'écran ») : l'allée au-delà reste barrée,
+    // et pousser vers le nord sous l'arche appelle `onLeave` (update).
     this.gate = { x: gx, y: gy + 0.95 };
     put(CAMP_PROPS.arch, gx, gy + 0.95, false);
     place.block(Math.floor(gx - 1.6), gy);
@@ -1091,12 +1104,14 @@ export class Camp {
     // (Dessiné centré sur ses deux colonnes d'escalier, pas sur l'île : les marches tombent pile sous les pieds.)
     this.temple = { x: sx + 1, y: island.y, top: Math.floor(island.y) - STEPS };
 
-    for (const [station, spot, rest] of posts) {
+    for (const [station, spot, rest, arg] of posts) {
       const news = document.createElement('div');
       news.className = 'room-label camp-news';
       news.hidden = true;
       this.layer.append(news);
-      this.posts.push({ station, actor: this.spawn(stationId(station, built, craft.nectar?.visitor, craft.candidates[0]?.species), spot, rest, ['Idle']), rest, news });
+      const id = stationId(station, built, craft.nectar?.visitor, craft.candidates[arg ?? 0]?.species);
+      const wander = station === 'recruit' ? { home: spot, radius: 2.2, goal: spot, wait: Math.random() * 2 } : undefined;
+      this.posts.push({ station, actor: this.spawn(id, spot, rest, ['Idle']), rest, news, arg, wander });
     }
 
     // Les libérés qu'on n'emmène pas, et eux seuls : ceux d'eau nagent dans le lac ; les autres
@@ -1252,12 +1267,21 @@ export class Camp {
   update(dt: number, input: InputSample, player: Actor, world: WorldMap): void {
     if (!this.active) return;
     this.lead = player.info?.name ?? 'toi';
+    // Sous l'arche, en marchant vers le nord : on part.
+    this.leaveT = Math.max(0, this.leaveT - dt);
+    // (On bute contre le seuil une case et demie sous la ligne de l'arche : c'est là qu'on la passe.)
+    if (this.onLeave && this.leaveT <= 0 && input.my < -0.3 && Math.abs(player.x - this.gate.x) < 1.4 && player.y < this.gate.y + 1.8) {
+      this.leaveT = 1.5;
+      this.onLeave();
+      return;
+    }
     // Le poste le plus proche (l'arche compte pour le départ), sinon un Pokémon à qui parler.
     // Celui à qui l'on parle déjà garde la main un peu plus loin : le repère ne saute pas
     // d'un voisin à l'autre au bord de la portée.
     const dist = (n: Post | Talker) => {
       const d = Math.hypot(player.x - n.actor.x, player.y - n.actor.y);
-      return 'station' in n && n.station === 'start' ? Math.min(d, Math.hypot(player.x - this.gate.x, player.y - this.gate.y)) : d;
+      // (L'arche ne compte plus pour Dracolosse : on part en la passant, sans lui parler.)
+      return d;
     };
     const keep = this.near && dist(this.near) < ('station' in this.near ? POST_REACH : TALK_REACH) + STICKY ? this.near : null;
     let near: Post | Talker | null = keep;
@@ -1328,7 +1352,7 @@ export class Camp {
    * son point d'attache, une pause, un autre but. Un nageur ne quitte pas
    * l'eau. On s'arrête pour écouter celui qui vient parler.
    */
-  private stroll(f: Talker, w: NonNullable<Talker['wander']>, dt: number, world: WorldMap, listener: Actor | null): void {
+  private stroll(f: { actor: Actor }, w: NonNullable<Talker['wander']>, dt: number, world: WorldMap, listener: Actor | null): void {
     const a = f.actor;
     let mx = 0;
     let my = 0;
