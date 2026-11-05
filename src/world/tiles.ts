@@ -238,6 +238,96 @@ export const FIELD_FX = {
 
 export const ESSENTIALS_PAVEMENTS = '/game/assets/essentials/pavements.png';
 
+// ── Planches entières d'Essentials, recopiées dans l'atlas ─────────────────
+// (scripts/import-assets.ts les copie telles quelles.) Les cases d'Essentials
+// font 32 px, mais leurs pixels sont doublés (graphismes GBA agrandis ×2) :
+// réduites de moitié au plus proche, elles redeviennent exactement des cases
+// de 16 px du style du tileset, sans rien perdre. src/assets/atlas.ts les
+// recopie dans des cases VIDES de l'atlas (colonnes 112-139, rangées 0-14,
+// relevées transparentes) : la suite du code parle en coordonnées d'atlas.
+export const ESSENTIALS_SHEETS = {
+  outside: '/game/assets/essentials/tilesets/Outside.png',
+  gym: '/game/assets/essentials/tilesets/Gyms interior.png',
+  /** Autotile animé du jet de la fontaine : 5 images de 96 px de large côte à côte. */
+  fountain: '/game/assets/essentials/autotiles/Fountain1.png',
+} as const;
+
+/** Blocs recopiés : coin haut-gauche dans la planche (cases de 32 px), taille en cases, destination dans l'atlas. */
+export const ESSENTIALS_BLOCKS: readonly { sheet: 'outside' | 'gym'; from: Tile; size: readonly [w: number, h: number]; to: Tile }[] = [
+  // Bassin rond de la fontaine (Outside.png, colonnes 5-7, rangées 140-142).
+  { sheet: 'outside', from: t(5, 140), size: [3, 3], to: t(112, 0) },
+  // Jeu d'arène « terrain jaune » (Gyms interior.png, colonnes 0-7, rangées 74-85) : murs de
+  // bois, sol, terrain de combat et son emblème Poké Ball.
+  { sheet: 'gym', from: t(0, 74), size: [8, 12], to: t(112, 3) },
+  // Paillasson rouge de l'entrée d'arène (Gyms interior.png, colonnes 3-5, rangées 142-143).
+  { sheet: 'gym', from: t(3, 142), size: [3, 2], to: t(120, 3) },
+];
+
+/**
+ * Fontaine de place (retour de test : la fontaine peinte au pixel était « trop
+ * chelou ») : le bassin rond d'Essentials (3 × 3 cases) et son jet, l'autotile
+ * Fountain1 dont l'atlas compose les 5 images (une colonne de 1 × 2 cases,
+ * posée sur la colonne du milieu du bassin). Le reflet descend le long du jet.
+ */
+export const FOUNTAIN = {
+  basin: t(112, 0),
+  w: 3,
+  h: 3,
+  /** Images du jet (case du haut ; celle du bas est juste dessous). */
+  jet: [t(115, 0), t(116, 0), t(117, 0), t(118, 0), t(119, 0)] as readonly Tile[],
+  /** Décalage du jet dans le bassin (cases). */
+  jetDx: 1,
+  /** Durée d'une image (s) : RPG Maker XP fait tourner ses autotiles à 0,4 s ; un peu plus vif ici. */
+  frameTime: 0.25,
+} as const;
+
+/** Case d'une tuile du jeu d'arène, d'après sa place dans Gyms interior.png. */
+const gym = (c: number, r: number): Tile => t(112 + c, 3 + r - 74);
+
+/**
+ * L'arène d'intérieur du champion du Village (world/arena.ts, buildGym) : les
+ * murs de bois et le terrain jaune à emblème Poké Ball d'Essentials (les
+ * arènes de la 4e génération). Chaque tuile se pose par `world.paving`.
+ */
+export const GYM = {
+  /** Le noir autour de la salle, comme hors des murs dans les jeux (peint par l'atlas). */
+  void: t(120, 0),
+  floor: gym(6, 80),
+  /** Le même sol, assombri : la rangée au pied du mur nord, dans son ombre. */
+  shade: gym(1, 83),
+  /** Dessus du mur, contre le noir. */
+  cap: gym(3, 74),
+  /**
+   * Façade du mur nord sur deux rangées, motif de 3 cases (lambris et appliques) : les
+   * colonnes 0-2 se raccordent sans couture (0 → 1 → 2 → 0) ; la 3e porte déjà le
+   * chambranle de la porte d'Essentials, on la laisse.
+   */
+  face: [
+    [gym(0, 75), gym(1, 75), gym(2, 75)],
+    [gym(0, 76), gym(1, 76), gym(2, 76)],
+  ] as readonly (readonly Tile[])[],
+  /** Murs latéraux vus de dessus (le bois à gauche, à droite), nu puis à applique. */
+  wallL: [gym(0, 77), gym(0, 78)] as readonly Tile[],
+  wallR: [gym(2, 77), gym(2, 78)] as readonly Tile[],
+  /** Cadre du terrain (liseré blanc, coins à plot vert). */
+  frame: { tl: gym(5, 79), t: gym(6, 79), tr: gym(7, 79), l: gym(5, 80), r: gym(7, 80), bl: gym(5, 81), b: gym(6, 81), br: gym(7, 81) },
+  /**
+   * Ligne médiane : elle court à cheval sur deux rangées (un pixel de chaque
+   * côté). Bords gauche et droit d'Essentials ; entre eux, le sol nu avec la
+   * ligne, composé par l'atlas à partir de ces bords (Essentials n'a pas cette tuile).
+   */
+  midL: [gym(0, 80), gym(0, 81)] as readonly Tile[],
+  midR: [gym(4, 80), gym(4, 81)] as readonly Tile[],
+  mid: [t(121, 0), t(121, 1)] as readonly Tile[],
+  /** Emblème Poké Ball au centre (3 × 4 cases, la ligne médiane entre la 2e et la 3e rangée). */
+  emblem: [79, 80, 81, 82].map((r) => [gym(1, r), gym(2, r), gym(3, r)]) as readonly (readonly Tile[])[],
+  /** Paillasson de l'entrée (3 × 2 cases) : la rangée du bas déborde sur le noir. */
+  mat: [
+    [t(120, 3), t(121, 3), t(122, 3)],
+    [t(120, 4), t(121, 4), t(122, 4)],
+  ] as readonly (readonly Tile[])[],
+} as const;
+
 export const PROPS = {
   // (3,20) et (3,21) servent d'herbe haute : la fougère décorative n'en garde qu'une autre.
   fern: [gridSprite(7, 22, 1, 1)],

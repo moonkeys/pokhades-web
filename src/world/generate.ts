@@ -558,7 +558,7 @@ export function generate(
   /** Les chemins de la forme (toutes sauf la clairière, qui garde le tracé d'origine). */
   const routed = Boolean(shape?.routes.length) && !biome.coast && !biome.buildings;
   const path = new Uint8Array(N);
-  const townStyle = biome.buildings ? TOWN_STYLES[seed % TOWN_STYLES.length] : null;
+  const townStyle = biome.buildings && !arena ? TOWN_STYLES[seed % TOWN_STYLES.length] : null;
   const plan = townStyle ? layoutStreets(W, H, rng) : null;
   // Entrée : en bas, sauf sur une Plage dont la mer est au sud (on arrive alors par le nord)
   // ou à l'ouest / à l'est (on arrive par le côté opposé).
