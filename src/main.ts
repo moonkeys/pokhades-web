@@ -565,7 +565,9 @@ async function boot(): Promise<void> {
     particles.reset();
     skyParticles.reset();
     const before = first ? 'clear' : roomWeather;
-    roomWeather = run.isShop() ? 'clear' : opts.weather !== 'run' ? opts.weather : rollWeather(run.biome, run.mapSeed);
+    // L'arène du Village est une salle d'intérieur : ni pluie, ni pollen.
+    const indoor = run.isBoss() && run.biome === 'village';
+    roomWeather = run.isShop() || indoor ? 'clear' : opts.weather !== 'run' ? opts.weather : rollWeather(run.biome, run.mapSeed);
     setWeather(weatherNow());
     // Le ciel change : on dit ce que ça change au combat.
     if (roomWeather !== before && roomWeather !== 'clear') runHud.notify({ title: WEATHERS[roomWeather].name, text: WEATHERS[roomWeather].hint, icon: WEATHERS[roomWeather].icon });
@@ -2063,7 +2065,7 @@ async function boot(): Promise<void> {
     footprints.update(dt, all, world);
     fieldFx.update(dt, all, world);
     if (opts.particles) {
-      particles.update(dt, world.biome.ambiance.particles, { x: renderer.camX, y: renderer.camY, w: renderer.viewW, h: renderer.viewH });
+      particles.update(dt, indoorRoom() ? null : world.biome.ambiance.particles, { x: renderer.camX, y: renderer.camY, w: renderer.viewW, h: renderer.viewH });
       skyParticles.update(dt, WEATHERS[weatherNow()].particles, { x: renderer.camX, y: renderer.camY, w: renderer.viewW, h: renderer.viewH });
     }
   };
@@ -2222,7 +2224,7 @@ async function boot(): Promise<void> {
     footprints.update(dt, [...team, ...wild], world);
     fieldFx.update(dt, [...team, ...wild], world);
     if (opts.particles) {
-      particles.update(dt, world.biome.ambiance.particles, { x: renderer.camX, y: renderer.camY, w: renderer.viewW, h: renderer.viewH });
+      particles.update(dt, indoorRoom() ? null : world.biome.ambiance.particles, { x: renderer.camX, y: renderer.camY, w: renderer.viewW, h: renderer.viewH });
       skyParticles.update(dt, WEATHERS[weatherNow()].particles, { x: renderer.camX, y: renderer.camY, w: renderer.viewW, h: renderer.viewH });
     }
   };

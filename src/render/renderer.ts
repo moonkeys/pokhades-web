@@ -4,7 +4,7 @@ import { hash2 } from '../core/rng';
 import type { Actor } from '../entities/actor';
 import type { Options } from '../ui/options';
 import { blobTile, useGrid, type WorldMap, type WorldObject } from '../world/generate';
-import { BLOB, SEA, SURF, TILE, type Blob, type Tile } from '../world/tiles';
+import { BLOB, FOUNTAIN, SEA, TILE, type Blob, type Tile } from '../world/tiles';
 import type { FieldFx } from './fieldfx';
 import type { Combat } from '../combat/combat';
 import type { RoomDirector } from '../run/room';
@@ -193,7 +193,7 @@ export class Renderer {
       }
     }
     if (world.paving.length) this.drawPaving(g, world, put);
-    for (const f of world.fountains) this.paintFountain(g, f.x * TILE, f.y * TILE);
+    for (const f of world.fountains) Renderer.paintFountain(g, f.x * TILE, f.y * TILE, this.tileset);
     if (biome.water?.render === 'waves') {
       // Mer : houle partout, et sur la rangée qui touche le sable, le ressac d'écume.
       for (let y = 0; y < world.h; y++) {
@@ -391,40 +391,14 @@ export class Renderer {
   }
 
   /**
-   * Fontaine de place (4 × 3 cases) : le tileset n'en a pas, on la peint au
-   * pixel. Margelle de pierre claire, eau du tileset, paroi avant plus sombre
-   * pour le volume, pilier central (le jet est animé au rendu).
+   * Fontaine de place (3 × 3 cases) : le bassin rond d'Essentials, recopié dans
+   * l'atlas (FOUNTAIN, world/tiles.ts). Il porte déjà un jet immobile : c'est
+   * lui que montre le plan du monde ; en salle, drawJet l'anime par-dessus.
+   * (Remplace la fontaine peinte au pixel, « trop chelou » au retour de test.)
    */
-  private paintFountain(g: CanvasRenderingContext2D, x: number, y: number): void {
-    const px = (ax: number, ay: number, w: number, h: number, c: string) => {
-      g.fillStyle = c;
-      g.fillRect(x + ax, y + ay, w, h);
-    };
-    // Ombre au sol, puis margelle (coins arrondis d'un pixel).
-    px(4, 40, 58, 6, 'rgba(30,26,20,0.22)');
-    px(3, 6, 58, 32, '#c9ccd4');
-    px(2, 7, 60, 30, '#c9ccd4');
-    px(3, 6, 58, 1, '#e6e8ee');
-    // Paroi avant : la margelle a une épaisseur.
-    px(2, 37, 60, 6, '#9ea3b0');
-    px(3, 43, 58, 1, '#6f7482');
-    px(2, 37, 60, 1, '#b3b8c4');
-    // Eau : la tuile d'eau des mares, découpée dans le bassin.
-    g.save();
-    g.beginPath();
-    g.rect(x + 8, y + 11, 48, 22);
-    g.clip();
-    for (let ty = 0; ty < 2; ty++) for (let tx = 0; tx < 3; tx++) g.drawImage(this.tileset, 46 * TILE, 26 * TILE, TILE, TILE, x + 8 + tx * TILE, y + 11 + ty * TILE, TILE, TILE);
-    g.restore();
-    // Rebord intérieur ombré (haut et gauche), reflet en bas.
-    px(8, 11, 48, 2, 'rgba(40,60,90,0.35)');
-    px(8, 11, 2, 22, 'rgba(40,60,90,0.25)');
-    px(8, 32, 48, 1, 'rgba(255,255,255,0.35)');
-    // Pilier central et vasque.
-    px(29, 14, 6, 16, '#b3b8c4');
-    px(29, 14, 2, 16, '#d8dbe2');
-    px(25, 12, 14, 4, '#c9ccd4');
-    px(25, 15, 14, 1, '#8f94a1');
+  static paintFountain(g: CanvasRenderingContext2D, x: number, y: number, tileset: CanvasImageSource): void {
+    const [c, r] = FOUNTAIN.basin;
+    g.drawImage(tileset, c * TILE, r * TILE, FOUNTAIN.w * TILE, FOUNTAIN.h * TILE, x, y, FOUNTAIN.w * TILE, FOUNTAIN.h * TILE);
   }
 
   /**
@@ -496,31 +470,16 @@ export class Renderer {
     g.restore();
   }
 
-  /** Jet de la fontaine : une colonne qui ondule et des gouttes qui retombent en gerbe. */
+  /**
+   * Jet de la fontaine : l'image courante de l'autotile Fountain1 (FOUNTAIN.jet,
+   * 1 × 2 cases), posée sur la colonne du milieu du bassin cuit au sol.
+   */
   private drawJet(x: number, y: number, time: number): void {
-    const b = this.bctx;
     const k = this.k;
-    const dot = (ax: number, ay: number, w: number, h: number, c: string) => {
-      b.fillStyle = c;
-      b.fillRect(Math.round((x + ax - this.camX) * k), Math.round((y + ay - this.camY) * k), w * k, h * k);
-    };
-    const top = 3 + Math.round(Math.sin(time * 5) * 1.5);
-    dot(31, top, 2, 12 - top, 'rgba(220,240,255,0.9)');
-    dot(30, top + 2, 1, 9 - top, 'rgba(160,200,240,0.8)');
-    // Gouttes : 10 trajectoires en arc, chacune à sa phase.
-    for (let i = 0; i < 10; i++) {
-      const t = (time * 1.4 + i / 10) % 1;
-      const side = i % 2 ? 1 : -1;
-      const spread = 4 + (i % 5) * 2.4;
-      const gx = 32 + side * spread * t;
-      const gy = top + 26 * t * t - 10 * t;
-      dot(Math.round(gx), Math.round(gy), 1, 1, t > 0.8 ? 'rgba(255,255,255,0.5)' : 'rgba(235,248,255,0.9)');
-    }
-    // Ronds dans l'eau, au pied du pilier.
-    const r = (time * 0.8) % 1;
-    b.strokeStyle = `rgba(255,255,255,${0.5 * (1 - r)})`;
-    b.lineWidth = k;
-    b.strokeRect(Math.round((x + 32 - 6 - r * 10 - this.camX) * k), Math.round((y + 26 - r * 3 - this.camY) * k), Math.round((12 + r * 20) * k), Math.round((4 + r * 4) * k));
+    const [c, r] = FOUNTAIN.jet[Math.floor(time / FOUNTAIN.frameTime) % FOUNTAIN.jet.length];
+    const dx = Math.round((x + FOUNTAIN.jetDx * TILE - this.camX) * k);
+    const dy = Math.round((y - this.camY) * k);
+    this.bctx.drawImage(this.tileset, c * TILE, r * TILE, TILE, 2 * TILE, dx, dy, TILE * k, 2 * TILE * k);
   }
 
   /**

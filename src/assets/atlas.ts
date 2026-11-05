@@ -1,8 +1,9 @@
-import { BLOB, EXTRA, ESSENTIALS_PAVEMENTS, SEA, TILE } from '../world/tiles';
+import { BLOB, EXTRA, ESSENTIALS_BLOCKS, ESSENTIALS_PAVEMENTS, ESSENTIALS_SHEETS, FOUNTAIN, GYM, SEA, TILE } from '../world/tiles';
 import { loadImage } from './pmd';
 
 // Atlas de travail : le tileset Pokémon, complété des tuiles extraites
-// d'Essentials (cf. EXTRA), recopiées dans des cases vides.
+// d'Essentials (cf. EXTRA, et ESSENTIALS_BLOCKS pour la fontaine et l'arène
+// du Village), recopiées dans des cases vides.
 
 export async function buildAtlas(tileset: HTMLImageElement): Promise<HTMLCanvasElement> {
   const atlas = document.createElement('canvas');
@@ -14,20 +15,80 @@ export async function buildAtlas(tileset: HTMLImageElement): Promise<HTMLCanvasE
   paintFlatSea(g);
   paintIce(g);
 
-  let extras: HTMLImageElement;
-  try {
-    extras = await loadImage(ESSENTIALS_PAVEMENTS);
-  } catch (err) {
-    // Sans ce fichier, on garde le tileset seul (les cases restent vides).
-    console.warn(err);
-    return atlas;
+  // Les planches se chargent ensemble ; une absente laisse ses cases vides (sans planter).
+  const load = (url: string) =>
+    loadImage(url).catch((err: unknown) => {
+      console.warn(err);
+      return null;
+    });
+  const [extras, outside, gym, fountain] = await Promise.all([
+    load(ESSENTIALS_PAVEMENTS),
+    load(ESSENTIALS_SHEETS.outside),
+    load(ESSENTIALS_SHEETS.gym),
+    load(ESSENTIALS_SHEETS.fountain),
+  ]);
+  if (extras) {
+    for (const extra of Object.values(EXTRA)) {
+      const [fc, fr] = extra.from;
+      const [tc, tr] = extra.to;
+      g.drawImage(extras, fc * TILE, fr * TILE, TILE, TILE, tc * TILE, tr * TILE, TILE, TILE);
+    }
   }
-  for (const extra of Object.values(EXTRA)) {
-    const [fc, fr] = extra.from;
-    const [tc, tr] = extra.to;
-    g.drawImage(extras, fc * TILE, fr * TILE, TILE, TILE, tc * TILE, tr * TILE, TILE, TILE);
+  // Blocs d'Essentials, réduits de moitié au plus proche (lissage coupé plus haut) : leurs
+  // pixels étant doublés, on retombe exactement sur l'original en 16 px.
+  const sheets = { outside, gym };
+  for (const b of ESSENTIALS_BLOCKS) {
+    const src = sheets[b.sheet];
+    if (!src) continue;
+    const [w, h] = b.size;
+    g.drawImage(src, b.from[0] * 32, b.from[1] * 32, w * 32, h * 32, b.to[0] * TILE, b.to[1] * TILE, w * TILE, h * TILE);
   }
+  if (fountain) composeJet(g, fountain);
+  if (gym) composeMidLine(g);
+  paintVoid(g);
   return atlas;
+}
+
+/**
+ * Le jet de la fontaine (FOUNTAIN.jet) : chaque image de l'autotile Fountain1
+ * (96 × 128 px) se lit comme un autotile de RPG Maker XP posé en colonne d'une
+ * case de large sur deux de haut. La case du haut prend les quarts gauche et
+ * droit de la rangée « bord haut » (y 32-64), celle du bas ceux de la rangée
+ * « bord bas » (y 96-128) ; le reste de la planche (croix rouges) ne sert pas.
+ * Chaque quart de 16 × 32 px devient 8 × 16 px une fois réduit.
+ */
+function composeJet(g: CanvasRenderingContext2D, sheet: HTMLImageElement): void {
+  const frames = Math.min(FOUNTAIN.jet.length, Math.floor(sheet.width / 96));
+  for (let f = 0; f < frames; f++) {
+    const [c, r] = FOUNTAIN.jet[f];
+    for (const [sy, row] of [[32, 0], [96, 1]]) {
+      const dy = (r + row) * TILE;
+      g.drawImage(sheet, f * 96, sy, 16, 32, c * TILE, dy, TILE / 2, TILE);
+      g.drawImage(sheet, f * 96 + 80, sy, 16, 32, c * TILE + TILE / 2, dy, TILE / 2, TILE);
+    }
+  }
+}
+
+/**
+ * Ligne médiane du terrain d'arène sur le sol nu (GYM.mid) : Essentials ne la
+ * dessine qu'aux bords du terrain (GYM.midL), sur une rangée de pixels de part
+ * et d'autre de la limite des cases. On reprend le sol nu et on y recopie
+ * cette rangée de pixels du bord gauche, toute blanche.
+ */
+function composeMidLine(g: CanvasRenderingContext2D): void {
+  const copy = (from: readonly number[], to: readonly number[], fy: number, ty: number, h: number) =>
+    g.putImageData(g.getImageData(from[0] * TILE, from[1] * TILE + fy, TILE, h), to[0] * TILE, to[1] * TILE + ty);
+  const [up, down] = GYM.mid;
+  copy(GYM.floor, up, 0, 0, TILE);
+  copy(GYM.floor, down, 0, 0, TILE);
+  copy(GYM.midL[0], up, TILE - 1, TILE - 1, 1);
+  copy(GYM.midL[1], down, 0, 0, 1);
+}
+
+/** Le noir hors des murs de l'arène (GYM.void), comme autour des salles d'intérieur des jeux. */
+function paintVoid(g: CanvasRenderingContext2D): void {
+  g.fillStyle = '#000';
+  g.fillRect(GYM.void[0] * TILE, GYM.void[1] * TILE, TILE, TILE);
 }
 
 /**
