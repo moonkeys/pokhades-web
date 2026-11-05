@@ -38,7 +38,7 @@ import { BASE_TEAM_LEVEL, Pokemon } from './combat/pokemon';
 import { STEP, startLoop } from './core/loop';
 import { Rng } from './core/rng';
 import { CAMP_NPCS, SWIMMERS } from './data/species';
-import { evolutionOf, evolvedStart } from './data/evolutions';
+import { evolutionOf, evolutionsOf, evolvedStart } from './data/evolutions';
 import { Actor, dirFromVector } from './entities/actor';
 import { Input } from './input/input';
 import { CombatFx, typeColor } from './render/combatfx';
@@ -327,6 +327,16 @@ async function boot(): Promise<void> {
         m.info = info;
         m.pokemon = evo;
         runHud.notify({ title: 'Évolution', text: `${old.name} évolue en ${species} !`, art: next, color: 'var(--yel)' });
+        // Prime de lignée (retour de test : « une prime quand on complète une évolution ») : la
+        // première fois qu'une lignée atteint sa forme finale, un Éclat et quelques Baies.
+        if (!save.evolved.includes(next)) {
+          save.evolved.push(next);
+          if (!evolutionsOf(next).length) {
+            save.shards += 1;
+            runHud.notifyAll([{ title: 'Lignée complète', text: `${species} : forme finale atteinte`, art: next, qty: '+1 Éclat', color: 'var(--yel)' }]);
+            earn(40);
+          } else writeSave(save);
+        }
       });
     });
   };
