@@ -397,9 +397,26 @@ function carvePath(mask: Uint8Array, a: Pt, b: Pt, radius: number, rng: Rng, see
 export function generate(
   biome: Biome,
   seed: number,
-  options: { store?: boolean; camp?: boolean; cave?: boolean; glade?: boolean; eastGlade?: boolean; atelier?: boolean; layout?: LayoutId; pockets?: readonly Pocket[] } = {},
+  options: { store?: boolean; camp?: boolean; arena?: boolean; cave?: boolean; glade?: boolean; eastGlade?: boolean; atelier?: boolean; layout?: LayoutId; pockets?: readonly Pocket[]; entry?: Side } = {},
 ): WorldMap {
-  const shape: Shape | null = options.store || options.camp ? null : pickLayout(biome, new Rng(seed * 2246822519 + 3), options.layout);
+  /**
+   * Arène de champion (ajout, retour de test : « les boss, je veux de vraies arènes, toujours
+   * la même pour chaque biome, un cercle ») : la clairière ronde de la boutique, plus grande,
+   * avec trois sorties (nord, ouest, est) pour les routes de la carte du monde. Elle garde la
+   * bordure de son biome (anneau d'eau du Lac, de lave du Volcan, montagnes des Rocailleux,
+   * île de sable à la Plage) ; world/arena.ts la pave et la cerne de torches ensuite.
+   */
+  const arena = Boolean(options.arena);
+  if (arena) options = { ...options, store: true };
+  const picked: Shape | null = options.store || options.camp ? null : pickLayout(biome, new Rng(seed * 2246822519 + 3), options.layout);
+  /**
+   * Le bord par lequel on entre (ajout) : celui d'en face de la porte prise dans la salle
+   * d'avant (Run.entrySide). Les formes à chemins pivotent pour y mettre leur entrée
+   * (layouts.ts, orientShape) ; la clairière, la Plage et l'Océan placent la leur
+   * eux-mêmes ; le Village et la boutique gardent l'entrée en bas.
+   */
+  const want: Side = options.entry ?? 'S';
+  const shape: Shape | null = picked && picked.routes.length && !biome.coast && !biome.buildings ? orientShape(picked, want) : picked;
   const W = options.camp ? CAMP_W : (shape?.w ?? MAP_W);
   const H = options.camp ? CAMP_H : (shape?.h ?? MAP_H);
   useGrid(W, H);
@@ -414,7 +431,8 @@ export function generate(
   const cy0 = options.camp ? 19 : H / 2;
   /** Clairière de la boutique : ovale au bord bruité, au centre de la carte. */
   // (`k` > 1 : une clairière élargie, pour l'anneau d'eau ou de lave et le pied des montagnes.)
-  const inOpen = (x: number, y: number, k = 1) => Math.hypot((x + 0.5 - W / 2) / (13 * k * roomy), (y + 0.5 - cy0) / (9 * k * roomy)) + (fbm(x * 0.14, y * 0.14, s + 401) - 0.5) * 0.35 < 1;
+  const [orx, ory] = arena ? [16, 12.5] : [13, 9];
+  const inOpen = (x: number, y: number, k = 1) => Math.hypot((x + 0.5 - W / 2) / (orx * k * roomy), (y + 0.5 - cy0) / (ory * k * roomy)) + (fbm(x * 0.14, y * 0.14, s + 401) - 0.5) * (arena ? 0.2 : 0.35) < 1;
   /**
    * Le Repaire compact (retour de test : « plus petit au tout départ, que le cercle… on verra
    * mieux l'évolution ») : la place autour du feu, et une poche par poste (camp.ts,
@@ -637,7 +655,7 @@ export function generate(
     // La place : comptée comme chemin, elle reste nue (ni arbre, ni herbe haute, ni accessoire).
     for (let y = 0; y < H; y++) {
       for (let x = 0; x < W; x++) {
-        const r = (options.camp ? 8.5 : 7) + (fbm(x * 0.16, y * 0.16, s + 211) - 0.5) * 2;
+        const r = (options.camp ? 8.5 : arena ? 11 : 7) + (fbm(x * 0.16, y * 0.16, s + 211) - 0.5) * (arena ? 0.6 : 2);
         if (Math.hypot(x + 0.5 - hub.x, (y + 0.5 - hub.y) * 1.15) < r && x > 2 && y > 2 && x < W - 3 && y < H - 3) path[idx(x, y)] = 1;
       }
     }
