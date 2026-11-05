@@ -316,6 +316,53 @@ function coreFill(biome: Biome): CoreFill {
   return w && (w.lake || !w.swim || biome.id === 'marais') ? 'water' : 'trees';
 }
 
+/** Bord d'une carte (generate.ts, Side) : redéfini ici pour ne pas importer generate. */
+type Edge = 'N' | 'S' | 'E' | 'W';
+/** Ordre des bords sous un quart de tour horaire (S → W → N → E → S). */
+const CW: readonly Edge[] = ['S', 'W', 'N', 'E'];
+
+/** Le bord où une forme fait entrer : celui que touche son point d'arrivée. */
+function edgeOf(s: { w: number; h: number; entry: Pt }): Edge {
+  const { x, y } = s.entry;
+  return y >= s.h - 1 ? 'S' : y < 1 ? 'N' : x < 1 ? 'W' : 'E';
+}
+
+/**
+ * Tourne une forme pour qu'on y entre par le bord `side` (ajout, retour de
+ * test : « je sors par la droite de la prairie et j'arrive par le haut sur la
+ * plage, ça n'a pas de logique »). La salle suivante se génère donc du côté
+ * d'où l'on vient : sorti à l'est, on entre à l'ouest. Les formes sont
+ * pensées pour une entrée en bas (ou à gauche pour les couloirs couchés) ;
+ * on les fait pivoter d'un quart de tour à la fois — la carte échange sa
+ * largeur et sa hauteur. Rien de dessiné ne tourne : generate() pose eau,
+ * falaises et arbres d'après la forme, les tuiles se choisissent ensuite.
+ */
+export function orientShape(shape: Shape, side: Edge): Shape {
+  const turns = (CW.indexOf(side) - CW.indexOf(edgeOf(shape)) + 4) % 4;
+  let s = shape;
+  for (let k = 0; k < turns; k++) s = turnCw(s);
+  return s;
+}
+
+/** Un quart de tour : (x, y) → (h − y, x), la carte devient h × w. Le bas passe à gauche. */
+function turnCw(s: Shape): Shape {
+  const t = (p: Pt): Pt => ({ x: s.h - p.y, y: p.x });
+  const prims = s.prims.map((p): Prim =>
+    p.kind === 'rect' ? p : p.kind === 'ellipse' ? { kind: 'ellipse', ...t(p), rx: p.ry, ry: p.rx } : { kind: 'capsule', a: t(p.a), b: t(p.b), r: p.r },
+  );
+  return {
+    ...s,
+    w: s.h,
+    h: s.w,
+    prims,
+    core: s.core && { ...s.core, ...t(s.core), rx: s.core.ry, ry: s.core.rx },
+    entry: t(s.entry),
+    hub: t(s.hub),
+    routes: s.routes.map((r) => r.map(t)),
+    front: s.front && { near: t(s.front.near), far: t(s.front.far) },
+  };
+}
+
 /**
  * Forme d'une salle de run, tirée de la liste de son biome. `force` : forme
  * imposée (panneau de test), si le biome l'admet — sinon celle du tirage.

@@ -247,12 +247,25 @@ export class RoomDirector {
     if (!this.boss && this.waves.length) this.assignTrainers(world, run);
     this.total = this.waves.reduce((s, w) => s + w.length, 0);
     // Portes fermées dès l'arrivée : autant que la carte en offre, une seule autour de la boutique et du boss.
-    const offers = run.offers(run.exitCount(world.exits.length));
+    // Chaque offre dit sur quelle sortie elle s'ouvre (Run.pickExits : les routes du côté de leur biome).
+    const offers = run.offers(run.exitCount(world.exits.length), world.exits.map((e) => e.side));
     // Devant le boss, la porte n'annonce que lui : pas d'icône de récompense.
     this.doors = offers.map((offer, i) => ({
-      exit: world.exits[i],
+      exit: world.exits[offer.exit ?? i],
       offer,
-      label: offer.biome ? this.biomeLabel(offer) : offer.special ? this.specialLabel(offer) : this.label(offer.label, REWARD_COLOR[offer.reward], run.isBoss(run.room + 1) ? null : rewardIcon(offer.reward, offer.donor)),
+      // Le Piège ne s'annonce pas (retour de test : « il ne faut pas savoir si on tombe dans un piège ») :
+      // sa porte promet sa récompense, comme une autre. Retour de test : plus de texte sur les
+      // portes ordinaires (« pas obligé de mettre Don de Jirachi ») — l'icône seule, en grand ;
+      // la porte de la boutique le dit, celle du boss aussi.
+      label: offer.biome
+        ? this.biomeLabel(offer)
+        : offer.special && offer.special !== 'trap'
+          ? this.specialLabel(offer)
+          : run.isShop(run.room + 1)
+            ? this.label('Boutique', SHOP_COLOR, shopIcon())
+            : run.isBoss(run.room + 1)
+              ? this.label(offer.label, REWARD_COLOR[offer.reward])
+              : this.iconLabel(rewardIcon(offer.reward, offer.donor)),
     }));
     this.clock = CHALLENGE_BASE + CHALLENGE_PER_WAVE * this.waves.length;
     // La grotte ne s'ouvre qu'une fois la salle libérée (CombatArena : le déclencheur naît au nettoyage).
