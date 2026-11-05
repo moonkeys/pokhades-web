@@ -421,7 +421,9 @@ body.touch #screen {
 body.touch {
   --t: 1;
 }
-.touch {
+/* (div.touch, le calque des commandes : `body.touch` marque seulement un écran tactile, et la
+   règle lui coupait tous les clics — les boutons des écrans ne répondaient plus au doigt.) */
+div.touch {
   position: absolute;
   inset: 0;
   pointer-events: none;

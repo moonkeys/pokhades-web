@@ -3545,18 +3545,20 @@
 .quiz-q {
   margin: 0;
   font-family: var(--head);
-  font-size: calc(2.4 * var(--u));
+  /* (Retour de test : « les boutons sont tout petits » — des planchers en pixels pour les petits écrans.) */
+  font-size: max(24px, calc(3 * var(--u)));
   letter-spacing: 0.03em;
   color: var(--paper);
 }
 .quiz-answers {
   display: grid;
-  gap: calc(0.6 * var(--u));
+  gap: max(10px, calc(0.9 * var(--u)));
 }
 .quiz-a {
-  padding: calc(0.7 * var(--u)) calc(1.4 * var(--u));
+  min-height: 52px;
+  padding: max(12px, calc(1.1 * var(--u))) max(18px, calc(1.8 * var(--u)));
   font-family: var(--body);
-  font-size: calc(1.3 * var(--u));
+  font-size: max(17px, calc(1.9 * var(--u)));
   text-align: left;
   color: var(--ink);
   border: none;
@@ -4461,6 +4463,181 @@
 /* (Le bord déchiré du papier rognait la première lettre.) */
 .journal .jr-keys {
   padding-left: 6px;
+}
+
+/* ── Logo (logo.ts) ─────────────────────────────────────────────────────
+   L'illustration du joueur, détourée. Sa largeur suit l'échelle de la DA mais reste dans
+   l'écran au téléphone, en largeur comme en hauteur (à l'horizontale, 375 px de haut : sans
+   la borne en vh, le logo poussait le menu et sortait par le haut). L'image fait ~3 × 1,
+   donc 96vh de large ≈ un tiers de la hauteur. L'ombre portée la décolle du Repaire flouté. */
+.logo {
+  display: block;
+  user-select: none;
+  line-height: 0;
+}
+.logo-art img {
+  display: block;
+  width: min(88vw, 96vh, calc(66 * var(--u)));
+  height: auto;
+  -webkit-user-drag: none;
+  filter: drop-shadow(0 calc(0.6 * var(--u)) calc(1.2 * var(--u)) rgba(0, 0, 0, 0.6));
+  opacity: 0;
+}
+/* L'image décodée (logo.ts) : elle « claque » à l'écran titre. L'animation est sur l'image
+   et ne part qu'une fois celle-ci décodée : posée sur `.logo` dès l'insertion, Chromium
+   rastérisait le calque animé encore vide (sous le flou de l'écran titre) et le gardait
+   tel quel, logo invisible sur petit écran. */
+.logo-art.ready img {
+  opacity: 1;
+}
+.play .title-wrap .logo-art.ready img {
+  animation: da-slap 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+/* ── Menu principal (titlescreen.ts) ───────────────────────────────────
+   Le Repaire figé derrière, flouté et assombri ; des braises montent du feu de camp. */
+.title-screen {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  /* Au doigt, `body.touch` attrape la règle `.touch { pointer-events: none }` des commandes
+     tactiles (style.css), et tout le corps la transmet : on rend la main au menu. */
+  pointer-events: auto;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  font-family: var(--body);
+  color: var(--paper);
+  background: radial-gradient(ellipse at 50% 42%, rgba(20, 16, 14, 0.45), rgba(20, 16, 14, 0.9) 75%);
+  backdrop-filter: blur(5px) saturate(0.8);
+  -webkit-backdrop-filter: blur(5px) saturate(0.8);
+}
+.title-embers {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.title-embers i {
+  position: absolute;
+  bottom: -2vh;
+  width: calc(var(--s) * 1.1 * var(--u));
+  height: calc(var(--s) * 1.1 * var(--u));
+  border-radius: 50%;
+  background: #ffb347;
+  box-shadow: 0 0 calc(0.8 * var(--u)) #ff9a3a;
+  opacity: 0;
+  animation: title-ember var(--d) linear var(--w) infinite;
+}
+@keyframes title-ember {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+  12% {
+    opacity: 0.9;
+  }
+  60% {
+    opacity: 0.55;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--x), -85vh);
+  }
+}
+.title-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(2.2 * var(--u));
+}
+.title-menu {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: calc(36 * var(--u));
+  gap: calc(0.5 * var(--u));
+  transition: opacity 0.15s;
+}
+/* Réglages ouverts par-dessus : le menu s'efface, le logo reste. */
+.title-screen.under .title-menu,
+.title-screen.under .title-keys {
+  opacity: 0;
+}
+.title-item {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  gap: calc(1 * var(--u));
+  padding: calc(0.35 * var(--u)) calc(1.6 * var(--u)) calc(0.35 * var(--u)) calc(3.4 * var(--u));
+  white-space: nowrap;
+  border: 0;
+  color: var(--paper);
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  rotate: -1deg;
+  transition: transform 0.1s;
+}
+.title-item b {
+  flex: none;
+  font: normal calc(3.6 * var(--u)) / 1 var(--head);
+  letter-spacing: 0.08em;
+}
+.title-item small {
+  margin-left: auto;
+  font-size: calc(1.1 * var(--u));
+  color: color-mix(in srgb, var(--paper) 55%, transparent);
+}
+/* La ligne choisie : une bande jaune scotchée de travers, une flèche bombée en rose. */
+.title-item.sel {
+  color: var(--ink);
+  background: var(--yel);
+  clip-path: polygon(0 4%, 98% 0, 100% 52%, 99% 100%, 2% 96%, 0 50%);
+  transform: rotate(-1deg) scale(1.03);
+}
+.title-item.sel small {
+  color: var(--muted);
+}
+/* La flèche dans la marge : le mot ne bouge pas quand on passe d'une ligne à l'autre. */
+.title-item.sel b::before {
+  content: '▶';
+  position: absolute;
+  left: calc(0.9 * var(--u));
+  font-size: 0.7em;
+  line-height: 1.45;
+  color: var(--spray);
+}
+.title-keys {
+  margin: 0;
+  font-size: calc(1.1 * var(--u));
+  color: color-mix(in srgb, var(--paper) 50%, transparent);
+  transition: opacity 0.15s;
+}
+.touch .title-keys {
+  display: none;
+}
+.title-credits {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 1.2 * var(--u));
+  margin: 0;
+  text-align: center;
+  font-size: calc(0.9 * var(--u));
+  color: color-mix(in srgb, var(--paper) 35%, transparent);
+}
+/* Questionnaire et choix du starter : des planchers en pixels (retour de test : « c'est tout
+ * petit, pas très agréable »), pour que tout se lise et se touche sur un petit écran. */
+.starter-go {
+  font-size: max(20px, calc(2.2 * var(--u)));
+  min-height: 48px;
+}
+.starter-quote {
+  font-size: max(15px, calc(1.5 * var(--u)));
+}
+.starter-card .nm {
+  font-size: max(15px, calc(1.6 * var(--u)));
 }
 
 /* Les records, en haut du carnet de Xatu : quatre étiquettes. */
