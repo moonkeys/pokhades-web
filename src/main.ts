@@ -589,8 +589,39 @@ async function boot(): Promise<void> {
     combat.hooks.onRoomEnter(player, run, !first && run.room % 7 === 0, run.rng);
     // Test de la grotte (panneau) : chaque salle de combat part de sa grotte ; la salle attend dehors, figée.
     if (opts.biome === 'grotte' && !run.isShop() && !run.isBoss()) enterCave();
-    else netRoom(roomKey, BIOME_COLOR[run.biome], run.isBoss() ? 'boss' : 'room');
+    else netRoom(roomKey, BIOME_COLOR[run.biome], roomMusic());
   };
+
+  /**
+   * La musique d'une salle de run : celle de son biome (sounds.ts, BIOME_TRACKS), celle de la
+   * boutique, de la Route Victoire ; le combat seulement chez le champion.
+   */
+  function roomMusic(): MusicId {
+    if (run.isBoss()) return 'boss';
+    if (run.isShop()) return 'shop';
+    if (run.onVictoryRoad) return 'victoire';
+    return run.biome;
+  }
+
+  /** La carte d'une salle de run, la même chez l'hôte et chez ses invités (arène décorée comprise). */
+  function roomWorld(k: Extract<WorldKey, { kind: 'room' }>): WorldMap {
+    const biome = k.biome as keyof typeof BIOMES;
+    const w = generate(BIOMES[biome], k.seed, { store: k.store, arena: k.arena, cave: k.cave, layout: k.layout as LayoutId | undefined, entry: k.entry });
+    if (k.arena) decorateArena(w, biome);
+    return w;
+  }
+
+  /** L'arène d'intérieur du Village (world/arena.ts, buildGym) : pas de particules d'ambiance. */
+  function indoorRoom(): boolean {
+    return mode === 'run' && !cave.active && run.isBoss() && run.biome === 'village';
+  }
+
+  /** L'équipe peut-elle nager dans cette salle ? Avec Surf, toujours ; sans, seulement si une porte l'exige. */
+  function swimRoom(w: WorldMap): boolean {
+    if (save.cs.includes('surf') || net.inRun) return true;
+    const land = landReachable(w);
+    return w.exits.some((e) => !land[Math.floor(e.y - 0.05) * w.w + Math.floor(e.x)]);
+  }
 
   /** Le champion qui parle : son portrait de combat d'Essentials (import-assets.ts). */
   const speaker = (champ: Champion, final: boolean): Speaker => ({
@@ -1245,7 +1276,8 @@ async function boot(): Promise<void> {
     director.setHidden(true);
     cave.start(layout, run, ownedSpecies(save));
     runHud.announce(cave.title, '#8fa8ff', BIOMES[run.biome].name.toUpperCase());
-    netRoom({ kind: 'cave', seed: run.mapSeed }, '#8fa8ff', 'room');
+    audio.playMusic('grotte');
+    netRoom({ kind: 'cave', seed: run.mapSeed }, '#8fa8ff', 'grotte');
   };
   const exitCave = () => {
     if (!outdoor) return;
@@ -1265,7 +1297,8 @@ async function boot(): Promise<void> {
     director.setHidden(false);
     director.fade = 1;
     roomKey = { ...roomKey, mouthUsed: true } as WorldKey;
-    netRoom(roomKey, BIOME_COLOR[run.biome], run.isBoss() ? 'boss' : 'room');
+    audio.playMusic(roomMusic());
+    netRoom(roomKey, BIOME_COLOR[run.biome], roomMusic());
   };
 
   /**
@@ -1888,7 +1921,7 @@ async function boot(): Promise<void> {
     skyParticles.reset();
     roomWeather = msg.weather as WeatherId;
     setWeather(weatherNow());
-    audio.playMusic(msg.music as 'room' | 'boss');
+    audio.playMusic((msg.music in MUSIC ? msg.music : 'prairie') as MusicId);
     document.documentElement.style.setProperty('--biome', msg.color);
   };
 

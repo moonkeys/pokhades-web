@@ -178,7 +178,7 @@ for (const f of ['ball_BEASTBALL', 'ball_BEASTBALL_open', 'ballBurst_particle', 
 
 // Sons et musiques (src/audio/sounds.ts), tous d'Essentials : à plat dans audio/.
 // Les sons d'attaque vont dans audio/anim/ (servedPath).
-for (const f of [...Object.values(SOUNDS).flatMap((d) => d.files), ...Object.values(MUSIC).map((m) => m.file), ...ANIM_FILES]) renamed.push([f, servedPath(f)]);
+for (const f of [...Object.values(SOUNDS).flatMap((d) => d.files), ...Object.values(MUSIC).filter((m) => !m.served).map((m) => m.file), ...ANIM_FILES]) renamed.push([f, servedPath(f)]);
 
 // Capacités apprises par montée de niveau, jouables comme sauvages : leurs
 // fiches (type, puissance, classe) alimentent le combat, et celles des

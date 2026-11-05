@@ -270,14 +270,48 @@ export const CRY_FALLBACK = 'Sound2';
  * basse, dans les salles de combat (Battle wild) — sans elle, une run entière
  * se jouait dans le silence entre deux boss.
  */
-export const MUSIC = {
+const ESSENTIALS_MUSIC = {
   camp: { file: `${ESSENTIALS_AUDIO}/BGM/Surfing.ogg`, db: -10 },
-  room: { file: `${ESSENTIALS_AUDIO}/BGM/Battle wild.ogg`, db: -14 },
   boss: { file: `${ESSENTIALS_AUDIO}/BGM/Battle trainer.ogg`, db: -8 },
   victory: { file: `${ESSENTIALS_AUDIO}/BGM/Battle victory leader.ogg`, db: -8 },
 } as const;
 
-export type MusicId = keyof typeof MUSIC;
+/**
+ * Musique de chaque lieu de run (retour de test : « pas de musique de combat, à part pour
+ * les boss ; des musiques qui vont avec le biome »), à la place de Battle wild. Ce sont des
+ * pistes .mid d'Essentials, rendues en .mp3 par scripts/midi-to-mp3.ts dans
+ * public/game/music/ (`slug`). L'Océan garde Surfing, déjà en .ogg.
+ */
+export const BIOME_TRACKS = {
+  prairie: { mid: 'Route 1.mid', slug: 'route1' },
+  foret: { mid: 'Natural Park.mid', slug: 'natural-park' },
+  automne: { mid: 'Route 3.mid', slug: 'route3' },
+  village: { mid: 'Lappet Town.mid', slug: 'lappet-town' },
+  plage: { mid: 'Islands.mid', slug: 'islands' },
+  lac: { mid: 'Route 2.mid', slug: 'route2' },
+  marais: { mid: 'Safari Zone exterior.mid', slug: 'safari-exterior' },
+  volcan: { mid: 'Cedolan City.mid', slug: 'cedolan' },
+  rocailleux: { mid: 'Cave.mid', slug: 'cave' },
+  glace: { mid: 'Tiall.mid', slug: 'tiall' },
+  grotte: { mid: 'Cave.mid', slug: 'cave' },
+  victoire: { mid: 'Ingido Plateau.mid', slug: 'indigo-plateau' },
+  shop: { mid: 'Poke Mart.mid', slug: 'poke-mart' },
+} as const;
+
+/** Une musique : le fichier source (Essentials) et, pour les pistes rendues, leur chemin servi. */
+export interface MusicDef {
+  file: string;
+  db: number;
+  served?: string;
+}
+
+export const MUSIC: Record<string, MusicDef> = {
+  ...ESSENTIALS_MUSIC,
+  ocean: ESSENTIALS_MUSIC.camp,
+  ...Object.fromEntries(Object.entries(BIOME_TRACKS).map(([id, t]) => [id, { file: `music/${t.slug}.mp3`, served: `music/${t.slug}.mp3`, db: -12 }])),
+};
+
+export type MusicId = keyof typeof ESSENTIALS_MUSIC | keyof typeof BIOME_TRACKS | 'ocean';
 
 /**
  * Chemin servi par le jeu (public/game/audio/…) d'un fichier source : son
