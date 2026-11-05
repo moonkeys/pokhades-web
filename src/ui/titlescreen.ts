@@ -158,5 +158,7 @@ export class TitleScreen {
 
     el('p', 'title-keys', wrap, '↑↓ choisir · Entrée valider');
     el('p', 'title-credits', this.root, 'Prototype web · jeu de fan non officiel · Pokémon © Nintendo, Game Freak, The Pokémon Company');
+    // La version, pour savoir quelle mise en ligne on teste (cf. vite.config.ts).
+    el('p', 'title-version', this.root, `v${__APP_VERSION__}`);
   }
 }
