@@ -843,3 +843,20 @@ d'écran d'accueil : la Poké Ball enchaînée du logo (`public/favicon-32.png`,
 - La fontaine des villages (et du plan) est celle d'Essentials : le bassin d'`Outside.png`
   et le jet animé de l'autotile `Fountain1.png`.
 
+
+## Multijoueur : relais TURN
+
+La connexion entre joueurs est directe (WebRTC via PeerJS). Entre un téléphone en 4G/5G et un
+ordinateur, le réseau de l'opérateur la bloque presque toujours : l'invité voit « en attente,
+l'hôte ne répond pas ». Il faut alors un **relais TURN** (`src/net/net.ts`, `iceServers`).
+Sans configuration, le jeu n'utilise que le TURN public de peerjs.com, gratuit mais souvent
+saturé. Pour un relais fiable (par exemple l'offre gratuite de Metered ou de Cloudflare) :
+
+- en local, un fichier `.env.local` avec `VITE_TURN_URLS` (adresses séparées par des virgules,
+  par exemple `turn:xxx:80,turn:xxx:443?transport=tcp`), `VITE_TURN_USERNAME` et
+  `VITE_TURN_CREDENTIAL` ;
+- en production, dans GitHub : variables `TURN_URLS` et `TURN_USERNAME`, secret
+  `TURN_CREDENTIAL` (Settings → Secrets and variables → Actions), lus par `pages.yml`.
+
+Les identifiants TURN finissent dans le JavaScript publié : prendre des identifiants à quota,
+pas un compte sensible.

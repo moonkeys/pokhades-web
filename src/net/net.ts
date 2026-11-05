@@ -22,6 +22,30 @@ const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const CODE_LEN = 5;
 /** Préfixe des identifiants PeerJS : le serveur de signalisation est partagé avec le monde entier. */
 const PREFIX = 'pokhades-web-';
+
+/**
+ * Serveurs ICE de la connexion directe (WebRTC). Sur un téléphone en 4G/5G, le réseau de
+ * l'opérateur (NAT symétrique) bloque presque toujours le pair-à-pair : la partie ne passe
+ * alors que par un relais TURN (retour de test : « je suis en attente, l'autre ne répond
+ * pas », mobile contre ordinateur). Passer `config` à PeerJS remplace ses serveurs par défaut :
+ * on les remet (STUN Google + TURN public de peerjs.com, gratuit mais souvent saturé), en ajoutant
+ * d'autres STUN, et le TURN du projet s'il est fourni au build (VITE_TURN_URLS : adresses
+ * séparées par des virgules ; VITE_TURN_USERNAME ; VITE_TURN_CREDENTIAL — cf. README).
+ */
+function iceServers(): RTCIceServer[] {
+  const servers: RTCIceServer[] = [
+    { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302', 'stun:global.stun.twilio.com:3478'] },
+    { urls: ['turn:eu-0.turn.peerjs.com:3478', 'turn:us-0.turn.peerjs.com:3478'], username: 'peerjs', credential: 'peerjsp' },
+  ];
+  const env = import.meta.env;
+  const urls = String(env.VITE_TURN_URLS ?? '').split(',').map((u) => u.trim()).filter(Boolean);
+  if (urls.length) servers.unshift({ urls, username: String(env.VITE_TURN_USERNAME ?? ''), credential: String(env.VITE_TURN_CREDENTIAL ?? '') });
+  return servers;
+}
+const PEER_OPTIONS = { config: { iceServers: iceServers(), sdpSemantics: 'unified-plan' } };
+/** Délai pour établir la liaison avec l'hôte : via un relais TURN, elle prend plus de 12 s. */
+const JOIN_TIMEOUT_MS = 30000;
+
 /** Un hôte et un invité de versions différentes ne se comprendraient pas (Net._reject_version). */
 export const NET_VERSION = 1;
 
@@ -241,7 +265,7 @@ export class Net {
 
   private openHost(loadout: Loadout, attempt: number): Promise<void> {
     const code = makeCode();
-    const peer = new Peer(PREFIX + code);
+    const peer = new Peer(PREFIX + code, PEER_OPTIONS);
     this.peer = peer;
     return new Promise((resolve) => {
       peer.on('open', (id) => {
@@ -326,7 +350,7 @@ export class Net {
     this.code = clean;
     this.status = 'Connexion à l’hôte…';
     this.changed();
-    const peer = new Peer();
+    const peer = new Peer(PEER_OPTIONS);
     this.peer = peer;
     return new Promise((resolve) => {
       const fail = (why: string) => {
@@ -340,7 +364,12 @@ export class Net {
         this.id = id;
         const conn = peer.connect(PREFIX + clean, { reliable: true });
         this.hostConn = conn;
-        const timer = setTimeout(() => fail('L’hôte ne répond pas.'), 12000);
+        const timer = setTimeout(
+          () => fail('Liaison impossible avec l’hôte : un des deux réseaux (4G, Wi-Fi public) bloque la connexion directe. Essaie en Wi-Fi des deux côtés.'),
+          JOIN_TIMEOUT_MS,
+        );
+        this.status = 'Connexion à l’hôte… (jusqu’à 30 s via un relais)';
+        this.changed();
         conn.on('open', () => {
           clearTimeout(timer);
           this.status = '';
