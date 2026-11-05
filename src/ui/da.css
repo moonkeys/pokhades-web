@@ -2459,6 +2459,66 @@
   line-height: calc(2 * var(--u));
   letter-spacing: 0.04em;
 }
+/* Lignée d'évolution, au pied de la fiche d'une forme de base : une rangée
+   de petites cartes (comme celles de la grille, sur le papier de la fiche),
+   chacune précédée du niveau où elle arrive, au marqueur. Une forme jamais
+   croisée reste une silhouette d'encre ; possédée, un liseré jaune.
+   Un embranchement empile ses branches en colonne (.cs-evo-fork). */
+.cs-evo-label {
+  margin-top: calc(1.4 * var(--u));
+}
+.cs-evo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(0.4 * var(--u)) calc(0.6 * var(--u));
+}
+.cs-evo-fork {
+  display: grid;
+  gap: calc(0.4 * var(--u));
+}
+.cs-evo-branch {
+  display: flex;
+  align-items: center;
+  gap: calc(0.6 * var(--u));
+}
+.cs-evo-lvl {
+  font-family: var(--marker);
+  font-size: calc(1 * var(--u));
+  white-space: nowrap;
+}
+.cs-evo-lvl::before {
+  content: '→ ';
+}
+.cs-evo-form {
+  display: grid;
+  justify-items: center;
+  width: calc(7.5 * var(--u));
+  padding: calc(0.3 * var(--u));
+  background: #14100e14;
+  border: calc(0.12 * var(--u)) solid transparent;
+}
+.cs-evo-form.own {
+  border-color: var(--yel);
+}
+.cs-evo-form img {
+  width: calc(5 * var(--u));
+  height: calc(5 * var(--u));
+  object-fit: contain;
+}
+.cs-evo-form img.shadow {
+  filter: brightness(0) opacity(0.85);
+}
+.cs-evo-form b {
+  max-width: 100%;
+  overflow: hidden;
+  font-family: var(--head);
+  font-size: calc(1.2 * var(--u));
+  font-weight: normal;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
 .cs-dex-go {
   margin-top: calc(1.2 * var(--u));
   padding: calc(0.35 * var(--u)) calc(1.4 * var(--u));

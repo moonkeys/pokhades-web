@@ -233,3 +233,27 @@ const PREVIOUS = new Map<number, number>(Object.entries(EVOLUTIONS).flatMap(([fr
 
 /** Forme précédente de `id`, ou null pour une forme de base (ou absente de la table). */
 export const preEvolutionOf = (id: number): number | null => PREVIOUS.get(id) ?? null;
+
+/**
+ * Les évolutions directes de `id`, telles que le joueur les vivra : la forme
+ * suivante et le niveau où elle arrive (pour la lignée de la fiche du
+ * Pokédex). Une forme sautée (SKIPPED_FORMS) s'efface : sa suivante prend sa
+ * place, au seuil le plus haut des deux (Poichigeon → Déflaisan au niveau 32,
+ * comme evolutionOf) ; une forme finale sautée coupe la lignée. Une liste
+ * plutôt qu'une valeur : la table n'a qu'une branche par espèce (Évoli ne
+ * donne qu'Aquali), mais l'écran sait déjà montrer des embranchements le jour
+ * où elle en aura.
+ */
+export function evolutionsOf(id: number): { level: number; next: number }[] {
+  const evo = EVOLUTIONS[id];
+  // Garde-fou : une entrée qui pointerait sur elle-même n'est pas une évolution.
+  if (!evo || evo[1] === id) return [];
+  let [level, next] = evo;
+  while (SKIPPED_FORMS.has(next)) {
+    const skip = EVOLUTIONS[next];
+    if (!skip) return [];
+    level = Math.max(level, skip[0]);
+    next = skip[1];
+  }
+  return [{ level, next }];
+}
