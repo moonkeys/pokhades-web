@@ -14,6 +14,17 @@ au sol. Lot 2 : évolutions en run (1.1), Super Bonbon compris ; biomes
 enchaînés (1.2) : graphe de biomes, portes de route au choix après chaque
 boss, Océan gardé par Surf (ces deux points restent ci-dessous pour mémoire).
 
+Lot 3 (5 novembre 2026, retour de test après la mise en ligne, détail dans
+`README.md`) : panneau H réduit au Repaire dans le jeu publié ; première zone
+peu variée et recrutement guidé ; difficulté qui monte d'acte en acte (boss
+complétés, sbires, effectifs selon l'équipe) ; dresseurs qui mènent leurs
+Pokémon ; Piège caché, marchand retiré ; carte du monde fixe, portes du côté
+de leur biome et entrée par le bord d'en face ; carnet (J) avec la carte et les
+exploits ; Route Victoire (Conseil et Maître) ; Baies divisées par trois ;
+Pokédex des formes de base ; plus de nage sans Surf ; recrues visibles au
+Repaire, « Plus tard », jauge des places, arbres dégagés. À regarder au
+prochain test : l'équilibre réel des niveaux (non joué de bout en bout).
+
 ---
 
 ## 0. Pour reprendre
