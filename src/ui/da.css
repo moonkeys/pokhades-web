@@ -4435,6 +4435,25 @@
   background: var(--ink);
 }
 
+/* Notification d'un gain (runhud.ts, notifyAll) : l'icône de l'objet en pixels nets, la
+ * quantité en gros sur une étiquette jaune, à droite. */
+.notif:has(> .qty) {
+  grid-template-columns: auto 1fr auto;
+}
+.notif .ico.item img,
+.notif .ico.item .notif-res {
+  width: 100%;
+  image-rendering: pixelated;
+}
+.notif .ico.item .notif-res {
+  display: block;
+  background-image: url('/game/assets/tilesets/tileset%20pokemon.png');
+  background-repeat: no-repeat;
+}
+.notif .qty {
+  font-style: normal;
+  font-size: calc(1.7 * var(--u));
+}
 /* Un biome pas encore atteint : un grand « ? » à la place de son nom (journal.ts). */
 .jr-place.fog .jr-label {
   font-size: 28px;

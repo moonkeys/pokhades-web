@@ -36,10 +36,17 @@ export interface Notice {
   color?: string;
   /** Pokémon K.O. : son image passe en gris. */
   ko?: boolean;
+  /** Icône d'objet d'Essentials (assets/essentials/items), ou une ressource de construction. */
+  item?: string;
+  res?: ResourceId;
+  /** Quantité gagnée, en gros sur une étiquette jaune (« +12 »). */
+  qty?: string;
 }
 
 /** Combien de notifications à la fois, et combien de temps chacune reste. */
-const MAX_NOTICES = 4;
+const MAX_NOTICES = 6;
+/** Écart entre deux notifications mises en file (le butin d'un coffre, une par gain). */
+const QUEUE_GAP = 0.28;
 const NOTICE_TIME = 4.5;
 const TOAST_TIME = 2.4;
 
@@ -66,6 +73,9 @@ function firstVisit(name: string): boolean {
 }
 
 export class RunHud {
+  /** Notifications en attente (notifyAll) et temps avant la suivante. */
+  private queue: Notice[] = [];
+  private queueT = 0;
   private readonly zone: HTMLElement;
   private readonly money: HTMLElement;
   private readonly revives: HTMLElement;
@@ -200,8 +210,13 @@ export class RunHud {
   notify(n: Notice): void {
     const card = el('div', 'notif da-paper');
     if (n.color) card.style.setProperty('--c', n.color);
-    const ico = el('div', `ico${n.ko ? ' ko' : ''}`, card);
-    if (n.art) {
+    const ico = el('div', `ico${n.ko ? ' ko' : ''}${n.item || n.res ? ' item' : ''}`, card);
+    if (n.res) resIcon(n.res, ico, 'notif-res');
+    else if (n.item) {
+      const img = el('img', '', ico) as HTMLImageElement;
+      img.src = `/game/assets/essentials/items/${n.item}.png`;
+      img.alt = '';
+    } else if (n.art) {
       const img = el('img', '', ico) as HTMLImageElement;
       img.src = `/game/artwork/${n.art}.png`;
       img.alt = '';
@@ -209,6 +224,7 @@ export class RunHud {
     const body = el('div', '', card);
     if (n.title) el('b', '', body, n.title);
     el('span', '', body, n.text);
+    if (n.qty) el('em', 'qty da-stamp', card, n.qty);
     this.notices.prepend(card);
     this.live.unshift({ el: card, t: 0 });
     for (const old of this.live.splice(MAX_NOTICES)) old.el.remove();
@@ -238,6 +254,15 @@ export class RunHud {
   /** Message court sans titre (boutique, boons, montée de niveau…) : une notification simple. */
   message(text: string): void {
     this.notify({ text });
+  }
+
+  /**
+   * Des notifications à la suite, une toutes les QUEUE_GAP s (ajout, retour de test : « quand
+   * j'ouvre un coffre avec plein de récompenses, je veux une notif pour chaque, avec l'icône
+   * et la quantité »).
+   */
+  notifyAll(list: readonly Notice[]): void {
+    this.queue.push(...list);
   }
 
   /** Message central sur bande de papier, avec une étiquette jaune optionnelle (« +38 ₽ »). */
@@ -280,6 +305,11 @@ export class RunHud {
     this.titleT += dt;
     const t = this.titleT;
     this.title.style.opacity = String(t < 0.35 ? t / 0.35 : t < 1.95 ? 1 : Math.max(0, 1 - (t - 1.95) / 0.5));
+    this.queueT -= dt;
+    if (this.queue.length && this.queueT <= 0) {
+      this.notify(this.queue.shift()!);
+      this.queueT = QUEUE_GAP;
+    }
     this.toastT += dt;
     this.toastEl.style.opacity = this.toastT < TOAST_TIME ? '1' : '0';
     for (const n of this.live) {
