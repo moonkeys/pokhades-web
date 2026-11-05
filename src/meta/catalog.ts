@@ -317,10 +317,17 @@ export const CS_LIST: readonly { id: CsId; name: string; price: number; desc: st
   { id: 'strength', name: 'Force', price: 220, desc: 'Pousser les rochers qui bloquent l’accès à certains coffres.', ready: false, icon: 'machine_NORMAL' },
 ];
 
-/** Baies gagnées (CombatArena.gd) : boss, victoire finale, et consolation d'une défaite. */
+/**
+ * Baies gagnées (CombatArena.gd) : boss, victoire finale, et consolation d'une défaite.
+ * Écart voulu (retour de test : « on se fait de l'argent beaucoup trop facilement… une
+ * run gagnée, j'avais déjà 2000 Baies ») : divisées par trois environ — le jeu donnait
+ * 120 + 80 par acte au boss, 300 au Dresseur final et 500 + 30 par salle à la victoire.
+ * Les arbres (run/berries.ts) et les coffres (run/chests.ts) donnent moins aussi ; les
+ * exploits du carnet (meta/feats.ts) paient surtout en Éclats.
+ */
 export const BAIES = {
-  boss: (act: number) => 120 + act * 80,
-  finalBonus: 300,
-  victory: (rooms: number) => 500 + rooms * 30,
-  defeat: (rooms: number) => rooms * 15,
+  boss: (act: number) => 40 + act * 25,
+  finalBonus: 120,
+  victory: (rooms: number) => 150 + rooms * 6,
+  defeat: (rooms: number) => rooms * 4,
 };

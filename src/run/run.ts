@@ -54,8 +54,15 @@ export const REWARD_LABEL: Record<Reward, string> = {
 };
 /** « Don d'Électhor », « Don de Mew » : l'étiquette d'un don dont on connaît le donateur. */
 export const donorLabel = (donor: DonorId) => `Don ${/^[AEIOUÉÈÊ]/.test(DONORS[donor].name) ? "d'" : 'de '}${DONORS[donor].name}`;
-/** Couleurs des récompenses (CombatArena.gd:5954-5958). */
-export const REWARD_COLOR: Record<Reward, string> = { skill: '#b88ceb', boon: '#59d9f2', loot: '#8cd973' };
+/**
+ * Couleurs des récompenses : la lueur des portes ouvertes et le halo de la récompense posée.
+ * Écart voulu (CombatArena.gd:5954-5958 : cyan, violet, vert ; retour de test : « le bleu du
+ * don, le violet de l'attaque, je ne suis pas fan ») : les couleurs de la DA — l'or des dons,
+ * l'orange de la bombe pour les attaques, le papier pour le butin.
+ */
+export const REWARD_COLOR: Record<Reward, string> = { skill: '#ff7a2a', boon: '#ffcb05', loot: '#efe6d2' };
+/** La porte vers la boutique : sa lueur. */
+export const SHOP_COLOR = '#c8963c';
 /** Poids de tirage des portes (RunManager.gd:53-57). */
 const REWARD_WEIGHTS: [Reward, number][] = [
   ['boon', 6],
@@ -78,6 +85,12 @@ export const SPECIALS: Record<SpecialId, { name: string; glyph: string; color: s
   trap: { name: 'Piège', glyph: '⚠', color: '#e8604c' },
   merchant: { name: 'Marchand ambulant', glyph: '¤', color: '#e0b25a' },
 };
+/**
+ * Les salles spéciales que les portes proposent. Retour de test : « le
+ * marchand, j'en veux pas du tout » — Miaouss (run/merchant.ts) n'est plus
+ * tiré ; son code reste, pour le jour où il reviendrait sous une autre forme.
+ */
+const OFFERED_SPECIALS: readonly SpecialId[] = ['challenge', 'trap'];
 /** Chance qu'une porte devienne une salle spéciale, et plafond par acte. */
 const SPECIAL_CHANCE = 0.35;
 const SPECIALS_PER_ACT = 2;
@@ -190,7 +203,29 @@ export class Run {
     const name = this.rng.pick(fresh.length ? fresh : others.length ? others : pool);
     this.faced.add(name);
     this.biomes.push(biome);
-    this.champions.push(CHAMPIONS[name]);
+    this.champions.push(this.reinforce(CHAMPIONS[name], act));
+  }
+
+  /**
+   * L'équipe d'un champion, complétée selon l'acte (ajout, retour de test : « les boss
+   * deviennent trop faciles… une plus grosse équipe ») : Pierre ou Olga, deux Pokémon dans
+   * les jeux, en alignent cinq au quatrième acte. Les renforts sont des Pokémon de son
+   * type pris dans la faune de la Ligue, rangés avant l'as, escortés de leur forme de base.
+   */
+  private reinforce(champ: Champion, act: number): Champion {
+    const want = MIN_CHAMPION_TEAM[Math.min(act, MIN_CHAMPION_TEAM.length - 1)];
+    if (champ.team.length >= want) return champ;
+    const have = new Set(champ.team.map(([f]) => f));
+    const mates = typeMates(champ.type).filter((id) => !have.has(id) && preEvolutionOf(id) !== null);
+    const extra: [number, number][] = [];
+    const rng = new Rng(hash2(this.seed, act, 4411) * 1e9);
+    while (champ.team.length + extra.length < want && mates.length) {
+      const id = mates.splice(rng.int(mates.length), 1)[0];
+      let base = id;
+      while (preEvolutionOf(base) !== null) base = preEvolutionOf(base)!;
+      extra.push([id, base]);
+    }
+    return { ...champ, team: [...champ.team.slice(0, -1), ...extra, champ.team[champ.team.length - 1]] };
   }
 
   /** Branches ouvertes depuis le biome de l'acte courant (le biome forcé, s'il y en a un). */
@@ -236,11 +271,15 @@ export class Run {
    */
   bossWaves(): { id: number; level: number; role: 'wild' | 'champion' | 'boss' }[][] {
     const team = this.champion.team;
+    // Sbires par vague : deux au premier acte (on y apprend le boss), puis de plus en plus,
+    // et un de plus par paire de membres de l'équipe à partir du deuxième acte.
+    const escort = this.act === 0 ? 2 : 3 + this.act * 2 + Math.floor((this.teamSize - 1) / 2);
     return team.map(([final, base], w) => {
-      // RunManager.boss_wave_level
-      const level = 18 + Math.floor(this.room * 0.7) + Math.floor(w * 1.4);
+      const level = this.bossLevel(w);
       const wave: { id: number; level: number; role: 'wild' | 'champion' | 'boss' }[] = [{ id: final, level, role: w === team.length - 1 ? 'boss' : 'champion' }];
-      if (base !== final) for (let i = 0; i < 3 + this.act; i++) wave.push({ id: base, level: Math.max(1, level - 6), role: 'wild' });
+      // (Sans forme de base, l'escorte prend la sienne : des renforts à son niveau, moins nombreux.)
+      const n = base !== final ? escort : this.act >= 1 ? Math.ceil(escort / 2) : 0;
+      for (let i = 0; i < n; i++) wave.push({ id: base, level: Math.max(1, level - (base !== final ? 6 : 4)), role: 'wild' });
       return wave;
     });
   }
@@ -335,10 +374,10 @@ export class Run {
     const next = this.room + 1;
     const fits = out.length >= 2 && next >= 2 && !this.isBoss() && !this.isShop(next) && !this.isBoss(next) && next % ROOMS_PER_ACT !== 0;
     if (fits && this.specialsTaken[this.act] < SPECIALS_PER_ACT && this.rng.chance(SPECIAL_CHANCE)) {
-      const kinds = (Object.keys(SPECIALS) as SpecialId[]).filter((k) => k !== this.lastSpecial);
+      const kinds = OFFERED_SPECIALS.filter((k) => k !== this.lastSpecial);
       const special = this.rng.pick(kinds);
       const i = out.length - 1;
-      out[i] = this.specialOffer(special, out[i]);
+      out[i] = { ...this.specialOffer(special, out[i]), exit: out[i].exit };
     }
     return out;
   }
@@ -408,7 +447,26 @@ export class Run {
    */
   /** Niveau des sauvages d'une salle de combat (sans toucher au tirage, contrairement à waves()). */
   get roomLevel(): number {
-    return 10 + Math.floor(this.room * 1.1) + this.act * 2;
+    return this.levelAt(this.room);
+  }
+
+  /**
+   * Niveau des sauvages d'une salle. Écart voulu (10 + salle × 1,1 + acte × 2) : la pente
+   * se raidit d'acte en acte, et la Route Victoire part encore plus haut. Le premier acte,
+   * lui, ne change presque pas.
+   */
+  private levelAt(room: number): number {
+    const act = Math.min(this.acts - 1, Math.floor(room / ROOMS_PER_ACT));
+    return 10 + Math.floor(room * 1.2) + act * 3 + (act === this.victoryAct ? 6 : 0);
+  }
+
+  /**
+   * Niveau du Pokémon `w` du champion. Écart voulu (RunManager.boss_wave_level : 18 + salle
+   * × 0,7) : il part du niveau des salles de son acte, quelques niveaux au-dessus ; sinon,
+   * au quatrième acte, il était plus faible que les sauvages qui le précédaient.
+   */
+  bossLevel(w: number, room = this.room): number {
+    return this.levelAt(room) + 3 + Math.floor(w * 1.5);
   }
 
   /**
@@ -432,13 +490,47 @@ export class Run {
     const early = this.room < 2;
     let perWave = Math.min(5, Math.max(1, 1 + Math.floor(combatIdx * 0.75)));
     if (early) perWave = Math.max(3, perWave);
-    const count = Math.min(5, Math.max(2, 2 + Math.floor(combatIdx / 5))) + this.rng.int(2);
+    // Dès le deuxième acte, l'effectif suit l'équipe : un sauvage de plus par paire de membres.
+    if (this.act >= 1) perWave = Math.min(7, perWave + Math.floor((this.teamSize - 1) / 2));
+    const count = Math.min(5, Math.max(2, 2 + Math.floor(combatIdx / 5))) + this.rng.int(2) + (this.onVictoryRoad ? 1 : 0);
     return { perWave, count, level: this.roomLevel, early };
   }
 
-  /** Vivier de la salle : les 9 premières espèces du biome en début d'acte, les 18 ensuite. */
+  /**
+   * Vivier de la salle : les 9 premières espèces du biome en début d'acte, les 18 ensuite.
+   * Premier acte (retour de test : « il faudrait que la prairie, ce soit des Pokémon très
+   * basiques… pas de grosse variété, comme ça tu peux facilement atteindre le nombre de
+   * 10 et recruter ») : trois espèces dans les deux premières salles, cinq ensuite — les
+   * premières de la liste du biome, des formes de base. La Route Victoire mêle la faune
+   * des quatre biomes du dernier étage.
+   */
   fauna(): number[] {
+    if (this.onVictoryRoad) return [...new Set((['volcan', 'rocailleux', 'glace', 'marais'] as BiomeId[]).flatMap((b) => BIOMES[b].fauna))];
     const all = BIOMES[this.biome].fauna;
-    return this.room % ROOMS_PER_ACT < 2 ? all.slice(0, 9) : [...all];
+    const early = this.room % ROOMS_PER_ACT < 2;
+    if (this.act === 0) return all.slice(0, early ? 3 : 5);
+    return early ? all.slice(0, 9) : [...all];
   }
+
+  /**
+   * Part de Pokémon venus d'ailleurs dans l'équipe d'un dresseur (data/trainers.ts,
+   * pickMember) : aucune au premier acte, puis de plus en plus. Les itinérants et les top
+   * dresseurs n'arrivent qu'au deuxième acte.
+   */
+  get variety(): number {
+    return this.act === 0 ? 0 : this.act === 1 ? 0.2 : 0.4;
+  }
+}
+
+/** Ce que coûte de percer vers `dir` une porte sur le bord `side` : l'angle entre les deux (0 à π). */
+function sideCost(side: Side, dir: { x: number; y: number }): number {
+  const v = { N: [0, -1], S: [0, 1], E: [1, 0], W: [-1, 0] }[side];
+  const len = Math.hypot(dir.x, dir.y) || 1;
+  return Math.acos(Math.max(-1, Math.min(1, (v[0] * dir.x + v[1] * dir.y) / len)));
+}
+
+/** Les suites de `k` éléments distincts pris dans `items`, dans tous les ordres. */
+function permutations(items: readonly number[], k: number): number[][] {
+  if (k === 0) return [[]];
+  return items.flatMap((x, i) => permutations([...items.slice(0, i), ...items.slice(i + 1)], k - 1).map((p) => [x, ...p]));
 }

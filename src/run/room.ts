@@ -497,7 +497,8 @@ export class RoomDirector {
   private assignTrainers(world: WorldMap, run: Run): void {
     const pool = run.fauna();
     const level = Math.max(...this.waves.flat().map((m) => m.level));
-    if (!this.special && run.room >= 2 && this.rng.chance(ACE_CHANCE)) {
+    // Pas de top dresseur au premier acte (retour de test : « tout ce qui est top dresseur arrive un peu plus tard »).
+    if (!this.special && run.act >= 1 && this.rng.chance(ACE_CHANCE + 0.05 * run.act)) {
       this.waves.push(Array.from({ length: ACE_TEAM }, () => ({ id: 0, level: level + ACE_LEVELS, role: 'wild' as const })));
     }
     const last = this.waves.length - 1;
@@ -506,13 +507,13 @@ export class RoomDirector {
       const n = ace ? 1 : wave.length > SOLO_MAX ? 2 : 1;
       const first = this.groups.length;
       for (let k = 0; k < n; k++) {
-        const cls = ace ? this.rng.pick(ACES) : pickClass(this.rng, run.biome);
+        const cls = ace ? this.rng.pick(ACES) : pickClass(this.rng, run.biome, run.act === 0 ? 0 : 0.35);
         const at = this.spawnPoint(world, world.spawn, false) ?? world.spawn;
         this.groups.push({ trainer: new Trainer(TRAINER_CLASSES[cls].sprite, at, null, 2.5), cls, wave: w, actors: [], thrown: false, done: false, ace });
       }
       wave.forEach((m, i) => {
         m.group = first + (i % n);
-        m.id = pickMember(this.rng, this.groups[m.group].cls, pool);
+        m.id = pickMember(this.rng, this.groups[m.group].cls, pool, run.variety);
       });
     });
   }
