@@ -2459,6 +2459,66 @@
   line-height: calc(2 * var(--u));
   letter-spacing: 0.04em;
 }
+/* Lignée d'évolution, au pied de la fiche d'une forme de base : une rangée
+   de petites cartes (comme celles de la grille, sur le papier de la fiche),
+   chacune précédée du niveau où elle arrive, au marqueur. Une forme jamais
+   croisée reste une silhouette d'encre ; possédée, un liseré jaune.
+   Un embranchement empile ses branches en colonne (.cs-evo-fork). */
+.cs-evo-label {
+  margin-top: calc(1.4 * var(--u));
+}
+.cs-evo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(0.4 * var(--u)) calc(0.6 * var(--u));
+}
+.cs-evo-fork {
+  display: grid;
+  gap: calc(0.4 * var(--u));
+}
+.cs-evo-branch {
+  display: flex;
+  align-items: center;
+  gap: calc(0.6 * var(--u));
+}
+.cs-evo-lvl {
+  font-family: var(--marker);
+  font-size: calc(1 * var(--u));
+  white-space: nowrap;
+}
+.cs-evo-lvl::before {
+  content: '→ ';
+}
+.cs-evo-form {
+  display: grid;
+  justify-items: center;
+  width: calc(7.5 * var(--u));
+  padding: calc(0.3 * var(--u));
+  background: #14100e14;
+  border: calc(0.12 * var(--u)) solid transparent;
+}
+.cs-evo-form.own {
+  border-color: var(--yel);
+}
+.cs-evo-form img {
+  width: calc(5 * var(--u));
+  height: calc(5 * var(--u));
+  object-fit: contain;
+}
+.cs-evo-form img.shadow {
+  filter: brightness(0) opacity(0.85);
+}
+.cs-evo-form b {
+  max-width: 100%;
+  overflow: hidden;
+  font-family: var(--head);
+  font-size: calc(1.2 * var(--u));
+  font-weight: normal;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
 .cs-dex-go {
   margin-top: calc(1.2 * var(--u));
   padding: calc(0.35 * var(--u)) calc(1.4 * var(--u));
@@ -3485,18 +3545,20 @@
 .quiz-q {
   margin: 0;
   font-family: var(--head);
-  font-size: calc(2.4 * var(--u));
+  /* (Retour de test : « les boutons sont tout petits » — des planchers en pixels pour les petits écrans.) */
+  font-size: max(24px, calc(3 * var(--u)));
   letter-spacing: 0.03em;
   color: var(--paper);
 }
 .quiz-answers {
   display: grid;
-  gap: calc(0.6 * var(--u));
+  gap: max(10px, calc(0.9 * var(--u)));
 }
 .quiz-a {
-  padding: calc(0.7 * var(--u)) calc(1.4 * var(--u));
+  min-height: 52px;
+  padding: max(12px, calc(1.1 * var(--u))) max(18px, calc(1.8 * var(--u)));
   font-family: var(--body);
-  font-size: calc(1.3 * var(--u));
+  font-size: max(17px, calc(1.9 * var(--u)));
   text-align: left;
   color: var(--ink);
   border: none;
@@ -4173,4 +4235,442 @@
   color: #fff;
   font-size: calc(1.05 * var(--u));
   text-shadow: 0 1px 2px #000;
+}
+
+/* ── Plan du monde et carnet des exploits (src/ui/journal.ts) ────────────
+ * Le plan : la carte peinte aux tuiles du jeu, en pixels nets, sous un liseré
+ * d'encre ; les noms sur une étiquette de papier. Le carnet : une ligne par
+ * exploit, rien de plus. */
+.journal .jr-card {
+  left: 50%;
+  top: 50%;
+  width: min(calc(100vw - 32px), calc(80 * var(--u)));
+  max-height: calc(100vh - 32px);
+  display: flex;
+  flex-direction: column;
+  translate: -50% -50%;
+  rotate: -0.6deg;
+  /* Assez de marge pour que le bord déchiré (clip-path) ne rogne pas la légende. */
+  padding: calc(1.2 * var(--u)) calc(2.4 * var(--u)) calc(1 * var(--u));
+  color: var(--ink);
+  background: var(--paper);
+  clip-path: polygon(0 1%, 6% 0, 22% 1.2%, 40% 0, 60% 1%, 80% 0, 100% 1.4%, 99.4% 40%, 100% 70%, 99.2% 100%, 70% 99%, 46% 100%, 24% 98.8%, 4% 100%, 0.6% 70%, 0 30%);
+  box-shadow: 0 var(--u) calc(2 * var(--u)) rgba(0, 0, 0, 0.5);
+}
+.journal .jr-card.feats {
+  width: min(calc(100vw - 32px), 440px);
+  max-height: min(calc(100vh - 32px), 560px);
+}
+.journal .jr-intro {
+  margin: 8px 0 0;
+  font: 500 14px / 1.3 var(--body);
+  color: var(--muted);
+}
+.journal .jr-none {
+  margin: 0 0 2px 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.journal .jr-feat .jr-text {
+  display: grid;
+  gap: 1px;
+}
+.journal .jr-feat .jr-text span {
+  font: 500 12.5px / 1.25 var(--body);
+  color: var(--muted);
+}
+.journal .jr-head .da-tape {
+  display: inline-block;
+  rotate: -2deg;
+}
+.journal .jr-plan {
+  position: relative;
+  margin-top: calc(0.8 * var(--u));
+  aspect-ratio: 44 / 30;
+  max-height: calc(100vh - 150px);
+  border: 3px solid var(--ink);
+  overflow: hidden;
+}
+.journal .jr-plan-art,
+.journal .jr-plan-fx,
+.journal .jr-plan-over {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.journal .jr-plan-art,
+.journal .jr-plan-fx {
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+.jr-arrow {
+  fill: var(--yel);
+  stroke: var(--ink);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+/* Les routes : des pointillés d'encre sur un liseré de papier, comme une carte au trésor ;
+ * sur la mer (Océan), des pointillés d'écume. */
+.jr-trail-under,
+.jr-trail {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.jr-trail-under {
+  stroke: rgba(255, 248, 230, 0.75);
+  stroke-width: 7;
+  stroke-dasharray: 9 7;
+}
+.jr-trail {
+  stroke: var(--ink);
+  stroke-width: 3.5;
+  stroke-dasharray: 9 7;
+}
+.jr-trail.sea {
+  stroke: #fff8e6;
+}
+.jr-trail.shut {
+  opacity: 0.35;
+}
+.jr-arrow.shut {
+  opacity: 0.35;
+}
+.jr-cs {
+  font: 11px var(--head);
+  letter-spacing: 0.05em;
+  text-anchor: middle;
+  fill: var(--paper);
+  stroke: var(--ink);
+  stroke-width: 3;
+  paint-order: stroke;
+}
+.jr-label {
+  font: 19px var(--head);
+  letter-spacing: 0.06em;
+  text-anchor: middle;
+  fill: var(--paper);
+  stroke: var(--ink);
+  stroke-width: 4;
+  paint-order: stroke;
+}
+.jr-place.start .jr-label {
+  fill: var(--yel);
+}
+.jr-place.fog .jr-label,
+.jr-place.fog .jr-sub {
+  fill: #b9b2a4;
+}
+.jr-place.fog .jr-sub {
+  font-style: italic;
+}
+.jr-sub {
+  font: 700 10px var(--body);
+  text-anchor: middle;
+  fill: var(--paper);
+  stroke: var(--ink);
+  stroke-width: 3;
+  paint-order: stroke;
+}
+.journal .jr-legend,
+.journal .jr-keys {
+  margin: calc(0.4 * var(--u)) 0 0;
+  font-size: clamp(11px, calc(1.05 * var(--u)), 14px);
+  color: var(--muted);
+}
+.journal .jr-feats {
+  display: grid;
+  gap: 4px;
+  margin-top: calc(0.6 * var(--u));
+  min-height: 0;
+  overflow: auto;
+}
+.journal .jr-group {
+  margin: 10px 0 2px;
+  font: normal 18px / 1 var(--head);
+  letter-spacing: 0.06em;
+}
+.journal .jr-group small {
+  margin-left: 8px;
+  font: 500 12px var(--body);
+  color: var(--muted);
+}
+.journal .jr-feat {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 3px 8px;
+  border-left: 4px solid var(--muted);
+  font-size: 13px;
+}
+.journal .jr-feat b {
+  font: normal 15px / 1.1 var(--head);
+  letter-spacing: 0.04em;
+}
+.journal .jr-feat em {
+  font-style: normal;
+  font-size: 12px;
+  color: var(--muted);
+}
+.journal .jr-feat.ready {
+  border-left-color: var(--yel);
+  background: rgba(255, 210, 63, 0.25);
+}
+.journal .jr-reward {
+  font: normal 13px / 1.2 var(--head);
+  color: var(--muted);
+}
+.journal .jr-claim {
+  padding: 2px 10px;
+  font: normal 14px / 1.2 var(--head);
+  letter-spacing: 0.05em;
+  color: var(--ink);
+  background: var(--yel);
+  border: 2px solid var(--ink);
+  cursor: pointer;
+}
+.journal .jr-claim.all {
+  justify-self: start;
+  color: var(--paper);
+  background: var(--ink);
+}
+
+/* Notification d'un gain (runhud.ts, notifyAll) : l'icône de l'objet en pixels nets, la
+ * quantité en gros sur une étiquette jaune, à droite. */
+.notif:has(> .qty) {
+  grid-template-columns: auto 1fr auto;
+}
+.notif .ico.item img,
+.notif .ico.item .notif-res {
+  width: 100%;
+  image-rendering: pixelated;
+}
+.notif .ico.item .notif-res {
+  display: block;
+  background-image: url('/game/assets/tilesets/tileset%20pokemon.png');
+  background-repeat: no-repeat;
+}
+.notif .qty {
+  font-style: normal;
+  font-size: calc(1.7 * var(--u));
+}
+/* Un biome pas encore atteint : un grand « ? » à la place de son nom (journal.ts). */
+.jr-place.fog .jr-label {
+  font-size: 28px;
+}
+/* (Le bord déchiré du papier rognait la première lettre.) */
+.journal .jr-keys {
+  padding-left: 6px;
+}
+
+/* ── Logo (logo.ts) ─────────────────────────────────────────────────────
+   L'illustration du joueur, détourée. Sa largeur suit l'échelle de la DA mais reste dans
+   l'écran au téléphone, en largeur comme en hauteur (à l'horizontale, 375 px de haut : sans
+   la borne en vh, le logo poussait le menu et sortait par le haut). L'image fait ~3 × 1,
+   donc 96vh de large ≈ un tiers de la hauteur. L'ombre portée la décolle du Repaire flouté. */
+.logo {
+  display: block;
+  user-select: none;
+  line-height: 0;
+}
+.logo-art img {
+  display: block;
+  width: min(88vw, 96vh, calc(66 * var(--u)));
+  height: auto;
+  -webkit-user-drag: none;
+  filter: drop-shadow(0 calc(0.6 * var(--u)) calc(1.2 * var(--u)) rgba(0, 0, 0, 0.6));
+  opacity: 0;
+}
+/* L'image décodée (logo.ts) : elle « claque » à l'écran titre. L'animation est sur l'image
+   et ne part qu'une fois celle-ci décodée : posée sur `.logo` dès l'insertion, Chromium
+   rastérisait le calque animé encore vide (sous le flou de l'écran titre) et le gardait
+   tel quel, logo invisible sur petit écran. */
+.logo-art.ready img {
+  opacity: 1;
+}
+.play .title-wrap .logo-art.ready img {
+  animation: da-slap 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+/* ── Menu principal (titlescreen.ts) ───────────────────────────────────
+   Le Repaire figé derrière, flouté et assombri ; des braises montent du feu de camp. */
+.title-screen {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  /* Au doigt, `body.touch` attrape la règle `.touch { pointer-events: none }` des commandes
+     tactiles (style.css), et tout le corps la transmet : on rend la main au menu. */
+  pointer-events: auto;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  font-family: var(--body);
+  color: var(--paper);
+  background: radial-gradient(ellipse at 50% 42%, rgba(20, 16, 14, 0.45), rgba(20, 16, 14, 0.9) 75%);
+  backdrop-filter: blur(5px) saturate(0.8);
+  -webkit-backdrop-filter: blur(5px) saturate(0.8);
+}
+.title-embers {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.title-embers i {
+  position: absolute;
+  bottom: -2vh;
+  width: calc(var(--s) * 1.1 * var(--u));
+  height: calc(var(--s) * 1.1 * var(--u));
+  border-radius: 50%;
+  background: #ffb347;
+  box-shadow: 0 0 calc(0.8 * var(--u)) #ff9a3a;
+  opacity: 0;
+  animation: title-ember var(--d) linear var(--w) infinite;
+}
+@keyframes title-ember {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+  12% {
+    opacity: 0.9;
+  }
+  60% {
+    opacity: 0.55;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--x), -85vh);
+  }
+}
+.title-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(2.2 * var(--u));
+}
+.title-menu {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: calc(36 * var(--u));
+  gap: calc(0.5 * var(--u));
+  transition: opacity 0.15s;
+}
+/* Réglages ouverts par-dessus : le menu s'efface, le logo reste. */
+.title-screen.under .title-menu,
+.title-screen.under .title-keys {
+  opacity: 0;
+}
+.title-item {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  gap: calc(1 * var(--u));
+  padding: calc(0.35 * var(--u)) calc(1.6 * var(--u)) calc(0.35 * var(--u)) calc(3.4 * var(--u));
+  white-space: nowrap;
+  border: 0;
+  color: var(--paper);
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  rotate: -1deg;
+  transition: transform 0.1s;
+}
+.title-item b {
+  flex: none;
+  font: normal calc(3.6 * var(--u)) / 1 var(--head);
+  letter-spacing: 0.08em;
+}
+.title-item small {
+  margin-left: auto;
+  font-size: calc(1.1 * var(--u));
+  color: color-mix(in srgb, var(--paper) 55%, transparent);
+}
+/* La ligne choisie : une bande jaune scotchée de travers, une flèche bombée en rose. */
+.title-item.sel {
+  color: var(--ink);
+  background: var(--yel);
+  clip-path: polygon(0 4%, 98% 0, 100% 52%, 99% 100%, 2% 96%, 0 50%);
+  transform: rotate(-1deg) scale(1.03);
+}
+.title-item.sel small {
+  color: var(--muted);
+}
+/* La flèche dans la marge : le mot ne bouge pas quand on passe d'une ligne à l'autre. */
+.title-item.sel b::before {
+  content: '▶';
+  position: absolute;
+  left: calc(0.9 * var(--u));
+  font-size: 0.7em;
+  line-height: 1.45;
+  color: var(--spray);
+}
+.title-keys {
+  margin: 0;
+  font-size: calc(1.1 * var(--u));
+  color: color-mix(in srgb, var(--paper) 50%, transparent);
+  transition: opacity 0.15s;
+}
+.touch .title-keys {
+  display: none;
+}
+.title-credits {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 1.2 * var(--u));
+  margin: 0;
+  text-align: center;
+  font-size: calc(0.9 * var(--u));
+  color: color-mix(in srgb, var(--paper) 35%, transparent);
+}
+/* Le numéro de version, discret dans le coin (titlescreen.ts). */
+.title-version {
+  position: absolute;
+  right: calc(env(safe-area-inset-right, 0px) + 1.6 * var(--u));
+  top: calc(env(safe-area-inset-top, 0px) + 1.2 * var(--u));
+  margin: 0;
+  font-family: var(--accent);
+  font-size: max(12px, calc(1.2 * var(--u)));
+  letter-spacing: 0.06em;
+  color: color-mix(in srgb, var(--paper) 45%, transparent);
+}
+
+/* Questionnaire et choix du starter : des planchers en pixels (retour de test : « c'est tout
+ * petit, pas très agréable »), pour que tout se lise et se touche sur un petit écran. */
+.starter-go {
+  font-size: max(20px, calc(2.2 * var(--u)));
+  min-height: 48px;
+}
+.starter-quote {
+  font-size: max(15px, calc(1.5 * var(--u)));
+}
+.starter-card .nm {
+  font-size: max(15px, calc(1.6 * var(--u)));
+}
+
+/* Les records, en haut du carnet de Xatu : quatre étiquettes. */
+.journal .jr-records {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-top: 8px;
+}
+.journal .jr-rec {
+  display: grid;
+  padding: 4px 6px;
+  text-align: center;
+  background: rgba(20, 16, 14, 0.07);
+  border-bottom: 3px solid var(--ink);
+}
+.journal .jr-rec b {
+  font: normal 18px / 1.1 var(--head);
+  letter-spacing: 0.04em;
+}
+.journal .jr-rec small {
+  font: 500 11px var(--body);
+  color: var(--muted);
 }

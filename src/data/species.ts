@@ -77,7 +77,7 @@ export const SHOP_IDLER = 79;
  * qui se reconnaît d'un coup d'œil). Tous les autres Pokémon du camp sont des
  * libérés : ceux qu'on a débloqués et qu'on n'emmène pas.
  */
-export const CAMP_NPCS = { start: 149, team: 137, builder: 532, moves: 122, upgrades: 65, items: 52, online: 18, missions: 229, quests: 115, lore: 465, garden: 192, craft: 235 } as const;
+export const CAMP_NPCS = { start: 149, team: 137, builder: 532, moves: 122, upgrades: 65, items: 52, online: 18, missions: 229, quests: 115, lore: 465, garden: 192, craft: 235, feats: 178 } as const;
 
 /**
  * Pokémon gagnés aux quêtes de Kangourex (meta/quests.ts), par quête : des

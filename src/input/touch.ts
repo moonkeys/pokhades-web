@@ -116,8 +116,9 @@ export class TouchControls {
       addEventListener('pointercancel', up);
     });
 
-    // En haut à droite : réglages et fiche de l'équipe. Ils ouvrent un écran : on attend
-    // que le doigt se lève, sinon le même toucher retombe sur l'écran et le referme.
+    // En haut à droite : réglages, fiche de l'équipe et carnet (carte du monde, exploits). Ils
+    // ouvrent un écran : on attend que le doigt se lève, sinon le même toucher retombe sur
+    // l'écran et le referme.
     const top = el('div', 'touch-top', this.root);
     this.tapButton(top, 'Escape', '☰');
     this.tapButton(top, 'KeyC', 'Fiche');

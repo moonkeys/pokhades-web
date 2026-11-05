@@ -7,20 +7,22 @@ import '@fontsource/bebas-neue';
 import '@fontsource/permanent-marker';
 import '@fontsource/bangers';
 import { audio, cry, sfx } from './audio/audio';
+import { MUSIC, type MusicId } from './audio/sounds';
 import { buildAtlas } from './assets/atlas';
 import { PLAYER_ACTIONS, WILD_ACTIONS, loadImage, loadInfo, loadSheet } from './assets/pmd';
-import { FINAL_BOSS_DEFEAT, FINAL_BOSS_INTRO, type Champion } from './data/champions';
+import { FINAL_BOSS_DEFEAT, FINAL_BOSS_INTRO, MASTER_DEFEAT, type Champion } from './data/champions';
 import { Trainer } from './entities/trainer';
 import { Shop } from './run/shop';
 import { Camp, CAMP_SEED, campPockets, STATIONS, stationId, type Station } from './run/camp';
-import { CampScreen, movePool, type CampCtx } from './ui/campscreen';
+import { CampScreen, movePool, teamWeight, type CampCtx } from './ui/campscreen';
 import { NetBadge } from './ui/netbadge';
-import { BAIES, FIELD_FOOD, RESOURCES, RESOURCE_IDS, SHARDS, applyHeld, heldItem, teamSlots } from './meta/catalog';
+import { BAIES, FIELD_FOOD, RESOURCES, RESOURCE_IDS, SHARDS, UPGRADES, applyHeld, heldItem, teamSlots } from './meta/catalog';
 import { addMon, capacity, exile, isFull, level, loadSave, markSeen, monName, ownedSpecies, ownsSpecies, recordDefeat, resetSave, roster, speciesOf, startLevel, welcomeMon, writeSave } from './meta/save';
 import { applyTraits, natureText } from './meta/mons';
 import { quest, questEvent, type QuestEvent } from './meta/quests';
+import { leagueOpen, readyFeats } from './meta/feats';
 import { busy, mission, rewardText, tick as tickMissions } from './meta/missions';
-import { materialName, tickCraft } from './meta/crafting';
+import { MATERIALS, NECTARS, materialName, tickCraft } from './meta/crafting';
 import { campNews, fresh as freshNews, markSeen as markNewsSeen } from './meta/news';
 import { BossPreview } from './ui/bosspreview';
 import { RunSummary } from './ui/runsummary';
@@ -36,7 +38,7 @@ import { BASE_TEAM_LEVEL, Pokemon } from './combat/pokemon';
 import { STEP, startLoop } from './core/loop';
 import { Rng } from './core/rng';
 import { CAMP_NPCS, SWIMMERS } from './data/species';
-import { evolutionOf, evolvedStart } from './data/evolutions';
+import { evolutionOf, evolutionsOf, evolvedStart } from './data/evolutions';
 import { Actor, dirFromVector } from './entities/actor';
 import { Input } from './input/input';
 import { CombatFx, typeColor } from './render/combatfx';
@@ -49,6 +51,7 @@ import { Renderer } from './render/renderer';
 import { isTouch, TouchControls } from './input/touch';
 import { RoomDirector } from './run/room';
 import { BerryGrove } from './run/berries';
+import { Hazards } from './run/hazards';
 import { CaveDirector } from './run/cave';
 import { ChestSite } from './run/chests';
 import { Merchant } from './run/merchant';
@@ -57,16 +60,19 @@ import { COMBATS_PER_ACT, ROOMS_PER_ACT, Run } from './run/run';
 import { Hud } from './ui/hud';
 import { loadOptions, saveOptions, type Options } from './ui/options';
 import { Panel } from './ui/panel';
+import { Journal } from './ui/journal';
 import { RewardScreen } from './ui/rewardscreen';
 import { RunHud } from './ui/runhud';
 import { RecruitScreen } from './ui/recruitscreen';
 import { StarterScreen } from './ui/starterscreen';
 import { QuizScreen, STARTER_NATURE } from './ui/quizscreen';
+import { TitleScreen } from './ui/titlescreen';
 import { StatSheet, type SheetEntry } from './ui/statsheet';
 import { BIOME_COLOR, BIOME_ORDER, BIOMES, REPAIRE } from './world/biomes';
-import { generate, type WorldMap } from './world/generate';
+import { generate, landReachable, type WorldMap } from './world/generate';
 import type { LayoutId } from './world/layouts';
 import { generateCave } from './world/cave';
+import { decorateArena } from './world/arena';
 import { FIELD_FX, SURF, TILE } from './world/tiles';
 import { net, type HostMsg, type Loadout, type WorldKey } from './net/net';
 import { ClientField, NetIds, snapActor } from './net/sync';
@@ -149,9 +155,13 @@ async function boot(): Promise<void> {
   const hud = new Hud(document.body, (i) => pickMember(i));
   const rewardScreen = new RewardScreen(document.body);
   const statSheet = new StatSheet(document.body);
+  /** Le plan du monde (panneau de l’arche) et le carnet des exploits (Xatu) : ui/journal.ts, meta/feats.ts. */
+  const journal = new Journal(document.body, atlas);
   const recruitScreen = new RecruitScreen(document.body);
   const starterScreen = new StarterScreen(document.body);
   const quizScreen = new QuizScreen(document.body);
+  /** Le menu principal, au lancement (ui/titlescreen.ts) : montré plus bas, juste avant le premier enterCamp. */
+  const titleScreen = new TitleScreen(document.body);
   const dialogue = new Dialogue(document.body);
   /** Dresseur du champion, en salle de boss. */
   let trainer: Trainer | null = null;
@@ -172,7 +182,7 @@ async function boot(): Promise<void> {
         m.runAlly = true;
         team.push(m);
       },
-      openPoster: () => bossPreview.show(run.champions[run.act], run.act >= 3, run.room + 1, () => input.flush()),
+      openPoster: () => bossPreview.show(run.champion, run.isFinal || run.act === run.acts - 1, run.champion.team.map((_, w) => run.bossLevel(w, run.room + 1)), () => input.flush()),
       openMoves: (price, paid) => {
         const mons = teamMons();
         if (!mons.length) return;
@@ -197,7 +207,27 @@ async function boot(): Promise<void> {
     },
     atlas,
   );
-  const camp = new Camp(document.body, (station) => talkTo(station), atlas);
+  const camp = new Camp(document.body, (station, arg) => talkTo(station, arg), atlas);
+  // On part en passant l'arche du nord (retour de test : plus d'écran de départ). Comme cet
+  // écran le faisait, une équipe trop lourde ne part pas, et chez un hôte, c'est lui qui part.
+  camp.onLeave = () => {
+    if (mode !== 'camp' || paused() || dialogue.open || !save.started) return;
+    if (hostCamp) {
+      runHud.notify({ title: 'Repaire de l’hôte', text: 'C’est l’hôte qui lance la run.', art: CAMP_NPCS.online, color: '#7ac0e8' });
+      return;
+    }
+    void teamWeight(save).then((w) => {
+      if (mode !== 'camp') return;
+      if (w.total > w.cap) {
+        sfx('buzzer');
+        runHud.notify({ title: 'Trop lourd', text: `Poids d’équipe ${w.total} / ${w.cap} : allège l’équipe chez Porygon, ou monte le plafond chez Alakazam.`, art: CAMP_NPCS.start, color: 'var(--yel)' });
+        player.y = player.prevY = player.y + 1;
+        return;
+      }
+      sfx('doorEnter');
+      campCtx.depart();
+    });
+  };
   const campScreen = new CampScreen(document.body);
   const netBadge = new NetBadge(document.body);
   combat.notify = (text) => runHud.message(text);
@@ -242,6 +272,8 @@ async function boot(): Promise<void> {
     },
   });
   const outside = () => mode === 'run' && !outdoor;
+  /** Les dangers du terrain : la lave du Volcan (avec Surf), les tourbillons des Rocailleux (run/hazards.ts). */
+  const hazards = new Hazards(fx);
   combat.breakables = (x, y, reach) => (outside() ? berries.hit(x, y, reach) : null);
   // Coffre de la salle (A-FAIRE 1.5) : des Baies et des ressources de
   // construction, versées tout de suite à la sauvegarde comme les Baies.
@@ -252,12 +284,13 @@ async function boot(): Promise<void> {
       // Les matériaux d'artisan (meta/crafting.ts) : avant `earn`, qui sauvegarde.
       for (const [m, n] of Object.entries(mats)) save.materials[m] = (save.materials[m] ?? 0) + n;
       earn(baies);
-      const parts = [
-        `+${baies} Baies`,
-        ...RESOURCE_IDS.filter((r) => res[r]).map((r) => `+${res[r]} ${RESOURCES[r].name}`),
-        ...Object.entries(mats).map(([m, n]) => `+${n} ${materialName(m)}`),
-      ];
-      runHud.notify({ title: 'Coffre', text: `${parts.join(' · ')} pour le Repaire`, color: 'var(--yel)' });
+      // Une notification par gain, son icône et sa quantité, à la suite (retour de test : un seul
+      // bandeau « +12 Baies · +5 Bois · … » se lisait mal).
+      runHud.notifyAll([
+        ...(baies ? [{ title: 'Baies', text: 'Pour le Repaire', item: 'ORANBERRY', qty: `+${baies}`, color: 'var(--yel)' }] : []),
+        ...RESOURCE_IDS.filter((r) => res[r]).map((r) => ({ title: RESOURCES[r].name, text: 'Ressource de construction', res: r, qty: `+${res[r]}`, color: 'var(--yel)' })),
+        ...Object.entries(mats).map(([m, n]) => ({ title: materialName(m), text: 'Matériau d’artisan', item: MATERIALS[m]?.icon ?? NECTARS[m]?.icon, qty: `+${n}`, color: 'var(--yel)' })),
+      ]);
     },
   });
   // Marchand ambulant (salle spéciale) : Miaouss, son pari et son échange.
@@ -295,6 +328,16 @@ async function boot(): Promise<void> {
         m.info = info;
         m.pokemon = evo;
         runHud.notify({ title: 'Évolution', text: `${old.name} évolue en ${species} !`, art: next, color: 'var(--yel)' });
+        // Prime de lignée (retour de test : « une prime quand on complète une évolution ») : la
+        // première fois qu'une lignée atteint sa forme finale, un Éclat et quelques Baies.
+        if (!save.evolved.includes(next)) {
+          save.evolved.push(next);
+          if (!evolutionsOf(next).length) {
+            save.shards += 1;
+            runHud.notifyAll([{ title: 'Lignée complète', text: `${species} : forme finale atteinte`, art: next, qty: '+1 Éclat', color: 'var(--yel)' }]);
+            earn(40);
+          } else writeSave(save);
+        }
       });
     });
   };
@@ -304,7 +347,9 @@ async function boot(): Promise<void> {
 
   // Les CS apprises au départ ouvrent les branches gardées du graphe des biomes (Surf : l'Océan).
   // Test de la grotte (panneau) : une run au Rocailleux, dont le biome GROTTE hérite (faune, falaises du dehors).
-  const newRunState = () => new Run(opts.seed, opts.biome === 'run' ? null : opts.biome === 'grotte' ? 'rocailleux' : opts.biome, [...save.cs]);
+  // La Route Victoire s'ouvre une fois tous les champions vaincus (meta/feats.ts) ; la taille de l'équipe règle les effectifs.
+  const newRunState = () =>
+    new Run(opts.seed, opts.biome === 'run' ? null : opts.biome === 'grotte' ? 'rocailleux' : opts.biome, { cs: [...save.cs], league: leagueOpen(save), teamSize: save.team.length });
   let run = newRunState();
   /** Au Repaire entre deux runs, ou en run. */
   let mode: 'camp' | 'run' = 'camp';
@@ -401,7 +446,10 @@ async function boot(): Promise<void> {
     // Parti au-delà d'un seuil (Super Bonbon) : il part sous sa forme évoluée,
     // mais reste rangé dans la sauvegarde sous son uid.
     const p = new Actor(evolvedStart(outfit ? speciesOf(save, id) : id, level), x, y, id);
-    p.canSwim = true;
+    // Comme le reste de l'équipe dans cette salle (loadRoom) ; au Repaire, buildTeam décide.
+    p.canSwim = mode === 'run' ? director.swim : true;
+    // La lave du Volcan, seulement avec la CS Surf (run/hazards.ts : elle brûle).
+    p.lavaOk = mode === 'run' && save.cs.includes('surf');
     p.ally = new CompanionBrain(p);
     attach(p, true, level, outfit, nick);
     return p;
@@ -424,7 +472,7 @@ async function boot(): Promise<void> {
       const m = newMember(id, x, y, startLevel(save, id, BASE_TEAM_LEVEL), true);
       // Charges de dash achetées au Repaire ; au camp, on ne nage qu'avec la CS Surf (en run, toujours).
       m.dashMax = m.dashCharges = 1 + level(save, 'dash');
-      m.canSwim = mode === 'run' || save.cs.includes('surf');
+      m.canSwim = mode === 'run' ? director.swim : save.cs.includes('surf');
       return m;
     });
     revives = mode === 'run' ? level(save, 'revives') : 0;
@@ -469,7 +517,7 @@ async function boot(): Promise<void> {
     cry(player.speciesId, -4);
   };
   /** Un écran ouvert par-dessus le jeu : la simulation se fige. */
-  const paused = () => rewardScreen.open || bossPreview.open || runSummary.open || settingsMenu.open || campScreen.open || statSheet.open || recruitScreen.open || starterScreen.open || quizScreen.open;
+  const paused = () => rewardScreen.open || bossPreview.open || runSummary.open || settingsMenu.open || campScreen.open || statSheet.open || recruitScreen.open || starterScreen.open || quizScreen.open || journal.open || titleScreen.open;
   /** Clic sur un membre du HUD : comme Tab, mais vers celui-là, s'il est debout et qu'on l'est aussi. */
   const pickMember = (i: number) => {
     const m = team[i];
@@ -512,6 +560,20 @@ async function boot(): Promise<void> {
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement) return;
     void openStats();
   });
+  /** Le plan du monde (panneau de l'arche) ou le carnet des exploits (Xatu) : au Repaire seulement. */
+  const openJournal = (page: 'map' | 'feats', fromDialogue = false) => {
+    if (paused() || (dialogue.open && !fromDialogue)) return;
+    journal.show(
+      page,
+      save,
+      (text) => {
+        writeSave(save);
+        refreshNews();
+        runHud.notify({ title: 'Exploit', text, icon: '✦', color: 'var(--yel)' });
+      },
+      () => input.flush(),
+    );
+  };
 
   const spawnEnemy = (id: number, level: number, x: number, y: number, role: Actor['role'] = 'wild') => {
     const a = new Actor(id, x, y);
@@ -534,19 +596,28 @@ async function boot(): Promise<void> {
 
   /** Génère la salle courante de la run et y place le joueur (PV et statuts conservés). */
   const loadRoom = (first: boolean) => {
-    // Boutique : toujours la même pour un biome donné (graine fixe), quelle que soit la run.
-    const seed = run.isShop() ? 7001 + BIOME_ORDER.indexOf(run.biome) * 131 : run.mapSeed;
+    // Boutique et arène du champion : toujours les mêmes pour un biome donné (graine fixe), quelle que soit la run.
+    const arena = run.isBoss();
+    const seed = run.isShop() ? 7001 + BIOME_ORDER.indexOf(run.biome) * 131 : arena ? 9001 + BIOME_ORDER.indexOf(run.biome) * 137 : run.mapSeed;
     // Une grotte s'ouvre parfois dans une falaise (Run.hasCave) ; jamais à la boutique.
-    world = generate(BIOMES[run.biome], seed, { store: run.isShop(), cave: run.hasCave(), layout: opts.layout === 'auto' ? undefined : opts.layout });
-    roomKey = { kind: 'room', biome: run.biome, seed, store: run.isShop(), cave: run.hasCave(), layout: opts.layout === 'auto' ? undefined : opts.layout, mouthUsed: false };
+    // On entre par le bord d'en face de la porte prise (Run.entrySide) : la boutique et l'arène gardent leur allée du sud.
+    const layout = opts.layout === 'auto' ? undefined : opts.layout;
+    roomKey = { kind: 'room', biome: run.biome, seed, store: run.isShop(), cave: run.hasCave(), layout, mouthUsed: false, entry: arena ? 'S' : run.entrySide, arena };
+    world = roomWorld(roomKey);
     outdoor = null;
     cave.clear();
     berries.build(world, BIOMES[run.biome].berry);
+    hazards.build(world, run.mapSeed, run.isBoss());
     chests.build(world);
     roomHurt = false;
     questProgress({ kind: 'act', act: run.act });
     director.setHidden(false);
     renderer.bake(world);
+    // Nager : seulement avec la CS Surf (retour de test : « je pouvais déjà aller dans l'eau
+    // à la plage et au lac, alors que non »). Repli : une salle dont une porte ne s'atteint
+    // pas à pied laisse nager, pour qu'on n'y reste jamais coincé.
+    director.swim = swimRoom(world);
+    for (const m of team) m.canSwim = director.swim;
     player.x = player.prevX = world.spawn.x;
     player.y = player.prevY = world.spawn.y;
     gatherTeam();
@@ -565,15 +636,30 @@ async function boot(): Promise<void> {
     particles.reset();
     skyParticles.reset();
     const before = first ? 'clear' : roomWeather;
-    roomWeather = run.isShop() ? 'clear' : opts.weather !== 'run' ? opts.weather : rollWeather(run.biome, run.mapSeed);
+    // L'arène du Village est une salle d'intérieur : ni pluie, ni pollen.
+    const indoor = run.isBoss() && run.biome === 'village';
+    roomWeather = run.isShop() || indoor ? 'clear' : opts.weather !== 'run' ? opts.weather : rollWeather(run.biome, run.mapSeed);
     setWeather(weatherNow());
     // Le ciel change : on dit ce que ça change au combat.
     if (roomWeather !== before && roomWeather !== 'clear') runHud.notify({ title: WEATHERS[roomWeather].name, text: WEATHERS[roomWeather].hint, icon: WEATHERS[roomWeather].icon });
     director.start(world, run, opts.wild, first);
     // Le boss a sa musique (CombatArena.gd:1610) ; les autres salles, boutique comprise, la leur (écart voulu, sounds.ts).
-    audio.playMusic(run.isBoss() ? 'boss' : 'room');
+    audio.playMusic(roomMusic());
     document.documentElement.style.setProperty('--biome', BIOME_COLOR[run.biome]);
-    if (run.isBiomeEntry) runHud.announce(BIOMES[run.biome].name, BIOME_COLOR[run.biome]);
+    // Record de la salle la plus loin atteinte (affiché chez Xatu).
+    if (run.room + 1 > save.bestRoom) {
+      save.bestRoom = run.room + 1;
+      writeSave(save);
+    }
+    if (run.isBiomeEntry) {
+      runHud.announce(run.placeName, BIOME_COLOR[run.biome]);
+      // Le carnet note les biomes atteints (la Prairie, d'où l'on part, compte d'office).
+      const where = run.onVictoryRoad ? 'victoire' : run.biome;
+      if (!save.visited.includes(where)) {
+        save.visited.push(where);
+        writeSave(save);
+      }
+    }
     boonOffer = null;
     skillOffer = null;
     trainer = null;
@@ -587,8 +673,39 @@ async function boot(): Promise<void> {
     combat.hooks.onRoomEnter(player, run, !first && run.room % 7 === 0, run.rng);
     // Test de la grotte (panneau) : chaque salle de combat part de sa grotte ; la salle attend dehors, figée.
     if (opts.biome === 'grotte' && !run.isShop() && !run.isBoss()) enterCave();
-    else netRoom(roomKey, BIOME_COLOR[run.biome], run.isBoss() ? 'boss' : 'room');
+    else netRoom(roomKey, BIOME_COLOR[run.biome], roomMusic());
   };
+
+  /**
+   * La musique d'une salle de run : celle de son biome (sounds.ts, BIOME_TRACKS), celle de la
+   * boutique, de la Route Victoire ; le combat seulement chez le champion.
+   */
+  function roomMusic(): MusicId {
+    if (run.isBoss()) return 'boss';
+    if (run.isShop()) return 'shop';
+    if (run.onVictoryRoad) return 'victoire';
+    return run.biome;
+  }
+
+  /** La carte d'une salle de run, la même chez l'hôte et chez ses invités (arène décorée comprise). */
+  function roomWorld(k: Extract<WorldKey, { kind: 'room' }>): WorldMap {
+    const biome = k.biome as keyof typeof BIOMES;
+    const w = generate(BIOMES[biome], k.seed, { store: k.store, arena: k.arena, cave: k.cave, layout: k.layout as LayoutId | undefined, entry: k.entry });
+    if (k.arena) decorateArena(w, biome);
+    return w;
+  }
+
+  /** L'arène d'intérieur du Village (world/arena.ts, buildGym) : pas de particules d'ambiance. */
+  function indoorRoom(): boolean {
+    return mode === 'run' && !cave.active && run.isBoss() && run.biome === 'village';
+  }
+
+  /** L'équipe peut-elle nager dans cette salle ? Avec Surf, toujours ; sans, seulement si une porte l'exige. */
+  function swimRoom(w: WorldMap): boolean {
+    if (save.cs.includes('surf') || net.inRun) return true;
+    const land = landReachable(w);
+    return w.exits.some((e) => !land[Math.floor(e.y - 0.05) * w.w + Math.floor(e.x)]);
+  }
 
   /** Le champion qui parle : son portrait de combat d'Essentials (import-assets.ts). */
   const speaker = (champ: Champion, final: boolean): Speaker => ({
@@ -701,6 +818,7 @@ async function boot(): Promise<void> {
     cave.clear();
     berries.clear();
     chests.clear();
+    hazards.clear();
     outdoor = null;
     buildCampWorld();
     refreshNews();
@@ -728,10 +846,23 @@ async function boot(): Promise<void> {
     const ripe = save.built.includes('field') ? save.garden.filter((p) => p && p.left <= 0).length : 0;
     if (ripe) runHud.notify({ title: 'Potager', text: `${ripe > 1 ? `${ripe} parcelles sont mûres` : 'Une parcelle est mûre'} : récolte chez Héliatronc.`, art: CAMP_NPCS.garden, color: 'var(--yel)' });
     if (save.nectar && save.nectar.left <= 0) runHud.notify({ title: 'Nectar', text: 'Un visiteur attend devant l’atelier.', art: save.nectar.visitor, color: 'var(--yel)' });
+    // Une fois : où trouver la carte du monde (retour de test : « je ne sais pas si tu as fait la carte »).
+    if (save.started && !save.intros.includes('journal-hint')) {
+      save.intros.push('journal-hint');
+      writeSave(save);
+      runHud.notify({ title: 'Plan du monde', text: 'Le panneau près de l’arche montre la carte du monde ; Xatu, à côté, tient le carnet des exploits.', icon: '✦', color: 'var(--yel)' });
+    }
+    const feats = readyFeats(save).length;
+    if (feats) runHud.notify({ title: 'Exploits', text: `${feats > 1 ? `${feats} exploits sont` : 'Un exploit est'} à réclamer auprès de Xatu, près de l’arche.`, art: CAMP_NPCS.feats, color: 'var(--yel)' });
     welcomeStory();
     askStarter();
   };
 
+  /** « Le Repaire · 5/6 Pokémon · 2 en attente » : la jauge des places, en haut à gauche. */
+  const campPlaces = () => {
+    const waiting = save.candidates.length;
+    return `${REPAIRE.name} · ${roster(save).length}/${capacity(save)} Pokémon${waiting ? ` · ${waiting} en attente` : ''}`;
+  };
   /** Les espèces de l'équipe, et celles des libérés qui restent au camp (ni dans l'équipe, ni en mission). */
   const campTeam = () => save.team.map((uid) => speciesOf(save, uid));
   const campDwellers = () => roster(save).filter((uid) => !save.team.includes(uid) && !busy(save, uid)).map((uid) => speciesOf(save, uid));
@@ -814,11 +945,16 @@ async function boot(): Promise<void> {
    * nom »). Repaire plein : on choisit d'abord qui s'en va — l'exil —, ou on la renvoie.
    * Échap : elle attend encore.
    */
-  const meetCandidate = async () => {
-    const c = save.candidates[0];
-    if (!c || recruitScreen.open || starterScreen.open) return;
+  const meetCandidate = async (idx = 0) => {
+    const c = save.candidates[idx];
+    if (!c || recruitScreen.open || starterScreen.open || dialogue.open) return;
     const mon = await Pokemon.load(c.species, BASE_TEAM_LEVEL);
     if (c.name) mon.rename(c.name);
+    /** Retire cette recrue de la file (elle a pu bouger si une autre est partie entre-temps). */
+    const dequeue = () => {
+      const k = save.candidates.indexOf(c);
+      if (k >= 0) save.candidates.splice(k, 1);
+    };
     const welcomeIt = () => {
       const full = save.team.length >= teamSlots(level(save, 'slots'));
       recruitScreen.show(
@@ -831,7 +967,7 @@ async function boot(): Promise<void> {
             ask: 'L’accueillez-vous ?',
             yes: 'Oui, dans l’équipe',
             no: 'Oui, au Repaire',
-            hint: 'Il s’installe au Repaire, avec sa nature et ses talents à lui. Dans l’équipe, il part avec vous dès la prochaine run (s’il reste une place). Échap : il attend encore.',
+            hint: `Il s’installe au Repaire, avec sa nature et ses talents à lui. ${teamRoomHint()} Échap : il attend encore.`,
           },
         },
         (choice, nick) => {
@@ -839,49 +975,82 @@ async function boot(): Promise<void> {
           if (!choice) return;
           const named = nick && nick !== mon.name ? nick : c.name;
           const fresh = !ownsSpecies(save, c.species);
-          save.candidates.shift();
+          dequeue();
           const m = addMon(save, c.species, c.origin, named);
           if (choice === 'team' && !full) save.team.push(m.uid);
           writeSave(save);
           if (fresh) welcome(c.species);
-          // Le camp se recompose : la recrue suivante, s'il y en a, prend sa place près du feu.
+          // Le camp se recompose : les autres recrues, s'il y en a, restent autour du feu.
           if (choice === 'team') campCtx.teamChanged();
           else enterCampKeep({ x: player.x, y: player.y, dir: player.dir });
         },
       );
     };
-    if (!isFull(save)) return welcomeIt();
-    const uids = roster(save).filter((u) => !busy(save, u) && !(save.team.length === 1 && save.team[0] === u));
-    const infos = await Promise.all(uids.map((u) => loadInfo(speciesOf(save, u))));
-    const names = uids.map((u, k) => monName(save, u, infos[k].name));
-    starterScreen.show(
-      (_, k) => {
-        input.flush();
-        if (k < 0) {
-          save.candidates.shift();
+    const proceed = async () => {
+      if (!isFull(save)) return welcomeIt();
+      const uids = roster(save).filter((u) => !busy(save, u) && !(save.team.length === 1 && save.team[0] === u));
+      const infos = await Promise.all(uids.map((u) => loadInfo(speciesOf(save, u))));
+      const names = uids.map((u, k) => monName(save, u, infos[k].name));
+      starterScreen.show(
+        (_, k) => {
+          input.flush();
+          // « Plus tard » (ou Échap) : rien ne change, la recrue attend encore au feu.
+          if (k === -2) return;
+          if (k < 0) {
+            dequeue();
+            writeSave(save);
+            runHud.notify({ title: 'Au revoir', text: `${mon.name} repart, le cœur gros. Il reviendra peut-être.`, art: c.species, color: 'var(--ink)' });
+            enterCampKeep({ x: player.x, y: player.y, dir: player.dir });
+            return;
+          }
+          const uid = uids[k];
+          const sp = speciesOf(save, uid);
+          if (!exile(save, uid)) return;
           writeSave(save);
-          runHud.notify({ title: 'Au revoir', text: `${mon.name} repart, le cœur gros. Il reviendra peut-être.`, art: c.species, color: 'var(--ink)' });
-          enterCampKeep({ x: player.x, y: player.y, dir: player.dir });
-          return;
-        }
-        const uid = uids[k];
-        const sp = speciesOf(save, uid);
-        if (!exile(save, uid)) return;
-        writeSave(save);
-        runHud.notify({ title: 'Adieu', text: `${names[k]} quitte la rébellion. Il laisse sa place à ${mon.name}.`, art: sp, color: 'var(--ink)' });
-        welcomeIt();
-      },
-      {
-        ids: uids.map((u) => speciesOf(save, u)),
-        names,
-        subs: uids.map((u) => natureText(save.mons[u].nature)),
-        tape: 'Le Repaire est plein',
-        quote: `« ${mon.name} veut nous rejoindre, mais le Repaire ne loge que ${capacity(save)} libérés. Bâtissez de quoi en loger plus, ou choisissez qui doit partir. »`,
-        go: 'Il s’en va…',
-        cancel: `Renvoyer ${mon.name}`,
-      },
-    );
+          runHud.notify({ title: 'Adieu', text: `${names[k]} quitte la rébellion. Il laisse sa place à ${mon.name}.`, art: sp, color: 'var(--ink)' });
+          welcomeIt();
+        },
+        {
+          ids: uids.map((u) => speciesOf(save, u)),
+          names,
+          subs: uids.map((u) => natureText(save.mons[u].nature)),
+          tape: 'Le Repaire est plein',
+          quote: `« ${mon.name} veut nous rejoindre, mais le Repaire ne loge que ${capacity(save)} libérés. Bâtissez de quoi en loger plus chez le bâtisseur, ou choisissez qui doit partir. »`,
+          go: 'Il s’en va…',
+          cancel: `Renvoyer ${mon.name}`,
+          later: 'Plus tard',
+        },
+      );
+    };
+    // La toute première recrue se présente et explique le chemin jusqu'à l'équipe (retour de
+    // test : « j'ai galéré au tout début pour avoir un premier Pokémon dans mon équipe »).
+    if (!save.intros.includes('first-recruit')) {
+      save.intros.push('first-recruit');
+      writeSave(save);
+      dialogue.show(
+        { name: mon.name, role: 'Le Repaire · Recrue', type: mon.types[0] ?? 'normal', sprite: `/game/artwork/${c.species}.png` },
+        `J’aimerais rejoindre ton camp ! Je peux m’installer au Repaire dès maintenant. ${teamRoomHint()}`,
+        () => void proceed(),
+      );
+      return;
+    }
+    await proceed();
   };
+
+  /**
+   * Comment une recrue entre dans l'équipe, selon où l'on en est : une place libre, la
+   * place à acheter chez Alakazam, ou l'Étude à faire bâtir d'abord.
+   */
+  function teamRoomHint(): string {
+    const slots = teamSlots(level(save, 'slots'));
+    if (save.team.length < slots) return 'Il te reste une place dans l’équipe : je peux partir avec toi dès la prochaine run. Porygon, à la hutte de l’équipe, change l’équipe quand tu veux.';
+    const next = UPGRADES.find((u) => u.id === 'slots')!;
+    const lvl = level(save, 'slots');
+    if (lvl >= next.max) return 'L’équipe est complète : Porygon, à la hutte de l’équipe, peut m’y faire entrer à la place d’un autre.';
+    const price = `${next.price(lvl)} Baies`;
+    if (!save.built.includes('study')) return `Pour que je rejoigne ton équipe, il faut une place de plus : va voir Charpenti, le bâtisseur, pour construire l’Étude d’Alakazam. Alakazam y vend une Place dans l’équipe (${price}), puis Porygon, à la hutte de l’équipe, m’y fera entrer.`;
+    return `Pour que je rejoigne ton équipe, il faut une place de plus : Alakazam en vend une à son étude (${price}). Ensuite, Porygon, à la hutte de l’équipe, m’y fera entrer.`;
+  }
 
   /**
    * Le Pokémon qu'un nectar a attiré devant l'atelier (meta/crafting.ts) : la
@@ -926,9 +1095,11 @@ async function boot(): Promise<void> {
   };
 
   /** Parler au gardien d'un poste : sa présentation la première fois, puis son écran. */
-  const talkTo = (station: Station) => {
+  const talkTo = (station: Station, arg?: number) => {
     if (dialogue.open || campScreen.open) return;
     const openScreen = () => {
+      // Xatu : le carnet des exploits, pas un écran de poste.
+      if (station === 'feats') return openJournal('feats', true);
       // Ce qui y est apparu est vu (l'écran le marque d'un « ! » cette fois-ci encore) ; ce qui
       // attend un geste (récolter, réclamer) se revérifie à la fermeture.
       const news = freshNews(save, station);
@@ -950,8 +1121,16 @@ async function boot(): Promise<void> {
       runHud.notify({ title: 'Repaire de l’hôte', text: station === 'start' ? 'C’est l’hôte qui lance la run, chez Dracolosse.' : 'Ce gardien sert l’hôte : ici, seuls Roucarnage et Porygon te répondent.', art: CAMP_NPCS.online, color: '#7ac0e8' });
       return;
     }
+    if (station === 'map') return openJournal('map');
+    // Dracolosse ne lance plus la run (on part en passant l'arche) : il le rappelle.
+    if (station === 'start' && !(net.role === 'host' && net.guests.length)) {
+      const g = STATIONS.start;
+      dialogue.show({ name: camp.npcs.find((n) => n.speciesId === g.id)?.info?.name ?? g.title, role: `Le Repaire · ${g.title}`, type: g.type, sprite: `/game/artwork/${g.id}.png` }, 'Quand tu es prêt, passe l’arche, au nord. Ton équipe te suit : compose-la chez Porygon avant de partir.');
+      return;
+    }
+    if (station === 'feats' && hostCamp) return;
     if (station === 'visitor') return meetVisitor();
-    if (station === 'recruit') return void meetCandidate();
+    if (station === 'recruit') return void meetCandidate(arg);
     if (save.intros.includes(station)) return openScreen();
     save.intros.push(station);
     writeSave(save);
@@ -973,20 +1152,29 @@ async function boot(): Promise<void> {
     message: (text) => runHud.message(text),
     toast: (text, stamp) => runHud.toast(text, stamp),
     nextRoom: (offer) => {
-      run.advance(offer);
+      // Le bord de la porte prise : la salle suivante s'ouvre du bord d'en face (Run.entrySide).
+      run.advance(offer, offer.exit !== undefined ? world.exits[offer.exit]?.side : undefined);
       loadRoom(false);
     },
     roomCleared: () => {
       combat.hooks.onRoomClear(player, run);
-      // En ligne : la salle libérée, les joueurs à terre se relèvent (à 30 % de leurs PV) pour gagner la porte.
-      if (net.inRun) {
-        for (const m of team) {
-          if (m.deathT < 0 || !m.pokemon) continue;
-          m.getUp();
-          m.pokemon.status = null;
-          m.pokemon.hp = Math.max(1, Math.round(m.pokemon.maxHp * 0.3));
-          fx.ballSend(m.x, m.y);
-        }
+      // Le ciel se dégage une fois la salle libérée (retour de test : sous la grêle, on ne pouvait
+      // ni fouiller ni prendre son don sans perdre trop de PV).
+      if (roomWeather !== 'clear') {
+        roomWeather = 'clear';
+        setWeather(weatherNow());
+        runHud.notify({ title: 'Éclaircie', text: 'Le ciel se dégage.', icon: '☀' });
+      }
+      // La salle libérée, les membres à terre se relèvent avec 1 PV pour la suivante (retour de
+      // test : « quand un Pokémon meurt et qu'on finit la zone, il revient avec un seul point de
+      // vie » — en ligne, celui qui est tombé ne fait plus rien jusqu'à la fin de la salle, puis
+      // repart). Les mercenaires, eux, ne reviennent jamais.
+      for (const m of team) {
+        if (m.deathT < 0 || !m.pokemon || m.runAlly) continue;
+        m.getUp();
+        m.pokemon.status = null;
+        m.pokemon.hp = 1;
+        fx.ballSend(m.x, m.y);
       }
       questProgress({ kind: 'room', hurt: roomHurt });
       if (run.isBoss()) questProgress({ kind: 'champion' });
@@ -1016,10 +1204,16 @@ async function boot(): Promise<void> {
         shareLoot({ shards: k, text: `Champion vaincu : +${k} Éclat${k > 1 ? 's' : ''} de Champion` });
         stats.shards += k;
         stats.champions.push(run.champion.name);
+        // Le carnet des exploits (meta/feats.ts) : un champion de plus vaincu au moins une fois.
+        beatChampion(run.champion.name);
         earn(n);
         // Jusqu'au changement de salle (CombatArena.gd:1796).
         audio.playMusic('victory');
-        runHud.notify({ title: 'Champion vaincu', text: `+${n} Baies · +${k} Éclat${k > 1 ? 's' : ''} de Champion pour le Repaire.`, art: run.champion.team.at(-1)?.[0], color: 'var(--yel)' });
+        runHud.notify({ title: 'Champion vaincu', text: `${run.champion.name} est tombé.`, art: run.champion.team.at(-1)?.[0], color: 'var(--yel)' });
+        runHud.notifyAll([
+          { title: 'Baies', text: 'Pour le Repaire', item: 'ORANBERRY', qty: `+${n}`, color: 'var(--yel)' },
+          { title: `Éclat${k > 1 ? 's' : ''} de Champion`, text: 'Pour le Repaire', item: SHARDS.icon, qty: `+${k}`, color: 'var(--yel)' },
+        ]);
       }
       // Son équipe vaincue, le champion quitte la salle par la sortie.
       if (run.isBoss()) trainer?.flee(world);
@@ -1082,19 +1276,27 @@ async function boot(): Promise<void> {
     },
     // Ligne de front : la vague qui arrive fait trembler le sol (coupé avec les secousses, comme les autres).
     rumble: () => combat.addShake(0.25),
+    capture: (a, by) => captureMember(a, by),
+    release: (captives, x, y) => releaseMembers(captives, x, y),
+    // Retour de test : même seul, on peut être capturé — « il n'a qu'à faire le QTE pour s'en sortir ».
+    canBeCaptured: () => true,
     bossIntro: (exit) => {
       const champ = run.champion;
       const final = run.isFinal;
-      trainer = exit ? Trainer.atExit(champ.sprite, exit) : null;
-      runHud.announce(champ.name, typeColor(champ.type), final ? 'DRESSEUR FINAL' : "CHAMPION D'ARÈNE");
+      // Dans son arène, le champion se tient au bord nord du terrain, face à l'entrée ; il fuira par la sortie.
+      trainer = exit ? (roomKey.kind === 'room' && roomKey.arena ? new Trainer(champ.sprite, { x: world.hub.x, y: world.hub.y - 7.5 }, exit) : Trainer.atExit(champ.sprite, exit)) : null;
+      runHud.announce(champ.name, typeColor(champ.type), run.onVictoryRoad ? 'MAÎTRE DE LA LIGUE' : final ? 'DRESSEUR FINAL' : "CHAMPION D'ARÈNE");
       // L'éclair du « VS » des combats de dresseur.
       sfx('vs');
       combat.addShake(0.15);
-      dialogue.show(speaker(champ, final), final ? FINAL_BOSS_INTRO : champ.intro);
-      if (net.role === 'host' && net.inRun) net.broadcast({ t: 'dialogue', speaker: speaker(champ, final), text: final ? FINAL_BOSS_INTRO : champ.intro });
+      const line = final ? finalLines().intro : champ.intro;
+      dialogue.show(speaker(champ, final), line);
+      if (net.role === 'host' && net.inRun) net.broadcast({ t: 'dialogue', speaker: speaker(champ, final), text: line });
     },
     victory: () => {
       questProgress({ kind: 'victory' });
+      beatChampion(run.champion.name);
+      save.wins++;
       endT = 0;
       runWon = true;
       // Le jingle du badge attend le bilan : joué ici, il couvrirait la musique de victoire.
@@ -1103,10 +1305,29 @@ async function boot(): Promise<void> {
       // Le jeu changeait de scène avant la fin de la réplique de défaite : on attend qu'elle soit lue.
       endDelay = Math.max(VICTORY_TIME, Dialogue.duration(FINAL_BOSS_DEFEAT) + 0.5);
       combat.addShake(0.2);
-      dialogue.show(speaker(run.champion, true), FINAL_BOSS_DEFEAT);
-      runHud.announce('Victoire !', '#ffd23f', 'MAÎTRE DE LA LIGUE');
+      dialogue.show(speaker(run.champion, true), finalLines().defeat);
+      runHud.announce('Victoire !', '#ffd23f', run.onVictoryRoad ? 'NOUVEAU MAÎTRE' : 'LA CHAÎNE EST BRISÉE');
     },
   });
+
+  /**
+   * Un champion vaincu, noté au carnet (une fois par nom). La dixième victoire de la
+   * liste ouvre la Route Victoire : on le dit tout de suite.
+   */
+  function beatChampion(name: string): void {
+    if (save.beaten.includes(name)) return;
+    const was = leagueOpen(save);
+    save.beaten.push(name);
+    writeSave(save);
+    runHud.notify({ title: 'Exploit', text: `${name} vaincu pour la première fois : réclame l’exploit à Xatu, au Repaire.`, icon: '✦', color: 'var(--yel)' });
+    if (!was && leagueOpen(save)) runHud.notify({ title: 'Route Victoire', text: 'Tous les champions sont tombés. La Route Victoire s’ouvre au bout de la carte du monde.', icon: '★', color: 'var(--yel)' });
+  }
+
+  /** Les répliques du dernier boss : le Dresseur final, ou le Maître au bout de la Route Victoire. */
+  function finalLines(): { intro: string; defeat: string } {
+    if (run.onVictoryRoad) return { intro: run.champion.intro, defeat: MASTER_DEFEAT };
+    return { intro: FINAL_BOSS_INTRO, defeat: FINAL_BOSS_DEFEAT };
+  }
 
   /**
    * La grotte (A-FAIRE 1.6) : une carte à part, générée à la volée depuis la
@@ -1197,36 +1418,51 @@ async function boot(): Promise<void> {
     },
     leave: () => exitCave(),
     challenge: (who, text, done) => dialogue.show(who, text, done),
-    capture: (a, by) => {
-      const name = a.pokemon?.name ?? '?';
-      runHud.notify({ title: 'Capturé !', text: `${name} a été capturé par le ${by} — bats son équipe pour le libérer.`, art: a.speciesId, ko: true, color: '#e84040' });
-      if (a === player) {
-        const next = nextAlive();
-        // Le dernier debout : la run s'arrête là (il reste dans la Ball, invisible).
-        if (next < 0) {
-          if (endT < 0) defeat();
-          return;
-        }
-        switchTo(next);
-      }
-      // Il quitte l'équipe (HUD compris) jusqu'à ce qu'on batte le sbire.
-      a.ally?.reset();
-      team.splice(team.indexOf(a), 1);
-      active = team.indexOf(player);
-    },
-    release: (captives, x, y) => {
-      captives.forEach((c, k) => {
-        c.trapped = false;
-        const ang = (k / Math.max(1, captives.length)) * Math.PI * 2;
-        c.x = c.prevX = x + Math.cos(ang) * 0.8;
-        c.y = c.prevY = y + Math.sin(ang) * 0.5;
-        fx.ballSend(c.x, c.y);
-        if (!team.includes(c)) team.push(c);
-      });
-      const names = captives.map((c) => c.pokemon?.name ?? '?').join(', ');
-      runHud.notify({ title: 'Libérés', text: `${names} ${captives.length > 1 ? 'reviennent' : 'revient'} dans l’équipe !`, art: captives[0].speciesId, color: '#8fa8ff' });
-    },
+    capture: (a, by) => captureMember(a, by),
+    release: (captives, x, y) => releaseMembers(captives, x, y),
   });
+  /** Un membre capturé (sbire des grottes, dresseurs du Village) : il quitte l'équipe jusqu'à la défaite du ravisseur. */
+  function captureMember(a: Actor, by: string): void {
+    const name = a.pokemon?.name ?? '?';
+    // En ligne : capturé, on est simplement K.O. ; on se relève à 1 PV si la salle est libérée
+    // (retour de test : sinon un joueur se retrouvait sans Pokémon).
+    if (net.inRun && a.pokemon) {
+      a.trapped = false;
+      a.pokemon.hp = 0;
+      if (a.deathT < 0) a.deathT = 0;
+      runHud.notify({ title: 'Capturé !', text: `${name} est K.O. jusqu’à la fin de la salle.`, art: a.speciesId, ko: true, color: '#e84040' });
+      return;
+    }
+    runHud.notify({ title: 'Capturé !', text: `${name} a été capturé par ${/^[AEIOUÉ]/.test(by) ? 'l’' : 'le '}${by} — bats son équipe pour le libérer.`, art: a.speciesId, ko: true, color: '#e84040' });
+    if (a === player) {
+      const next = nextAlive();
+      // Le dernier debout : la run s'arrête là (il reste dans la Ball, invisible).
+      if (next < 0) {
+        if (endT < 0) defeat();
+        return;
+      }
+      switchTo(next);
+    }
+    // Il quitte l'équipe (HUD compris) jusqu'à ce qu'on batte son ravisseur.
+    a.ally?.reset();
+    team.splice(team.indexOf(a), 1);
+    active = team.indexOf(player);
+  }
+
+  /** Le ravisseur battu rend ses prises : elles ressortent de leur Ball autour de lui. */
+  function releaseMembers(captives: readonly Actor[], x: number, y: number): void {
+    captives.forEach((c, k) => {
+      c.trapped = false;
+      const ang = (k / Math.max(1, captives.length)) * Math.PI * 2;
+      c.x = c.prevX = x + Math.cos(ang) * 0.8;
+      c.y = c.prevY = y + Math.sin(ang) * 0.5;
+      fx.ballSend(c.x, c.y);
+      if (!team.includes(c)) team.push(c);
+    });
+    const names = captives.map((c) => c.pokemon?.name ?? '?').join(', ');
+    runHud.notify({ title: 'Libérés', text: `${names} ${captives.length > 1 ? 'reviennent' : 'revient'} dans l’équipe !`, art: captives[0].speciesId, color: '#8fa8ff' });
+  }
+
   const enterCave = () => {
     outdoor = { world, x: player.x, y: player.y };
     const layout = generateCave(run.mapSeed);
@@ -1243,7 +1479,8 @@ async function boot(): Promise<void> {
     director.setHidden(true);
     cave.start(layout, run, ownedSpecies(save));
     runHud.announce(cave.title, '#8fa8ff', BIOMES[run.biome].name.toUpperCase());
-    netRoom({ kind: 'cave', seed: run.mapSeed }, '#8fa8ff', 'room');
+    audio.playMusic('grotte');
+    netRoom({ kind: 'cave', seed: run.mapSeed }, '#8fa8ff', 'grotte');
   };
   const exitCave = () => {
     if (!outdoor) return;
@@ -1263,7 +1500,8 @@ async function boot(): Promise<void> {
     director.setHidden(false);
     director.fade = 1;
     roomKey = { ...roomKey, mouthUsed: true } as WorldKey;
-    netRoom(roomKey, BIOME_COLOR[run.biome], run.isBoss() ? 'boss' : 'room');
+    audio.playMusic(roomMusic());
+    netRoom(roomKey, BIOME_COLOR[run.biome], roomMusic());
   };
 
   /**
@@ -1306,7 +1544,8 @@ async function boot(): Promise<void> {
    * choisit son starter, qui devient l'équipe (GameManager.STARTER_IDS).
    */
   const askStarter = () => {
-    if (save.started || quizScreen.open || starterScreen.open) return;
+    // Menu principal encore ouvert : « Jouer » rappellera askStarter (le questionnaire vient après lui).
+    if (save.started || quizScreen.open || starterScreen.open || titleScreen.open) return;
     // Le questionnaire d'abord (ui/quizscreen.ts) ; « Choisir un autre » ouvre les neuf starters.
     const pick = (id: number, nick: string) => {
       input.flush();
@@ -1553,7 +1792,7 @@ async function boot(): Promise<void> {
     ...shop.extras(time),
     ...merchant.extras(time),
     ...cave.extras(),
-    ...(outside() ? [...berries.extras(), ...chests.extras()] : []),
+    ...(outside() ? [...berries.extras(), ...chests.extras(), ...hazards.extras(time), ...director.captureExtras()] : []),
   ];
 
   /** Hôte : un gain de la run, versé aussi dans la sauvegarde de chaque invité. */
@@ -1777,7 +2016,7 @@ async function boot(): Promise<void> {
         }
       : null;
   };
-  const placeName = () => (cave.active ? cave.title : run.isShop() ? 'Boutique' : `${BIOMES[run.biome].name}${weatherNow() !== 'clear' ? ` · ${WEATHERS[weatherNow()].name}` : ''}`);
+  const placeName = () => (cave.active ? cave.title : run.isShop() ? 'Boutique' : `${run.placeName}${weatherNow() !== 'clear' ? ` · ${WEATHERS[weatherNow()].name}` : ''}`);
 
   /** Hôte : l'instantané du terrain, à tous les invités. */
   const sendSnap = () => {
@@ -1860,7 +2099,7 @@ async function boot(): Promise<void> {
     const k = msg.key;
     if (k.kind === 'cave') world = generateCave(k.seed).world;
     else {
-      world = generate(BIOMES[k.biome as keyof typeof BIOMES], k.seed, { store: k.store, cave: k.cave, layout: k.layout as LayoutId | undefined });
+      world = roomWorld(k);
       if (k.mouthUsed && world.cave) world.cave.used = true;
     }
     if (msg.blocked.length === world.blocked.length) for (let i = 0; i < msg.blocked.length; i++) world.blocked[i] = msg.blocked.charCodeAt(i) - 48;
@@ -1886,7 +2125,7 @@ async function boot(): Promise<void> {
     skyParticles.reset();
     roomWeather = msg.weather as WeatherId;
     setWeather(weatherNow());
-    audio.playMusic(msg.music as 'room' | 'boss');
+    audio.playMusic((msg.music in MUSIC ? msg.music : 'prairie') as MusicId);
     document.documentElement.style.setProperty('--biome', msg.color);
   };
 
@@ -2063,7 +2302,7 @@ async function boot(): Promise<void> {
     footprints.update(dt, all, world);
     fieldFx.update(dt, all, world);
     if (opts.particles) {
-      particles.update(dt, world.biome.ambiance.particles, { x: renderer.camX, y: renderer.camY, w: renderer.viewW, h: renderer.viewH });
+      particles.update(dt, indoorRoom() ? null : world.biome.ambiance.particles, { x: renderer.camX, y: renderer.camY, w: renderer.viewW, h: renderer.viewH });
       skyParticles.update(dt, WEATHERS[weatherNow()].particles, { x: renderer.camX, y: renderer.camY, w: renderer.viewW, h: renderer.viewH });
     }
   };
@@ -2074,6 +2313,24 @@ async function boot(): Promise<void> {
   addEventListener('orientationchange', () => setTimeout(() => renderer.resize(opts), 250));
   // Le panneau et la sauvegarde parlent de la même équipe.
   syncPanelTeam();
+  // Le menu principal d'abord, par-dessus le Repaire qui se charge derrière (figé : paused()).
+  // enterCamp n'ouvre pas le questionnaire tant qu'il est là : « Jouer » le fait. Sauté sous
+  // ?debug, pour les tests automatisés.
+  if (!new URLSearchParams(location.search).has('debug'))
+    titleScreen.show(
+      {
+        play: () => {
+          input.flush();
+          askStarter();
+        },
+        settings: (tab, back) =>
+          settingsMenu.show(() => {
+            input.flush();
+            back();
+          }, tab),
+      },
+      save.started,
+    );
   enterCamp();
 
   let time = 0;
@@ -2167,6 +2424,7 @@ async function boot(): Promise<void> {
       }
     }
     if (outside()) berries.update(dt, player, level(save, 'magnet') > 0);
+    if (outside()) hazards.update(dt, world, team);
     if (outside()) chests.update(dt, sample, player, run);
     else chests.hide();
     shop.update(dt, sample, player, world);
@@ -2222,7 +2480,7 @@ async function boot(): Promise<void> {
     footprints.update(dt, [...team, ...wild], world);
     fieldFx.update(dt, [...team, ...wild], world);
     if (opts.particles) {
-      particles.update(dt, world.biome.ambiance.particles, { x: renderer.camX, y: renderer.camY, w: renderer.viewW, h: renderer.viewH });
+      particles.update(dt, indoorRoom() ? null : world.biome.ambiance.particles, { x: renderer.camX, y: renderer.camY, w: renderer.viewW, h: renderer.viewH });
       skyParticles.update(dt, WEATHERS[weatherNow()].particles, { x: renderer.camX, y: renderer.camY, w: renderer.viewW, h: renderer.viewH });
     }
   };
@@ -2268,7 +2526,9 @@ async function boot(): Promise<void> {
     // Au Repaire, le stock (ressources, Éclats) à côté des Baies ; en run, les Rappels de toute l'équipe à côté des ₽.
     runHud.setStock(mode === 'camp' ? save : null);
     runHud.setRevives(mode === 'run' && level(save, 'revives') > 0 ? revives : null);
-    if (mode === 'camp') runHud.update(frameDt, REPAIRE.name, save.baies, 0, 'Baies');
+    // Au Repaire, les places : combien de Pokémon il loge sur combien, et ceux qui attendent qu'on
+    // leur parle (retour de test : « avoir un moyen de voir combien t'as de place dans ton hub »).
+    if (mode === 'camp') runHud.update(frameDt, hostCamp ? REPAIRE.name : campPlaces(), save.baies, 0, 'Baies');
     else runHud.update(frameDt, placeName(), run.money, Math.max(director.fade, cave.fade));
     if (frameDt > 0) fps += (1 / frameDt - fps) * 0.05;
     const name = player.info?.name ?? '…';
@@ -2310,6 +2570,7 @@ async function boot(): Promise<void> {
         },
         renderer,
         combat,
+        hazards,
         opts,
         /** Les écrans, pour les ouvrir à la main (vérifier la DA sans jouer une salle entière). */
         ui: { hud, runHud, rewardScreen, dialogue, bossPreview, speaker },

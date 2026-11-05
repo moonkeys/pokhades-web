@@ -120,7 +120,7 @@ const LAYOUTS: Record<LayoutId, LayoutDef> = {
   // restent ceux de generate() (entrée en bas, une sortie en haut, une ou
   // deux sur les côtés ; au Lac, la rive) : `routes` vide.
   clairiere: {
-    sizes: [[52, 34], [46, 30], [58, 38]],
+    sizes: [[50, 32], [46, 30], [54, 34]],
     build: (w, h) => ({ prims: [{ kind: 'rect' }], core: null, entry: { x: w / 2, y: h - 0.5 }, hub: { x: w / 2, y: h / 2 }, routes: [], wobble: 6 }),
   },
   // Une petite arène ronde : on y voit tout, on s'y bat serré.
@@ -137,7 +137,9 @@ const LAYOUTS: Record<LayoutId, LayoutDef> = {
   // Un long couloir sinueux, d'un bord à l'autre (de gauche à droite, ou de
   // bas en haut), gonflé de petites clairières : on avance, la salle défile.
   couloir: {
-    sizes: [[66, 28], [60, 26], [32, 48]],
+    // Retour de test : « les couloirs sont beaucoup trop longs, c'est un peu chiant » (66 × 28
+    // auparavant) : un tiers plus courts.
+    sizes: [[46, 26], [42, 24], [28, 38]],
     build: (w, h, rng) => {
       const across = w > h;
       const n = 4;
@@ -177,7 +179,7 @@ const LAYOUTS: Record<LayoutId, LayoutDef> = {
   //   (enemy.ts, onTallGrass) : on les devine à l'herbe qui bouge.
   // - Ailleurs (Volcan, Rocailleux…) : le couloir large et nu d'origine.
   front: {
-    sizes: [[66, 26], [60, 24], [30, 50]],
+    sizes: [[48, 24], [44, 22], [26, 40]],
     build: (w, h, rng, _fill, biome) => {
       const across = w > h;
       const path = biome === 'foret';
@@ -210,7 +212,7 @@ const LAYOUTS: Record<LayoutId, LayoutDef> = {
   // Deux clairières reliées par un goulet : on prend la première, on force
   // le passage, la seconde mène aux portes.
   haltere: {
-    sizes: [[60, 38], [56, 36], [64, 40]],
+    sizes: [[52, 34], [50, 32], [54, 36]],
     build: (w, h, rng) => {
       const flip = rng.chance(0.5);
       const ax = flip ? w * 0.7 : w * 0.3;
@@ -227,7 +229,7 @@ const LAYOUTS: Record<LayoutId, LayoutDef> = {
   },
   // Une place ronde et quatre bras vers les bords : trois portes au choix.
   carrefour: {
-    sizes: [[48, 40], [52, 42]],
+    sizes: [[44, 36], [46, 38]],
     build: (w, h, rng) => {
       const hub = { x: w / 2 + rng.range(-2, 2), y: h / 2 + rng.range(-1, 1) };
       const ends = [
@@ -260,7 +262,7 @@ const LAYOUTS: Record<LayoutId, LayoutDef> = {
   // Un sentier en U : une bande en bas, un virage, une bande en haut qui
   // revient, la forêt entre les deux.
   lacets: {
-    sizes: [[56, 38], [60, 40]],
+    sizes: [[50, 34], [52, 36]],
     build: (w, h, rng) => {
       const left = rng.chance(0.5);
       const near = (t: number) => (left ? w * t : w * (1 - t));
@@ -293,12 +295,13 @@ const POOLS: Record<BiomeId, readonly [LayoutId, number][]> = {
   lac: [['clairiere', 3], ['boucle', 3]],
   marais: [['haltere', 2], ['boucle', 2], ['lacets', 2], ['clairiere', 2], ['front', 1]],
   volcan: [['arene', 3], ['boucle', 2], ['couloir', 2], ['carrefour', 1], ['front', 2]],
-  rocailleux: [['couloir', 3], ['carrefour', 2], ['arene', 2], ['haltere', 2], ['front', 2]],
+  rocailleux: [['couloir', 2], ['carrefour', 2], ['arene', 2], ['haltere', 2], ['front', 2]],
   village: [['clairiere', 1]],
   plage: [['clairiere', 1]],
   ocean: [['clairiere', 1]],
-  // Des passages entre les falaises enneigées, comme un col de montagne.
-  glace: [['couloir', 3], ['lacets', 2], ['arene', 2], ['carrefour', 1], ['front', 1]],
+  // Des passages entre les falaises enneigées, comme un col de montagne. Retour de test : « la
+  // montagne, c'est un peu trop long » — moins de couloirs, plus d'arènes et de carrefours.
+  glace: [['arene', 3], ['carrefour', 2], ['lacets', 2], ['couloir', 1], ['front', 1]],
 };
 
 /**
@@ -308,12 +311,59 @@ const POOLS: Record<BiomeId, readonly [LayoutId, number][]> = {
 const VILLAGE_SIZE: readonly (readonly [number, number])[] = [[64, 40]];
 
 /** Tailles du littoral : une anse, une plus courte, une longue grève (plus petites que la plage d'origine, 64 × 40). */
-const COAST_SIZES: readonly (readonly [number, number])[] = [[56, 36], [52, 34], [66, 32]];
+const COAST_SIZES: readonly (readonly [number, number])[] = [[52, 34], [50, 32], [56, 32]];
 
 /** Le cœur d'une boucle selon le biome : lac, lave ou marécage s'il y en a, sinon la forêt (ou la montagne, que les falaises dressent d'elles-mêmes). */
 function coreFill(biome: Biome): CoreFill {
   const w = biome.water;
   return w && (w.lake || !w.swim || biome.id === 'marais') ? 'water' : 'trees';
+}
+
+/** Bord d'une carte (generate.ts, Side) : redéfini ici pour ne pas importer generate. */
+type Edge = 'N' | 'S' | 'E' | 'W';
+/** Ordre des bords sous un quart de tour horaire (S → W → N → E → S). */
+const CW: readonly Edge[] = ['S', 'W', 'N', 'E'];
+
+/** Le bord où une forme fait entrer : celui que touche son point d'arrivée. */
+function edgeOf(s: { w: number; h: number; entry: Pt }): Edge {
+  const { x, y } = s.entry;
+  return y >= s.h - 1 ? 'S' : y < 1 ? 'N' : x < 1 ? 'W' : 'E';
+}
+
+/**
+ * Tourne une forme pour qu'on y entre par le bord `side` (ajout, retour de
+ * test : « je sors par la droite de la prairie et j'arrive par le haut sur la
+ * plage, ça n'a pas de logique »). La salle suivante se génère donc du côté
+ * d'où l'on vient : sorti à l'est, on entre à l'ouest. Les formes sont
+ * pensées pour une entrée en bas (ou à gauche pour les couloirs couchés) ;
+ * on les fait pivoter d'un quart de tour à la fois — la carte échange sa
+ * largeur et sa hauteur. Rien de dessiné ne tourne : generate() pose eau,
+ * falaises et arbres d'après la forme, les tuiles se choisissent ensuite.
+ */
+export function orientShape(shape: Shape, side: Edge): Shape {
+  const turns = (CW.indexOf(side) - CW.indexOf(edgeOf(shape)) + 4) % 4;
+  let s = shape;
+  for (let k = 0; k < turns; k++) s = turnCw(s);
+  return s;
+}
+
+/** Un quart de tour : (x, y) → (h − y, x), la carte devient h × w. Le bas passe à gauche. */
+function turnCw(s: Shape): Shape {
+  const t = (p: Pt): Pt => ({ x: s.h - p.y, y: p.x });
+  const prims = s.prims.map((p): Prim =>
+    p.kind === 'rect' ? p : p.kind === 'ellipse' ? { kind: 'ellipse', ...t(p), rx: p.ry, ry: p.rx } : { kind: 'capsule', a: t(p.a), b: t(p.b), r: p.r },
+  );
+  return {
+    ...s,
+    w: s.h,
+    h: s.w,
+    prims,
+    core: s.core && { ...s.core, ...t(s.core), rx: s.core.ry, ry: s.core.rx },
+    entry: t(s.entry),
+    hub: t(s.hub),
+    routes: s.routes.map((r) => r.map(t)),
+    front: s.front && { near: t(s.front.near), far: t(s.front.far) },
+  };
 }
 
 /**

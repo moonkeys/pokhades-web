@@ -198,10 +198,10 @@ class AudioEngine {
     this.music = entry;
     // Contexte encore suspendu : statechange relancera startMusic au premier geste.
     if (ctx.state !== 'running') {
-      void this.load(def.file);
+      void this.load(def.file, def.served);
       return;
     }
-    void this.load(def.file).then((buf) => {
+    void this.load(def.file, def.served).then((buf) => {
       // Entre-temps, une autre musique a été demandée : on ne joue pas celle-ci.
       if (!buf || this.music !== entry) return;
       const src = ctx.createBufferSource();

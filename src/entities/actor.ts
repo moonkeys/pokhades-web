@@ -29,6 +29,12 @@ const BONK_TIME = 0.18;
  * tourner. Ajout : absent du jeu Godot.
  */
 const ICE_SPEED = 11;
+/**
+ * La boue du Marais (retour de test : « chaque biome doit avoir son gameplay ») : on y avance
+ * à cette part de sa vitesse. Le dash, lui, la traverse d'un bond ; les Pokémon de type Vol
+ * (ils la survolent) et Spectre (ils flottent) n'y sont pas pris.
+ */
+export const MUD_SLOW = 0.55;
 /** Dans un escalier, on monte marche à marche : vitesse réduite. */
 const STAIRS_SPEED = 0.55;
 /** Durée du fondu à pied ↔ sur la monture, en secondes. */
@@ -138,6 +144,11 @@ export class Actor {
   sinceDash = Infinity;
   /** Sait nager (le joueur) ; les sauvages restent sur la terre ferme. */
   canSwim = false;
+  /**
+   * La lave du Volcan se traverse avec la CS Surf (retour de test) : on y « nage », et elle
+   * brûle (run/hazards.ts). Sans elle, la lave reste un mur.
+   */
+  lavaOk = false;
   /** Sur l'eau, porté par la monture Surf. */
   swimming = false;
   /** Pokémon aquatique : nage sans monture (rendu à moitié immergé). */
@@ -228,6 +239,11 @@ export class Actor {
       for (let cx = x0; cx <= x1; cx++) {
         if (cx < 0 || cy < 0 || cx >= world.w || cy >= world.h) return true;
         const i = cy * world.w + cx;
+        // La lave (l'eau d'un biome où l'on ne nage pas) : bloquée au génération, ouverte à Surf.
+        if (world.water[i] && world.biome.water?.swim === false) {
+          if (!this.lavaOk) return true;
+          continue;
+        }
         if ((dash ? world.solid[i] : world.blocked[i]) || (world.water[i] && !this.canSwim)) return true;
       }
     }
@@ -245,6 +261,18 @@ export class Actor {
     if (cx < 0 || cy < 0 || cx >= world.w || cy >= world.h) return false;
     const i = cy * world.w + cx;
     return world.patch[i] === 1 && !world.path[i];
+  }
+
+  /** Les pieds dans la boue du Marais (ses plaques, hors chemin) : MUD_SLOW, sinon 1. */
+  terrainMult(world: WorldMap): number {
+    if (world.biome.id !== 'marais' || this.swimming) return 1;
+    const cx = Math.floor(this.x);
+    const cy = Math.floor(this.y - 0.2);
+    if (cx < 0 || cy < 0 || cx >= world.w || cy >= world.h) return 1;
+    const i = cy * world.w + cx;
+    if (!world.patch[i] || world.path[i]) return 1;
+    const types = this.pokemon?.types ?? [];
+    return types.includes('flying') || types.includes('ghost') ? 1 : MUD_SLOW;
   }
 
   /** Poussée externe (deux Pokémon qui se chevauchent s'écartent), avec les mêmes collisions. */
@@ -471,7 +499,7 @@ export class Actor {
       this.moving = wantsMove;
       if (wantsMove) {
         this.face(dirFromVector(input.mx, input.my), dt);
-        const speed = PLAYER_SPEED * (this.onStairs ? STAIRS_SPEED : 1) * (this.pokemon?.speedMult ?? 1);
+        const speed = PLAYER_SPEED * (this.onStairs ? STAIRS_SPEED : 1) * (this.pokemon?.speedMult ?? 1) * this.terrainMult(world);
         this.move(world, input.mx * speed * dt, input.my * speed * dt);
         // Un pas sur la glace lance la glissade, selon l'axe dominant de la commande.
         if (this.onIce(world)) {
@@ -560,7 +588,8 @@ export class Actor {
       this.moving = v > 0.6;
       if (this.moving) {
         this.dir = dirFromVector(this.steerVx, this.steerVy);
-        this.move(world, this.steerVx * dt, this.steerVy * dt);
+        const mud = this.terrainMult(world);
+        this.move(world, this.steerVx * mud * dt, this.steerVy * mud * dt);
       }
       this.animT += dt;
       this.updateHeight(world, dt);
@@ -583,7 +612,7 @@ export class Actor {
     if (this.moving) {
       this.dir = dirFromVector(this.wanderDx, this.wanderDy);
       const before = this.x + this.y;
-      const speed = 2.4 * (this.onStairs ? STAIRS_SPEED : 1) * (this.pokemon?.speedMult ?? 1);
+      const speed = 2.4 * (this.onStairs ? STAIRS_SPEED : 1) * (this.pokemon?.speedMult ?? 1) * this.terrainMult(world);
       this.move(world, this.wanderDx * speed * dt, this.wanderDy * speed * dt);
       if (this.x + this.y === before) this.wanderT = 0;
     }

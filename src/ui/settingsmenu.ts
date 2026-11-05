@@ -114,9 +114,11 @@ export class SettingsMenu {
     return !this.root.hidden;
   }
 
-  show(onClose: () => void): void {
+  /** `tab` : l'onglet à ouvrir (le menu principal ouvre directement « Commandes »). */
+  show(onClose: () => void, tab?: Tab): void {
     sfx('menuOpen');
     this.onClose = onClose;
+    if (tab) this.tab = tab;
     this.sel = 0;
     this.root.hidden = false;
     this.root.classList.remove('play');

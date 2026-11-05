@@ -2,7 +2,7 @@ import { fbm } from '../core/noise';
 import { Rng } from '../core/rng';
 import type { Biome } from './biomes';
 import { BLOB, CAVE, CHEST, FLOWERS, GROUND, PROPS, TILE, TOWN_STYLES, type Blob, type SpriteDef, type Tile } from './tiles';
-import { coreDepth, LAYOUT_NAMES, pickLayout, shapeDepth, type LayoutId, type Shape } from './layouts';
+import { coreDepth, LAYOUT_NAMES, orientShape, pickLayout, shapeDepth, type LayoutId, type Shape } from './layouts';
 import { furnishTown, layoutStreets, type Paving } from './town';
 
 // Générateur de zone simplifié pour juger la DA : une zone jouable bordée
@@ -97,6 +97,8 @@ export interface WorldMap {
   patch: Uint8Array;
   water: Uint8Array;
   tall: Uint8Array;
+  /** Les vraies hautes herbes (touffes de deux cases) : là où les sauvages se cachent. */
+  hide: Uint8Array;
   /** Falaises de niveau 1 et plus : montagnes de bordure et plateaux (null si aucun). */
   cliff: Uint8Array | null;
   /** Falaises de niveau 2, posées sur les plateaux de niveau 1. */
@@ -190,7 +192,7 @@ export interface Exit {
  * bord n'y est que de l'eau, et sans cela la salle n'avait aucune sortie (en
  * run, on nage toujours).
  */
-function findExits(W: number, H: number, reachable: Uint8Array, water: Uint8Array, entrySide: Side, swimExits = false): Exit[] {
+export function findExits(W: number, H: number, reachable: Uint8Array, water: Uint8Array, entrySide: Side, swimExits = false): Exit[] {
   const sides: Side[] = ['N', 'E', 'S', 'W'];
   const exits: Exit[] = [];
   for (const side of sides) {
@@ -222,6 +224,50 @@ function findExits(W: number, H: number, reachable: Uint8Array, water: Uint8Arra
 }
 
 const at = (m: Uint8Array, x: number, y: number) => m[y * GW + x];
+
+export const OPPOSITE: Record<Side, Side> = { N: 'S', S: 'N', E: 'W', W: 'E' };
+
+/**
+ * Les cases qu'on atteint à pied depuis le départ, sans nager (`reachable` passe par
+ * l'eau). Sans la CS Surf, on ne nage plus en run (retour de test) : la récompense de
+ * la salle se pose sur cette zone, et main.ts vérifie que les portes y sont.
+ */
+export function landReachable(world: WorldMap): Uint8Array {
+  const { w, h } = world;
+  const out = new Uint8Array(w * h);
+  const start = Math.floor(world.spawn.y - 0.05) * w + Math.floor(world.spawn.x);
+  if (start < 0 || start >= w * h) return out;
+  const queue = [start];
+  out[start] = 1;
+  while (queue.length) {
+    const i = queue.pop()!;
+    const x = i % w;
+    const y = (i / w) | 0;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+      const j = ny * w + nx;
+      if (out[j] || world.blocked[j] || world.water[j]) continue;
+      out[j] = 1;
+      queue.push(j);
+    }
+  }
+  return out;
+}
+
+/**
+ * Point d'arrivée de la clairière (et de l'Océan) sur le bord `side` (ajout : on
+ * entrait toujours par le bas). Au Lac, l'eau occupe le haut : une arrivée par
+ * le côté se fait à hauteur de la rive, comme ses sorties ; par le nord, le lac
+ * la bloquerait, on garde le bas.
+ */
+function sideEntry(side: Side, W: number, H: number, rng: Rng, lake: boolean): { x: number; y: number } {
+  if (lake && (side === 'W' || side === 'E')) return { x: side === 'W' ? 0.5 : W - 0.5, y: H - rng.range(11, 15) };
+  if (side === 'S' || lake) return { x: W / 2 + rng.range(-5, 5), y: H - 0.5 };
+  if (side === 'N') return { x: W / 2 + rng.range(-5, 5), y: 0.5 };
+  return { x: side === 'W' ? 0.5 : W - 0.5, y: H / 2 + rng.range(-4, 4) };
+}
 
 /** Lecture avec bords « collants » : hors carte, on répète la case la plus proche (pas de berge au bord du monde). */
 function clampAt(m: Uint8Array, x: number, y: number): number {
@@ -397,9 +443,26 @@ function carvePath(mask: Uint8Array, a: Pt, b: Pt, radius: number, rng: Rng, see
 export function generate(
   biome: Biome,
   seed: number,
-  options: { store?: boolean; camp?: boolean; cave?: boolean; glade?: boolean; eastGlade?: boolean; atelier?: boolean; layout?: LayoutId; pockets?: readonly Pocket[] } = {},
+  options: { store?: boolean; camp?: boolean; arena?: boolean; cave?: boolean; glade?: boolean; eastGlade?: boolean; atelier?: boolean; layout?: LayoutId; pockets?: readonly Pocket[]; entry?: Side } = {},
 ): WorldMap {
-  const shape: Shape | null = options.store || options.camp ? null : pickLayout(biome, new Rng(seed * 2246822519 + 3), options.layout);
+  /**
+   * Arène de champion (ajout, retour de test : « les boss, je veux de vraies arènes, toujours
+   * la même pour chaque biome, un cercle ») : la clairière ronde de la boutique, plus grande,
+   * avec trois sorties (nord, ouest, est) pour les routes de la carte du monde. Elle garde la
+   * bordure de son biome (anneau d'eau du Lac, de lave du Volcan, montagnes des Rocailleux,
+   * île de sable à la Plage) ; world/arena.ts la pave et la cerne de torches ensuite.
+   */
+  const arena = Boolean(options.arena);
+  if (arena) options = { ...options, store: true };
+  const picked: Shape | null = options.store || options.camp ? null : pickLayout(biome, new Rng(seed * 2246822519 + 3), options.layout);
+  /**
+   * Le bord par lequel on entre (ajout) : celui d'en face de la porte prise dans la salle
+   * d'avant (Run.entrySide). Les formes à chemins pivotent pour y mettre leur entrée
+   * (layouts.ts, orientShape) ; la clairière, la Plage et l'Océan placent la leur
+   * eux-mêmes ; le Village et la boutique gardent l'entrée en bas.
+   */
+  const want: Side = options.entry ?? 'S';
+  const shape: Shape | null = picked && picked.routes.length && !biome.coast && !biome.buildings ? orientShape(picked, want) : picked;
   const W = options.camp ? CAMP_W : (shape?.w ?? MAP_W);
   const H = options.camp ? CAMP_H : (shape?.h ?? MAP_H);
   useGrid(W, H);
@@ -414,7 +477,8 @@ export function generate(
   const cy0 = options.camp ? 19 : H / 2;
   /** Clairière de la boutique : ovale au bord bruité, au centre de la carte. */
   // (`k` > 1 : une clairière élargie, pour l'anneau d'eau ou de lave et le pied des montagnes.)
-  const inOpen = (x: number, y: number, k = 1) => Math.hypot((x + 0.5 - W / 2) / (13 * k * roomy), (y + 0.5 - cy0) / (9 * k * roomy)) + (fbm(x * 0.14, y * 0.14, s + 401) - 0.5) * 0.35 < 1;
+  const [orx, ory] = arena ? [16, 12.5] : [13, 9];
+  const inOpen = (x: number, y: number, k = 1) => Math.hypot((x + 0.5 - W / 2) / (orx * k * roomy), (y + 0.5 - cy0) / (ory * k * roomy)) + (fbm(x * 0.14, y * 0.14, s + 401) - 0.5) * (arena ? 0.2 : 0.35) < 1;
   /**
    * Le Repaire compact (retour de test : « plus petit au tout départ, que le cercle… on verra
    * mieux l'évolution ») : la place autour du feu, et une poche par poste (camp.ts,
@@ -494,6 +558,8 @@ export function generate(
     coastSea = new Uint8Array(N);
     coastSand = new Uint8Array(N);
     seaSide = rng.int(4);
+    // On arrive du côté opposé à la mer : elle se met en face du bord d'entrée demandé.
+    if (options.entry) seaSide = { S: 0, N: 1, E: 2, W: 3 }[want];
     const vertical = seaSide >= 2;
     const len = vertical ? H : W;
     const deep = vertical ? W : H;
@@ -558,7 +624,7 @@ export function generate(
   /** Les chemins de la forme (toutes sauf la clairière, qui garde le tracé d'origine). */
   const routed = Boolean(shape?.routes.length) && !biome.coast && !biome.buildings;
   const path = new Uint8Array(N);
-  const townStyle = biome.buildings ? TOWN_STYLES[seed % TOWN_STYLES.length] : null;
+  const townStyle = biome.buildings && !arena ? TOWN_STYLES[seed % TOWN_STYLES.length] : null;
   const plan = townStyle ? layoutStreets(W, H, rng) : null;
   // Entrée : en bas, sauf sur une Plage dont la mer est au sud (on arrive alors par le nord)
   // ou à l'ouest / à l'est (on arrive par le côté opposé).
@@ -571,7 +637,9 @@ export function generate(
           : { x: 0.5, y: H / 2 + rng.range(-4, 4) }
       : routed
         ? shape!.entry
-        : { x: plan ? plan.entryX : W / 2 + rng.range(-5, 5), y: H - 0.5 };
+        : plan
+          ? { x: plan.entryX, y: H - 0.5 }
+          : sideEntry(want, W, H, rng, lake);
   /** La case d'arrivée, une case dans la carte (le bord où l'on entre). */
   const door = { x: Math.min(W - 1, Math.max(0, Math.floor(entry.x))), y: Math.min(H - 1, Math.max(0, Math.floor(entry.y))) };
   const hub = routed
@@ -590,7 +658,9 @@ export function generate(
     const radius = biome.path?.radius ?? 1.5;
     // (Au Repaire, pas d'allée d'entrée : le lac occupe le sud, on arrive près du feu.)
     if (!options.camp) carvePath(path, { x: W / 2 + rng.range(-3, 3), y: H - 0.5 }, hub, radius, rng, s);
-    carvePath(path, hub, { x: W / 2 + rng.range(-6, 6), y: 0.5 }, radius, rng, s);
+    carvePath(path, hub, { x: W / 2 + (arena ? 0 : rng.range(-6, 6)), y: 0.5 }, radius, rng, s);
+    // L'arène s'ouvre aussi à l'ouest et à l'est : les routes vers les biomes voisins.
+    if (arena) for (const x of [0.5, W - 0.5]) carvePath(path, hub, { x, y: hub.y }, radius, rng, s);
     // L'allée de la clairière défrichée : son propre tirage, pour que le reste du camp ne bouge pas.
     if (glade) carvePath(path, hub, { x: hub.x + CAMP_GLADE.dx + 4, y: hub.y + CAMP_GLADE.dy + 1 }, 1.2, new Rng(seed * 48271 + 9), s);
     // (Celle de l'est part du sud-est de la place : en ligne droite, elle passerait sous la hutte de l'équipe.)
@@ -607,15 +677,20 @@ export function generate(
     for (const route of shape!.routes) for (let k = 1; k < route.length; k++) carvePath(path, route[k - 1], route[k], radius, rng, s, shape!.wobble);
     cleanThin(path, () => true, 'grow');
   } else {
+    // Les sorties : jamais sur le bord d'entrée. Au Lac, la rive : à l'ouest et à l'est
+    // (on y entre par le bas, ou par un côté : la sortie est alors l'autre côté).
+    const edgePt = (side: Side) =>
+      side === 'N' ? { x: rng.range(14, W - 14), y: 0.5 } : side === 'S' ? { x: rng.range(14, W - 14), y: H - 0.5 } : { x: side === 'W' ? 0.5 : W - 0.5, y: rng.range(10, H - 10) };
     const exits = lake
-      ? [{ x: 0.5, y: H - rng.range(11, 15) }, { x: W - 0.5, y: H - rng.range(11, 15) }]
-      : [{ x: rng.range(14, W - 14), y: 0.5 }];
+      ? [{ x: 0.5, y: H - rng.range(11, 15) }, { x: W - 0.5, y: H - rng.range(11, 15) }].filter((e) => (want === 'W' ? e.x > 1 : want === 'E' ? e.x < 1 : true))
+      : [edgePt(OPPOSITE[want])];
     if (!lake) {
       // Une sortie sur un côté, et dans 55 % des cas une troisième sur l'autre
       // (MapGenerator : 2 sorties à 45 %, 3 sinon).
-      const west = rng.chance(0.5);
-      exits.push(west ? { x: 0.5, y: rng.range(10, H - 10) } : { x: W - 0.5, y: rng.range(10, H - 10) });
-      if (rng.chance(0.55)) exits.push(west ? { x: W - 0.5, y: rng.range(10, H - 10) } : { x: 0.5, y: rng.range(10, H - 10) });
+      const flanks: Side[] = want === 'N' || want === 'S' ? ['W', 'E'] : ['N', 'S'];
+      const first = rng.chance(0.5);
+      exits.push(edgePt(flanks[first ? 0 : 1]));
+      if (rng.chance(0.55)) exits.push(edgePt(flanks[first ? 1 : 0]));
     }
     const radius = biome.path?.radius ?? 1.5;
     carvePath(path, entry, hub, radius, rng, s);
@@ -626,7 +701,7 @@ export function generate(
     // La place : comptée comme chemin, elle reste nue (ni arbre, ni herbe haute, ni accessoire).
     for (let y = 0; y < H; y++) {
       for (let x = 0; x < W; x++) {
-        const r = (options.camp ? 8.5 : 7) + (fbm(x * 0.16, y * 0.16, s + 211) - 0.5) * 2;
+        const r = (options.camp ? 8.5 : arena ? 11 : 7) + (fbm(x * 0.16, y * 0.16, s + 211) - 0.5) * (arena ? 0.6 : 2);
         if (Math.hypot(x + 0.5 - hub.x, (y + 0.5 - hub.y) * 1.15) < r && x > 2 && y > 2 && x < W - 3 && y < H - 3) path[idx(x, y)] = 1;
       }
     }
@@ -1414,8 +1489,27 @@ export function generate(
     }
   }
 
+  // 12) Les hautes herbes, les vraies (retour de test : « ce qu'on appelle hautes herbes, c'est
+  //     des petites herbes ; les vraies, ce sont celles sur deux cases ») : des touffes hautes
+  //     (PROPS.bunches) posées en bosquets serrés dans les champs d'herbe. C'est là, et là
+  //     seulement, que les sauvages se cachent (enemy.ts, onTallGrass) ; on voit la touffe
+  //     s'agiter quand l'un d'eux bouge dedans (renderer.ts). Les petites herbes restent, pour
+  //     le décor et l'effet sous les pas.
+  const hide = new Uint8Array(N);
+  if (biome.tallGrass && !options.camp) {
+    for (let y = 1; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        const i = idx(x, y);
+        if (!tall[i] || blocked[i] || path[i] || water[i] || fbm(x * 0.23, y * 0.23, s + 47) < 0.5) continue;
+        hide[i] = 1;
+        objects.push({ sprite: PROPS.bunches[(x * 7 + y * 3) % PROPS.bunches.length], x: x * TILE + TILE / 2, y: (y + 1) * TILE, fades: false });
+      }
+    }
+    objects.sort((a, b) => a.y - b.y);
+  }
+
   return {
-    w: W, h: H, biome, seed, inside, path, patch, water, tall, cliff, cliff2, stairs, face, blocked, solid, reachable,
+    w: W, h: H, biome, seed, inside, path, patch, water, tall, hide, cliff, cliff2, stairs, face, blocked, solid, reachable,
     objects, flat, lilies, spawn, entrySide, exits, hub, paving, townStyle: townStyle?.name ?? null,
     townLayout: plan?.layout ?? null, fountains: plan?.fountains ?? [], cave, berries, chest,
     front: routed ? (shape!.front ?? null) : null,

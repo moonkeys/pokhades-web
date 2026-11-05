@@ -4,7 +4,7 @@ import { fetchJson } from '../assets/json';
 import { BASE_TEAM_LEVEL, Pokemon } from '../combat/pokemon';
 import { sheetOf } from '../data/bestiary';
 import { BUILDINGS, CANDY, CS_LIST, HELD_ITEMS, RESOURCES, RESOURCE_IDS, SHARDS, TMS, UPGRADES, applyHeld, buildingsShown, canAfford, heldBoosts, heldItem, heldText, teamSlots, type Cost, type HeldItem, type ResourceId, type Upgrade } from '../meta/catalog';
-import { preEvolutionOf } from '../data/evolutions';
+import { evolutionsOf } from '../data/evolutions';
 import { BIOME_IDS, CAMP_NPCS, FAUNA, LEGENDARY_SPECIES, MERC_POOLS, QUEST_SPECIES, STARTER_IDS, type BiomeId } from '../data/species';
 import { BIOME_MATERIAL, GARDEN, MATERIALS, NECTARS, NECTAR_ROOMS, RECIPES, canCraft, craft, harvest, materialName, pickVisitor, plots, recipeOutput, sow } from '../meta/crafting';
 import { BIOME_GRUNTS, GRUNT_THEMES } from '../data/grunts';
@@ -130,7 +130,7 @@ async function weigh(id: number, save: Save): Promise<MemberWeight> {
 }
 
 /** Poids total de l'équipe composée (GameManager.compute_team_weight) et plafond. */
-async function teamWeight(save: Save): Promise<{ total: number; cap: number }> {
+export async function teamWeight(save: Save): Promise<{ total: number; cap: number }> {
   const all = await Promise.all(save.team.map((sid) => weigh(sid, save)));
   return { total: all.reduce((s, w) => s + w.total, 0), cap: weightCap(save) };
 }
@@ -216,7 +216,7 @@ const resRow = (amounts: Cost, parent: HTMLElement, cls: string, stock?: Record<
 };
 
 /** Couleur de chaque poste : le liseré de l'écran et l'ombre du titre. */
-const TINT: Record<Station, string> = { start: '#ff7a2a', moves: '#b88ceb', team: '#3ab0e0', upgrades: '#ffd23f', items: '#e8b04a', builder: '#c8963c', missions: '#9a86b8', quests: '#e0a35a', lore: '#7cc46a', online: '#7ac0e8', garden: '#e8c84a', craft: '#d9776a', visitor: '#f0a0c8', recruit: '#ffd23f' };
+const TINT: Record<Station, string> = { start: '#ff7a2a', moves: '#b88ceb', team: '#3ab0e0', upgrades: '#ffd23f', items: '#e8b04a', builder: '#c8963c', missions: '#9a86b8', quests: '#e0a35a', lore: '#7cc46a', online: '#7ac0e8', garden: '#e8c84a', craft: '#d9776a', visitor: '#f0a0c8', recruit: '#ffd23f', feats: '#ffd23f', map: '#c8963c' };
 
 /**
  * Ce qui se choisit au clavier, dans l'ordre de l'écran : onglets, cartes,
@@ -833,14 +833,20 @@ export class CampScreen {
    * faune, les starters, les gardiens de grotte —, plus celles qu'on a
    * croisées ailleurs. Verrouillée, sa silhouette d'encre et les victoires
    * qui lui manquent ; jamais croisée, ni nom ni types.
+   *
+   * Formes de base seulement (retour de test) : une évolution ne se débloque
+   * pas, elle se gagne en faisant évoluer sa lignée en run ; la lister à part
+   * promettait une case qu'aucune victoire ne remplit. Elle vit désormais
+   * dans la fiche de sa forme de base (la lignée, plus bas), et les comptes
+   * du bandeau ne portent que sur les formes de base.
    */
   private async renderDex(main: HTMLElement, ctx: CampCtx): Promise<void> {
     const save = ctx.save;
     const unlocked = new Set(ownedSpecies(save));
     const seen = new Set([...save.seen, ...unlocked, ...Object.keys(save.defeats).map(Number)]);
-    const all = [...new Set([...Object.values(FAUNA).flat(), ...STARTER_IDS, ...MERC_POOLS.champion, ...QUEST_SPECIES, ...seen])].sort((a, b) => a - b);
+    const all = [...new Set([...Object.values(FAUNA).flat(), ...STARTER_IDS, ...MERC_POOLS.champion, ...QUEST_SPECIES, ...seen])].filter(isBaseForm).sort((a, b) => a - b);
     const shown = all.filter((id) =>
-      this.dexFilter === 'unlocked' ? unlocked.has(id) : this.dexFilter === 'locked' ? seen.has(id) && !unlocked.has(id) && isBaseForm(id) : this.dexFilter === 'seen' ? seen.has(id) : true,
+      this.dexFilter === 'unlocked' ? unlocked.has(id) : this.dexFilter === 'locked' ? seen.has(id) && !unlocked.has(id) : this.dexFilter === 'seen' ? seen.has(id) : true,
     );
     if (!shown.includes(this.dexId)) this.dexId = shown[0] ?? 0;
     // Les noms des espèces croisées seulement : les autres restent « ??? ».
@@ -850,7 +856,8 @@ export class CampScreen {
     const gauge = (id: number) => `${save.progress[id] ?? 0} / ${recruitThreshold(save, id)}`;
     const waiting = (id: number) => save.candidates.some((c) => c.species === id);
 
-    el('div', 'cs-label', main, `${unlocked.size} débloqués · ${seen.size} rencontrés · ${all.length} à découvrir`);
+    // Les comptes portent sur la grille (formes de base) : une évolution possédée ou croisée n'y ajoute rien.
+    el('div', 'cs-label', main, `${all.filter((id) => unlocked.has(id)).length} débloqués · ${all.filter((id) => seen.has(id)).length} rencontrés · ${all.length} à découvrir`);
     const filters = el('div', 'cs-tabs cs-dex-filters', main);
     for (const [id, label] of DEX_FILTERS) {
       const t = el('button', this.dexFilter === id ? 'sel' : '', filters, label);
@@ -869,7 +876,7 @@ export class CampScreen {
       if (this.news.has(String(id))) newMark(card);
       el('small', 'no', card, `n°${String(id).padStart(3, '0')}`);
       el('b', '', card, names.get(id) ?? '???');
-      el('small', 'state', card, waiting(id) ? '! Au Repaire' : own ? '★ Débloqué' : questFor(id) ? 'Quête' : !seen.has(id) ? '—' : isBaseForm(id) ? gauge(id) : 'Évolution');
+      el('small', 'state', card, waiting(id) ? '! Au Repaire' : own ? '★ Débloqué' : questFor(id) ? 'Quête' : !seen.has(id) ? '—' : gauge(id));
       card.addEventListener('click', () => {
         this.dexId = id;
         void this.render();
@@ -895,16 +902,13 @@ export class CampScreen {
       const parts = [...(wild.length ? [`Vit en : ${wild.join(', ')}`] : []), ...(caves.length ? [`Grottes : ${caves.join(', ')}`] : [])];
       el('small', 'cs-info cs-habitat', card, parts.length ? parts.join(' · ') : 'Ne vit dans aucun biome de la Ligue.');
     }
-    // La forme de base de sa lignée : c'est elle qu'on débloque.
-    let base = id;
-    for (let prev = preEvolutionOf(base); prev !== null; prev = preEvolutionOf(base)) base = prev;
     if (own) {
       // Ses individus au Repaire (plusieurs possibles, chacun sa nature) : le premier arrivé ouvre sa fiche.
       const mine = rosterIds(save).filter((uid) => speciesOf(save, uid) === id);
       const inTeam = mine.filter((uid) => save.team.includes(uid)).length;
       el('p', 'cs-dex-text', card, `${mine.length > 1 ? `${mine.length} au Repaire` : 'Un au Repaire'}${inTeam ? `, dont ${inTeam} dans l’équipe` : ''}.`);
       // Un autre peut venir, avec sa nature à lui : la jauge repart après chaque recrue.
-      if (isBaseForm(id)) this.recruitBar(card, save, id, waiting(id));
+      this.recruitBar(card, save, id, waiting(id));
       const go = el('button', 'cs-dex-go', card, 'Voir dans l’équipe');
       go.addEventListener('click', () => {
         this.teamTab = 'team';
@@ -913,10 +917,41 @@ export class CampScreen {
       });
     } else if (questFor(id)) el('p', 'cs-dex-text', card, `Kangourex le promet à qui remplira sa quête « ${questFor(id)!.name} ».`);
     else if (!met) el('p', 'cs-dex-text', card, 'Pas encore rencontré. Il se cache quelque part dans les biomes de la Ligue.');
-    else if (base !== id) el('p', 'cs-dex-text', card, `Forme évoluée : on ne la recrute pas, elle se gagne en faisant évoluer sa lignée en run${seen.has(base) ? ` (débloquer ${names.get(base) ?? (await species(base)).name} d’abord)` : ''}.`);
     else this.recruitBar(card, save, id, waiting(id));
     if (!own && (MERC_POOLS.champion as readonly number[]).includes(id)) el('p', 'cs-dex-text', card, 'Gardien de grotte : le vaincre le débloque d’office.');
-    if (!own && met && Object.values(FAUNA).some((pool) => pool.includes(id)) && base === id) el('small', 'cs-info', card, 'Libéré d’une grotte, il serait débloqué aussi.');
+    if (!own && met && Object.values(FAUNA).some((pool) => pool.includes(id))) el('small', 'cs-info', card, 'Libéré d’une grotte, il serait débloqué aussi.');
+    await this.lineage(card, id, seen, unlocked);
+  }
+
+  /**
+   * La lignée d'une forme de base, sous sa fiche : chaque forme suivante, le
+   * niveau où elle arrive (data/evolutions.ts, formes sautées comprises :
+   * evolutionsOf), son illustration si on l'a croisée, sinon sa silhouette et
+   * « ??? » — la même règle que la grille. Une forme possédée (quête, panneau
+   * de test) porte l'étoile des cartes débloquées. Récursive : un
+   * embranchement empile ses branches (.cs-evo-fork), chacune suivie de sa
+   * propre suite ; rien si l'espèce n'évolue pas.
+   */
+  private async lineage(card: HTMLElement, id: number, seen: ReadonlySet<number>, owned: ReadonlySet<number>): Promise<void> {
+    if (!evolutionsOf(id).length) return;
+    el('div', 'cs-label cs-evo-label', card, 'Lignée');
+    const line = el('div', 'cs-evo', card);
+    const stage = async (from: number, parent: HTMLElement): Promise<void> => {
+      const steps = evolutionsOf(from);
+      if (!steps.length) return;
+      // Une seule suite : elle prolonge la rangée ; plusieurs : une colonne de branches.
+      const fork = steps.length > 1 ? el('div', 'cs-evo-fork', parent) : parent;
+      for (const { level: lvl, next } of steps) {
+        const branch = steps.length > 1 ? el('div', 'cs-evo-branch', fork) : fork;
+        el('small', 'cs-evo-lvl', branch, `Niv. ${lvl}`);
+        const met = seen.has(next);
+        const form = el('div', `cs-evo-form${owned.has(next) ? ' own' : ''}`, branch);
+        art(next, form, met ? '' : 'shadow');
+        el('b', '', form, met ? (await species(next)).name : '???');
+        await stage(next, branch);
+      }
+    };
+    await stage(id, line);
   }
 
   /** La jauge des victoires jusqu'à la prochaine recrue de l'espèce (ou : elle attend au Repaire). */

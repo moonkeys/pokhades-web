@@ -89,6 +89,38 @@ export const CHAMPIONS: Record<string, Champion> = {
     sprite: 'trainer_ELITEFOUR_Lorelei.png',
     intro: 'Tu as grimpé jusqu’ici pour parler de liberté ? Le froid fige tout, même les rêves. Tes Pokémon resteront pris dans la glace.',
   },
+  // Ajout : le Conseil de Kanto (Rouge Feu), qui garde le dernier étage une fois la Route
+  // Victoire ouverte (run.ts, ELITE_BY_BIOME), et le Maître de la Ligue qui l'attend au
+  // bout. Équipes des jeux, réduites aux espèces dont le dépôt a les planches (Ectoplasma
+  // devient Spectrum, Ptéra un Dracaufeu).
+  Aldo: {
+    name: 'Aldo',
+    type: 'fighting',
+    team: [[95, 95], [106, 106], [107, 107], [68, 66]],
+    sprite: 'trainer_ELITEFOUR_Bruno.png',
+    intro: 'Le Conseil ne se bat pas pour une idée, sauvage. Il se bat pour gagner. Tes poings contre les miens : voyons qui plie.',
+  },
+  Agatha: {
+    name: 'Agatha',
+    type: 'ghost',
+    team: [[42, 41], [24, 23], [89, 88], [93, 93]],
+    sprite: 'trainer_ELITEFOUR_Agatha.png',
+    intro: 'Hé hé… Des rebelles, j’en ai vu passer. Leurs fantômes hantent encore ce marais. Tu veux les rejoindre ?',
+  },
+  Peter: {
+    name: 'Peter',
+    type: 'dragon',
+    team: [[130, 129], [148, 147], [6, 4], [149, 147]],
+    sprite: 'trainer_ELITEFOUR_Lance.png',
+    intro: 'Les dragons ne servent personne… sauf moi. Si un sauvage peut briser une chaîne, qu’il brise d’abord la mienne.',
+  },
+  Régis: {
+    name: 'Régis',
+    type: 'normal',
+    team: [[18, 16], [65, 63], [112, 111], [130, 129], [59, 58], [9, 7]],
+    sprite: 'trainer_CHAMPION.png',
+    intro: 'Alors c’est toi, la rumeur. Tous les champions à terre, le Conseil en déroute… Je suis le Maître de la Ligue. Au-dessus de moi, il n’y a rien. Montre-moi ce que vaut ta liberté.',
+  },
   Blanche: {
     name: 'Blanche',
     type: 'normal',
@@ -98,19 +130,25 @@ export const CHAMPIONS: Record<string, Champion> = {
   },
 };
 
-/** PokePools.BIOME_CHAMPIONS : le boss d'acte est assorti au type de sa région. */
+/**
+ * PokePools.BIOME_CHAMPIONS : le boss d'acte est assorti au type de sa région.
+ * Écart voulu (retour de test : des Pokémon très forts dès le début) : rangés aussi par
+ * étage de la carte du monde (world/worldmap.ts) — Giovanni et ses cinq Pokémon ne
+ * gardent plus le Village, au deuxième acte, mais les Rocailleux, au dernier ; Major Bob
+ * prend le Village, Morgane le Lac et l'Océan. Les petites équipes des premiers
+ * champions sont complétées selon l'acte où on les croise (run.ts, reinforce).
+ */
 export const BIOME_CHAMPIONS: Partial<Record<BiomeId, string[]>> = {
   prairie: ['Blanche'],
-  foret: ['Erika'],
-  automne: ['Blanche', 'Erika'],
-  marais: ['Koga'],
-  lac: ['Ondine'],
-  rocailleux: ['Pierre', 'Giovanni'],
-  volcan: ['Auguste'],
-  village: ['Giovanni'],
-  // Absents du jeu : la Plage et l'Océan ne sont jamais tirés en run.
   plage: ['Ondine'],
-  ocean: ['Ondine'],
+  village: ['Major Bob'],
+  foret: ['Erika'],
+  ocean: ['Morgane', 'Ondine'],
+  marais: ['Koga'],
+  lac: ['Ondine', 'Morgane'],
+  automne: ['Erika', 'Pierre'],
+  rocailleux: ['Giovanni', 'Pierre'],
+  volcan: ['Auguste'],
   glace: ['Olga'],
 };
 
@@ -119,6 +157,10 @@ export const FINAL_BOSS_INTRO =
   'Alors c’est toi. Le sauvage qui rêve d’un monde sans Poké Balls. Je suis le dernier verrou de la Ligue — l’ordre lui-même. Franchis-moi, et tout s’effondre. Mais aucun rebelle n’a jamais brisé LA chaîne.';
 export const FINAL_BOSS_DEFEAT =
   'Impossible… le dernier verrou a cédé. Va, alors. Que les Pokémon choisissent : suivre un dresseur… ou vivre libres. La chaîne est brisée — et c’est toi qui l’as brisée.';
+
+/** Réplique du Maître de la Ligue vaincu, au bout de la Route Victoire. */
+export const MASTER_DEFEAT =
+  'Battu… par un sauvage. Le titre est à toi, si tu en veux. Mais je crois que tu n’en veux pas : tu voulais seulement qu’on vous laisse choisir. Alors choisis.';
 
 /** Toutes les espèces qu'un champion peut aligner (formes finales et sbires) : à importer. */
 export function championSpecies(): number[] {
