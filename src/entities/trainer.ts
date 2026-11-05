@@ -22,6 +22,14 @@ const SCALE = 0.5;
 const WANDER_RADIUS = 3.5;
 const WANDER_SPEED = 2.2;
 const FLEE_SPEED = 6.5;
+/**
+ * Dresseur de salle au combat (`direct`) : il se tient à tant de cases derrière ses
+ * Pokémon, à l'opposé du joueur ; il recule s'il l'approche de plus près que KEEP_OUT.
+ */
+const COMMAND_BACK = 3.2;
+const KEEP_OUT = 4;
+const COMMAND_SPEED = 2.8;
+const RETREAT_SPEED = 3.6;
 
 export class Trainer {
   x: number;
@@ -131,6 +139,78 @@ export class Trainer {
     }
     this.x += (dx / d) * step;
     this.y += (dy / d) * step;
+  }
+
+  /**
+   * Dresseur de salle (run/room.ts), à la place des cent pas au hasard (retour de test :
+   * « les dresseurs ont des comportements bizarres, ils se baladent au pif ; il faudrait
+   * de la logique dans leur façon de combattre »). Avant son tour, il garde sa place,
+   * tourné vers le joueur, et n'en bouge que de quelques pas. Ses Pokémon sortis, il les
+   * mène : il se poste derrière eux, du côté opposé au joueur, toujours face à lui, et
+   * recule si le joueur fonce sur lui. `mons` : ses Pokémon encore debout.
+   */
+  direct(dt: number, world: WorldMap, player: { x: number; y: number }, mons: readonly { x: number; y: number }[], random: () => number): void {
+    if (this.fleeing || this.holdT > 0) {
+      this.update(dt, world, random);
+      return;
+    }
+    this.animT += dt;
+    const face = () => {
+      const dx = player.x - this.x;
+      const dy = player.y - this.y;
+      this.row = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 1 : 2) : dy < 0 ? 3 : 0;
+    };
+    const pd = Math.hypot(player.x - this.x, player.y - this.y);
+    let goal: { x: number; y: number } | null = null;
+    let speed = COMMAND_SPEED;
+    if (pd < KEEP_OUT) {
+      // Trop près : il recule, droit à l'opposé du joueur.
+      const k = (KEEP_OUT + 1.5) / Math.max(0.01, pd);
+      goal = { x: player.x + (this.x - player.x) * k, y: player.y + (this.y - player.y) * k };
+      speed = RETREAT_SPEED;
+    } else if (mons.length) {
+      // Derrière ses Pokémon, sur l'axe joueur → Pokémon.
+      const cx = mons.reduce((s, m) => s + m.x, 0) / mons.length;
+      const cy = mons.reduce((s, m) => s + m.y, 0) / mons.length;
+      const dx = cx - player.x;
+      const dy = cy - player.y;
+      const d = Math.max(0.01, Math.hypot(dx, dy));
+      goal = { x: cx + (dx / d) * COMMAND_BACK, y: cy + (dy / d) * COMMAND_BACK };
+    } else {
+      // Pas encore son tour : sa place, et quelques pas autour.
+      goal = { x: this.anchorX, y: this.anchorY };
+    }
+    const dx = goal.x - this.x;
+    const dy = goal.y - this.y;
+    const d = Math.hypot(dx, dy);
+    // Une petite marge : il ne piétine pas sur place pour une demi-case.
+    if (d < 0.8) {
+      this.moving = false;
+      face();
+      return;
+    }
+    const step = Math.min(d, speed * dt);
+    const nx = this.x + (dx / d) * step;
+    const ny = this.y + (dy / d) * step;
+    const walk = (x: number, y: number) => {
+      const cx = Math.floor(x);
+      const cy = Math.floor(y - 0.1);
+      if (cx < 1 || cy < 1 || cx >= world.w - 1 || cy >= world.h - 1) return false;
+      const i = cy * world.w + cx;
+      return !world.blocked[i] && !world.water[i];
+    };
+    // Contre un obstacle, il glisse le long (un axe à la fois), sinon il s'arrête.
+    if (walk(nx, ny)) [this.x, this.y] = [nx, ny];
+    else if (walk(nx, this.y)) this.x = nx;
+    else if (walk(this.x, ny)) this.y = ny;
+    else {
+      this.moving = false;
+      face();
+      return;
+    }
+    this.moving = true;
+    // En reculant ou en se plaçant, il garde les yeux sur le joueur (il marche à reculons).
+    face();
   }
 
   /** Dessin trié avec les Pokémon et le décor (ligne de sol = pieds). */

@@ -308,9 +308,10 @@ export class RoomDirector {
       g?.actors.push(a);
     }
     this.pending = this.pending.filter((q) => q.t < SPAWN_ANNOUNCE);
-    // Les dresseurs font les cent pas ; tous leurs Pokémon libérés, ils s'enfuient.
+    // Les dresseurs mènent leurs Pokémon (Trainer.direct) ; tous libérés, ils s'enfuient.
     this.groups.forEach((g, k) => {
-      g.trainer.update(dt, world, Math.random);
+      if (g.done) g.trainer.update(dt, world, Math.random);
+      else g.trainer.direct(dt, world, player, g.actors.filter((a) => a.deathT < 0), Math.random);
       if (g.thrown && !g.done && g.actors.length && g.actors.every((a) => a.deathT >= 0) && !this.pending.some((p) => p.group === k)) this.flee(g, world);
     });
     this.t -= dt;
