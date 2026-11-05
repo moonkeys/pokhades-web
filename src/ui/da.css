@@ -4174,3 +4174,235 @@
   font-size: calc(1.05 * var(--u));
   text-shadow: 0 1px 2px #000;
 }
+
+/* ── Plan du monde et carnet des exploits (src/ui/journal.ts) ────────────
+ * Le plan : la carte peinte aux tuiles du jeu, en pixels nets, sous un liseré
+ * d'encre ; les noms sur une étiquette de papier. Le carnet : une ligne par
+ * exploit, rien de plus. */
+.journal .jr-card {
+  left: 50%;
+  top: 50%;
+  width: min(calc(100vw - 32px), calc(80 * var(--u)));
+  max-height: calc(100vh - 32px);
+  display: flex;
+  flex-direction: column;
+  translate: -50% -50%;
+  rotate: -0.6deg;
+  /* Assez de marge pour que le bord déchiré (clip-path) ne rogne pas la légende. */
+  padding: calc(1.2 * var(--u)) calc(2.4 * var(--u)) calc(1 * var(--u));
+  color: var(--ink);
+  background: var(--paper);
+  clip-path: polygon(0 1%, 6% 0, 22% 1.2%, 40% 0, 60% 1%, 80% 0, 100% 1.4%, 99.4% 40%, 100% 70%, 99.2% 100%, 70% 99%, 46% 100%, 24% 98.8%, 4% 100%, 0.6% 70%, 0 30%);
+  box-shadow: 0 var(--u) calc(2 * var(--u)) rgba(0, 0, 0, 0.5);
+}
+.journal .jr-card.feats {
+  width: min(calc(100vw - 32px), 440px);
+  max-height: min(calc(100vh - 32px), 560px);
+}
+.journal .jr-intro {
+  margin: 8px 0 0;
+  font: 500 14px / 1.3 var(--body);
+  color: var(--muted);
+}
+.journal .jr-none {
+  margin: 0 0 2px 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.journal .jr-feat .jr-text {
+  display: grid;
+  gap: 1px;
+}
+.journal .jr-feat .jr-text span {
+  font: 500 12.5px / 1.25 var(--body);
+  color: var(--muted);
+}
+.journal .jr-head .da-tape {
+  display: inline-block;
+  rotate: -2deg;
+}
+.journal .jr-plan {
+  position: relative;
+  margin-top: calc(0.8 * var(--u));
+  aspect-ratio: 44 / 30;
+  max-height: calc(100vh - 150px);
+  border: 3px solid var(--ink);
+  overflow: hidden;
+}
+.journal .jr-plan-art,
+.journal .jr-plan-fx,
+.journal .jr-plan-over {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.journal .jr-plan-art,
+.journal .jr-plan-fx {
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+.jr-arrow {
+  fill: var(--yel);
+  stroke: var(--ink);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+/* Les routes : des pointillés d'encre sur un liseré de papier, comme une carte au trésor ;
+ * sur la mer (Océan), des pointillés d'écume. */
+.jr-trail-under,
+.jr-trail {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.jr-trail-under {
+  stroke: rgba(255, 248, 230, 0.75);
+  stroke-width: 7;
+  stroke-dasharray: 9 7;
+}
+.jr-trail {
+  stroke: var(--ink);
+  stroke-width: 3.5;
+  stroke-dasharray: 9 7;
+}
+.jr-trail.sea {
+  stroke: #fff8e6;
+}
+.jr-trail.shut {
+  opacity: 0.35;
+}
+.jr-arrow.shut {
+  opacity: 0.35;
+}
+.jr-cs {
+  font: 11px var(--head);
+  letter-spacing: 0.05em;
+  text-anchor: middle;
+  fill: var(--paper);
+  stroke: var(--ink);
+  stroke-width: 3;
+  paint-order: stroke;
+}
+.jr-label {
+  font: 19px var(--head);
+  letter-spacing: 0.06em;
+  text-anchor: middle;
+  fill: var(--paper);
+  stroke: var(--ink);
+  stroke-width: 4;
+  paint-order: stroke;
+}
+.jr-place.start .jr-label {
+  fill: var(--yel);
+}
+.jr-place.fog .jr-label,
+.jr-place.fog .jr-sub {
+  fill: #b9b2a4;
+}
+.jr-place.fog .jr-sub {
+  font-style: italic;
+}
+.jr-sub {
+  font: 700 10px var(--body);
+  text-anchor: middle;
+  fill: var(--paper);
+  stroke: var(--ink);
+  stroke-width: 3;
+  paint-order: stroke;
+}
+.journal .jr-legend,
+.journal .jr-keys {
+  margin: calc(0.4 * var(--u)) 0 0;
+  font-size: clamp(11px, calc(1.05 * var(--u)), 14px);
+  color: var(--muted);
+}
+.journal .jr-feats {
+  display: grid;
+  gap: 4px;
+  margin-top: calc(0.6 * var(--u));
+  min-height: 0;
+  overflow: auto;
+}
+.journal .jr-group {
+  margin: 10px 0 2px;
+  font: normal 18px / 1 var(--head);
+  letter-spacing: 0.06em;
+}
+.journal .jr-group small {
+  margin-left: 8px;
+  font: 500 12px var(--body);
+  color: var(--muted);
+}
+.journal .jr-feat {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 3px 8px;
+  border-left: 4px solid var(--muted);
+  font-size: 13px;
+}
+.journal .jr-feat b {
+  font: normal 15px / 1.1 var(--head);
+  letter-spacing: 0.04em;
+}
+.journal .jr-feat em {
+  font-style: normal;
+  font-size: 12px;
+  color: var(--muted);
+}
+.journal .jr-feat.ready {
+  border-left-color: var(--yel);
+  background: rgba(255, 210, 63, 0.25);
+}
+.journal .jr-reward {
+  font: normal 13px / 1.2 var(--head);
+  color: var(--muted);
+}
+.journal .jr-claim {
+  padding: 2px 10px;
+  font: normal 14px / 1.2 var(--head);
+  letter-spacing: 0.05em;
+  color: var(--ink);
+  background: var(--yel);
+  border: 2px solid var(--ink);
+  cursor: pointer;
+}
+.journal .jr-claim.all {
+  justify-self: start;
+  color: var(--paper);
+  background: var(--ink);
+}
+
+/* Un biome pas encore atteint : un grand « ? » à la place de son nom (journal.ts). */
+.jr-place.fog .jr-label {
+  font-size: 28px;
+}
+/* (Le bord déchiré du papier rognait la première lettre.) */
+.journal .jr-keys {
+  padding-left: 6px;
+}
+
+/* Les records, en haut du carnet de Xatu : quatre étiquettes. */
+.journal .jr-records {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-top: 8px;
+}
+.journal .jr-rec {
+  display: grid;
+  padding: 4px 6px;
+  text-align: center;
+  background: rgba(20, 16, 14, 0.07);
+  border-bottom: 3px solid var(--ink);
+}
+.journal .jr-rec b {
+  font: normal 18px / 1.1 var(--head);
+  letter-spacing: 0.04em;
+}
+.journal .jr-rec small {
+  font: 500 11px var(--body);
+  color: var(--muted);
+}

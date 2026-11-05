@@ -1,3 +1,4 @@
+import { readyFeats } from './feats';
 import { buildingsShown } from './catalog';
 import { canCraft, RECIPES } from './crafting';
 import { questState, QUESTS } from './quests';
@@ -43,6 +44,7 @@ function pending(save: Save, station: string): string[] {
   if (station === 'visitor') return save.nectar && save.nectar.left <= 0 ? ['here'] : [];
   // La recrue qui attend près du feu : elle veut qu'on lui parle.
   if (station === 'recruit') return save.candidates.length ? ['here'] : [];
+  if (station === 'feats') return readyFeats(save).map((f) => f.id);
   return [];
 }
 

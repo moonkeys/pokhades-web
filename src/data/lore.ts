@@ -115,13 +115,16 @@ export const LORE: LoreChapter[] = [
     intro: 'Quatre actes, quatre champions, et des sauvages entre eux. Personne n’a dit que la route serait courte.',
     cards: [
       // run/run.ts:18-20, 36-47
-      { title: 'Actes et salles', text: 'Un acte : cinq salles de combat, une boutique, puis le champion. On part de la Prairie ; chaque champion battu ouvre les biomes voisins (Forêt, Village, Plage, puis Lac, Marais, Rocailleux, Volcan, Montagne glacée…). L’Océan ne s’atteint que depuis la Plage, avec la CS Surf.' },
+      { title: 'Actes et salles', text: 'Un acte : cinq salles de combat, une boutique, puis le champion. On part de la Prairie, au sud de la carte du monde (le panneau près de l’arche), et l’on monte vers le nord : chaque champion battu ouvre les biomes voisins, une porte du côté où chacun se trouve (Plage à l’ouest, Village au nord, Forêt à l’est, puis Océan, Marais, Lac, Automne, et enfin Volcan, Rocailleux ou Montagne glacée). L’Océan ne s’atteint que depuis la Plage, avec la CS Surf. Sortir d’une salle par l’est fait entrer dans la suivante par l’ouest.' },
+      // world/worldmap.ts, meta/feats.ts
+      { title: 'La Route Victoire', text: 'Bats les dix champions des biomes, une fois chacun : au bout de la carte s’ouvre la Route Victoire, un cinquième acte plus dur encore. Le Conseil garde alors le dernier étage, et le Maître de la Ligue attend au bout.' },
+      { title: 'Le carnet', text: 'Xatu, près de l’arche, tient la liste de tous les exploits — chaque champion à battre, chaque biome à atteindre, les victoires, la taille de la rébellion. Un exploit fait se réclame au Repaire, dans le carnet : des Baies et des Éclats de Champion.' },
       // run.ts:52-68, 251-256
       { title: 'Les portes', text: 'Une salle vidée ouvre jusqu’à trois portes ; chacune annonce sa récompense : un don, une attaque, ou un butin de ₽. La récompense laissée au centre est perdue si on part sans la prendre.' },
       // run.ts:333-360, room.ts
-      { title: 'Les vagues', text: 'Les sauvages arrivent par vagues, annoncées par un anneau magenta au sol : ne reste pas dessus. Plus on avance, plus elles sont nombreuses et fortes. Une fois provoqués, ils te foncent dessus.' },
+      { title: 'Les vagues', text: 'Les sauvages arrivent par vagues, annoncées par un anneau magenta au sol : ne reste pas dessus. Plus on avance, plus elles sont nombreuses et fortes, et plus ton équipe est grande, plus ils sont nombreux. Au premier acte, seuls quelques Pokémon du coin : de quoi en vaincre dix d’une même espèce, et la recruter.' },
       // run.ts:242-244
-      { title: 'Les ₽', text: 'Chaque salle vidée rapporte des ₽ (de plus en plus), à dépenser en boutique ou chez le marchand. Ils ne servent que pendant la run : au Repaire, on compte en Baies.' },
+      { title: 'Les ₽', text: 'Chaque salle vidée rapporte des ₽ (de plus en plus), à dépenser en boutique. Ils ne servent que pendant la run : au Repaire, on compte en Baies.' },
       // run/shop.ts
       { title: 'La boutique', text: 'Avant chaque champion : des potions (de plus en plus fortes avec les actes), des Rappels si quelqu’un est K.O., une CT par visite, et des mercenaires à embaucher (Éclaireur, Vétéran, Champion Sauvage) pour compléter l’équipe — mais un mercenaire K.O. ne se ranime pas.' },
       // run/berries.ts, run/chests.ts

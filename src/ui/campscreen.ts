@@ -216,7 +216,7 @@ const resRow = (amounts: Cost, parent: HTMLElement, cls: string, stock?: Record<
 };
 
 /** Couleur de chaque poste : le liseré de l'écran et l'ombre du titre. */
-const TINT: Record<Station, string> = { start: '#ff7a2a', moves: '#b88ceb', team: '#3ab0e0', upgrades: '#ffd23f', items: '#e8b04a', builder: '#c8963c', missions: '#9a86b8', quests: '#e0a35a', lore: '#7cc46a', online: '#7ac0e8', garden: '#e8c84a', craft: '#d9776a', visitor: '#f0a0c8', recruit: '#ffd23f' };
+const TINT: Record<Station, string> = { start: '#ff7a2a', moves: '#b88ceb', team: '#3ab0e0', upgrades: '#ffd23f', items: '#e8b04a', builder: '#c8963c', missions: '#9a86b8', quests: '#e0a35a', lore: '#7cc46a', online: '#7ac0e8', garden: '#e8c84a', craft: '#d9776a', visitor: '#f0a0c8', recruit: '#ffd23f', feats: '#ffd23f', map: '#c8963c' };
 
 /**
  * Ce qui se choisit au clavier, dans l'ordre de l'écran : onglets, cartes,
