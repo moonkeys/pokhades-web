@@ -297,7 +297,7 @@ export function generateCave(seed: number): CaveLayout {
   const world: WorldMap = {
     w: W, h: H, biome: GROTTE, seed,
     inside: new Uint8Array(N).fill(1),
-    path: zero(), patch: zero(), water: zero(), tall: zero(),
+    path: zero(), patch: zero(), water: zero(), tall: zero(), hide: zero(),
     cliff: rock, cliff2: null, stairs: [], face: zero(),
     blocked, solid, reachable, objects, flat: [], lilies: [],
     spawn, entrySide: 'N', exits: [], hub: { x: arena.x, y: arena.y },

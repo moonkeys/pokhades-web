@@ -97,6 +97,8 @@ export interface WorldMap {
   patch: Uint8Array;
   water: Uint8Array;
   tall: Uint8Array;
+  /** Les vraies hautes herbes (touffes de deux cases) : là où les sauvages se cachent. */
+  hide: Uint8Array;
   /** Falaises de niveau 1 et plus : montagnes de bordure et plateaux (null si aucun). */
   cliff: Uint8Array | null;
   /** Falaises de niveau 2, posées sur les plateaux de niveau 1. */
@@ -222,6 +224,50 @@ export function findExits(W: number, H: number, reachable: Uint8Array, water: Ui
 }
 
 const at = (m: Uint8Array, x: number, y: number) => m[y * GW + x];
+
+export const OPPOSITE: Record<Side, Side> = { N: 'S', S: 'N', E: 'W', W: 'E' };
+
+/**
+ * Les cases qu'on atteint à pied depuis le départ, sans nager (`reachable` passe par
+ * l'eau). Sans la CS Surf, on ne nage plus en run (retour de test) : la récompense de
+ * la salle se pose sur cette zone, et main.ts vérifie que les portes y sont.
+ */
+export function landReachable(world: WorldMap): Uint8Array {
+  const { w, h } = world;
+  const out = new Uint8Array(w * h);
+  const start = Math.floor(world.spawn.y - 0.05) * w + Math.floor(world.spawn.x);
+  if (start < 0 || start >= w * h) return out;
+  const queue = [start];
+  out[start] = 1;
+  while (queue.length) {
+    const i = queue.pop()!;
+    const x = i % w;
+    const y = (i / w) | 0;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+      const j = ny * w + nx;
+      if (out[j] || world.blocked[j] || world.water[j]) continue;
+      out[j] = 1;
+      queue.push(j);
+    }
+  }
+  return out;
+}
+
+/**
+ * Point d'arrivée de la clairière (et de l'Océan) sur le bord `side` (ajout : on
+ * entrait toujours par le bas). Au Lac, l'eau occupe le haut : une arrivée par
+ * le côté se fait à hauteur de la rive, comme ses sorties ; par le nord, le lac
+ * la bloquerait, on garde le bas.
+ */
+function sideEntry(side: Side, W: number, H: number, rng: Rng, lake: boolean): { x: number; y: number } {
+  if (lake && (side === 'W' || side === 'E')) return { x: side === 'W' ? 0.5 : W - 0.5, y: H - rng.range(11, 15) };
+  if (side === 'S' || lake) return { x: W / 2 + rng.range(-5, 5), y: H - 0.5 };
+  if (side === 'N') return { x: W / 2 + rng.range(-5, 5), y: 0.5 };
+  return { x: side === 'W' ? 0.5 : W - 0.5, y: H / 2 + rng.range(-4, 4) };
+}
 
 /** Lecture avec bords « collants » : hors carte, on répète la case la plus proche (pas de berge au bord du monde). */
 function clampAt(m: Uint8Array, x: number, y: number): number {
@@ -1443,8 +1489,27 @@ export function generate(
     }
   }
 
+  // 12) Les hautes herbes, les vraies (retour de test : « ce qu'on appelle hautes herbes, c'est
+  //     des petites herbes ; les vraies, ce sont celles sur deux cases ») : des touffes hautes
+  //     (PROPS.bunches) posées en bosquets serrés dans les champs d'herbe. C'est là, et là
+  //     seulement, que les sauvages se cachent (enemy.ts, onTallGrass) ; on voit la touffe
+  //     s'agiter quand l'un d'eux bouge dedans (renderer.ts). Les petites herbes restent, pour
+  //     le décor et l'effet sous les pas.
+  const hide = new Uint8Array(N);
+  if (biome.tallGrass && !options.camp) {
+    for (let y = 1; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        const i = idx(x, y);
+        if (!tall[i] || blocked[i] || path[i] || water[i] || fbm(x * 0.23, y * 0.23, s + 47) < 0.5) continue;
+        hide[i] = 1;
+        objects.push({ sprite: PROPS.bunches[(x * 7 + y * 3) % PROPS.bunches.length], x: x * TILE + TILE / 2, y: (y + 1) * TILE, fades: false });
+      }
+    }
+    objects.sort((a, b) => a.y - b.y);
+  }
+
   return {
-    w: W, h: H, biome, seed, inside, path, patch, water, tall, cliff, cliff2, stairs, face, blocked, solid, reachable,
+    w: W, h: H, biome, seed, inside, path, patch, water, tall, hide, cliff, cliff2, stairs, face, blocked, solid, reachable,
     objects, flat, lilies, spawn, entrySide, exits, hub, paving, townStyle: townStyle?.name ?? null,
     townLayout: plan?.layout ?? null, fountains: plan?.fountains ?? [], cave, berries, chest,
     front: routed ? (shape!.front ?? null) : null,

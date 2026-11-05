@@ -145,9 +145,9 @@ export const LORE: LoreChapter[] = [
       { title: 'Ligne de front', color: '#f259bf', text: 'Un long couloir : chaque vague surgit au bout le plus éloigné de toi et charge en masse. Le sol gronde et une flèche magenta montre d’où elle vient un peu avant. Moins de vagues, mais plus fournies. En Forêt, c’est un sentier étroit entre les arbres ; en Prairie, un chemin au milieu des champs d’herbe haute.' },
       // run.ts:79-87, 291-298, room.ts
       { title: 'Le Défi', text: 'Une salle chronométrée : 30 s, plus 10 s par vague. Vide-la à temps et le gain est triplé ; trop lent, les sauvages s’enfuient avec la récompense.' },
-      { title: 'Le Piège', text: 'Une récompense trop belle au milieu de la salle… Approche, et l’embuscade se referme : trois vagues, plus nombreuses et plus fortes. Survis, et le gain est doublé.' },
-      // run/merchant.ts
-      { title: 'Le marchand', text: 'Miaouss tient boutique au bord du chemin, deux marchés, une fois chacun : parier la moitié de tes ₽ à pile ou face, ou troquer un tiers des PV de chaque membre contre un don.' },
+      { title: 'Le Piège', text: 'Aucune porte ne l’annonce. Une récompense trop belle au milieu d’une salle vide… Approche, et l’embuscade se referme : trois vagues, plus nombreuses et plus fortes. Survis, et le gain est doublé.' },
+      // entities/actor.ts (terrainMult), run/hazards.ts, run/room.ts (Village), world/generate.ts (hide)
+      { title: 'Le terrain', text: 'Chaque biome a ses pièges. Les hautes herbes de la Prairie cachent les sauvages : on voit la touffe bouger quand l’un d’eux y remue. La boue du Marais ralentit (pas les Vol ni les Spectre ; un dash la traverse). Au Volcan, avec Surf, on peut traverser la lave, mais elle brûle. Aux Rocailleux, des tourbillons de sable errent et éjectent qui s’y prend (Roche, Sol et Acier y résistent). Au Village, les dresseurs lancent des Poké Balls sur ton Pokémon quand l’équipe compte au moins deux membres : bats leur équipe pour récupérer ta prise. En Montagne, la glace fait glisser.' },
       // run/cave.ts
       { title: 'Les grottes', text: 'Surtout en Rocailleux, au Volcan et en Montagne glacée, une bouche de grotte s’ouvre une fois la salle vidée. Dedans, un sbire de la Ligue : il parle, puis envoie son Pokémon fort et son escorte. Bats-les pour des ₽ et un soin complet de l’équipe (son Pokémon, lui, ne se recrute pas). Au fond, un coffre et un prisonnier à libérer, qui rejoindra le Repaire. Fuir, c’est perdre la grotte.' },
       // run/capture.ts

@@ -791,6 +791,7 @@ export class Renderer {
       grassOver?: WorldObject;
       jet?: { x: number; y: number };
       extra?: (typeof extras)[number];
+      peek?: { a: Actor; x: number; y: number };
     };
     const items: Item[] = [];
     for (const o of world.objects) {
@@ -802,12 +803,23 @@ export class Renderer {
     for (const p of placed) items.push({ y: p.y, actor: p });
     for (const e of extras) items.push({ y: e.y, extra: e });
     for (const f of world.fountains) items.push({ y: (f.y + 3) * TILE - 1, jet: f });
+    // Caché dans les hautes herbes : le haut de sa tête dépasse des touffes (retour de test :
+    // « j'ai du mal à voir »), dessiné après la touffe qui le couvre.
+    for (const a of actors) {
+      if (!a.hidden || !a.sheet || a.trapped || a.deathT >= 0) continue;
+      items.push({ y: a.y * TILE + 20, peek: { a, x: lerp(a.prevX, a.x, alpha) * TILE, y: lerp(a.prevY, a.y, alpha) * TILE } });
+    }
     // Touffes et roseaux traversés : leur bas est redessiné par-dessus le Pokémon.
     const trampled = new Set<WorldObject>();
+    // Un sauvage caché dans les hautes herbes (enemy.ts) : on ne le voit pas, mais sa touffe
+    // s'agite quand il bouge (retour de test : « tu vois quand même quand ça bouge »).
+    const lurkers = actors.filter((a) => a.hidden && a.deathT < 0).map((a) => ({ x: lerp(a.prevX, a.x, alpha) * TILE, y: lerp(a.prevY, a.y, alpha) * TILE, moving: a.moving }));
+    const rustled = new Set<WorldObject>();
     for (const it of items) {
       const o = it.obj;
       if (!o?.sprite.grass) continue;
       const half = o.sprite.rect[2] / 2 - 2;
+      if (lurkers.some((l) => Math.abs(l.x - o.x) < half + 6 && l.y > o.y - 18 && l.y <= o.y + 6 && (l.moving || Math.sin(time * 1.3 + o.x) > 0.85))) rustled.add(o);
       for (const p of placed) {
         if (Math.abs(p.x - o.x) < half && p.y > o.y - 14 && p.y <= o.y + 2) {
           trampled.add(o);
@@ -832,7 +844,7 @@ export class Renderer {
         if (o.sprite.grass) {
           // Vent commun aux herbes ; la touffe qu'on traverse s'agite.
           const wind = Math.sin(time * 1.6 - (o.x / TILE) * 0.45 - (o.y / TILE) * 0.2) * 1.6;
-          const shake = trampled.has(o) ? Math.sin(time * 16) * 1.8 : 0;
+          const shake = trampled.has(o) ? Math.sin(time * 16) * 1.8 : rustled.has(o) ? Math.sin(time * 22 + o.x) * 2.2 : 0;
           // Joueur derrière la touffe (pieds au-dessus de sa base) : on l'éclaircit, comme les arbres.
           const behind = playerBody && playerPlaced!.y < o.y - 12 && overlap(playerBody, { x: dx, y: dy, w: sw, h: sh });
           b.globalAlpha = behind ? 0.5 : 1;
@@ -848,6 +860,15 @@ export class Renderer {
         b.drawImage(this.tileset, sx, sy, sw, sh, Math.round((dx - camX) * k), Math.round((dy - camY) * k), sw * k, sh * k);
         // Chapeau de neige (Montagne glacée), du même cadre que l'arbre.
         if (o.sprite.cap) b.drawImage(this.tileset, o.sprite.cap[0], o.sprite.cap[1], sw, sh, Math.round((dx - camX) * k), Math.round((dy - camY) * k), sw * k, sh * k);
+        b.globalAlpha = 1;
+      } else if (it.peek) {
+        const { a, x, y } = it.peek;
+        const sh = a.sheet!;
+        const s = this.spriteScale(a, opts);
+        const top = sh.topRow;
+        const show = Math.max(3, Math.round((sh.footRow + 1 - top) * 0.32));
+        b.globalAlpha = 0.92;
+        b.drawImage(sh.image, a.frame() * sh.fw, (sh.rows >= 8 ? a.dir : 0) * sh.fh + top, sh.fw, show, Math.round((x - camX) * k - sh.centerCol * s), Math.round((y - camY) * k - (sh.footRow + 1 - top) * s) - Math.round(4 * k), Math.round(sh.fw * s), Math.round(show * s));
         b.globalAlpha = 1;
       } else if (it.jet) {
         this.drawJet(it.jet.x * TILE, it.jet.y * TILE, time);
