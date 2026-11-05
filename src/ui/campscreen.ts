@@ -130,7 +130,7 @@ async function weigh(id: number, save: Save): Promise<MemberWeight> {
 }
 
 /** Poids total de l'équipe composée (GameManager.compute_team_weight) et plafond. */
-async function teamWeight(save: Save): Promise<{ total: number; cap: number }> {
+export async function teamWeight(save: Save): Promise<{ total: number; cap: number }> {
   const all = await Promise.all(save.team.map((sid) => weigh(sid, save)));
   return { total: all.reduce((s, w) => s + w.total, 0), cap: weightCap(save) };
 }

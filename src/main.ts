@@ -207,7 +207,27 @@ async function boot(): Promise<void> {
     },
     atlas,
   );
-  const camp = new Camp(document.body, (station) => talkTo(station), atlas);
+  const camp = new Camp(document.body, (station, arg) => talkTo(station, arg), atlas);
+  // On part en passant l'arche du nord (retour de test : plus d'écran de départ). Comme cet
+  // écran le faisait, une équipe trop lourde ne part pas, et chez un hôte, c'est lui qui part.
+  camp.onLeave = () => {
+    if (mode !== 'camp' || paused() || dialogue.open || !save.started) return;
+    if (hostCamp) {
+      runHud.notify({ title: 'Repaire de l’hôte', text: 'C’est l’hôte qui lance la run.', art: CAMP_NPCS.online, color: '#7ac0e8' });
+      return;
+    }
+    void teamWeight(save).then((w) => {
+      if (mode !== 'camp') return;
+      if (w.total > w.cap) {
+        sfx('buzzer');
+        runHud.notify({ title: 'Trop lourd', text: `Poids d’équipe ${w.total} / ${w.cap} : allège l’équipe chez Porygon, ou monte le plafond chez Alakazam.`, art: CAMP_NPCS.start, color: 'var(--yel)' });
+        player.y = player.prevY = player.y + 1;
+        return;
+      }
+      sfx('doorEnter');
+      campCtx.depart();
+    });
+  };
   const campScreen = new CampScreen(document.body);
   const netBadge = new NetBadge(document.body);
   combat.notify = (text) => runHud.message(text);
@@ -914,11 +934,16 @@ async function boot(): Promise<void> {
    * nom »). Repaire plein : on choisit d'abord qui s'en va — l'exil —, ou on la renvoie.
    * Échap : elle attend encore.
    */
-  const meetCandidate = async () => {
-    const c = save.candidates[0];
-    if (!c || recruitScreen.open || starterScreen.open) return;
+  const meetCandidate = async (idx = 0) => {
+    const c = save.candidates[idx];
+    if (!c || recruitScreen.open || starterScreen.open || dialogue.open) return;
     const mon = await Pokemon.load(c.species, BASE_TEAM_LEVEL);
     if (c.name) mon.rename(c.name);
+    /** Retire cette recrue de la file (elle a pu bouger si une autre est partie entre-temps). */
+    const dequeue = () => {
+      const k = save.candidates.indexOf(c);
+      if (k >= 0) save.candidates.splice(k, 1);
+    };
     const welcomeIt = () => {
       const full = save.team.length >= teamSlots(level(save, 'slots'));
       recruitScreen.show(
@@ -931,7 +956,7 @@ async function boot(): Promise<void> {
             ask: 'L’accueillez-vous ?',
             yes: 'Oui, dans l’équipe',
             no: 'Oui, au Repaire',
-            hint: 'Il s’installe au Repaire, avec sa nature et ses talents à lui. Dans l’équipe, il part avec vous dès la prochaine run (s’il reste une place). Échap : il attend encore.',
+            hint: `Il s’installe au Repaire, avec sa nature et ses talents à lui. ${teamRoomHint()} Échap : il attend encore.`,
           },
         },
         (choice, nick) => {
@@ -939,49 +964,82 @@ async function boot(): Promise<void> {
           if (!choice) return;
           const named = nick && nick !== mon.name ? nick : c.name;
           const fresh = !ownsSpecies(save, c.species);
-          save.candidates.shift();
+          dequeue();
           const m = addMon(save, c.species, c.origin, named);
           if (choice === 'team' && !full) save.team.push(m.uid);
           writeSave(save);
           if (fresh) welcome(c.species);
-          // Le camp se recompose : la recrue suivante, s'il y en a, prend sa place près du feu.
+          // Le camp se recompose : les autres recrues, s'il y en a, restent autour du feu.
           if (choice === 'team') campCtx.teamChanged();
           else enterCampKeep({ x: player.x, y: player.y, dir: player.dir });
         },
       );
     };
-    if (!isFull(save)) return welcomeIt();
-    const uids = roster(save).filter((u) => !busy(save, u) && !(save.team.length === 1 && save.team[0] === u));
-    const infos = await Promise.all(uids.map((u) => loadInfo(speciesOf(save, u))));
-    const names = uids.map((u, k) => monName(save, u, infos[k].name));
-    starterScreen.show(
-      (_, k) => {
-        input.flush();
-        if (k < 0) {
-          save.candidates.shift();
+    const proceed = async () => {
+      if (!isFull(save)) return welcomeIt();
+      const uids = roster(save).filter((u) => !busy(save, u) && !(save.team.length === 1 && save.team[0] === u));
+      const infos = await Promise.all(uids.map((u) => loadInfo(speciesOf(save, u))));
+      const names = uids.map((u, k) => monName(save, u, infos[k].name));
+      starterScreen.show(
+        (_, k) => {
+          input.flush();
+          // « Plus tard » (ou Échap) : rien ne change, la recrue attend encore au feu.
+          if (k === -2) return;
+          if (k < 0) {
+            dequeue();
+            writeSave(save);
+            runHud.notify({ title: 'Au revoir', text: `${mon.name} repart, le cœur gros. Il reviendra peut-être.`, art: c.species, color: 'var(--ink)' });
+            enterCampKeep({ x: player.x, y: player.y, dir: player.dir });
+            return;
+          }
+          const uid = uids[k];
+          const sp = speciesOf(save, uid);
+          if (!exile(save, uid)) return;
           writeSave(save);
-          runHud.notify({ title: 'Au revoir', text: `${mon.name} repart, le cœur gros. Il reviendra peut-être.`, art: c.species, color: 'var(--ink)' });
-          enterCampKeep({ x: player.x, y: player.y, dir: player.dir });
-          return;
-        }
-        const uid = uids[k];
-        const sp = speciesOf(save, uid);
-        if (!exile(save, uid)) return;
-        writeSave(save);
-        runHud.notify({ title: 'Adieu', text: `${names[k]} quitte la rébellion. Il laisse sa place à ${mon.name}.`, art: sp, color: 'var(--ink)' });
-        welcomeIt();
-      },
-      {
-        ids: uids.map((u) => speciesOf(save, u)),
-        names,
-        subs: uids.map((u) => natureText(save.mons[u].nature)),
-        tape: 'Le Repaire est plein',
-        quote: `« ${mon.name} veut nous rejoindre, mais le Repaire ne loge que ${capacity(save)} libérés. Bâtissez de quoi en loger plus, ou choisissez qui doit partir. »`,
-        go: 'Il s’en va…',
-        cancel: `Renvoyer ${mon.name}`,
-      },
-    );
+          runHud.notify({ title: 'Adieu', text: `${names[k]} quitte la rébellion. Il laisse sa place à ${mon.name}.`, art: sp, color: 'var(--ink)' });
+          welcomeIt();
+        },
+        {
+          ids: uids.map((u) => speciesOf(save, u)),
+          names,
+          subs: uids.map((u) => natureText(save.mons[u].nature)),
+          tape: 'Le Repaire est plein',
+          quote: `« ${mon.name} veut nous rejoindre, mais le Repaire ne loge que ${capacity(save)} libérés. Bâtissez de quoi en loger plus chez le bâtisseur, ou choisissez qui doit partir. »`,
+          go: 'Il s’en va…',
+          cancel: `Renvoyer ${mon.name}`,
+          later: 'Plus tard',
+        },
+      );
+    };
+    // La toute première recrue se présente et explique le chemin jusqu'à l'équipe (retour de
+    // test : « j'ai galéré au tout début pour avoir un premier Pokémon dans mon équipe »).
+    if (!save.intros.includes('first-recruit')) {
+      save.intros.push('first-recruit');
+      writeSave(save);
+      dialogue.show(
+        { name: mon.name, role: 'Le Repaire · Recrue', type: mon.types[0] ?? 'normal', sprite: `/game/artwork/${c.species}.png` },
+        `J’aimerais rejoindre ton camp ! Je peux m’installer au Repaire dès maintenant. ${teamRoomHint()}`,
+        () => void proceed(),
+      );
+      return;
+    }
+    await proceed();
   };
+
+  /**
+   * Comment une recrue entre dans l'équipe, selon où l'on en est : une place libre, la
+   * place à acheter chez Alakazam, ou l'Étude à faire bâtir d'abord.
+   */
+  function teamRoomHint(): string {
+    const slots = teamSlots(level(save, 'slots'));
+    if (save.team.length < slots) return 'Il te reste une place dans l’équipe : je peux partir avec toi dès la prochaine run. Porygon, à la hutte de l’équipe, change l’équipe quand tu veux.';
+    const next = UPGRADES.find((u) => u.id === 'slots')!;
+    const lvl = level(save, 'slots');
+    if (lvl >= next.max) return 'L’équipe est complète : Porygon, à la hutte de l’équipe, peut m’y faire entrer à la place d’un autre.';
+    const price = `${next.price(lvl)} Baies`;
+    if (!save.built.includes('study')) return `Pour que je rejoigne ton équipe, il faut une place de plus : va voir Charpenti, le bâtisseur, pour construire l’Étude d’Alakazam. Alakazam y vend une Place dans l’équipe (${price}), puis Porygon, à la hutte de l’équipe, m’y fera entrer.`;
+    return `Pour que je rejoigne ton équipe, il faut une place de plus : Alakazam en vend une à son étude (${price}). Ensuite, Porygon, à la hutte de l’équipe, m’y fera entrer.`;
+  }
 
   /**
    * Le Pokémon qu'un nectar a attiré devant l'atelier (meta/crafting.ts) : la
@@ -1052,8 +1110,16 @@ async function boot(): Promise<void> {
       runHud.notify({ title: 'Repaire de l’hôte', text: station === 'start' ? 'C’est l’hôte qui lance la run, chez Dracolosse.' : 'Ce gardien sert l’hôte : ici, seuls Roucarnage et Porygon te répondent.', art: CAMP_NPCS.online, color: '#7ac0e8' });
       return;
     }
+    if (station === 'map') return openJournal('map');
+    // Dracolosse ne lance plus la run (on part en passant l'arche) : il le rappelle.
+    if (station === 'start' && !(net.role === 'host' && net.guests.length)) {
+      const g = STATIONS.start;
+      dialogue.show({ name: camp.npcs.find((n) => n.speciesId === g.id)?.info?.name ?? g.title, role: `Le Repaire · ${g.title}`, type: g.type, sprite: `/game/artwork/${g.id}.png` }, 'Quand tu es prêt, passe l’arche, au nord. Ton équipe te suit : compose-la chez Porygon avant de partir.');
+      return;
+    }
+    if (station === 'feats' && hostCamp) return;
     if (station === 'visitor') return meetVisitor();
-    if (station === 'recruit') return void meetCandidate();
+    if (station === 'recruit') return void meetCandidate(arg);
     if (save.intros.includes(station)) return openScreen();
     save.intros.push(station);
     writeSave(save);
@@ -2430,7 +2496,9 @@ async function boot(): Promise<void> {
     // Au Repaire, le stock (ressources, Éclats) à côté des Baies ; en run, les Rappels de toute l'équipe à côté des ₽.
     runHud.setStock(mode === 'camp' ? save : null);
     runHud.setRevives(mode === 'run' && level(save, 'revives') > 0 ? revives : null);
-    if (mode === 'camp') runHud.update(frameDt, REPAIRE.name, save.baies, 0, 'Baies');
+    // Au Repaire, les places : combien de Pokémon il loge sur combien, et ceux qui attendent qu'on
+    // leur parle (retour de test : « avoir un moyen de voir combien t'as de place dans ton hub »).
+    if (mode === 'camp') runHud.update(frameDt, hostCamp ? REPAIRE.name : campPlaces(), save.baies, 0, 'Baies');
     else runHud.update(frameDt, placeName(), run.money, Math.max(director.fade, cave.fade));
     if (frameDt > 0) fps += (1 / frameDt - fps) * 0.05;
     const name = player.info?.name ?? '…';
