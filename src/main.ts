@@ -133,6 +133,9 @@ async function boot(): Promise<void> {
   /** Progression permanente (Baies, équipe, CT, améliorations, objets) : src/meta/save.ts. */
   const save = loadSave();
   const renderer = new Renderer(canvas, atlas, surf, fieldSheet);
+  // ?debug : le menu principal sauté et l'objet `window.pokhades` exposé, pour les tests automatisés. Réservé au
+  // serveur de dev : dans le jeu publié, le paramètre ne fait rien (retour de test : « les gens vont faire n'importe quoi »).
+  const DEBUG = import.meta.env.DEV && new URLSearchParams(location.search).has('debug');
   const input = new Input();
   // Téléphone ou tablette : stick et boutons à l'écran, et le panneau de test replié.
   if (isTouch()) {
@@ -2433,7 +2436,7 @@ async function boot(): Promise<void> {
   // Un lien d'invitation (QR code d'un ami, net/invite.ts) : on garde son code ; il se rejoint depuis
   // le menu, ou une fois le premier Pokémon libéré pour qui n'a encore rien (enterCamp).
   let invite = readInvite();
-  if (!new URLSearchParams(location.search).has('debug'))
+  if (!DEBUG)
     titleScreen.show(
       {
         play: () => {
@@ -2678,7 +2681,7 @@ async function boot(): Promise<void> {
   }, () => net.active);
 
   // Objet de debug, uniquement derrière ?debug (pas de globale sinon).
-  if (new URLSearchParams(location.search).has('debug')) {
+  if (DEBUG) {
     Object.assign(window, {
       pokhades: {
         get world() {

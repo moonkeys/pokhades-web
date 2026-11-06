@@ -46,8 +46,8 @@ const CONTROLS: [string[], string][] = [
   [['C'], 'Fiche de l’équipe'],
   [['M'], 'Couper le son'],
   [['Échap'], 'Ce menu'],
-  [['H'], 'Panneau de test (DA)'],
-  [['N'], 'Nouvelle run (test)'],
+  // Les outils de test n'existent pas dans le jeu publié.
+  ...(import.meta.env.PROD ? [] : ([[['H'], 'Panneau de test (DA)'], [['N'], 'Nouvelle run (test)']] as [string[], string][])),
 ];
 
 const el = (tag: string, cls: string, parent?: HTMLElement, text?: string) => {

@@ -10,14 +10,11 @@ import type { Options } from './options';
 // vite : « Aller à une salle » demande à main.ts de sauter à un combat, à la
 // boutique ou au boss d'un acte.
 //
-// Le jeu publié (GitHub Pages, `import.meta.env.PROD`) n'en garde que les
-// trois boutons « Repaire (tests) » : retour au camp, +1000 Baies et remise
-// à zéro (retour de test : « je ne veux pas que les gens aient accès au jeu
-// et fassent ce qu'ils veulent »). Plus de biome forcé, de graine, de forme
-// des salles, d'équipe composée à la main ni de saut de salle, et leurs
-// raccourcis (N, Pg↑/Pg↓) sont coupés ; le serveur de dev garde tout.
+// Le jeu publié (GitHub Pages, `import.meta.env.PROD`) n'a plus de panneau du tout (retour de test :
+// « je ne veux pas du menu H en prod : les gens vont faire n'importe quoi ») : il est vidé et caché, et
+// ses raccourcis (H, N, Pg↑/Pg↓) sont coupés ; seul M (le son) reste. Le serveur de dev garde tout.
 
-/** Le jeu publié : le panneau réduit aux outils du Repaire. */
+/** Le jeu publié : pas de panneau de test. */
 export const PUBLIC_BUILD = import.meta.env.PROD;
 
 type Key = keyof Options;
@@ -178,12 +175,9 @@ export class Panel {
       el('div', { className: 'field' }, [el('span', { className: 'label', textContent: label }), control, ...(hint ? [el('small', { textContent: hint })] : [])]);
 
     const repaire = field('Repaire (tests)', el('div', { className: 'row' }, [go('camp', 'Retour au camp'), go('baies', '+1000 Baies, +100 ressources, +20 Éclats'), go('reset', 'Tout remettre à zéro')]), 'La progression est gardée dans le navigateur.');
+    // Publié : ni contenu ni affichage ; les contrôles restent construits (le son, M, en dépend).
     if (PUBLIC_BUILD) {
-      this.root.append(
-        el('header', {}, [el('h1', { textContent: 'Tests' }), el('span', { className: 'tag', textContent: 'H' })]),
-        el('section', {}, [repaire]),
-        el('footer', {}, [el('p', { className: 'keys', innerHTML: '<kbd>H</kbd> masquer ce panneau · <kbd>M</kbd> son · <kbd>Échap</kbd> réglages' }), this.status]),
-      );
+      this.root.style.display = 'none';
     } else this.root.append(
       el('header', {}, [el('h1', { textContent: 'Prototype 2D' }), el('span', { className: 'tag', textContent: 'DA' })]),
       el('section', {}, [
@@ -254,7 +248,7 @@ export class Panel {
 
     addEventListener('keydown', (e) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
-      if (e.code === 'KeyH') this.root.classList.toggle('hidden');
+      if (e.code === 'KeyH' && !PUBLIC_BUILD) this.root.classList.toggle('hidden');
       // R lance l'ultime, comme le jeu : la nouvelle run passe sur N.
       else if (e.code === 'KeyN' && !PUBLIC_BUILD) this.nextSeed();
       else if (e.code === 'KeyM') {
