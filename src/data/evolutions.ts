@@ -223,13 +223,33 @@ export function evolvedStart(id: number, level: number): number {
 
 /** Toutes les formes que `id` peut encore prendre, dans l'ordre (pour importer leurs planches). */
 export function laterForms(id: number): number[] {
-  const out: number[] = [];
+  const out: number[] = [...(BRANCHES[id] ?? [])];
   for (let evo = EVOLUTIONS[id]; evo && !out.includes(evo[1]); evo = EVOLUTIONS[evo[1]]) if (!SKIPPED_FORMS.has(evo[1])) out.push(evo[1]);
   return out;
 }
 
+/**
+ * Évolutions à choix (retour de test : « Évoli et toutes ses évolutions, au choix du joueur ») : l'espèce → les
+ * formes proposées au niveau de son évolution (EVOLUTIONS donne ce niveau et la forme par défaut) : Évoli et ses
+ * huit évolutions.
+ */
+export const BRANCHES: Record<number, readonly number[]> = {
+  // Aquali, Voltali, Pyroli, Mentali, Noctali, Phyllali, Givrali, Nymphali.
+  133: [134, 135, 136, 196, 197, 470, 471, 700],
+};
+
+/** Les formes entre lesquelles le joueur choisit pour `id` à ce niveau (vide : pas de choix, ou pas encore l'heure). */
+export function evolutionChoices(id: number, level: number): number[] {
+  const evo = EVOLUTIONS[id];
+  const forms = BRANCHES[id];
+  return forms && evo && level >= evo[0] ? [...forms] : [];
+}
+
 /** Forme précédente de chaque évolution (table inverse ; Rattata → Rattatac compte une fois). */
-const PREVIOUS = new Map<number, number>(Object.entries(EVOLUTIONS).flatMap(([from, [, to]]) => (to === Number(from) ? [] : [[to, Number(from)] as const])));
+const PREVIOUS = new Map<number, number>([
+  ...Object.entries(EVOLUTIONS).flatMap(([from, [, to]]) => (to === Number(from) ? [] : [[to, Number(from)] as const])),
+  ...Object.entries(BRANCHES).flatMap(([from, forms]) => forms.map((to) => [to, Number(from)] as const)),
+]);
 
 /** Forme précédente de `id`, ou null pour une forme de base (ou absente de la table). */
 export const preEvolutionOf = (id: number): number | null => PREVIOUS.get(id) ?? null;
@@ -246,6 +266,9 @@ export const preEvolutionOf = (id: number): number | null => PREVIOUS.get(id) ??
  */
 export function evolutionsOf(id: number): { level: number; next: number }[] {
   const evo = EVOLUTIONS[id];
+  // Une évolution à choix : toutes ses formes, au même niveau.
+  const forms = BRANCHES[id];
+  if (forms && evo) return forms.map((next) => ({ level: evo[0], next }));
   // Garde-fou : une entrée qui pointerait sur elle-même n'est pas une évolution.
   if (!evo || evo[1] === id) return [];
   let [level, next] = evo;

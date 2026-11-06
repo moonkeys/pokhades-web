@@ -865,6 +865,10 @@ au Repaire une fois le starter choisi.
   la salle suivante pour tous ; un invité qui appuie sur E près de la récompense ouvre l'écran de
   choix **chez l'hôte** (c'est l'hôte qui choisit le don). Les invités ramassent aussi les baies et
   ouvrent les coffres. Son HUD liste tous les joueurs.
+- **Chacun reçoit le Pokémon de tête des autres** (`grantAlly`, `meta/save.ts`) : en ligne, le Pokémon de
+  tête de chaque joueur, ramené à sa forme de base, rejoint le Repaire de ceux qui ne l'ont pas (ou attend avec
+  les recrues si le Repaire est plein), une seule fois par espèce (`Save.shared`). Ça permet de débloquer vite
+  des Pokémon de départ.
 - **À la fin de la run**, il voit le même bilan que l'hôte (`end` dans `net/net.ts` porte le bilan).
 
 ## Mobile : plein écran et départ en run

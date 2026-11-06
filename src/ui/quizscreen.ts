@@ -33,25 +33,27 @@ export const STARTER_NATURE: Record<number, NatureId> = {
   674: 'naughty', // Pandespiègle : bagarreur au grand cœur
   559: 'rash', // Baggiguane : voyou
   447: 'adamant', // Riolu : droit
+  7: 'bold', // Carapuce : posé, solide sous sa carapace
+  133: 'quirky', // Évoli : imprévisible, il deviendra ce qu'on choisira
 };
 
-const [PIKACHU, ZORUA, ABSOL, FLAMIAOU, GRENOUSSE, OUISTICRAM, PANDESPIEGLE, BAGGIGUANE, RIOLU] = STARTER_IDS;
+const [PIKACHU, ZORUA, ABSOL, FLAMIAOU, GRENOUSSE, OUISTICRAM, PANDESPIEGLE, BAGGIGUANE, RIOLU, CARAPUCE, EVOLI] = STARTER_IDS;
 
 const QUESTIONS: readonly { q: string; a: readonly [string, readonly number[]][] }[] = [
   {
     q: 'Un dresseur te barre la route. Que fais-tu ?',
     a: [
       ['Je fonce, on verra bien.', [OUISTICRAM, PANDESPIEGLE]],
-      ['Je le contourne en douce.', [GRENOUSSE, ZORUA]],
+      ['Je le contourne en douce.', [GRENOUSSE, ZORUA, EVOLI]],
       ['Je le regarde droit dans les yeux.', [RIOLU, FLAMIAOU]],
-      ['J’attends qu’il fasse le premier geste.', [ABSOL, PIKACHU]],
+      ['J’attends qu’il fasse le premier geste.', [ABSOL, PIKACHU, CARAPUCE]],
     ],
   },
   {
     q: 'Un ami a le moral à zéro. Tu…',
     a: [
-      ['…le fais rire, coûte que coûte.', [PIKACHU, ZORUA]],
-      ['…restes près de lui, sans rien dire.', [ABSOL, GRENOUSSE]],
+      ['…le fais rire, coûte que coûte.', [PIKACHU, ZORUA, EVOLI]],
+      ['…restes près de lui, sans rien dire.', [ABSOL, GRENOUSSE, CARAPUCE]],
       ['…l’emmènes courir loin d’ici.', [OUISTICRAM, PIKACHU]],
       ['…retrouves celui qui lui a fait du mal.', [BAGGIGUANE, PANDESPIEGLE]],
     ],
@@ -59,8 +61,8 @@ const QUESTIONS: readonly { q: string; a: readonly [string, readonly number[]][]
   {
     q: 'Ton moment préféré de la journée ?',
     a: [
-      ['L’aube, quand tout dort encore.', [RIOLU, GRENOUSSE]],
-      ['Midi, en plein soleil.', [PIKACHU, OUISTICRAM]],
+      ['L’aube, quand tout dort encore.', [RIOLU, GRENOUSSE, CARAPUCE]],
+      ['Midi, en plein soleil.', [PIKACHU, OUISTICRAM, EVOLI]],
       ['Le crépuscule.', [FLAMIAOU, ABSOL]],
       ['La nuit noire.', [ZORUA, BAGGIGUANE]],
     ],
@@ -70,15 +72,15 @@ const QUESTIONS: readonly { q: string; a: readonly [string, readonly number[]][]
     a: [
       ['…la brises en mille morceaux.', [PANDESPIEGLE, BAGGIGUANE]],
       ['…la gardes, pour ne jamais oublier.', [RIOLU, ABSOL]],
-      ['…la troques contre un bon repas.', [ZORUA, FLAMIAOU]],
-      ['…la jettes au fond du lac.', [GRENOUSSE, OUISTICRAM]],
+      ['…la troques contre un bon repas.', [ZORUA, FLAMIAOU, EVOLI]],
+      ['…la jettes au fond du lac.', [GRENOUSSE, OUISTICRAM, CARAPUCE]],
     ],
   },
   {
     q: 'Qu’est-ce qui compte le plus pour toi ?',
     a: [
       ['Être libre, quoi qu’il en coûte.', [FLAMIAOU, BAGGIGUANE]],
-      ['Mes amis.', [PIKACHU, PANDESPIEGLE]],
+      ['Mes amis.', [PIKACHU, PANDESPIEGLE, CARAPUCE, EVOLI]],
       ['Ce qui est juste.', [RIOLU, ABSOL]],
       ['Ne jamais m’ennuyer.', [ZORUA, OUISTICRAM, GRENOUSSE]],
     ],

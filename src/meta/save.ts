@@ -127,6 +127,11 @@ export interface Save {
    */
   seen: number[];
   /**
+   * Espèces déjà reçues d'un allié rencontré en ligne (grantAlly) : une seule fois chacune, même si on a exilé
+   * le Pokémon depuis (retour de test : « chez l'autre joueur, ça débloque son Pokémon de départ »).
+   */
+  shared: number[];
+  /**
    * Carnet des exploits (meta/feats.ts, ajout) : les champions vaincus au moins une
    * fois (par nom), les biomes atteints par une porte de route, les runs gagnées, et
    * les exploits déjà réclamés.
@@ -186,6 +191,7 @@ const DEFAULTS: Save = {
   recruited: {},
   defeats: {},
   seen: [],
+  shared: [],
   beaten: [],
   visited: [],
   wins: 0,
@@ -263,6 +269,7 @@ export function migrate(save: Save): Save {
   for (const id of ['outpost', 'tavern'] as const) if (using[id] && !save.built.includes(id)) save.built.push(id);
   save.candied = save.candied && typeof save.candied === 'object' ? save.candied : {};
   if (save.prologue !== 'run' && save.prologue !== 'done') save.prologue = save.started ? 'done' : 'none';
+  save.shared = Array.isArray(save.shared) ? save.shared.filter((x): x is number => Number.isInteger(x)) : [];
   save.candidates = Array.isArray(save.candidates) ? save.candidates.filter((c) => c && Number.isInteger(c.species)) : [];
   save.progress = save.progress && typeof save.progress === 'object' ? save.progress : {};
   save.recruited = save.recruited && typeof save.recruited === 'object' ? save.recruited : {};
@@ -357,6 +364,23 @@ export function recordDefeat(save: Save, id: number, where?: string): boolean {
   save.recruited[id] = (save.recruited[id] ?? 0) + 1;
   save.candidates.push({ species: id, ...(where ? { origin: where } : {}) });
   return true;
+}
+
+/**
+ * Un allié rencontré en ligne (retour de test : l'un joue Évoli, l'autre n'a pas Évoli : « ça le débloque dans le
+ * Pokédex, et vice versa ; ça permet de débloquer vite des Pokémon de départ »). Son Pokémon de tête, ramené à sa
+ * forme de base, rejoint le Repaire s'il n'y est pas déjà, une seule fois (`shared`). Repaire plein : il attend avec
+ * les recrues. Rend la forme débloquée, ou null s'il n'y avait rien à faire.
+ */
+export function grantAlly(save: Save, species: number): { id: number; waiting: boolean } | null {
+  if (!save.started) return null;
+  let id = species;
+  for (let pre = preEvolutionOf(id); pre !== null; pre = preEvolutionOf(id)) id = pre;
+  if (save.shared.includes(id) || ownsSpecies(save, id) || save.candidates.some((c) => c.species === id)) return null;
+  save.shared.push(id);
+  const mon = welcomeMon(save, id, 'ally');
+  markSeen(save, id);
+  return { id, waiting: mon === null };
 }
 
 /** Combien de libérés le Repaire loge (catalog.ts, campCapacity). */

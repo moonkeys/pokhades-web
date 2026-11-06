@@ -165,6 +165,7 @@ function originShort(save: Save, uid: number): string {
   if (o === 'starter') return 'Partenaire de départ';
   if (o === 'quest') return 'Gagné en quête';
   if (o === 'nectar') return 'Attiré par un nectar';
+  if (o === 'ally') return 'Rencontré en ligne';
   if (o === 'test') return '';
   const cave = o.startsWith('cave:');
   const b = cave ? o.slice(5) : o;

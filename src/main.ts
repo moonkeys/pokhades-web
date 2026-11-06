@@ -17,7 +17,7 @@ import { Camp, CAMP_SEED, campPockets, STATIONS, stationId, type Station } from 
 import { CampScreen, movePool, teamWeight, type CampCtx } from './ui/campscreen';
 import { NetBadge } from './ui/netbadge';
 import { BAIES, FIELD_FOOD, RESOURCES, RESOURCE_IDS, SHARDS, UPGRADES, applyHeld, heldItem, teamSlots } from './meta/catalog';
-import { addMon, capacity, exile, isFull, level, loadSave, markSeen, monName, ownedSpecies, ownsSpecies, recordDefeat, resetSave, roster, speciesOf, startLevel, welcomeMon, writeSave } from './meta/save';
+import { addMon, capacity, exile, grantAlly, isFull, level, loadSave, markSeen, monName, ownedSpecies, ownsSpecies, recordDefeat, resetSave, roster, speciesOf, startLevel, welcomeMon, writeSave } from './meta/save';
 import { applyTraits, natureText } from './meta/mons';
 import { quest, questEvent, type QuestEvent } from './meta/quests';
 import { leagueOpen, readyFeats } from './meta/feats';
@@ -38,7 +38,7 @@ import { BASE_TEAM_LEVEL, Pokemon } from './combat/pokemon';
 import { STEP, startLoop } from './core/loop';
 import { Rng } from './core/rng';
 import { CAMP_NPCS, SWIMMERS } from './data/species';
-import { evolutionOf, evolutionsOf, evolvedStart } from './data/evolutions';
+import { evolutionChoices, evolutionOf, evolutionsOf, evolvedStart } from './data/evolutions';
 import { Actor, dirFromVector } from './entities/actor';
 import { Input } from './input/input';
 import { CombatFx, typeColor } from './render/combatfx';
@@ -63,6 +63,7 @@ import { Panel } from './ui/panel';
 import { Journal } from './ui/journal';
 import { readInvite } from './net/invite';
 import { lockPage } from './ui/lockdown';
+import { EvolutionScreen } from './ui/evolutionscreen';
 import { RewardScreen } from './ui/rewardscreen';
 import { RunHud } from './ui/runhud';
 import { RecruitScreen } from './ui/recruitscreen';
@@ -162,6 +163,7 @@ async function boot(): Promise<void> {
   // Un clic sur un membre de l'équipe le fait jouer (pickMember, posé plus bas).
   const hud = new Hud(document.body, (i) => pickMember(i));
   const rewardScreen = new RewardScreen(document.body);
+  const evolutionScreen = new EvolutionScreen(document.body);
   const statSheet = new StatSheet(document.body);
   /** Le plan du monde (panneau de l’arche) et le carnet des exploits (Xatu) : ui/journal.ts, meta/feats.ts. */
   const journal = new Journal(document.body, atlas);
@@ -330,8 +332,24 @@ async function boot(): Promise<void> {
   combat.levelUp = (m) => {
     const mon = m.pokemon!;
     runHud.notify({ title: 'Niveau supérieur', text: `${mon.name} passe au niveau ${mon.level} !`, art: mon.id, color: 'var(--yel)' });
+    if (m.evolve || evolving.has(m)) return;
+    // Une évolution à choix (Évoli) : le joueur choisit la forme, pour ses propres membres. « Plus tard » : on retentera
+    // au niveau suivant. Les invités et les mercenaires prennent la forme par défaut.
+    const choices = m.remote || m.runAlly ? [] : evolutionChoices(mon.id, mon.level);
+    if (choices.length) {
+      evolving.add(m);
+      evolutionScreen.show({ id: mon.id, name: mon.name, level: mon.level }, choices, (picked) => {
+        evolving.delete(m);
+        if (picked !== null && m.pokemon === mon) beginEvolution(m, mon, picked);
+      });
+      return;
+    }
     const next = evolutionOf(mon.id, mon.level);
-    if (next === null || next === mon.id || m.evolve || evolving.has(m)) return;
+    if (next === null || next === mon.id) return;
+    beginEvolution(m, mon, next);
+  };
+  /** Charge la forme `next` puis joue l'évolution de `m` (combat.evolve). */
+  const beginEvolution = (m: Actor, mon: Pokemon, next: number) => {
     evolving.add(m);
     // Planche, fiche et stats de la forme suivante d'abord : l'échange, au pic
     // de blanc, doit être instantané.
@@ -540,7 +558,7 @@ async function boot(): Promise<void> {
     cry(player.speciesId, -4);
   };
   /** Un écran ouvert par-dessus le jeu : la simulation se fige. */
-  const paused = () => rewardScreen.open || bossPreview.open || runSummary.open || settingsMenu.open || campScreen.open || statSheet.open || recruitScreen.open || starterScreen.open || quizScreen.open || journal.open || titleScreen.open;
+  const paused = () => rewardScreen.open || evolutionScreen.open || bossPreview.open || runSummary.open || settingsMenu.open || campScreen.open || statSheet.open || recruitScreen.open || starterScreen.open || quizScreen.open || journal.open || titleScreen.open;
   /** Clic sur un membre du HUD : comme Tab, mais vers celui-là, s'il est debout et qu'on l'est aussi. */
   const pickMember = (i: number) => {
     const m = team[i];
@@ -2055,6 +2073,26 @@ async function boot(): Promise<void> {
     if (msg.interact && mode === 'run') remoteInteract.add(a);
     if (msg.move >= 0 && mode === 'run') remoteMoves.push({ a, slot: msg.move, mx: msg.mx, my: msg.my });
   };
+  /**
+   * En ligne, chacun reçoit le Pokémon de tête des autres joueurs, sous sa forme de base, s'il ne l'a pas (retour de
+   * test : « chez un joueur qui n'a pas Évoli, ça le débloque dans le Pokédex, et vice versa »). Une fois par espèce.
+   */
+  const shareAllies = () => {
+    if (!net.active) return;
+    let got = false;
+    for (const pl of net.players) {
+      if (pl.id === net.id || !pl.loadout) continue;
+      const r = grantAlly(save, pl.loadout.species);
+      if (!r) continue;
+      got = true;
+      sfx('pkmnGet', -4);
+      void loadInfo(r.id).then((i) =>
+        runHud.notify({ title: 'Allié rencontré', text: r.waiting ? `${i.name} veut te rejoindre : il t’attend au Repaire.` : `★ ${i.name} rejoint la rébellion !`, art: r.id, color: '#7ac0e8' }),
+      );
+    }
+    if (got) writeSave(save);
+  };
+  net.onChange(shareAllies);
   net.onJoin = (id) => {
     netCamp();
     // L'hôte voit arriver ses alliés, même loin de Roucarnage.
@@ -2761,7 +2799,7 @@ async function boot(): Promise<void> {
         /** Lance le départ en run (ralenti et halo), comme en passant l'arche. */
         startDeparture,
         /** Les écrans, pour les ouvrir à la main (vérifier la DA sans jouer une salle entière). */
-        ui: { hud, runHud, rewardScreen, dialogue, bossPreview, speaker },
+        ui: { hud, runHud, rewardScreen, evolutionScreen, dialogue, bossPreview, speaker },
         /** Saute à une salle de la run (0 à 27), PV et dons conservés. */
         goto: (room: number) => {
           run.room = room;
