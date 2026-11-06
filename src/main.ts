@@ -977,13 +977,14 @@ async function boot(): Promise<void> {
 
   /**
    * Le Repaire où l'on se tient : le sien, ou celui de l'hôte quand on le
-   * visite en ligne (Roucarnage) — ses aménagements et ses libérés, sans les
-   * récoltes ni les recrues, qui sont les siennes.
+   * visite en ligne (Roucarnage) — ses aménagements, ses libérés et ses recrues en
+   * attente (qu'on voit sans leur parler), sans les récoltes, qui sont les siennes.
    */
   function buildCampWorld(): void {
     const built = (hostCamp?.built ?? save.built) as typeof save.built;
     world = generate(REPAIRE, CAMP_SEED, { camp: true, glade: built.includes('clearing'), eastGlade: built.includes('eastglade'), atelier: built.includes('atelier'), pockets: campPockets(built) });
-    if (hostCamp) camp.build(world, built, hostCamp.dwellers);
+    // Les recrues de l'hôte se voient autour du feu (retour de test : « je ne vois pas tous les Pokémon en attente »), mais restent les siennes.
+    if (hostCamp) camp.build(world, built, hostCamp.dwellers, { garden: [], nectar: null, candidates: hostCamp.recruits.map((species) => ({ species })) });
     else camp.build(world, save.built, campDwellers(), save);
   }
 
@@ -1170,9 +1171,12 @@ async function boot(): Promise<void> {
         news,
       );
     };
-    // Chez l'hôte, ses gardiens le servent lui : Roucarnage (la partie) et Porygon (sa propre équipe) seuls répondent.
-    if (hostCamp && station !== 'online' && station !== 'team') {
-      runHud.notify({ title: 'Repaire de l’hôte', text: station === 'start' ? 'C’est l’hôte qui lance la run, chez Dracolosse.' : 'Ce gardien sert l’hôte : ici, seuls Roucarnage et Porygon te répondent.', art: CAMP_NPCS.online, color: '#7ac0e8' });
+    // Chez l'hôte, ses gardiens le servent lui : seuls Roucarnage (la partie), Porygon (sa propre équipe) et les
+    // boutiques répondent à l'invité (retour de test : « si je n'ai pas toutes les améliorations, je ne peux pas
+    // les acheter une fois dans la session »). Monsieur Mime (attaques), Alakazam (améliorations) et Miaouss
+    // (objets) lui vendent avec SA sauvegarde ; Démolosse (missions) et le Charpentier restent ceux de l'hôte.
+    if (hostCamp && !HOST_CAMP_OPEN.has(station)) {
+      runHud.notify({ title: 'Repaire de l’hôte', text: station === 'start' ? 'C’est l’hôte qui lance la run, chez Dracolosse.' : 'Ce gardien sert l’hôte : ici, tu peux parler à Roucarnage, Porygon et aux boutiques.', art: CAMP_NPCS.online, color: '#7ac0e8' });
       return;
     }
     if (station === 'map') return openJournal('map');
@@ -1951,7 +1955,9 @@ async function boot(): Promise<void> {
     combat.hooks.drawZones = (b, camX, camY, k, t) => (remote() ? undefined : zones(b, camX, camY, k, t));
   }
   /** Invité : le Repaire de l'hôte, où l'on se promène (null : chez soi). */
-  let hostCamp: { built: string[]; dwellers: number[] } | null = null;
+  let hostCamp: { built: string[]; dwellers: number[]; recruits: number[] } | null = null;
+  /** Les gardiens du Repaire d'un hôte qui répondent à ses invités (et vendent avec leur propre sauvegarde). */
+  const HOST_CAMP_OPEN: ReadonlySet<string> = new Set(['online', 'team', 'moves', 'upgrades', 'items']);
   /** Invité : où l'hôte nous attend dans son Repaire (à côté de lui, pas sur lui). */
   let campSpawn: { x: number; y: number } | null = null;
   let awaitSpawn = false;
@@ -2047,7 +2053,7 @@ async function boot(): Promise<void> {
       }
       spawn[v.remote!] = { x: v.x, y: v.y };
     });
-    net.broadcast({ t: 'camp', epoch: netEpoch, built: [...save.built], dwellers: campDwellers(), spawn });
+    net.broadcast({ t: 'camp', epoch: netEpoch, built: [...save.built], dwellers: campDwellers(), recruits: save.candidates.map((c) => c.species), spawn });
   };
 
   /** Hôte : où en sont l'hôte et ses invités dans le Repaire. */
@@ -2243,7 +2249,7 @@ async function boot(): Promise<void> {
     if (msg.t === 'camp') {
       // Le Repaire de l'hôte : on y arrive (première fois), ou il change autour de nous.
       const first = !hostCamp;
-      hostCamp = { built: msg.built, dwellers: msg.dwellers };
+      hostCamp = { built: msg.built, dwellers: msg.dwellers, recruits: msg.recruits ?? [] };
       netEpoch = msg.epoch;
       // En fin de run, le Repaire de l'hôte arrive avant qu'on y rentre : la place est gardée pour enterCamp.
       campSpawn = msg.spawn[net.id] ?? null;
