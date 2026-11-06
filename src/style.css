@@ -722,3 +722,24 @@ body.touch .hud-move .key {
     translate: 0 -10%;
   }
 }
+
+/* Rien ne se sélectionne ni ne se glisse (retour de test : « je peux souligner un truc et copier l'image »).
+   ui/lockdown.ts coupe le reste (copie, menu contextuel). Les champs de saisie restent éditables. */
+html,
+body {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+img,
+svg,
+canvas {
+  -webkit-user-drag: none;
+  user-select: none;
+}
+input,
+textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}

@@ -62,6 +62,7 @@ import { loadOptions, saveOptions, type Options } from './ui/options';
 import { Panel } from './ui/panel';
 import { Journal } from './ui/journal';
 import { readInvite } from './net/invite';
+import { lockPage } from './ui/lockdown';
 import { RewardScreen } from './ui/rewardscreen';
 import { RunHud } from './ui/runhud';
 import { RecruitScreen } from './ui/recruitscreen';
@@ -136,6 +137,7 @@ async function boot(): Promise<void> {
   // ?debug : le menu principal sauté et l'objet `window.pokhades` exposé, pour les tests automatisés. Réservé au
   // serveur de dev : dans le jeu publié, le paramètre ne fait rien (retour de test : « les gens vont faire n'importe quoi »).
   const DEBUG = import.meta.env.DEV && new URLSearchParams(location.search).has('debug');
+  lockPage();
   const input = new Input();
   // Téléphone ou tablette : stick et boutons à l'écran, et le panneau de test replié.
   if (isTouch()) {

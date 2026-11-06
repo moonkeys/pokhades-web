@@ -3077,7 +3077,7 @@
   font-weight: normal;
   letter-spacing: 0.3em;
   line-height: 1;
-  user-select: all;
+  user-select: none;
 }
 .cs-net-empty {
   align-self: center;
