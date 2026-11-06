@@ -32,21 +32,7 @@ jobs:
           BASE_PATH: /${{ github.event.repository.name }}/
           # Dernier chiffre de la version affichée au menu : monte à chaque mise en prod.
           DEPLOY_NUMBER: ${{ github.run_number }}
-          # Relais TURN du multijoueur (net/net.ts) : sans lui, mobile en 4G et PC ne se joignent pas.
-          # À définir dans Settings → Secrets and variables → Actions → Variables.
-          VITE_TURN_URLS: ${{ vars.TURN_URLS }}
-          VITE_TURN_USERNAME: ${{ vars.TURN_USERNAME }}
-          VITE_TURN_CREDENTIAL: ${{ secrets.TURN_CREDENTIAL }}
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+          # Multijoueur (net/net.ts) : adresse du Worker Cloudflare qui fabrique les identifiants du
+          # relais TURN (worker/turn-worker.js). À définir dans Settings → Secrets and variables →
+          # Actions → Variables (TURN_ENDPOINT). Sans lui, pas de relais.
+          VITE_TURN_ENDPOINT: ${{ vars.TURN_ENDPOINT }}

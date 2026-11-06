@@ -4,8 +4,6 @@
 declare const __APP_VERSION__: string;
 
 interface ImportMetaEnv {
-  /** Relais TURN du projet pour le multijoueur (adresses séparées par des virgules), cf. net/net.ts. */
-  readonly VITE_TURN_URLS?: string;
-  readonly VITE_TURN_USERNAME?: string;
-  readonly VITE_TURN_CREDENTIAL?: string;
+  /** Adresse du Worker qui fabrique les identifiants du relais TURN (worker/turn-worker.js), cf. net/net.ts. */
+  readonly VITE_TURN_ENDPOINT?: string;
 }
