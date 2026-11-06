@@ -4812,3 +4812,83 @@
   font: 500 11px var(--body);
   color: var(--muted);
 }
+
+/* ── Fiche d'équipe (poste de Porygon), refaite (retour de test : « l'interface est toujours pas folle ») ──
+   En-tête : le sprite sur un disque de la couleur du type, le nom et ses pastilles à droite ; dessous, les
+   statistiques en trois colonnes, les attaques, l'objet. Plus aucun grand sprite qui déborde. */
+.cs-detail {
+  display: grid;
+  gap: calc(1.3 * var(--u));
+  padding: calc(1.6 * var(--u)) calc(2 * var(--u));
+}
+.cs-detail > * {
+  margin: 0;
+}
+.cs-top {
+  display: grid;
+  grid-template-columns: calc(12 * var(--u)) 1fr;
+  gap: calc(1.8 * var(--u));
+  align-items: center;
+}
+.cs-disc {
+  display: grid;
+  place-items: center;
+  width: calc(12 * var(--u));
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--c) 35%, #fff) 0%, color-mix(in srgb, var(--c) 75%, transparent) 100%);
+  box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--ink) 80%, transparent);
+}
+.cs-disc .cs-big {
+  position: static;
+  width: 92%;
+  margin-top: 4%;
+}
+.cs-who {
+  display: grid;
+  gap: calc(0.7 * var(--u));
+  min-width: 0;
+}
+.cs-who .cs-head,
+.cs-who .cs-chips,
+.cs-who .cs-actions {
+  margin: 0;
+}
+.cs-who .cs-head b,
+.cs-who .cs-nick {
+  font-size: calc(3 * var(--u));
+}
+.cs-who .cs-chip2 {
+  font-size: max(11px, calc(1 * var(--u)));
+  padding: calc(0.1 * var(--u)) calc(0.8 * var(--u));
+}
+.cs-detail .cs-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: calc(0.9 * var(--u)) calc(2 * var(--u));
+}
+.cs-detail .cs-moves.spare:empty {
+  display: none;
+}
+.cs-detail .cs-label {
+  margin: calc(0.4 * var(--u)) 0 0;
+}
+@media (max-width: 760px) {
+  .cs-top {
+    grid-template-columns: calc(9 * var(--u)) 1fr;
+  }
+  .cs-disc {
+    width: calc(9 * var(--u));
+  }
+  .cs-detail .cs-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.cs-who .cs-nick {
+  width: auto;
+  min-width: 3ch;
+  max-width: 100%;
+}
+.cs-who .cs-head {
+  gap: calc(0.8 * var(--u));
+}

@@ -1062,8 +1062,13 @@ export class CampScreen {
     const inTeam = save.team.includes(id);
     const card = el('div', 'cs-detail da-paper', wrap);
     card.style.setProperty('--c', typeColor(data.types[0]));
-    art(spOf(id), card, 'cs-big');
-    const head = el('div', 'cs-head', card);
+    // En-tête (retour de test : « l'interface est toujours pas folle ») : le sprite à gauche sur un disque de la
+    // couleur du type, et à droite le nom, les types, les pastilles et l'action.
+    const top = el('div', 'cs-top', card);
+    const disc = el('div', 'cs-disc', top);
+    art(spOf(id), disc, 'cs-big');
+    const who = el('div', 'cs-who', top);
+    const head = el('div', 'cs-head', who);
     // Le nom se renomme sur place : vide (ou le nom de l'espèce), plus de surnom.
     const nick = el('input', 'cs-nick', head) as HTMLInputElement;
     nick.type = 'text';
@@ -1087,7 +1092,7 @@ export class CampScreen {
     const indiv = save.mons[id];
     el('small', 'cs-info cs-lv', head, `N.${lvl}`);
     // Quelques pastilles lisibles, chacune avec son icône et une info-bulle qui dit ce que c'est.
-    const chips = el('div', 'cs-chips', card);
+    const chips = el('div', 'cs-chips', who);
     const chip = (icon: string, text: string, tip: string) => {
       const c = el('span', 'cs-chip2', chips);
       el('i', '', c, icon);
@@ -1101,7 +1106,7 @@ export class CampScreen {
     chip('✦', natureText(indiv.nature).split(' (')[0], `Nature : ${natureText(indiv.nature)}`);
     const from = originShort(save, id);
     if (from) chip('⚑', from, 'D’où il vient.');
-    const act = el('div', 'cs-actions', card);
+    const act = el('div', 'cs-actions', who);
     if (busy(save, id)) el('small', 'cs-info', act, 'En mission chez Démolosse.');
     else {
       const full = !inTeam && save.team.length >= slots;
@@ -1183,7 +1188,7 @@ export class CampScreen {
       else el('div', 'empty', holder, 'Emplacement libre');
     }
     const rest = pool.filter((m) => !equipped.includes(m.api));
-    el('div', 'cs-label', card, rest.length ? 'Disponibles — glisse-les dans un emplacement' : 'Toutes ses attaques sont équipées');
+    if (rest.length) el('div', 'cs-label', card, 'Autres attaques — touche pour équiper');
     const spare = el('div', 'cs-moves spare', card);
     this.dropZone(spare, 'move', (d) => {
       if (d.kind === 'move' && d.from === 'slot') setLoadout(equipped.filter((a) => a !== d.api));
