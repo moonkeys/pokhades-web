@@ -146,6 +146,8 @@ async function boot(): Promise<void> {
   // Météo de la salle (world/weather.ts) : ses particules ont leur couche, par-dessus celles du biome.
   const skyParticles = new Particles();
   let roomWeather: WeatherId = 'clear';
+  /** Le ciel de la dernière salle à ciel libre, même éclairci depuis : le suivant en découle (rollWeather). */
+  let lastSky: WeatherId = 'clear';
   /** La météo qui règne là où l'on est : celle de la salle, sauf à la boutique, en grotte et au Repaire. */
   const weatherNow = (): WeatherId => (mode === 'run' && !cave.active ? roomWeather : 'clear');
   const footprints = new Footprints();
@@ -657,7 +659,9 @@ async function boot(): Promise<void> {
     const before = first ? 'clear' : roomWeather;
     // L'arène du Village est une salle d'intérieur : ni pluie, ni pollen.
     const indoor = run.isBoss() && run.biome === 'village';
-    roomWeather = run.isShop() || indoor ? 'clear' : opts.weather !== 'run' ? opts.weather : rollWeather(run.biome, run.mapSeed);
+    // Le ciel découle de celui de la salle d'avant (world/weather.ts) ; une boutique ou un intérieur le laisse en pause.
+    roomWeather = run.isShop() || indoor ? 'clear' : opts.weather !== 'run' ? opts.weather : rollWeather(run.biome, run.mapSeed, first ? undefined : lastSky);
+    if (!run.isShop() && !indoor) lastSky = roomWeather;
     setWeather(weatherNow());
     // Le ciel change : on dit ce que ça change au combat.
     if (roomWeather !== before && roomWeather !== 'clear') runHud.notify({ title: WEATHERS[roomWeather].name, text: WEATHERS[roomWeather].hint, icon: WEATHERS[roomWeather].icon });

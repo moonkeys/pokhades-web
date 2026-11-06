@@ -73,9 +73,29 @@ const ODDS: Record<BiomeId, [WeatherId, number][]> = {
   glace: [['clear', 4], ['hail', 4], ['fog', 2]],
 };
 
-/** Tirage déterministe de la météo d'une salle (même graine, même ciel). */
-export function rollWeather(biome: BiomeId, mapSeed: number): WeatherId {
-  const table = ODDS[biome] ?? [['clear', 1]];
+/**
+ * Les ciels qui peuvent suivre un autre, d'une zone à la suivante (retour de test : « passer de la pluie à
+ * l'ensoleillé direct d'une zone à l'autre, je trouve ça bizarre »). Le temps change par étapes : la pluie
+ * se lève en brume ou en éclaircie, jamais en plein soleil ; le soleil ne se couvre pas d'un coup en grêle.
+ */
+const FOLLOWS: Record<WeatherId, readonly WeatherId[]> = {
+  clear: ['clear', 'rain', 'sun', 'fog', 'sand', 'hail'],
+  rain: ['rain', 'fog', 'clear', 'hail'],
+  sun: ['sun', 'clear', 'sand'],
+  sand: ['sand', 'clear', 'sun'],
+  hail: ['hail', 'fog', 'clear', 'rain'],
+  fog: ['fog', 'clear', 'rain', 'hail'],
+};
+
+/**
+ * Tirage déterministe de la météo d'une salle (même graine, même ciel). `prev` : le ciel de la salle
+ * précédente, dont celui-ci doit découler ; un ciel qui n'est pas clair a trois fois plus de chances de durer que de changer.
+ */
+export function rollWeather(biome: BiomeId, mapSeed: number, prev?: WeatherId): WeatherId {
+  const base = ODDS[biome] ?? [['clear', 1]];
+  // Les ciels de la table du biome compatibles avec le précédent ; si aucun ne l'est, le précédent s'éclaircit.
+  const table = prev ? base.filter(([id]) => FOLLOWS[prev].includes(id)).map(([id, w]): [WeatherId, number] => [id, id === prev && prev !== 'clear' ? w * 3 : w]) : base;
+  if (!table.length) return 'clear';
   const total = table.reduce((s, [, w]) => s + w, 0);
   let r = new Rng(mapSeed * 7 + 3).range(0, total);
   for (const [id, w] of table) if ((r -= w) < 0) return id;
