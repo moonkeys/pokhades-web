@@ -226,8 +226,54 @@ async function boot(): Promise<void> {
         return;
       }
       sfx('doorEnter');
-      campCtx.depart();
+      startDeparture();
     });
+  };
+  /**
+   * Le départ en run (retour de test : « un petit ralentissement, et qu'on rentre dans la run avec les petits
+   * halos des sorties de porte ») : sous l'arche, le temps ralentit, un halo doré monte autour du Pokémon
+   * (comme la lueur d'une porte ouverte), l'écran s'éteint, et la run commence.
+   */
+  let departing: { t: number; x: number; y: number } | null = null;
+  const DEPART_TIME = 1.5;
+  /** Le temps file à cette allure pendant le départ. */
+  const DEPART_SLOW = 0.3;
+  const startDeparture = () => {
+    if (departing) return;
+    departing = { t: 0, x: player.x, y: player.y };
+  };
+  /** Le halo du départ, dessiné sous les Pokémon : une lueur qui s'élargit, des particules qui montent. */
+  const departExtras = (): { y: number; draw(b: CanvasRenderingContext2D, camX: number, camY: number, k: number): void }[] => {
+    const d = departing;
+    if (!d) return [];
+    return [
+      {
+        y: d.y * TILE - 1,
+        draw: (b, camX, camY, k) => {
+          const u = Math.min(1, d.t / DEPART_TIME);
+          const cx = Math.round((d.x * TILE - camX) * k);
+          const cy = Math.round((d.y * TILE - camY) * k);
+          const r = (1.4 + 5 * u) * TILE * k;
+          b.globalCompositeOperation = 'lighter';
+          const g = b.createRadialGradient(cx, cy, 0, cx, cy, r);
+          g.addColorStop(0, `rgba(255, 214, 90, ${0.35 + 0.5 * u})`);
+          g.addColorStop(1, 'rgba(255, 214, 90, 0)');
+          b.fillStyle = g;
+          b.beginPath();
+          b.ellipse(cx, cy, r, r * 0.6, 0, 0, Math.PI * 2);
+          b.fill();
+          // Les mêmes particules que les portes ouvertes (room.ts), qui montent vers le haut.
+          for (let i = 0; i < 26; i++) {
+            const ph = (d.t * 0.5 + i * 0.137) % 1;
+            const ox = (((i * 0.618) % 1) - 0.5) * 2 * (1 + 2 * u);
+            const oy = (((i * 0.382) % 1) - 0.5) * 2 * 0.8;
+            b.fillStyle = `rgba(255, 214, 90, ${1 - ph})`;
+            b.fillRect(Math.round(cx + ox * TILE * k), Math.round(cy + oy * TILE * k) - Math.round(ph * 30 * k), 2 * k, 2 * k);
+          }
+          b.globalCompositeOperation = 'source-over';
+        },
+      },
+    ];
   };
   const campScreen = new CampScreen(document.body);
   const netBadge = new NetBadge(document.body);
@@ -2376,6 +2422,16 @@ async function boot(): Promise<void> {
   let time = 0;
   let fps = 60;
   const update = (dt: number) => {
+    // Départ sous l'arche : le temps ralentit, puis la run commence.
+    if (departing) {
+      departing.t += dt;
+      if (departing.t >= DEPART_TIME) {
+        departing = null;
+        campCtx.depart();
+        return;
+      }
+      dt *= DEPART_SLOW;
+    }
     // Grotte, boutique, Repaire : temps clair ; la salle retrouve son ciel en ressortant.
     setWeather(weatherNow());
     // En ligne : l'hôte décrit le terrain aux invités, même figé derrière un écran.
@@ -2546,7 +2602,7 @@ async function boot(): Promise<void> {
 
   startLoop(update, (alpha, frameDt) => {
     if (net.role === 'client' && mode === 'run' && me) return drawClient(alpha, frameDt, me);
-    const extras = [...runExtras(), ...camp.extras(time)];
+    const extras = [...runExtras(), ...camp.extras(time), ...departExtras()];
     // Au Repaire, en ligne : les autres joueurs qui s'y promènent.
     const others = mode !== 'camp' ? [] : net.role === 'host' ? visitors : net.role === 'client' && hostCamp ? field.list() : [];
     renderer.draw(world, player, [...team, ...others, ...wild, ...shop.npcs, ...merchant.npcs, ...camp.npcs, ...cave.npcs], particles, footprints, fieldFx, combat, director, extras, opts, alpha, time, { weather: weatherNow(), particles: skyParticles });
@@ -2568,7 +2624,7 @@ async function boot(): Promise<void> {
     runHud.setRevives(mode === 'run' && level(save, 'revives') > 0 ? revives : null);
     // Au Repaire, les places : combien de Pokémon il loge sur combien, et ceux qui attendent qu'on
     // leur parle (retour de test : « avoir un moyen de voir combien t'as de place dans ton hub »).
-    if (mode === 'camp') runHud.update(frameDt, hostCamp ? REPAIRE.name : campPlaces(), save.baies, 0, 'Baies');
+    if (mode === 'camp') runHud.update(frameDt, hostCamp ? REPAIRE.name : campPlaces(), save.baies, departing ? Math.max(0, Math.min(1, (departing.t - 0.55 * DEPART_TIME) / (0.45 * DEPART_TIME))) : 0, 'Baies');
     else runHud.update(frameDt, placeName(), run.money, Math.max(director.fade, cave.fade));
     if (frameDt > 0) fps += (1 / frameDt - fps) * 0.05;
     const name = player.info?.name ?? '…';
@@ -2612,6 +2668,8 @@ async function boot(): Promise<void> {
         combat,
         hazards,
         opts,
+        /** Lance le départ en run (ralenti et halo), comme en passant l'arche. */
+        startDeparture,
         /** Les écrans, pour les ouvrir à la main (vérifier la DA sans jouer une salle entière). */
         ui: { hud, runHud, rewardScreen, dialogue, bossPreview, speaker },
         /** Saute à une salle de la run (0 à 27), PV et dons conservés. */
