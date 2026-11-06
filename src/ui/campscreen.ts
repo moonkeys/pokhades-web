@@ -157,20 +157,6 @@ const art = (id: number, parent: HTMLElement, cls = '') => {
   return img;
 };
 
-/** D'où vient un individu (Mon.origin), pour sa fiche ; '' si on ne l'a pas noté. */
-function originText(save: Save, uid: number): string {
-  const o = save.mons[uid]?.origin ?? '';
-  if (o === 'starter') return 'partenaire de départ';
-  if (o === 'quest') return 'gagné à une quête de Kangourex';
-  if (o === 'nectar') return 'attiré par un nectar de l’atelier';
-  if (o === 'test') return 'venu du panneau de test';
-  const cave = o.startsWith('cave:');
-  const b = cave ? o.slice(5) : o;
-  const biome = b in BIOMES ? BIOMES[b as BiomeId].name : '';
-  if (cave) return biome ? `libéré d’une grotte · ${biome}` : 'libéré d’une grotte';
-  return biome ? `recruté · ${biome}` : '';
-}
-
 /**
  * Où trouver une espèce (retour de test) : les biomes dont elle est la faune,
  * et ceux dont les sbires l'envoient au fond des grottes (data/grunts.ts).
@@ -382,7 +368,7 @@ export class CampScreen {
     shard.title = 'Éclats de Champion';
     el('b', '', shard, String(ctx.save.shards));
     icon(SHARDS.icon, shard, 'cs-res-ico');
-    el('div', 'cs-keys', page, this.station === 'start' ? 'Entrée : partir · Échap : rester au camp' : this.station === 'team' && this.teamTab === 'team' ? 'Glisser-déposer ou flèches + Entrée (deux fois : entrer, sortir de l’équipe) · Échap : fermer' : 'Flèches + Entrée, ou clic : choisir · Échap : fermer');
+    el('div', 'cs-keys', page, this.station === 'start' ? 'Entrée : partir · Échap : rester au camp' : this.station === 'team' && this.teamTab === 'team' ? 'Clique un Pokémon puis « Ajouter à l’équipe » (ou glisse-le) · Échap : fermer' : 'Flèches + Entrée, ou clic : choisir · Échap : fermer');
     const close = el('button', 'cs-close', page, '✕');
     close.addEventListener('click', () => this.close());
 
@@ -1004,7 +990,7 @@ export class CampScreen {
       if (this.news.has(String(sid))) newMark(row);
       const txt = el('div', '', row);
       el('b', '', txt, nameOf(sid));
-      el('small', '', txt, `${i === 0 ? '★ Mène · ' : ''}N.${startLevel(save, sid, BASE_TEAM_LEVEL)} · ⚖ ${weights.get(sid)?.total ?? '?'}`);
+      el('small', '', txt, `N.${startLevel(save, sid, BASE_TEAM_LEVEL)} · ⚖ ${weights.get(sid)?.total ?? '?'}`);
       const held = heldItem(save.held[sid]);
       if (held) icon(held.icon, row, 'cs-held');
       this.dragSource(row, { kind: 'mon', id: sid, from: 'team' });
@@ -1060,26 +1046,37 @@ export class CampScreen {
     nick.maxLength = NICK_MAX;
     nick.spellcheck = false;
     nick.placeholder = data.name;
-    const indiv = save.mons[id];
-    nick.value = nick.defaultValue = indiv.name ?? '';
+    const indiv0 = save.mons[id];
+    nick.value = nick.defaultValue = indiv0.name ?? '';
     nick.title = 'Cliquer pour le renommer';
     nick.addEventListener('change', () => {
       const v = nick.value.trim();
-      if (v && v !== data.name) indiv.name = v;
-      else delete indiv.name;
+      if (v && v !== data.name) indiv0.name = v;
+      else delete indiv0.name;
       ctx.persist();
       void this.render();
     });
     for (const t of data.types) typePill(t, head);
-    const where = inTeam ? (save.team[0] === id ? 'mène l’équipe' : 'dans l’équipe') : busy(save, id) ? 'en mission' : 'reste au camp';
-    const from = originText(save, id);
-    el('small', 'cs-info', card, `${indiv.name ? `${data.name} · ` : ''}N.${lvl} au départ · ${where}${from ? ` · ${from}` : ''}`);
-    // Ce qui le distingue d'un autre de son espèce (meta/mons.ts) : sa nature et ses talents.
+    // Simplifié (retour de test : « il y a beaucoup trop d'infos » : mène l'équipe, niveau de départ, provenance,
+    // nature, talents en étoiles, poids…) : le niveau, et de quoi l'ajouter à l'équipe ou le laisser au camp.
+    // La nature et les talents jouent toujours dans les statistiques ci-dessous ; leur détail est en info-bulle.
+    const indiv = save.mons[id];
+    el('small', 'cs-info cs-lv', head, `N.${lvl}`);
     const stars = talentStars(indiv);
-    const trait = el('small', 'cs-info cs-nature', card, `Nature : ${natureText(indiv.nature)} · Talent ${'★'.repeat(stars)}${'☆'.repeat(5 - stars)}`);
-    trait.title = TRAIT_STATS.map((k) => `${TRAIT_LABEL[k]} +${indiv.iv[k]} %`).join(' · ');
-    const w = weights.get(id);
-    if (w) el('small', 'cs-info cs-weigh', card, `⚖ Poids ${w.total} : Pokémon ${w.mon} · attaques ${w.moves} · objet ${w.item}`);
+    head.title = `Nature : ${natureText(indiv.nature)} · Talents ${stars}/5 · ${TRAIT_STATS.map((k) => `${TRAIT_LABEL[k]} +${indiv.iv[k]} %`).join(' · ')}`;
+    const act = el('div', 'cs-actions', card);
+    if (busy(save, id)) el('small', 'cs-info', act, 'En mission chez Démolosse.');
+    else {
+      const full = !inTeam && save.team.length >= slots;
+      const last = inTeam && save.team.length < 2;
+      const add = el('button', `cs-add${inTeam ? ' out' : ''}`, act, inTeam ? 'Mettre au camp' : 'Ajouter à l’équipe') as HTMLButtonElement;
+      add.disabled = full || last;
+      add.title = full ? 'L’équipe est complète.' : last ? 'Il faut au moins un Pokémon dans l’équipe.' : '';
+      add.addEventListener('click', () => {
+        save.team = inTeam ? save.team.filter((x) => x !== id) : [...save.team, id];
+        this.commitTeam(ctx);
+      });
+    }
 
     // Statistiques au départ, nature, talents, objet tenu et Vitalité compris (comme main.ts les applique).
     const item = heldItem(save.held[id]);
@@ -1092,11 +1089,11 @@ export class CampScreen {
     const stats = el('div', 'cs-stats', card);
     const rows: [string, number, boolean][] = [
       ['PV', mon.maxHp, ups.has('hp') || vigor > 1],
-      ['ATT', mon.attack, ups.has('atk')],
-      ['DÉF', mon.defense, ups.has('def')],
-      ['ATT.S', mon.spAttack, ups.has('spAtk')],
-      ['DÉF.S', mon.spDefense, ups.has('spDef')],
-      ['VIT', mon.speed, ups.has('speed')],
+      ['Attaque', mon.attack, ups.has('atk')],
+      ['Défense', mon.defense, ups.has('def')],
+      ['Att. spé.', mon.spAttack, ups.has('spAtk')],
+      ['Déf. spé.', mon.spDefense, ups.has('spDef')],
+      ['Vitesse', mon.speed, ups.has('speed')],
     ];
     for (const [label, v, boosted] of rows) {
       const r = el('div', boosted ? 'up' : '', stats);

@@ -2253,6 +2253,37 @@
   line-height: 1;
   letter-spacing: 0.03em;
 }
+.cs-actions {
+  display: flex;
+  align-items: center;
+  gap: calc(1 * var(--u));
+  margin: calc(0.8 * var(--u)) calc(11 * var(--u)) calc(0.4 * var(--u)) 0;
+}
+/* « Ajouter à l'équipe » : un vrai bouton (retour de test : « si tu ne sais pas que tu peux glisser… »). */
+.cs-add {
+  font-family: var(--head);
+  font-size: max(15px, calc(1.8 * var(--u)));
+  letter-spacing: 0.04em;
+  padding: calc(0.7 * var(--u)) calc(1.8 * var(--u));
+  min-height: 40px;
+  color: var(--paper);
+  background: #2f7d3a;
+  border: 0;
+  box-shadow: 0.2em 0.2em 0 var(--ink);
+  cursor: pointer;
+}
+.cs-add.out {
+  background: var(--ink);
+}
+.cs-add:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.cs-lv {
+  padding: 0 calc(0.8 * var(--u));
+  color: var(--paper);
+  background: var(--ink);
+}
 .cs-info,
 .cs-next {
   font-size: calc(1 * var(--u));
@@ -2394,6 +2425,14 @@
   right: calc(1.5 * var(--u));
   width: calc(12 * var(--u));
   filter: drop-shadow(0 calc(0.6 * var(--u)) calc(0.8 * var(--u)) rgba(0, 0, 0, 0.3));
+}
+/* Fiche d'équipe : le grand sprite reste dans le cadre (il était coupé en haut), et le titre lui laisse la place. */
+.cs-detail > .cs-big {
+  top: calc(0.8 * var(--u));
+  width: calc(10 * var(--u));
+}
+.cs-detail > .cs-head {
+  margin-right: calc(11 * var(--u));
 }
 /* Pokédex (poste de Porygon) : une grille de petites cartes, la fiche à droite.
    Verrouillée, l'espèce n'est qu'une silhouette d'encre (PokedexScreen). */
