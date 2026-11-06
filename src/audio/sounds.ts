@@ -276,6 +276,8 @@ const ESSENTIALS_MUSIC = {
   camp: { file: `${ESSENTIALS_AUDIO}/BGM/Surfing.ogg`, db: -10 },
   boss: { file: `${ESSENTIALS_AUDIO}/BGM/Battle trainer.ogg`, db: -8 },
   victory: { file: `${ESSENTIALS_AUDIO}/BGM/Battle victory leader.ogg`, db: -8 },
+  /** L'écran-titre (Title.ogg, en .ogg dans Essentials). */
+  title: { file: `${ESSENTIALS_AUDIO}/BGM/Title.ogg`, db: -10 },
 } as const;
 
 /**
@@ -298,6 +300,18 @@ export const BIOME_TRACKS = {
   grotte: { mid: 'Cave.mid', slug: 'cave' },
   victoire: { mid: 'Ingido Plateau.mid', slug: 'indigo-plateau' },
   shop: { mid: 'Poke Mart.mid', slug: 'poke-mart' },
+  // Plus d'ambiance selon les lieux (retour de test : « d'autres musiques vraiment plus d'ambiance en fonction
+  // des lieux ») : l'Océan sous l'eau, le Repaire en ville tranquille, une berceuse à la défaite, le Panthéon à la
+  // victoire, et des combats de boss qui changent selon l'adversaire (arène, Conseil, Maître). (Underwater.mid et
+  // Battle Elite.mid sont des copies exactes de Cave.mid et Battle Gym Leader.mid : l'Océan garde Surfing, le Conseil
+  // prend Battle Frontier.)
+  camp: { mid: 'Lerucean Town.mid', slug: 'lerucean' },
+  defeat: { mid: 'Radio - Lullaby.mid', slug: 'lullaby' },
+  halloffame: { mid: 'Hall of Fame.mid', slug: 'hall-of-fame' },
+  gym: { mid: 'Gym.mid', slug: 'gym' },
+  bossgym: { mid: 'Battle Gym Leader.mid', slug: 'battle-gym' },
+  bosselite: { mid: 'Battle Frontier.mid', slug: 'battle-frontier' },
+  bosschamp: { mid: 'Battle Champion.mid', slug: 'battle-champion' },
 } as const;
 
 /** Une musique : le fichier source (Essentials) et, pour les pistes rendues, leur chemin servi. */

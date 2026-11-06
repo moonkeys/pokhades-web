@@ -56,7 +56,7 @@ import { CaveDirector } from './run/cave';
 import { ChestSite } from './run/chests';
 import { Merchant } from './run/merchant';
 import { rollSkillOffer, upgradeMove, type SkillOffer } from './run/rewards';
-import { COMBATS_PER_ACT, ROOMS_PER_ACT, Run } from './run/run';
+import { COMBATS_PER_ACT, LEAGUE_MASTER, ROOMS_PER_ACT, Run } from './run/run';
 import { Hud } from './ui/hud';
 import { loadOptions, saveOptions, type Options } from './ui/options';
 import { Panel } from './ui/panel';
@@ -706,7 +706,13 @@ async function boot(): Promise<void> {
    * boutique, de la Route Victoire ; le combat seulement chez le champion.
    */
   function roomMusic(): MusicId {
-    if (run.isBoss()) return 'boss';
+    // Le combat change selon l'adversaire (retour de test : « d'autres musiques vraiment plus d'ambiance ») :
+    // le Maître de la Ligue, le Conseil, le dresseur final, l'arène du Village, les champions.
+    if (run.isBoss()) {
+      if (run.onVictoryRoad) return run.champion.name === LEAGUE_MASTER ? 'bosschamp' : 'bosselite';
+      if (run.isFinal) return 'bosschamp';
+      return run.biome === 'village' ? 'gym' : 'bossgym';
+    }
     if (run.isShop()) return 'shop';
     if (run.onVictoryRoad) return 'victoire';
     return run.biome;
@@ -2408,6 +2414,8 @@ async function boot(): Promise<void> {
         const [dealt, taken] = sum.mem[net.id] ?? [0, 0];
         st.members.set(mine, { dealt, taken });
         clientEndT = -1;
+        if (end.won) setTimeout(() => runSummary.open && audio.playMusic('halloffame'), 2300);
+        else audio.playMusic('defeat');
         runSummary.show({ victory: end.won, rooms: end.rooms, act: sum.act, biome: sum.biome, color: sum.color, champion: { name: sum.champion } as Champion, boons: sum.boons, team: [mine], stats: st }, back);
       }
       return;
@@ -2438,14 +2446,17 @@ async function boot(): Promise<void> {
       {
         play: () => {
           input.flush();
+          audio.playMusic('camp');
           askStarter();
         },
         online: () => {
           input.flush();
+          audio.playMusic('camp');
           openOnline();
         },
         join: (code) => {
           input.flush();
+          audio.playMusic('camp');
           joinInvite(code);
         },
         settings: (tab, back) =>
@@ -2458,6 +2469,8 @@ async function boot(): Promise<void> {
       invite,
     );
   enterCamp();
+  // L'écran-titre a sa musique (Title.ogg) ; quitter le menu lance celle du Repaire.
+  if (titleScreen.open) audio.playMusic('title');
 
   let time = 0;
   let fps = 60;
@@ -2594,7 +2607,9 @@ async function boot(): Promise<void> {
         if (runWon) {
           audio.playMusic(null);
           sfx('victory');
-        }
+          // Le jingle d'abord, puis le Panthéon sous le bilan ; une défaite s'accompagne d'une berceuse.
+          setTimeout(() => runSummary.open && audio.playMusic('halloffame'), 2300);
+        } else audio.playMusic('defeat');
         netEnd();
         runSummary.show(
           {
