@@ -38,7 +38,14 @@ const PREFIX = 'pokhades-web-';
 function iceServers(): RTCIceServer[] {
   const servers: RTCIceServer[] = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun.cloudflare.com:3478'] }];
   const env = import.meta.env;
-  const urls = String(env.VITE_TURN_URLS ?? '').split(',').map((u) => u.trim()).filter(Boolean);
+  // Une adresse collée telle quelle du tableau de bord (« host:3478 », sans `turn:`) fait refuser la
+  // configuration entière par le navigateur : on complète, et on ajoute la variante TCP (traverse
+  // les réseaux qui coupent l'UDP).
+  const urls = String(env.VITE_TURN_URLS ?? '')
+    .split(',')
+    .map((u) => u.trim())
+    .filter(Boolean)
+    .flatMap((u) => (/^turns?:/i.test(u) ? [u] : [`turn:${u}`, `turn:${u}?transport=tcp`]));
   if (urls.length) servers.push({ urls, username: String(env.VITE_TURN_USERNAME ?? ''), credential: String(env.VITE_TURN_CREDENTIAL ?? '') });
   return servers;
 }
