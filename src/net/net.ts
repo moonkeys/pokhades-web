@@ -202,7 +202,28 @@ export type HostMsg =
       text?: string;
     }
   | { t: 'dialogue'; speaker: unknown; text: string }
-  | { t: 'end'; won: boolean; rooms: number; baies: number }
+  | {
+      t: 'end';
+      won: boolean;
+      rooms: number;
+      baies: number;
+      /** Le bilan de la run, pour l'écran de fin de l'invité (retour de test : « je ne vois pas le résultat quand je meurs »). */
+      sum?: {
+        act: number;
+        biome: string;
+        color: string;
+        champion: string;
+        boons: number;
+        time: number;
+        kos: number;
+        dealt: number;
+        taken: number;
+        shards: number;
+        champions: string[];
+        /** Identifiant de pair → [PV infligés, PV encaissés] de son Pokémon. */
+        mem: Record<string, [number, number]>;
+      };
+    }
   | { t: 'bye'; reason: string };
 
 export type Role = 'off' | 'host' | 'client';

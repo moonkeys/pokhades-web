@@ -1846,6 +1846,8 @@ async function boot(): Promise<void> {
   let me: Actor | null = null;
   let clientHud: Extract<HostMsg, { t: 'snap' }>['hud'] | null = null;
   let clientEndT = -1;
+  /** Invité : le bilan reçu de l'hôte, montré une fois le fondu fini (comme l'hôte voit le sien). */
+  let clientEnd: Extract<HostMsg, { t: 'end' }> | null = null;
   let pendingMove = -1;
   /** Hôte : les Pokémon des invités dans son Repaire. */
   const visitors: Actor[] = [];
@@ -2134,7 +2136,15 @@ async function boot(): Promise<void> {
   const netEnd = () => {
     if (net.role !== 'host' || !net.inRun) return;
     net.inRun = false;
-    net.broadcast({ t: 'end', won: runWon, rooms: runWon ? run.room + 1 : run.room, baies: runBaies });
+    const mem: Record<string, [number, number]> = {};
+    for (const m of team) if (m.remote) mem[m.remote] = [stats.members.get(m)?.dealt ?? 0, stats.members.get(m)?.taken ?? 0];
+    net.broadcast({
+      t: 'end',
+      won: runWon,
+      rooms: runWon ? run.room + 1 : run.room,
+      baies: runBaies,
+      sum: { act: run.act, biome: BIOMES[run.biome].name, color: BIOME_COLOR[run.biome], champion: run.champion.name, boons: run.boons.owned.size, time: stats.time, kos: stats.kos, dealt: stats.dealt, taken: stats.taken, shards: stats.shards, champions: [...stats.champions], mem },
+    });
   };
 
   // Hôte : les effets et les annonces de la run partent aussi chez les invités.
@@ -2312,6 +2322,7 @@ async function boot(): Promise<void> {
       // Les Baies de la run, versées au Repaire de l'invité comme à l'hôte.
       net.inRun = false;
       clientEndT = 0;
+      clientEnd = msg;
       if (msg.won) runHud.announce('Victoire !', '#ffd23f', 'MAÎTRE DE LA LIGUE');
       else runHud.toast('Fin de la run', `${msg.rooms} salle${msg.rooms > 1 ? 's' : ''} traversée${msg.rooms > 1 ? 's' : ''}`);
       return;
@@ -2375,7 +2386,30 @@ async function boot(): Promise<void> {
     if (clientEndT >= 0) {
       clientEndT += dt;
       director.fade = Math.min(1, clientEndT / 1.5);
-      if (clientEndT >= 2.5) enterCamp();
+      if (clientEndT >= 2.5 && !runSummary.open) {
+        const end = clientEnd;
+        clientEnd = null;
+        const back = () => {
+          input.flush();
+          enterCamp();
+        };
+        if (!end?.sum) return back();
+        // Le bilan de l'hôte, lu avec mon Pokémon (le seul que je connaisse ici), puis le Repaire.
+        const sum = end.sum;
+        const st = new RunStats();
+        st.time = sum.time;
+        st.kos = sum.kos;
+        st.dealt = sum.dealt;
+        st.taken = sum.taken;
+        st.baies = end.baies;
+        st.shards = sum.shards;
+        st.champions.push(...sum.champions);
+        const mine = me ?? player;
+        const [dealt, taken] = sum.mem[net.id] ?? [0, 0];
+        st.members.set(mine, { dealt, taken });
+        clientEndT = -1;
+        runSummary.show({ victory: end.won, rooms: end.rooms, act: sum.act, biome: sum.biome, color: sum.color, champion: { name: sum.champion } as Champion, boons: sum.boons, team: [mine], stats: st }, back);
+      }
       return;
     }
     const all = me ? [me, ...field.list()] : field.list();
@@ -2603,7 +2637,8 @@ async function boot(): Promise<void> {
     placeNetLabels(proj);
     fx.placeNumbers(proj);
     combat.focus(self);
-    hud.update(frameDt, self, combat, field.enemies(), proj, time, [self]);
+    // L'équipe du HUD : moi et les autres joueurs (retour de test : « je ne vois pas mon équipe » en tant qu'invité).
+    hud.update(frameDt, self, combat, field.enemies(), proj, time, [self, ...field.list().filter((a) => a.remote === 'net')]);
     runHud.setStock(null);
     runHud.setRevives(null);
     runHud.update(frameDt, clientHud?.place ?? 'En ligne', clientHud?.money ?? 0, director.fade);
