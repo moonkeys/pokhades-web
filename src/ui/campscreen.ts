@@ -467,7 +467,7 @@ export class CampScreen {
 
   // ── CT ───────────────────────────────────────────────────────────────
   private async renderMoves(main: HTMLElement, page: HTMLElement, ctx: CampCtx): Promise<void> {
-    el('p', 'cs-quote', main, 'Une CT achetée l’est pour de bon. Clique sur une carte pour voir qui peut l’apprendre.');
+    el('p', 'cs-quote', main, 'Clique une carte pour voir qui peut l’apprendre.');
     const grid = el('div', 'cs-grid', main);
     const moves = await Promise.all(TMS.map((t) => move(t.api)));
     TMS.forEach((tm, i) => {
@@ -558,7 +558,7 @@ export class CampScreen {
   // ── Objets (Miaouss) ─────────────────────────────────────────────────
   private renderItems(main: HTMLElement, ctx: CampCtx): void {
     const grid = el('div', 'cs-grid', main);
-    el('p', 'cs-quote wide', grid, 'Un objet tenu se donne à un Pokémon à la hutte de Porygon ; il le garde d’une run à l’autre. Un Super Bonbon s’y donne aussi, et s’y reprend.');
+    el('p', 'cs-quote wide', grid, 'À donner à un Pokémon chez Porygon.');
     this.candyCard(grid, ctx);
     for (const it of HELD_ITEMS) if (!it.crafted) this.itemCard(grid, it, ctx);
   }
@@ -641,7 +641,7 @@ export class CampScreen {
    */
   private renderGarden(main: HTMLElement, ctx: CampCtx): void {
     const save = ctx.save;
-    el('p', 'cs-quote', main, 'Dis-moi quoi planter : je m’en occupe dans la première parcelle libre. Ça pousse à chaque salle que tu franchis en run ; quand c’est en fleur, reviens récolter. Les plantes servent à l’atelier de l’artisan.');
+    el('p', 'cs-quote', main, 'Ça pousse à chaque salle de run. En fleur : récolte-le ici.');
     const grid = el('div', 'cs-grid', main);
     plots(save).forEach((p, i) => {
       const ripe = p !== null && p.left <= 0;
@@ -726,7 +726,7 @@ export class CampScreen {
    */
   private renderCraft(main: HTMLElement, ctx: CampCtx): void {
     const save = ctx.save;
-    el('p', 'cs-quote', main, 'Les matériaux viennent des coffres — chaque biome a les siens —, les herbes du potager d’Héliatronc. Un objet façonné se donne à la hutte de Porygon, comme ceux de Miaouss.');
+    el('p', 'cs-quote', main, 'Matériaux des coffres, herbes du potager. À donner à Porygon.');
     const grid = el('div', 'cs-grid', main);
     for (const r of RECIPES) {
       const out = recipeOutput(r);
@@ -759,7 +759,7 @@ export class CampScreen {
       el('small', 'cs-info', card, n.left > 0 ? `Son parfum porte loin : quelqu’un arrivera dans ${n.left} salle${n.left > 1 ? 's' : ''} franchie${n.left > 1 ? 's' : ''} en run.` : 'Ton visiteur attend à côté de la coupelle : va lui parler.');
     } else {
       const owned = Object.keys(NECTARS).filter((id) => (save.materials[id] ?? 0) > 0);
-      if (!owned.length) el('p', 'cs-quote wide', lure, 'Aucun nectar en réserve. Façonne-en un, puis pose-le ici : son parfum attire un Pokémon pas encore libéré, d’un type qu’il aime.');
+      if (!owned.length) el('p', 'cs-quote wide', lure, 'Aucun nectar. Façonnes-en un à l’atelier.');
       for (const id of owned) {
         const card = el('div', 'cs-card da-paper', lure);
         icon(NECTARS[id].icon, card);
@@ -1277,7 +1277,7 @@ export class CampScreen {
 
   // ── CS ───────────────────────────────────────────────────────────────
   private renderCs(grid: HTMLElement, ctx: CampCtx): void {
-    el('p', 'cs-quote wide', grid, 'Une CS se garde pour toujours, et toute l’équipe en profite. Surf ouvre le lac du Repaire ; Coupe et Éclate-Roc ouvrent, en run, les alcôves où dorment les coffres.');
+    el('p', 'cs-quote wide', grid, 'Une CS est définitive, pour toute l’équipe.');
     for (const c of CS_LIST) {
       const owned = ctx.save.cs.includes(c.id);
       const card = el('div', `cs-card da-paper${owned ? ' owned' : !c.ready ? ' soon' : ctx.save.baies < c.price ? ' poor' : ''}`, grid);
@@ -1374,7 +1374,7 @@ export class CampScreen {
     const save = ctx.save;
     const full = save.quests.active.length >= MAX_ACTIVE;
     const grid = el('div', 'cs-grid', main);
-    el('p', 'cs-quote wide', grid, `Accepte une quête, puis remplis-la en run : rien ne compte avant de l’avoir acceptée. ${MAX_ACTIVE} à la fois, pas plus. (${save.quests.active.length} / ${MAX_ACTIVE} en cours.)`);
+    el('p', 'cs-quote wide', grid, `Accepte une quête, puis remplis-la en run. ${save.quests.active.length} / ${MAX_ACTIVE} en cours.`);
     // Les noms des Pokémon déjà gagnés seulement : les autres restent une surprise.
     const names = new Map((await Promise.all(QUESTS.filter((q) => questState(save, q.id) === 'done').map((q) => species(q.reward)))).map((d) => [d.id, d.name]));
     const order = { ready: 0, active: 1, open: 2, done: 3 } as const;
@@ -1488,7 +1488,7 @@ export class CampScreen {
     }
 
     // Le tableau : une carte par emplacement.
-    el('p', 'cs-quote wide', grid, 'Une mission avance à chaque salle franchie en run. Au retour, viens récolter ici. Un Pokémon parti ne peut pas entrer dans l’équipe.');
+    el('p', 'cs-quote wide', grid, 'La mission avance à chaque salle de run.');
     const slots = missionSlots(save);
     for (let i = 0; i < slots; i++) {
       const slot = save.missions[i];
@@ -1574,7 +1574,7 @@ export class CampScreen {
    */
   private renderOnline(main: HTMLElement, ctx: CampCtx): void {
     const save = ctx.save;
-    el('p', 'cs-quote', main, 'Jusqu’à six rebelles dans la même run : l’hôte ouvre son Repaire et donne son code, les autres l’y rejoignent et s’y promènent avec lui. Chacun emmène un Pokémon à lui : le meneur de sa propre équipe.');
+    el('p', 'cs-quote', main, 'Jusqu’à six joueurs. L’hôte donne son code, les autres le rejoignent.');
     if (net.status) el('p', 'cs-load over', main, net.status);
     if (net.role === 'off') {
       const grid = el('div', 'cs-online', main);

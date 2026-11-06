@@ -1666,7 +1666,7 @@ async function boot(): Promise<void> {
       },
       lines: () => [
         [chief(), 'Doucement, petit. On t’a ramassé dans la prairie, à moitié assommé.'],
-        [chief(), 'Ici, c’est le Repaire : des Pokémon qui refusent les Poké Balls. Chaque Pokémon que tu bats là-dehors, tu le libères… et certains nous rejoignent.'],
+        [chief(), 'Ici, c’est le Repaire : des Pokémon qui refusent les Poké Balls. Bats-en dehors, certains nous rejoindront.'],
         [chief(), 'Reprends des forces. Quand tu es prêt, viens me voir sous l’arche.'],
       ],
     };
