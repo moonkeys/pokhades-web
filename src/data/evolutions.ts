@@ -230,12 +230,12 @@ export function laterForms(id: number): number[] {
 
 /**
  * Évolutions à choix (retour de test : « Évoli et toutes ses évolutions, au choix du joueur ») : l'espèce → les
- * formes proposées au niveau de son évolution (EVOLUTIONS donne ce niveau et la forme par défaut). Évoli n'en
- * a ici que quatre : Aquali, Voltali, Mentali et Noctali, les seules dont le dépôt du jeu d'origine a les planches
- * animées. Pyroli, Phyllali, Givrali et Nymphali s'ajouteront ici une fois leurs images fournies.
+ * formes proposées au niveau de son évolution (EVOLUTIONS donne ce niveau et la forme par défaut) : Évoli et ses
+ * huit évolutions.
  */
 export const BRANCHES: Record<number, readonly number[]> = {
-  133: [134, 135, 196, 197],
+  // Aquali, Voltali, Pyroli, Mentali, Noctali, Phyllali, Givrali, Nymphali.
+  133: [134, 135, 136, 196, 197, 470, 471, 700],
 };
 
 /** Les formes entre lesquelles le joueur choisit pour `id` à ce niveau (vide : pas de choix, ou pas encore l'heure). */
