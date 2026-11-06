@@ -856,6 +856,24 @@ le paramètre est retiré de la barre d'adresse (un rechargement ne rejoint pas 
 Sans premier Pokémon, rien à emmener en ligne : le code est gardé, et une notification le rappelle
 au Repaire une fois le starter choisi.
 
+## Jouer en ligne : ce que fait un invité
+
+- **Au Repaire de l'hôte**, il voit les recrues qui attendent (sans pouvoir leur parler) et peut
+  acheter chez Monsieur Mime (attaques), Alakazam (améliorations) et Miaouss (objets), avec **sa**
+  sauvegarde. Démolosse (missions) et le Charpentier restent ceux de l'hôte.
+- **En run**, n'importe quel joueur debout qui franchit une porte (ou une bouche de grotte) lance
+  la salle suivante pour tous ; un invité qui appuie sur E près de la récompense ouvre l'écran de
+  choix **chez l'hôte** (c'est l'hôte qui choisit le don). Les invités ramassent aussi les baies et
+  ouvrent les coffres. Son HUD liste tous les joueurs.
+- **À la fin de la run**, il voit le même bilan que l'hôte (`end` dans `net/net.ts` porte le bilan).
+
+## Mobile : plein écran et départ en run
+
+Le menu propose « Plein écran » sur téléphone (`ui/fullscreen.ts` : API plein écran et verrouillage
+horizontal ; sur iPhone, « Partager → Sur l'écran d'accueil », avec `manifest.webmanifest`). Le
+départ par l'arche ralentit le temps (30 %), fait monter un halo doré puis éteint l'écran
+(`startDeparture`, `main.ts`). Les dons des légendaires sont des médaillons (`.rw-badge.art`).
+
 ## Multijoueur : relais TURN (ExpressTURN, gratuit)
 
 La connexion entre joueurs est directe (WebRTC via PeerJS). Entre un téléphone et un ordinateur,
