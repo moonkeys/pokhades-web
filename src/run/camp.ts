@@ -374,6 +374,8 @@ export class Camp {
   private talkers: Talker[] = [];
   private fire = { x: 0, y: 0 };
   private gate = { x: 0, y: 0 };
+  /** 0 à 1 : le halo de l'arche s'embrase quand on part en run (main.ts, startDeparture). */
+  departGlow = 0;
   /** Étals du tuteur : pied de l'auvent, et les CT posées sur la table. */
   private stalls: { x: number; y: number; icons: string[] }[] = [];
   /** Ponton bâti (pied du sprite), dessiné au ras du sol pour qu'on marche dessus. */
@@ -1395,6 +1397,9 @@ export class Camp {
     if (!this.active) return [];
     type Extra = { y: number; draw(b: CanvasRenderingContext2D, camX: number, camY: number, k: number): void };
     const out: Extra[] = [
+      // Le halo de l'arche, toujours là (retour de test : « toujours présent sous l'arche, comme les portes
+      // d'une salle ») : la même lueur et les mêmes particules qu'une porte ouverte, au ras du sol.
+      { y: -Infinity, draw: (b, camX, camY, k) => this.drawGateGlow(b, camX, camY, k, time) },
       { y: this.fire.y * TILE + 4, draw: (b, camX, camY, k) => this.drawFlame(b, camX, camY, k, time) },
       // Le temple se trie sur le haut de son escalier : qui le gravit passe devant lui.
       { y: this.temple.top * TILE, draw: (b, camX, camY, k) => this.drawSprite(b, camX, camY, k, CAMP_PROPS.ruins, this.temple.x, this.temple.y) },
@@ -1426,6 +1431,34 @@ export class Camp {
   }
 
   /** La flamme d'Essentials (Animations/fire5), en boucle au milieu de son cercle de pierres. */
+  /** La lueur de l'arche : comme celle d'une porte ouverte (room.ts, drawOverlay), plus vive au départ. */
+  private drawGateGlow(b: CanvasRenderingContext2D, camX: number, camY: number, k: number, time: number): void {
+    const g = this.gate;
+    if (!g.x && !g.y) return;
+    const u = this.departGlow;
+    const cx = Math.round((g.x * TILE - camX) * k);
+    const cy = Math.round((g.y * TILE - camY) * k);
+    const half = 1.6;
+    const rx = (half + 0.5 + 2 * u) * TILE * k;
+    const ry = 1.2 * TILE * k * 0.6 * (1 + 1.6 * u);
+    b.globalCompositeOperation = 'lighter';
+    const grad = b.createRadialGradient(cx, cy, 0, cx, cy, Math.max(rx, ry));
+    grad.addColorStop(0, `rgba(255, 210, 63, ${Math.min(1, 0.6 + 0.15 * Math.sin(time * 3) + 0.4 * u)})`);
+    grad.addColorStop(1, 'rgba(255, 210, 63, 0)');
+    b.fillStyle = grad;
+    b.beginPath();
+    b.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+    b.fill();
+    for (let i = 0; i < 22; i++) {
+      const ph = (time * (0.3 + 0.5 * u) + i * 0.137) % 1;
+      const ox = (((i * 0.618) % 1) - 0.5) * 2 * half;
+      const oy = (((i * 0.382) % 1) - 0.5) * 2 * 0.8;
+      b.fillStyle = `rgba(255, 210, 63, ${1 - ph})`;
+      b.fillRect(Math.round(cx + ox * TILE * k), Math.round(cy + oy * TILE * k) - Math.round(ph * 24 * k), 2 * k, 2 * k);
+    }
+    b.globalCompositeOperation = 'source-over';
+  }
+
   private drawFlame(b: CanvasRenderingContext2D, camX: number, camY: number, k: number, time: number): void {
     const img = this.flame;
     if (!img) return;

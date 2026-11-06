@@ -233,9 +233,9 @@ async function boot(): Promise<void> {
     });
   };
   /**
-   * Le départ en run (retour de test : « un petit ralentissement, et qu'on rentre dans la run avec les petits
-   * halos des sorties de porte ») : sous l'arche, le temps ralentit, un halo doré monte autour du Pokémon
-   * (comme la lueur d'une porte ouverte), l'écran s'éteint, et la run commence.
+   * Le départ en run : sous l'arche, le temps ralentit, le halo de l'arche (toujours là, camp.ts) s'embrase,
+   * l'écran s'éteint, et la run commence. (Retour de test : le halo doit être « toujours présent sous
+   * l'arche », pas apparaître autour du Pokémon au moment de partir.)
    */
   let departing: { t: number; x: number; y: number } | null = null;
   const DEPART_TIME = 1.5;
@@ -245,39 +245,8 @@ async function boot(): Promise<void> {
     if (departing) return;
     departing = { t: 0, x: player.x, y: player.y };
   };
-  /** Le halo du départ, dessiné sous les Pokémon : une lueur qui s'élargit, des particules qui montent. */
-  const departExtras = (): { y: number; draw(b: CanvasRenderingContext2D, camX: number, camY: number, k: number): void }[] => {
-    const d = departing;
-    if (!d) return [];
-    return [
-      {
-        y: d.y * TILE - 1,
-        draw: (b, camX, camY, k) => {
-          const u = Math.min(1, d.t / DEPART_TIME);
-          const cx = Math.round((d.x * TILE - camX) * k);
-          const cy = Math.round((d.y * TILE - camY) * k);
-          const r = (1.4 + 5 * u) * TILE * k;
-          b.globalCompositeOperation = 'lighter';
-          const g = b.createRadialGradient(cx, cy, 0, cx, cy, r);
-          g.addColorStop(0, `rgba(255, 214, 90, ${0.35 + 0.5 * u})`);
-          g.addColorStop(1, 'rgba(255, 214, 90, 0)');
-          b.fillStyle = g;
-          b.beginPath();
-          b.ellipse(cx, cy, r, r * 0.6, 0, 0, Math.PI * 2);
-          b.fill();
-          // Les mêmes particules que les portes ouvertes (room.ts), qui montent vers le haut.
-          for (let i = 0; i < 26; i++) {
-            const ph = (d.t * 0.5 + i * 0.137) % 1;
-            const ox = (((i * 0.618) % 1) - 0.5) * 2 * (1 + 2 * u);
-            const oy = (((i * 0.382) % 1) - 0.5) * 2 * 0.8;
-            b.fillStyle = `rgba(255, 214, 90, ${1 - ph})`;
-            b.fillRect(Math.round(cx + ox * TILE * k), Math.round(cy + oy * TILE * k) - Math.round(ph * 30 * k), 2 * k, 2 * k);
-          }
-          b.globalCompositeOperation = 'source-over';
-        },
-      },
-    ];
-  };
+  /** Le halo de l'arche suit le départ : de 0 à 1 sur toute sa durée (remis à 0 sitôt la run lancée). */
+  const departGlow = () => (departing ? Math.min(1, departing.t / DEPART_TIME) : 0);
   const campScreen = new CampScreen(document.body);
   const netBadge = new NetBadge(document.body);
   combat.notify = (text) => runHud.message(text);
@@ -2492,9 +2461,11 @@ async function boot(): Promise<void> {
       departing.t += dt;
       if (departing.t >= DEPART_TIME) {
         departing = null;
+        camp.departGlow = 0;
         campCtx.depart();
         return;
       }
+      camp.departGlow = departGlow();
       dt *= DEPART_SLOW;
     }
     // Grotte, boutique, Repaire : temps clair ; la salle retrouve son ciel en ressortant.
@@ -2671,7 +2642,7 @@ async function boot(): Promise<void> {
 
   startLoop(update, (alpha, frameDt) => {
     if (net.role === 'client' && mode === 'run' && me) return drawClient(alpha, frameDt, me);
-    const extras = [...runExtras(), ...camp.extras(time), ...departExtras()];
+    const extras = [...runExtras(), ...camp.extras(time)];
     // Au Repaire, en ligne : les autres joueurs qui s'y promènent.
     const others = mode !== 'camp' ? [] : net.role === 'host' ? visitors : net.role === 'client' && hostCamp ? field.list() : [];
     renderer.draw(world, player, [...team, ...others, ...wild, ...shop.npcs, ...merchant.npcs, ...camp.npcs, ...cave.npcs], particles, footprints, fieldFx, combat, director, extras, opts, alpha, time, { weather: weatherNow(), particles: skyParticles });
