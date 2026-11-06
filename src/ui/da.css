@@ -2985,6 +2985,22 @@
   padding: var(--u) calc(1.6 * var(--u));
   color: var(--ink);
 }
+.cs-net-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(0.8 * var(--u));
+  margin-top: calc(0.8 * var(--u));
+}
+/* Un fond blanc franc autour du QR code (la marge dont les lecteurs ont besoin) : à la main, une
+   taille qui tient dans l'écran même à l'horizontale d'un téléphone. */
+.cs-net-qr svg {
+  width: min(32vh, calc(18 * var(--u)));
+  height: auto;
+  border: 3px solid var(--ink);
+  border-radius: 4px;
+  background: #fff;
+}
 .cs-net-code {
   font-family: var(--head);
   font-size: calc(5 * var(--u));

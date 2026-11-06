@@ -844,6 +844,16 @@ d'écran d'accueil : la Poké Ball enchaînée du logo (`public/favicon-32.png`,
   et le jet animé de l'autotile `Fountain1.png`.
 
 
+## Jouer en ligne : menu, lien et QR code
+
+Une fois le premier Pokémon libéré, le menu principal propose **Jouer en ligne** (ouvre l'écran de
+Roucarnage : héberger ou rejoindre). L'hôte qui ouvre sa partie voit son code et, dessous, un
+**QR code** (`ui/qr.ts`) et un bouton « Copier le lien » : l'adresse du jeu suivie de `?join=CODE`
+(`net/invite.ts`). Qui ouvre ce lien arrive sur le menu avec « Rejoindre CODE » en premier choix ;
+le paramètre est retiré de la barre d'adresse (un rechargement ne rejoint pas une partie fermée).
+Sans premier Pokémon, rien à emmener en ligne : le code est gardé, et une notification le rappelle
+au Repaire une fois le starter choisi.
+
 ## Multijoueur : relais TURN (ExpressTURN, gratuit)
 
 La connexion entre joueurs est directe (WebRTC via PeerJS). Entre un téléphone et un ordinateur,
