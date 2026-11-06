@@ -848,8 +848,10 @@ d'écran d'accueil : la Poké Ball enchaînée du logo (`public/favicon-32.png`,
 
 Une fois le premier Pokémon libéré, le menu principal propose **Jouer en ligne** (ouvre l'écran de
 Roucarnage : héberger ou rejoindre). L'hôte qui ouvre sa partie voit son code et, dessous, un
-**QR code** (`ui/qr.ts`) et un bouton « Copier le lien » : l'adresse du jeu suivie de `?join=CODE`
-(`net/invite.ts`). Qui ouvre ce lien arrive sur le menu avec « Rejoindre CODE » en premier choix ;
+**QR code** (`ui/qr.ts`), affiché en haut sous le bandeau du code (`ui/netbadge.ts`) : l'écran de
+Roucarnage se referme, on peut se promener et préparer la run. Le QR code ne se montre qu'au Repaire
+de l'hôte, et disparaît au départ de la run ; un clic dessus copie le lien d'invitation, l'adresse du
+jeu suivie de `?join=CODE` (`net/invite.ts`). Qui ouvre ce lien arrive sur le menu avec « Rejoindre CODE » en premier choix ;
 le paramètre est retiré de la barre d'adresse (un rechargement ne rejoint pas une partie fermée).
 Sans premier Pokémon, rien à emmener en ligne : le code est gardé, et une notification le rappelle
 au Repaire une fois le starter choisi.

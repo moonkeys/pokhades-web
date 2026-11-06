@@ -2985,22 +2985,6 @@
   padding: var(--u) calc(1.6 * var(--u));
   color: var(--ink);
 }
-.cs-net-qr {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: calc(0.8 * var(--u));
-  margin-top: calc(0.8 * var(--u));
-}
-/* Un fond blanc franc autour du QR code (la marge dont les lecteurs ont besoin) : à la main, une
-   taille qui tient dans l'écran même à l'horizontale d'un téléphone. */
-.cs-net-qr svg {
-  width: min(32vh, calc(18 * var(--u)));
-  height: auto;
-  border: 3px solid var(--ink);
-  border-radius: 4px;
-  background: #fff;
-}
 .cs-net-code {
   font-family: var(--head);
   font-size: calc(5 * var(--u));
@@ -4197,6 +4181,36 @@
 }
 .net-tip {
   opacity: 0.6;
+}
+/* Le QR code de la partie, sous le bandeau (netbadge.ts) : au Repaire seulement, tant que la run
+   n'a pas commencé. Un fond blanc franc, la marge dont les lecteurs ont besoin ; un clic copie le lien. */
+.net-qr {
+  position: absolute;
+  top: calc(5.6 * var(--u));
+  right: calc(1.6 * var(--u));
+  z-index: 15;
+  display: grid;
+  justify-items: center;
+  gap: calc(0.3 * var(--u));
+  padding: calc(0.5 * var(--u));
+  background: var(--paper);
+  color: var(--ink);
+  border: none;
+  box-shadow: 0 calc(0.3 * var(--u)) calc(0.8 * var(--u)) #0007;
+  rotate: 1deg;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.net-qr[hidden] {
+  display: none;
+}
+.net-qr svg {
+  width: max(88px, calc(9 * var(--u)));
+  height: auto;
+  border: 2px solid var(--ink);
+}
+.net-qr small {
+  font-size: calc(1 * var(--u));
 }
 .net-players {
   position: absolute;
