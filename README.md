@@ -844,22 +844,33 @@ d'écran d'accueil : la Poké Ball enchaînée du logo (`public/favicon-32.png`,
   et le jet animé de l'autotile `Fountain1.png`.
 
 
-## Multijoueur : relais TURN
+## Multijoueur : relais TURN (Cloudflare, gratuit)
 
-La connexion entre joueurs est directe (WebRTC via PeerJS). Entre un téléphone en 4G/5G et un
-ordinateur, le réseau de l'opérateur la bloque presque toujours, et même sur un seul Wi-Fi
-elle échoue souvent (adresses locales masquées par le navigateur, box qui ne les relaie pas) :
-l'invité voit « en attente, l'hôte ne répond pas ». Il faut un **relais TURN**
-(`src/net/net.ts`, `iceServers`). Le TURN public de PeerJS (`*.turn.peerjs.com`) n'existe plus
-(nom de domaine disparu, vérifié le 6 novembre 2026) : sans configuration, il n'y a donc aucun
-relais, et le jeu ne passe qu'entre deux appareils qui se joignent directement. Pour un relais
-(l'offre gratuite de Metered ou de Cloudflare, par exemple) :
+La connexion entre joueurs est directe (WebRTC via PeerJS). Entre un téléphone et un ordinateur,
+même sur un seul Wi-Fi, elle échoue souvent (adresses locales masquées par le navigateur, box qui
+ne les relaie pas, 4G/5G) : l'invité voit « en attente, l'hôte ne répond pas ». Il faut un
+**relais TURN**. Le TURN public de PeerJS (`*.turn.peerjs.com`) n'existe plus (nom de domaine
+disparu, vérifié le 6 novembre 2026).
 
-- en local, un fichier `.env.local` avec `VITE_TURN_URLS` (adresses séparées par des virgules,
-  par exemple `turn:xxx:80,turn:xxx:443?transport=tcp`), `VITE_TURN_USERNAME` et
-  `VITE_TURN_CREDENTIAL` ;
-- en production, dans GitHub : variables `TURN_URLS` et `TURN_USERNAME`, secret
-  `TURN_CREDENTIAL` (Settings → Secrets and variables → Actions), lus par `pages.yml`.
+On prend celui de Cloudflare : 1 000 Go par mois offerts, soit des milliers de parties entre amis.
+Cloudflare ne donne pas d'identifiant fixe, et sa clé ne doit pas être dans le jeu publié : un
+petit Worker (`worker/turn-worker.js`, gratuit lui aussi : 100 000 appels par jour) la garde et
+fabrique des identifiants qui expirent seuls. Mise en place, une fois :
 
-Les identifiants TURN finissent dans le JavaScript publié : prendre des identifiants à quota,
-pas un compte sensible.
+1. Sur <https://dash.cloudflare.com> : *Realtime → TURN* (ou *Calls*) → créer une **clé TURN**.
+   Noter son **Key ID** et son **API token**.
+2. Depuis ce dossier :
+   ```bash
+   cd worker
+   npx wrangler login
+   npx wrangler secret put TURN_KEY_ID
+   npx wrangler secret put TURN_KEY_API_TOKEN
+   npx wrangler deploy
+   ```
+   Vérifier avant que `ALLOWED_ORIGINS`, dans `worker/wrangler.toml`, est bien l'adresse de ton
+   jeu sur GitHub Pages. `deploy` affiche l'adresse du Worker (`https://pokhades-turn.xxx.workers.dev`).
+3. Sur GitHub : *Settings → Secrets and variables → Actions → Variables*, créer `TURN_ENDPOINT`
+   avec l'adresse du Worker, puis relancer le déploiement. En local, mettre
+   `VITE_TURN_ENDPOINT=…` dans `.env.local`.
+
+Sans `TURN_ENDPOINT`, le jeu marche seulement entre deux appareils qui se joignent directement.

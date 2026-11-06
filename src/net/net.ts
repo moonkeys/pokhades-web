@@ -29,20 +29,35 @@ const PREFIX = 'pokhades-web-';
  * adresses locales (mDNS) que bien des box ne relaient pas, et la 4G/5G ou un Wi-Fi public
  * bloquent le pair-à-pair. Il faut alors un relais TURN. Celui que PeerJS fournit par défaut
  * (turn:*.turn.peerjs.com) n'existe plus : son nom de domaine ne se résout plus, d'où l'échec.
- * Passer `config` à PeerJS remplace ses serveurs : on met des STUN, et le TURN du projet s'il est
- * fourni au build (VITE_TURN_URLS : adresses séparées par des virgules ; VITE_TURN_USERNAME ;
- * VITE_TURN_CREDENTIAL — cf. README).
+ *
+ * Passer `config` à PeerJS remplace ses serveurs : on met des STUN, plus le relais TURN de
+ * Cloudflare si `VITE_TURN_ENDPOINT` est donné au build. Cloudflare ne donne pas d'identifiant
+ * fixe : un petit Worker (worker/turn-worker.js, gratuit) garde la clé secrète et fabrique des
+ * identifiants qui expirent seuls ; on les demande à chaque ouverture ou jonction de partie.
  */
-function iceServers(): RTCIceServer[] {
-  const servers: RTCIceServer[] = [
-    { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302', 'stun:global.stun.twilio.com:3478'] },
-  ];
-  const env = import.meta.env;
-  const urls = String(env.VITE_TURN_URLS ?? '').split(',').map((u) => u.trim()).filter(Boolean);
-  if (urls.length) servers.push({ urls, username: String(env.VITE_TURN_USERNAME ?? ''), credential: String(env.VITE_TURN_CREDENTIAL ?? '') });
-  return servers;
+const STUN: RTCIceServer = { urls: ['stun:stun.cloudflare.com:3478', 'stun:stun.l.google.com:19302'] };
+const TURN_ENDPOINT = String(import.meta.env.VITE_TURN_ENDPOINT ?? '');
+let turnCache: { at: number; servers: RTCIceServer[] } | null = null;
+
+async function peerOptions(): Promise<{ config: RTCConfiguration }> {
+  let servers: RTCIceServer[] = [];
+  if (TURN_ENDPOINT) {
+    if (turnCache && Date.now() - turnCache.at < 60 * 60 * 1000) servers = turnCache.servers;
+    else {
+      try {
+        const res = await fetch(TURN_ENDPOINT, { signal: AbortSignal.timeout(5000) });
+        if (res.ok) {
+          servers = ((await res.json()) as { iceServers: RTCIceServer[] }).iceServers;
+          turnCache = { at: Date.now(), servers };
+        } else console.warn('Relais TURN : le Worker a répondu', res.status);
+      } catch (e) {
+        // Sans relais, la partie marche encore entre deux appareils qui se joignent directement.
+        console.warn('Relais TURN injoignable :', e);
+      }
+    }
+  }
+  return { config: { iceServers: [STUN, ...servers], sdpSemantics: 'unified-plan' } as RTCConfiguration };
 }
-const PEER_OPTIONS = { config: { iceServers: iceServers(), sdpSemantics: 'unified-plan' } };
 /** Délai pour établir la liaison avec l'hôte : via un relais TURN, elle prend plus de 12 s. */
 const JOIN_TIMEOUT_MS = 30000;
 
@@ -263,9 +278,11 @@ export class Net {
     return this.openHost(loadout, 0);
   }
 
-  private openHost(loadout: Loadout, attempt: number): Promise<void> {
+  private async openHost(loadout: Loadout, attempt: number): Promise<void> {
     const code = makeCode();
-    const peer = new Peer(PREFIX + code, PEER_OPTIONS);
+    const options = await peerOptions();
+    if (this.role !== 'host') return; // on a quitté pendant la demande des identifiants
+    const peer = new Peer(PREFIX + code, options);
     this.peer = peer;
     return new Promise((resolve) => {
       peer.on('open', (id) => {
@@ -343,14 +360,16 @@ export class Net {
   }
 
   /** Rejoint la partie d'un hôte par son code. */
-  join(code: string, loadout: Loadout): Promise<void> {
+  async join(code: string, loadout: Loadout): Promise<void> {
     this.leave();
     const clean = cleanCode(code);
     this.role = 'client';
     this.code = clean;
     this.status = 'Connexion à l’hôte…';
     this.changed();
-    const peer = new Peer(PEER_OPTIONS);
+    const options = await peerOptions();
+    if (this.role !== 'client' || this.code !== clean) return; // on a quitté pendant la demande
+    const peer = new Peer(options);
     this.peer = peer;
     return new Promise((resolve) => {
       const fail = (why: string) => {
