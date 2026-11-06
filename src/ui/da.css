@@ -2264,25 +2264,47 @@
   gap: calc(1 * var(--u));
   margin: calc(0.8 * var(--u)) calc(11 * var(--u)) calc(0.4 * var(--u)) 0;
 }
-/* « Ajouter à l'équipe » : un vrai bouton (retour de test : « si tu ne sais pas que tu peux glisser… »). */
+/* « Ajouter à l'équipe » (retour de test : « un bouton chelou ») : un simple cadre d'encre, comme les autres
+   boutons de papier ; il se remplit de jaune au survol. */
 .cs-add {
   font-family: var(--head);
-  font-size: max(15px, calc(1.8 * var(--u)));
-  letter-spacing: 0.04em;
-  padding: calc(0.7 * var(--u)) calc(1.8 * var(--u));
-  min-height: 40px;
-  color: var(--paper);
-  background: #2f7d3a;
-  border: 0;
-  box-shadow: 0.2em 0.2em 0 var(--ink);
+  font-size: max(15px, calc(1.6 * var(--u)));
+  letter-spacing: 0.05em;
+  padding: calc(0.5 * var(--u)) calc(1.6 * var(--u));
+  min-height: 38px;
+  color: var(--ink);
+  background: transparent;
+  border: 2px solid var(--ink);
   cursor: pointer;
 }
-.cs-add.out {
-  background: var(--ink);
+.cs-add:hover:not(:disabled) {
+  background: var(--yel);
 }
 .cs-add:disabled {
-  opacity: 0.45;
+  opacity: 0.4;
   cursor: not-allowed;
+}
+/* Les pastilles d'infos de la fiche : icône et mot, en ligne. */
+.cs-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(0.6 * var(--u));
+  margin: calc(0.8 * var(--u)) calc(11 * var(--u)) 0 0;
+}
+.cs-chip2 {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(0.4 * var(--u));
+  padding: calc(0.2 * var(--u)) calc(0.9 * var(--u));
+  font-size: max(11px, calc(1.05 * var(--u)));
+  font-weight: 700;
+  color: var(--ink);
+  border: 1.5px solid color-mix(in srgb, var(--ink) 45%, transparent);
+  border-radius: 999px;
+}
+.cs-chip2 i {
+  font-style: normal;
+  color: var(--spray);
 }
 .cs-lv {
   padding: 0 calc(0.8 * var(--u));

@@ -157,6 +157,19 @@ const art = (id: number, parent: HTMLElement, cls = '') => {
   return img;
 };
 
+/** D'où vient un individu, en un mot (Mon.origin) ; '' si on ne l'a pas noté. */
+function originShort(save: Save, uid: number): string {
+  const o = save.mons[uid]?.origin ?? '';
+  if (o === 'starter') return 'Partenaire de départ';
+  if (o === 'quest') return 'Gagné en quête';
+  if (o === 'nectar') return 'Attiré par un nectar';
+  if (o === 'test') return '';
+  const cave = o.startsWith('cave:');
+  const b = cave ? o.slice(5) : o;
+  const biome = b in BIOMES ? BIOMES[b as BiomeId].name : '';
+  return cave ? `Grotte${biome ? ` · ${biome}` : ''}` : biome ? `Recruté · ${biome}` : '';
+}
+
 /**
  * Où trouver une espèce (retour de test) : les biomes dont elle est la faune,
  * et ceux dont les sbires l'envoient au fond des grottes (data/grunts.ts).
@@ -1059,11 +1072,24 @@ export class CampScreen {
     for (const t of data.types) typePill(t, head);
     // Simplifié (retour de test : « il y a beaucoup trop d'infos » : mène l'équipe, niveau de départ, provenance,
     // nature, talents en étoiles, poids…) : le niveau, et de quoi l'ajouter à l'équipe ou le laisser au camp.
-    // La nature et les talents jouent toujours dans les statistiques ci-dessous ; leur détail est en info-bulle.
+    // Quelques pastilles (poids, potentiel, nature, origine) disent le reste, avec leur info-bulle.
     const indiv = save.mons[id];
     el('small', 'cs-info cs-lv', head, `N.${lvl}`);
+    // Quelques pastilles lisibles, chacune avec son icône et une info-bulle qui dit ce que c'est.
+    const chips = el('div', 'cs-chips', card);
+    const chip = (icon: string, text: string, tip: string) => {
+      const c = el('span', 'cs-chip2', chips);
+      el('i', '', c, icon);
+      c.append(text);
+      c.title = tip;
+    };
     const stars = talentStars(indiv);
-    head.title = `Nature : ${natureText(indiv.nature)} · Talents ${stars}/5 · ${TRAIT_STATS.map((k) => `${TRAIT_LABEL[k]} +${indiv.iv[k]} %`).join(' · ')}`;
+    const w0 = weights.get(id);
+    if (w0) chip('⚖', `Poids ${w0.total}`, `Poids : Pokémon ${w0.mon} · attaques ${w0.moves} · objet ${w0.item}. L’équipe ne doit pas dépasser son plafond pour partir.`);
+    chip('★', `Potentiel ${stars}/5`, `Ce qui le distingue d’un autre de son espèce : plus il y a d’étoiles, plus il est doué. ${TRAIT_STATS.map((k) => `${TRAIT_LABEL[k]} +${indiv.iv[k]} %`).join(' · ')}`);
+    chip('✦', natureText(indiv.nature).split(' (')[0], `Nature : ${natureText(indiv.nature)}`);
+    const from = originShort(save, id);
+    if (from) chip('⚑', from, 'D’où il vient.');
     const act = el('div', 'cs-actions', card);
     if (busy(save, id)) el('small', 'cs-info', act, 'En mission chez Démolosse.');
     else {
