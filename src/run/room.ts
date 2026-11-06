@@ -634,20 +634,16 @@ export class RoomDirector {
   }
 
   /**
-   * Ligne de front : annonce la vague avant ses anneaux. Grondement, sol qui
-   * tremble et une flèche vers le bout d'où elle vient (au bord de l'écran
-   * s'il est hors champ), sans texte : ça se lit d'un coup d'œil.
+   * Ligne de front : annonce la vague avant ses anneaux : grondement et sol qui
+   * tremble, sans flèche ni texte.
    * Rend le préavis, en secondes.
    */
   private announce(world: WorldMap, player: Actor): number {
     const end = this.frontEnd(world, player);
     if (!end) return 0;
+    // Plus de flèche rose vers le bout d'où vient la vague (retour de test : « c'est un peu chiant ») :
+    // le grondement et la secousse suffisent à prévenir.
     this.dropIncoming();
-    const el = document.createElement('div');
-    el.className = 'room-incoming';
-    el.append(document.createElement('i'));
-    this.layer.append(el);
-    this.incoming = { x: end.x, y: end.y, t: FRONT_WARN + SPAWN_ANNOUNCE, el };
     sfx('quake');
     this.host.rumble();
     return FRONT_WARN;
