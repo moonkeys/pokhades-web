@@ -1110,7 +1110,10 @@ export class CampScreen {
     else {
       const full = !inTeam && save.team.length >= slots;
       const last = inTeam && save.team.length < 2;
-      const add = el('button', `cs-add${inTeam ? ' out' : ''}`, act, inTeam ? 'Mettre au camp' : 'Ajouter à l’équipe') as HTMLButtonElement;
+      // Un bouton à l'allure d'un bout de scotch : « ＋ » jaune pour entrer dans l'équipe, « ⌂ » sur papier pour en sortir.
+      const add = el('button', `cs-add${inTeam ? ' out' : ''}`, act) as HTMLButtonElement;
+      el('i', '', add, inTeam ? '⌂' : '＋');
+      add.append(inTeam ? 'Mettre au camp' : 'Ajouter à l’équipe');
       add.disabled = full || last;
       add.title = full ? 'L’équipe est complète.' : last ? 'Il faut au moins un Pokémon dans l’équipe.' : '';
       add.addEventListener('click', () => {

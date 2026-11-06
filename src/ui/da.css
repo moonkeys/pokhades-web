@@ -2266,22 +2266,46 @@
 }
 /* « Ajouter à l'équipe » (retour de test : « un bouton chelou ») : un simple cadre d'encre, comme les autres
    boutons de papier ; il se remplit de jaune au survol. */
-.cs-add {
+.camp-screen .cs-add {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(0.7 * var(--u));
   font-family: var(--head);
-  font-size: max(15px, calc(1.6 * var(--u)));
+  font-size: max(15px, calc(1.7 * var(--u)));
   letter-spacing: 0.05em;
-  padding: calc(0.5 * var(--u)) calc(1.6 * var(--u));
-  min-height: 38px;
+  padding: calc(0.5 * var(--u)) calc(1.8 * var(--u)) calc(0.5 * var(--u)) calc(1.2 * var(--u));
+  min-height: 40px;
   color: var(--ink);
-  background: transparent;
-  border: 2px solid var(--ink);
-  cursor: pointer;
-}
-.cs-add:hover:not(:disabled) {
   background: var(--yel);
+  border: 2px solid var(--ink);
+  box-shadow: 0.25em 0.25em 0 var(--ink);
+  rotate: -1deg;
+  cursor: pointer;
+  transition:
+    translate 0.1s,
+    box-shadow 0.1s;
 }
-.cs-add:disabled {
+.camp-screen .cs-add i {
+  font-style: normal;
+  font-size: 1.25em;
+  line-height: 1;
+}
+/* Sortir de l'équipe : sur papier, plus discret que l'entrée. */
+.camp-screen .cs-add.out {
+  background: var(--paper-hi);
+}
+.camp-screen .cs-add:hover:not(:disabled) {
+  translate: -0.1em -0.1em;
+  box-shadow: 0.35em 0.35em 0 var(--ink);
+}
+.camp-screen .cs-add:active:not(:disabled) {
+  translate: 0.1em 0.1em;
+  box-shadow: 0.1em 0.1em 0 var(--ink);
+}
+.camp-screen .cs-add:disabled {
   opacity: 0.4;
+  box-shadow: none;
+  rotate: 0deg;
   cursor: not-allowed;
 }
 /* Les pastilles d'infos de la fiche : icône et mot, en ligne. */
