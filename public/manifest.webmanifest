@@ -1,0 +1,16 @@
+{
+  "name": "Pokhades — Libérez-les tous !",
+  "short_name": "Pokhades",
+  "description": "Un roguelite Pokémon : tu joues un Pokémon rebelle.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "landscape",
+  "background_color": "#0b0d0a",
+  "theme_color": "#0b0d0a",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
