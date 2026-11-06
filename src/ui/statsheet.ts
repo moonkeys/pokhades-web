@@ -4,6 +4,7 @@ import type { Pokemon } from '../combat/pokemon';
 import type { HeldItem } from '../meta/catalog';
 import { typeColor } from '../render/combatfx';
 import { typePill } from './hud';
+import { hint } from './hints';
 
 // Fiche des statistiques de l'équipe, touche C (comme « caractéristiques »,
 // même place sur AZERTY et QWERTY), en run comme au Repaire : une bande de
@@ -80,7 +81,7 @@ export class StatSheet {
     const page = el('div', 'stats-page', this.root);
     const head = el('div', 'stats-head', page);
     el('span', 'da-tape', head, boons ? 'Équipe · statistiques' : 'Équipe du Repaire · au départ');
-    el('small', 'stats-keys', head, 'C, Échap ou clic : fermer');
+    el('small', 'stats-keys', head, hint('C, Échap ou clic : fermer', 'Touche pour fermer'));
 
     const grid = el('div', 'stats-grid', page);
     for (const e of entries) statCard(grid, e);

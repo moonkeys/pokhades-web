@@ -82,12 +82,14 @@ export const SOUNDS = {
   vs: { files: se('Vs flash'), db: -4, jitter: 0 },
 
   // ── Exploration ────────────────────────────────────────────────────────
+  // Les sons qui accompagnent une notification (baie, butin, coffre, nouveau Pokémon) sont très discrets : retour de
+  // test, « on n'entend que ça, ça fait trop de notifs ».
   /** Baie ramassée : le tintement des jetons du Voltorbataille. */
-  coin: { files: se('Voltorb Flip point'), db: -12, jitter: 0.12, gap: 0.06 },
+  coin: { files: se('Voltorb Flip point'), db: -20, jitter: 0.12, gap: 0.06 },
   /** Butin en ₽ pris au centre de la salle. */
-  loot: { files: se('Voltorb Flip gain coins'), db: -8, jitter: 0, gap: 0.5 },
+  loot: { files: se('Voltorb Flip gain coins'), db: -18, jitter: 0, gap: 0.5 },
   /** Coffre ouvert : le jingle de l'objet trouvé. */
-  chest: { files: me('Item get'), db: -6, jitter: 0, gap: 1 },
+  chest: { files: me('Item get'), db: -22, jitter: 0, gap: 1 },
   /** On choisit une porte, on entre dans une grotte, on en ressort. */
   doorEnter: { files: se('Door enter'), db: -4, jitter: 0, gap: 0.3 },
   doorExit: { files: se('Door exit'), db: -4, jitter: 0, gap: 0.3 },
@@ -104,7 +106,7 @@ export const SOUNDS = {
   victory: { files: me('Badge get'), db: -4, jitter: 0, gap: 2 },
   defeat: { files: me('Voltorb Flip game over'), db: -4, jitter: 0, gap: 2 },
   /** Nouveau Pokémon débloqué. */
-  pkmnGet: { files: me('Pkmn get'), db: -4, jitter: 0, gap: 2 },
+  pkmnGet: { files: me('Pkmn get'), db: -12, jitter: 0, gap: 2 },
   moveLearnt: { files: se('Pkmn move learnt'), db: -2, jitter: 0 },
   evoStart: { files: me('Evolution start'), db: -2, jitter: 0 },
   evoSuccess: { files: me('Evolution success'), db: -2, jitter: 0 },
@@ -274,6 +276,8 @@ const ESSENTIALS_MUSIC = {
   camp: { file: `${ESSENTIALS_AUDIO}/BGM/Surfing.ogg`, db: -10 },
   boss: { file: `${ESSENTIALS_AUDIO}/BGM/Battle trainer.ogg`, db: -8 },
   victory: { file: `${ESSENTIALS_AUDIO}/BGM/Battle victory leader.ogg`, db: -8 },
+  /** L'écran-titre (Title.ogg, en .ogg dans Essentials). */
+  title: { file: `${ESSENTIALS_AUDIO}/BGM/Title.ogg`, db: -10 },
 } as const;
 
 /**
@@ -296,6 +300,18 @@ export const BIOME_TRACKS = {
   grotte: { mid: 'Cave.mid', slug: 'cave' },
   victoire: { mid: 'Ingido Plateau.mid', slug: 'indigo-plateau' },
   shop: { mid: 'Poke Mart.mid', slug: 'poke-mart' },
+  // Plus d'ambiance selon les lieux (retour de test : « d'autres musiques vraiment plus d'ambiance en fonction
+  // des lieux ») : l'Océan sous l'eau, le Repaire en ville tranquille, une berceuse à la défaite, le Panthéon à la
+  // victoire, et des combats de boss qui changent selon l'adversaire (arène, Conseil, Maître). (Underwater.mid et
+  // Battle Elite.mid sont des copies exactes de Cave.mid et Battle Gym Leader.mid : l'Océan garde Surfing, le Conseil
+  // prend Battle Frontier.)
+  camp: { mid: 'Lerucean Town.mid', slug: 'lerucean' },
+  defeat: { mid: 'Radio - Lullaby.mid', slug: 'lullaby' },
+  halloffame: { mid: 'Hall of Fame.mid', slug: 'hall-of-fame' },
+  gym: { mid: 'Gym.mid', slug: 'gym' },
+  bossgym: { mid: 'Battle Gym Leader.mid', slug: 'battle-gym' },
+  bosselite: { mid: 'Battle Frontier.mid', slug: 'battle-frontier' },
+  bosschamp: { mid: 'Battle Champion.mid', slug: 'battle-champion' },
 } as const;
 
 /** Une musique : le fichier source (Essentials) et, pour les pistes rendues, leur chemin servi. */

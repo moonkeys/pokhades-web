@@ -3,6 +3,7 @@ import type { Champion } from '../data/champions';
 import type { Actor } from '../entities/actor';
 import { formatDuration, type RunStats } from '../meta/runstats';
 import { curve, spray } from './spray';
+import { hint } from './hints';
 
 // Bilan de fin de run (meta/runstats.ts), dans la DA « Tag sacré » : la même
 // affiche scotchée que celle du prochain combat (bosspreview.ts), mais c'est
@@ -154,7 +155,7 @@ export class RunSummary {
       bar.style.setProperty('--w', `${(m.dealt / top1) * 100}%`);
       el('small', '', c, `⚔ ${fmt(m.dealt)}`);
     }
-    el('p', 'keys', poster, 'Entrée, E ou Échap : rentrer au Repaire');
+    el('p', 'keys', poster, hint('Entrée, E ou Échap : rentrer au Repaire', 'Touche pour rentrer au Repaire'));
     for (const [side, rot] of [
       ['left: 4%', -14],
       ['right: 4%', 11],

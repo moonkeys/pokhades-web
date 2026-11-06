@@ -73,6 +73,9 @@ export class Renderer {
   /** Agrandissement entier tampon → écran. */
   scale = 1;
   camX = 0;
+  /** Le terrain répété au-delà des bords de la carte (draw), refait quand la carte change. */
+  private beyond: CanvasPattern | null = null;
+  private beyondFor: HTMLCanvasElement | null = null;
   camY = 0;
 
   constructor(
@@ -127,7 +130,11 @@ export class Renderer {
     // Échelle entière la plus proche de la hauteur visée, puis vue élargie
     // juste assez pour couvrir la fenêtre : pas de bandes noires, et la
     // hauteur réelle reste à ±1 facteur de la résolution choisie.
-    this.scale = Math.max(1, Math.round(ph / (opts.viewHeight * this.k)));
+    // En portrait (retour de test : plus de rotation forcée), l'échelle de la hauteur ne laisserait que quelques
+    // cases de large : on la plafonne pour garder au moins 224 px de monde en largeur.
+    const byHeight = Math.round(ph / (opts.viewHeight * this.k));
+    const byWidth = Math.floor(pw / (224 * this.k));
+    this.scale = Math.max(1, Math.min(byHeight, byWidth));
     // Plancher : une fenêtre momentanément à 0 px (onglet replié, panneau
     // redimensionné) donnerait un tampon vide, que drawImage refuse net.
     this.viewH = Math.max(90, Math.ceil(ph / (this.scale * this.k)));
@@ -707,6 +714,24 @@ export class Renderer {
     b.globalAlpha = 1;
     b.fillStyle = '#10140f';
     b.fillRect(0, 0, this.buf.width, this.buf.height);
+    // Écran plus grand que la carte (grande fenêtre, salle étroite) : au-delà du bord, le terrain se
+    // répète, assombri, au lieu d'un fond noir (retour de test : « sur grand écran, le fond est noir »).
+    if (mapW < this.viewW || mapH < this.viewH) {
+      if (this.beyondFor !== ground) {
+        this.beyondFor = ground;
+        this.beyond = b.createPattern(ground, 'repeat');
+      }
+      if (this.beyond) {
+        b.save();
+        b.scale(k, k);
+        b.translate(-camX, -camY);
+        b.fillStyle = this.beyond;
+        b.fillRect(camX, camY, this.viewW, this.viewH);
+        b.fillStyle = 'rgba(8, 12, 8, 0.5)';
+        b.fillRect(camX, camY, this.viewW, this.viewH);
+        b.restore();
+      }
+    }
     b.drawImage(ground, camX, camY, this.viewW, this.viewH, 0, 0, this.viewW * k, this.viewH * k);
     this.waves.draw(b, camX, camY, this.viewW, this.viewH, k, time);
 

@@ -3,7 +3,7 @@ import { isTouch } from '../input/touch';
 // Le plein écran sur téléphone (retour de test : « une partie de l'onglet me gêne, je ne vois pas
 // les Pokémon » : la barre d'adresse du navigateur, Ecosia par exemple, mange l'écran).
 // - Android (Chrome, Edge, Firefox, Ecosia…) : l'API plein écran, déclenchée par un geste (le tap
-//   sur un bouton du menu), puis on verrouille l'écran à l'horizontale quand le navigateur le laisse.
+//   sur un bouton du menu). L'orientation n'est plus forcée : on joue aussi en portrait.
 // - iPhone : Safari ne l'offre pas pour une page web. Reste « Partager → Sur l'écran d'accueil » : le jeu
 //   s'ouvre alors sans barre (manifest.webmanifest et la balise apple-mobile-web-app-capable).
 
@@ -38,12 +38,6 @@ export async function toggleFullscreen(): Promise<'on' | 'off' | 'ios' | 'refuse
       return 'off';
     }
     await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
-    // À l'horizontale : le jeu n'a pas d'autre disposition (non géré partout, d'où le try).
-    try {
-      await (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }).lock?.('landscape');
-    } catch {
-      /* verrouillage refusé : tant pis, la page demande déjà de tourner l'appareil */
-    }
     return 'on';
   } catch {
     return 'refused';

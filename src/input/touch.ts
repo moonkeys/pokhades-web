@@ -123,12 +123,6 @@ export class TouchControls {
     this.tapButton(top, 'Escape', '☰');
     this.tapButton(top, 'KeyC', 'Fiche');
 
-    // Consigne en portrait : l'interface est pensée pour un cadre 16:9.
-    const rotate = el('div', 'touch-rotate');
-    el('b', '', rotate, '⟳');
-    el('span', '', rotate, 'Tourne ton appareil pour jouer');
-    document.body.append(rotate);
-
     // Pas de menu contextuel ni de loupe sur un appui long.
     addEventListener('contextmenu', (e) => {
       if (!(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) e.preventDefault();

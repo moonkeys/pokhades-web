@@ -261,23 +261,23 @@ export type BuildingId = 'outpost' | 'tavern' | 'study' | 'market' | 'dorm' | 't
  * construction leur fait de la place (camp.ts, `dwellers`).
  */
 export const BUILDINGS: readonly { id: BuildingId; name: string; desc: string; price?: number; cost?: Cost; art: number; needs?: BuildingId }[] = [
-  { id: 'outpost', name: 'Poste d’expédition', desc: 'Une petite place de briques et la carte des expéditions : Démolosse s’y installe et envoie des libérés en mission chercher des ressources.', price: 80, art: 229 },
-  { id: 'tavern', name: 'Buvette', desc: 'Un comptoir, une table et le tableau des quêtes : Kangourex s’y installe, et ses quêtes font venir des Pokémon introuvables ailleurs.', price: 150, art: 115 },
-  { id: 'study', name: 'Étude d’Alakazam', desc: 'Une hutte de mousse et sa statue : Alakazam s’y installe et vend améliorations et CS.', price: 100, art: 65 },
-  { id: 'market', name: 'Marché du tuteur', desc: 'Trois étals sous auvent : M. Mime y enseigne les CT, Miaouss y vend objets tenus et Super Bonbons.', price: 150, art: 122 },
-  { id: 'dorm', name: 'Dortoir', desc: 'Deux tipis et des paillasses : 3 places de plus au Repaire, et Démolosse, au poste d’expédition, peut mener une mission de plus.', cost: { wood: 15, food: 5 }, art: 143 },
-  { id: 'training', name: 'Terrain d’entraînement', desc: 'De la terre battue et des mannequins : des libérés s’y entraînent, et Démolosse y envoie qui veut gagner des niveaux.', cost: { wood: 20, stone: 15 }, art: 4 },
-  { id: 'jetty', name: 'Ponton', desc: 'Un ponton de bois sur le lac, à l’écart du feu : on marche jusqu’au bout, au-dessus de l’eau.', cost: { wood: 30 }, art: 7 },
-  { id: 'clearing', name: 'Défrichage', desc: 'On abat la forêt à l’ouest de la place : une clairière s’ouvre, où des libérés viennent se promener.', cost: { food: 15 }, art: 532 },
-  { id: 'field', name: 'Champ de cultures', desc: 'De la terre labourée dans la clairière : des libérés la cultivent, et le camp gagne de la Nourriture à chaque salle franchie. Héliatronc y tient un potager : il y plante les herbes de l’atelier.', cost: { wood: 10, stone: 5 }, art: 1, needs: 'clearing' },
-  { id: 'houses', name: 'Maisons', desc: 'Deux chaumières et des paillasses dans la clairière : 4 places de plus au Repaire.', cost: { wood: 30, stone: 20, food: 10 }, art: 25, needs: 'clearing' },
-  { id: 'gardens', name: 'Jardins fleuris', desc: 'Des massifs fleuris autour de la place, et deux bancs face au tableau de Bouldeneu : des libérés viennent y suivre ses leçons.', cost: { wood: 10, food: 10 }, art: 182 },
-  { id: 'lamps', name: 'Lampadaires', desc: 'Quelques lampadaires le long des allées, comme en ville : des libérés viennent veiller dessous.', cost: { stone: 20, wood: 5 }, art: 125, needs: 'study' },
-  { id: 'eastglade', name: 'Défrichage de l’est', desc: 'On abat la forêt derrière la hutte de l’équipe : le camp s’agrandit d’une seconde clairière, à l’est.', cost: { wood: 10, food: 20 }, art: 75, needs: 'houses' },
-  { id: 'hamlet', name: 'Bourg', desc: 'Deux maisons, une place pavée et son puits dans la clairière de l’est : un coin de ville, et 6 places de plus au Repaire.', cost: { wood: 40, stone: 30, food: 15 }, art: 133, needs: 'eastglade' },
+  { id: 'outpost', name: 'Poste d’expédition', desc: 'Envoie des libérés en mission chercher des ressources.', price: 80, art: 229 },
+  { id: 'tavern', name: 'Buvette', desc: 'Des quêtes qui font venir de nouveaux Pokémon.', price: 150, art: 115 },
+  { id: 'study', name: 'Étude d’Alakazam', desc: 'Alakazam vend améliorations et CS.', price: 100, art: 65 },
+  { id: 'market', name: 'Marché du tuteur', desc: 'Attaques, objets tenus et Super Bonbons.', price: 150, art: 122 },
+  { id: 'dorm', name: 'Dortoir', desc: '+3 places au Repaire, +1 mission.', cost: { wood: 15, food: 5 }, art: 143 },
+  { id: 'training', name: 'Terrain d’entraînement', desc: 'Les libérés s’y entraînent et gagnent des niveaux.', cost: { wood: 20, stone: 15 }, art: 4 },
+  { id: 'jetty', name: 'Ponton', desc: 'Un ponton sur le lac. Pour le décor.', cost: { wood: 30 }, art: 7 },
+  { id: 'clearing', name: 'Défrichage', desc: 'Ouvre une clairière à l’ouest.', cost: { food: 15 }, art: 532 },
+  { id: 'field', name: 'Champ de cultures', desc: 'Un potager : de la Nourriture à chaque salle, et les herbes de l’atelier.', cost: { wood: 10, stone: 5 }, art: 1, needs: 'clearing' },
+  { id: 'houses', name: 'Maisons', desc: '+4 places au Repaire.', cost: { wood: 30, stone: 20, food: 10 }, art: 25, needs: 'clearing' },
+  { id: 'gardens', name: 'Jardins fleuris', desc: 'Des fleurs et des bancs. Pour le décor.', cost: { wood: 10, food: 10 }, art: 182 },
+  { id: 'lamps', name: 'Lampadaires', desc: 'Des lampadaires le long des allées. Pour le décor.', cost: { stone: 20, wood: 5 }, art: 125, needs: 'study' },
+  { id: 'eastglade', name: 'Défrichage de l’est', desc: 'Ouvre une seconde clairière à l’est.', cost: { wood: 10, food: 20 }, art: 75, needs: 'houses' },
+  { id: 'hamlet', name: 'Bourg', desc: '+6 places au Repaire.', cost: { wood: 40, stone: 30, food: 15 }, art: 133, needs: 'eastglade' },
   // Ajout (retour de test : « un nouvel aménagement, un atelier avec un Pokémon artisan ») :
   // il suit le champ, dont le potager fournit les herbes de ses recettes (meta/crafting.ts).
-  { id: 'atelier', name: 'Atelier de l’artisan', desc: 'Une maison de briques sur la rive du lac : Queulorior y façonne des objets tenus introuvables ailleurs et des nectars qui attirent de nouveaux Pokémon, avec les matériaux des coffres et les herbes du potager.', price: 220, art: 235, needs: 'field' },
+  { id: 'atelier', name: 'Atelier de l’artisan', desc: 'Fabrique des objets tenus et des nectars à Pokémon.', price: 220, art: 235, needs: 'field' },
 ];
 
 /**
@@ -311,10 +311,10 @@ export type CsId = 'surf' | 'cut' | 'strength' | 'rock-smash';
  * coffres de run (run/chests.ts). Force (pousser un rocher) viendra plus tard.
  */
 export const CS_LIST: readonly { id: CsId; name: string; price: number; desc: string; ready: boolean; icon: string }[] = [
-  { id: 'surf', name: 'Surf', price: 250, desc: 'Nager à travers l’eau : le lac du Repaire et l’île qu’il garde, et en run l’eau des salles (l’îlot du Lac, la mer de la Plage) et la route de l’Océan. Sans elle, on ne nage plus.', ready: true, icon: 'machine_WATER' },
-  { id: 'cut', name: 'Coupe', price: 200, desc: 'Couper les arbustes qui gardent les coffres des prairies, forêts, marais et lacs.', ready: true, icon: 'machine_GRASS' },
-  { id: 'rock-smash', name: 'Éclate-Roc', price: 180, desc: 'Briser les rochers fissurés qui gardent les coffres des volcans, rocailles, montagnes glacées, villages et plages.', ready: true, icon: 'machine_FIGHTING' },
-  { id: 'strength', name: 'Force', price: 220, desc: 'Pousser les rochers qui bloquent l’accès à certains coffres.', ready: false, icon: 'machine_NORMAL' },
+  { id: 'surf', name: 'Surf', price: 250, desc: 'Nager dans l’eau, au Repaire comme en run.', ready: true, icon: 'machine_WATER' },
+  { id: 'cut', name: 'Coupe', price: 200, desc: 'Coupe les arbustes qui gardent des coffres.', ready: true, icon: 'machine_GRASS' },
+  { id: 'rock-smash', name: 'Éclate-Roc', price: 180, desc: 'Brise les rochers qui gardent des coffres.', ready: true, icon: 'machine_FIGHTING' },
+  { id: 'strength', name: 'Force', price: 220, desc: 'Pousse les rochers qui bloquent des coffres.', ready: false, icon: 'machine_NORMAL' },
 ];
 
 /**

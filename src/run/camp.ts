@@ -77,35 +77,35 @@ export const STATIONS: Record<Station, { id: number; type: string; title: string
     type: 'dragon',
     title: 'Départ',
     kicker: 'en route',
-    intro: 'Prêt à repartir ? Chaque salle nettoyée est un pas de plus pour la rébellion. Là-bas, les dresseurs ne nous feront pas de cadeaux. Mais nous non plus.',
+    intro: 'Prêt à repartir ? Passe l’arche.',
   },
   team: {
     id: CAMP_NPCS.team,
     type: 'normal',
     title: 'Équipe',
     kicker: 'la hutte',
-    intro: 'Je garde la trace de chaque Pokémon libéré. Choisis qui part avec toi, ce qu’ils savent faire et ce qu’ils emportent.',
+    intro: 'Choisis qui part avec toi.',
   },
   builder: {
     id: CAMP_NPCS.builder,
     type: 'ground',
     title: 'Aménagements',
     kicker: 'le bâtisseur',
-    intro: 'Regarde autour de toi : de la terre battue et un feu. On peut faire mieux. Chaque construction fait venir du monde — un camp qui grandit, c’est une rébellion qui tient.',
+    intro: 'Construisons de quoi agrandir le camp.',
   },
   missions: {
     id: CAMP_NPCS.missions,
     type: 'dark',
     title: 'Missions',
     kicker: 'le pisteur',
-    intro: 'Je connais chaque sentier à trois jours d’ici. Confie-moi des libérés : ils rapporteront du bois, de la pierre, des vivres. Ils avancent pendant que tu te bats, salle après salle.',
+    intro: 'Envoie des libérés en mission : ils rapportent des ressources.',
   },
   quests: {
     id: CAMP_NPCS.quests,
     type: 'normal',
     title: 'Quêtes',
     kicker: 'la doyenne',
-    intro: 'J’ai vu passer bien des rebelles, petit. Les plus forts ne sont pas ceux qui frappent le plus fort, mais ceux qui relèvent les défis. Relève les miens, et des amis rares te rejoindront.',
+    intro: 'Relève mes quêtes : des Pokémon rares te rejoindront.',
   },
   // Ajout (retour de test : « au lieu d'appuyer sur une touche, créer un PNJ » ; « un panneau
   // avec un plan, juste avant de partir ») : Xatu, qui voit le passé et l'avenir, tient le
@@ -115,7 +115,7 @@ export const STATIONS: Record<Station, { id: number; type: string; title: string
     type: 'psychic',
     title: 'Exploits',
     kicker: 'le chroniqueur',
-    intro: 'Je vois ce que tu as fait… et ce qu’il te reste à faire. Chaque champion qui tombe, chaque terre que tu foules, je l’inscris. Reviens me voir : la rébellion récompense ceux qui écrivent son histoire.',
+    intro: 'J’inscris tes exploits. Reviens les réclamer.',
   },
   map: {
     // (Pas de gardien : le panneau du plan, à côté de l'arche.)
@@ -130,21 +130,21 @@ export const STATIONS: Record<Station, { id: number; type: string; title: string
     type: 'grass',
     title: 'Leçons',
     kicker: 'le savant',
-    intro: 'Ah, un rebelle curieux ! J’ai tout noté : les types, les états, les dons des légendaires, les pièges des salles… Assieds-toi, et demande-moi ce que tu veux. On se bat mieux quand on sait pourquoi on gagne.',
+    intro: 'Demande-moi comment le jeu marche.',
   },
   moves: {
     id: CAMP_NPCS.moves,
     type: 'psychic',
     title: 'CT',
     kicker: 'le tuteur',
-    intro: 'Une bonne capacité bien choisie vaut mieux qu’une armée mal préparée. Je peux t’enseigner tout un éventail de techniques, contre quelques Baies.',
+    intro: 'Je t’apprends de nouvelles attaques, contre des Baies.',
   },
   upgrades: {
     id: CAMP_NPCS.upgrades,
     type: 'psychic',
     title: 'Améliorations',
     kicker: 'l’étude',
-    intro: 'La force seule ne suffit pas contre la Ligue. Il faut aussi la stratégie. Investis dans tes capacités, et chaque combat te coûtera moins cher.',
+    intro: 'Des améliorations pour toute l’équipe, contre des Baies.',
   },
   // Ajout (retour de test) : les objets tenus et les Super Bonbons quittent l'étude d'Alakazam
   // pour l'étal de Miaouss, au marché.
@@ -153,14 +153,14 @@ export const STATIONS: Record<Station, { id: number; type: string; title: string
     type: 'normal',
     title: 'Objets',
     kicker: 'le marchand',
-    intro: 'Tout ce qui brille finit sur mon étal, nya. Un objet bien tenu change un Pokémon… et un Super Bonbon, ça se reprend si tu changes d’avis. Tant que tu paies en Baies !',
+    intro: 'Objets tenus et Super Bonbons, contre des Baies.',
   },
   online: {
     id: CAMP_NPCS.online,
     type: 'flying',
     title: 'En ligne',
     kicker: 'le messager',
-    intro: 'Je porte les messages d’un camp à l’autre. D’autres rebelles se battent ailleurs : un jour, je te mènerai jusqu’à eux.',
+    intro: 'Je t’emmène jouer avec d’autres rebelles.',
   },
   // Ajout (retour de test : « on sème des graines… un artisan… le nectar ») : le potager du
   // champ, l'atelier de l'artisan, et le Pokémon qu'un nectar a attiré (meta/crafting.ts).
@@ -169,14 +169,14 @@ export const STATIONS: Record<Station, { id: number; type: string; title: string
     type: 'grass',
     title: 'Potager',
     kicker: 'la jardinière',
-    intro: 'Le soleil, l’eau, un peu de patience… Dis-moi ce que tu veux voir pousser : je le plante dans mes parcelles, et pendant que tu te bats, ça fleurit.',
+    intro: 'Choisis ce que je plante : ça pousse pendant tes runs.',
   },
   craft: {
     id: CAMP_NPCS.craft,
     type: 'normal',
     title: 'Atelier',
     kicker: 'l’artisan',
-    intro: 'Une plume, une écaille, une poignée d’herbes… Pour moi, tout ça, c’est de la peinture. Apporte-moi ce que tu trouves dans les coffres, et je t’en fais un objet que personne ne vend.',
+    intro: 'Apporte-moi tes trouvailles : j’en fais des objets rares.',
   },
   visitor: {
     // (Son espèce change à chaque nectar : stationId la lit dans la sauvegarde.)
@@ -374,6 +374,8 @@ export class Camp {
   private talkers: Talker[] = [];
   private fire = { x: 0, y: 0 };
   private gate = { x: 0, y: 0 };
+  /** 0 à 1 : le halo de l'arche s'embrase quand on part en run (main.ts, startDeparture). */
+  departGlow = 0;
   /** Étals du tuteur : pied de l'auvent, et les CT posées sur la table. */
   private stalls: { x: number; y: number; icons: string[] }[] = [];
   /** Ponton bâti (pied du sprite), dessiné au ras du sol pour qu'on marche dessus. */
@@ -1395,6 +1397,9 @@ export class Camp {
     if (!this.active) return [];
     type Extra = { y: number; draw(b: CanvasRenderingContext2D, camX: number, camY: number, k: number): void };
     const out: Extra[] = [
+      // Le halo de l'arche, toujours là (retour de test : « toujours présent sous l'arche, comme les portes
+      // d'une salle ») : la même lueur et les mêmes particules qu'une porte ouverte, au ras du sol.
+      { y: -Infinity, draw: (b, camX, camY, k) => this.drawGateGlow(b, camX, camY, k, time) },
       { y: this.fire.y * TILE + 4, draw: (b, camX, camY, k) => this.drawFlame(b, camX, camY, k, time) },
       // Le temple se trie sur le haut de son escalier : qui le gravit passe devant lui.
       { y: this.temple.top * TILE, draw: (b, camX, camY, k) => this.drawSprite(b, camX, camY, k, CAMP_PROPS.ruins, this.temple.x, this.temple.y) },
@@ -1426,6 +1431,34 @@ export class Camp {
   }
 
   /** La flamme d'Essentials (Animations/fire5), en boucle au milieu de son cercle de pierres. */
+  /** La lueur de l'arche : comme celle d'une porte ouverte (room.ts, drawOverlay), plus vive au départ. */
+  private drawGateGlow(b: CanvasRenderingContext2D, camX: number, camY: number, k: number, time: number): void {
+    const g = this.gate;
+    if (!g.x && !g.y) return;
+    const u = this.departGlow;
+    const cx = Math.round((g.x * TILE - camX) * k);
+    const cy = Math.round((g.y * TILE - camY) * k);
+    const half = 1.6;
+    const rx = (half + 0.5 + 2 * u) * TILE * k;
+    const ry = 1.2 * TILE * k * 0.6 * (1 + 1.6 * u);
+    b.globalCompositeOperation = 'lighter';
+    const grad = b.createRadialGradient(cx, cy, 0, cx, cy, Math.max(rx, ry));
+    grad.addColorStop(0, `rgba(255, 210, 63, ${Math.min(1, 0.6 + 0.15 * Math.sin(time * 3) + 0.4 * u)})`);
+    grad.addColorStop(1, 'rgba(255, 210, 63, 0)');
+    b.fillStyle = grad;
+    b.beginPath();
+    b.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+    b.fill();
+    for (let i = 0; i < 22; i++) {
+      const ph = (time * (0.3 + 0.5 * u) + i * 0.137) % 1;
+      const ox = (((i * 0.618) % 1) - 0.5) * 2 * half;
+      const oy = (((i * 0.382) % 1) - 0.5) * 2 * 0.8;
+      b.fillStyle = `rgba(255, 210, 63, ${1 - ph})`;
+      b.fillRect(Math.round(cx + ox * TILE * k), Math.round(cy + oy * TILE * k) - Math.round(ph * 24 * k), 2 * k, 2 * k);
+    }
+    b.globalCompositeOperation = 'source-over';
+  }
+
   private drawFlame(b: CanvasRenderingContext2D, camX: number, camY: number, k: number, time: number): void {
     const img = this.flame;
     if (!img) return;

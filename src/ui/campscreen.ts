@@ -11,7 +11,7 @@ import { BIOME_GRUNTS, GRUNT_THEMES } from '../data/grunts';
 import { BIOMES } from '../world/biomes';
 import { MISSIONS, available, busy, collect, mission, missionSlots, open as missionOpen, recall, rewardText, send, type Mission, type MissionId } from '../meta/missions';
 import { NICK_MAX, capacity, isBaseForm, recruitThreshold, welcomeMon, level, monName, ownedSpecies, ownsSpecies, roster as rosterIds, speciesOf, startLevel, type Save } from '../meta/save';
-import { natureText, talentStars, TRAIT_LABEL, TRAIT_STATS, applyTraits } from '../meta/mons';
+import { natureText, applyTraits } from '../meta/mons';
 import { MAX_ACTIVE, QUESTS, abandonQuest, acceptQuest, claimQuest, questFor, questState } from '../meta/quests';
 import { memberWeight, moveWeight, weightCap, type MemberWeight } from '../meta/weight';
 import { typeColor } from '../render/combatfx';
@@ -21,6 +21,8 @@ import { LORE, TYPES_CHAPTER, type LoreChapter } from '../data/lore';
 import { TYPE_CHART } from '../combat/damage';
 import { resIcon } from './resicon';
 import { MAX_PLAYERS, cleanCode, net, type Loadout } from '../net/net';
+import { hint } from './hints';
+import { isTouch } from '../input/touch';
 
 // Écrans des postes du Repaire, dans la DA « Tag sacré » : à gauche le gardien
 // du poste en grand (son illustration détourée de blanc), son rôle au
@@ -157,18 +159,17 @@ const art = (id: number, parent: HTMLElement, cls = '') => {
   return img;
 };
 
-/** D'où vient un individu (Mon.origin), pour sa fiche ; '' si on ne l'a pas noté. */
-function originText(save: Save, uid: number): string {
+/** D'où vient un individu, en un mot (Mon.origin) ; '' si on ne l'a pas noté. */
+function originShort(save: Save, uid: number): string {
   const o = save.mons[uid]?.origin ?? '';
-  if (o === 'starter') return 'partenaire de départ';
-  if (o === 'quest') return 'gagné à une quête de Kangourex';
-  if (o === 'nectar') return 'attiré par un nectar de l’atelier';
-  if (o === 'test') return 'venu du panneau de test';
+  if (o === 'starter') return 'Partenaire de départ';
+  if (o === 'quest') return 'Gagné en quête';
+  if (o === 'nectar') return 'Attiré par un nectar';
+  if (o === 'test') return '';
   const cave = o.startsWith('cave:');
   const b = cave ? o.slice(5) : o;
   const biome = b in BIOMES ? BIOMES[b as BiomeId].name : '';
-  if (cave) return biome ? `libéré d’une grotte · ${biome}` : 'libéré d’une grotte';
-  return biome ? `recruté · ${biome}` : '';
+  return cave ? `Grotte${biome ? ` · ${biome}` : ''}` : biome ? `Recruté · ${biome}` : '';
 }
 
 /**
@@ -382,7 +383,16 @@ export class CampScreen {
     shard.title = 'Éclats de Champion';
     el('b', '', shard, String(ctx.save.shards));
     icon(SHARDS.icon, shard, 'cs-res-ico');
-    el('div', 'cs-keys', page, this.station === 'start' ? 'Entrée : partir · Échap : rester au camp' : this.station === 'team' && this.teamTab === 'team' ? 'Glisser-déposer ou flèches + Entrée (deux fois : entrer, sortir de l’équipe) · Échap : fermer' : 'Flèches + Entrée, ou clic : choisir · Échap : fermer');
+    el(
+      'div',
+      'cs-keys',
+      page,
+      this.station === 'start'
+        ? hint('Entrée : partir · Échap : rester au camp', 'Touche ✕ pour rester au camp')
+        : this.station === 'team' && this.teamTab === 'team'
+          ? hint('Clique un Pokémon puis « Ajouter à l’équipe » (ou glisse-le) · Échap : fermer', 'Touche un Pokémon puis « Ajouter à l’équipe »')
+          : hint('Flèches + Entrée, ou clic : choisir · Échap : fermer', 'Touche pour choisir · ✕ pour fermer'),
+    );
     const close = el('button', 'cs-close', page, '✕');
     close.addEventListener('click', () => this.close());
 
@@ -481,7 +491,7 @@ export class CampScreen {
 
   // ── CT ───────────────────────────────────────────────────────────────
   private async renderMoves(main: HTMLElement, page: HTMLElement, ctx: CampCtx): Promise<void> {
-    el('p', 'cs-quote', main, 'Une CT achetée l’est pour de bon. Clique sur une carte pour voir qui peut l’apprendre.');
+    el('p', 'cs-quote', main, 'Clique une carte pour voir qui peut l’apprendre.');
     const grid = el('div', 'cs-grid', main);
     const moves = await Promise.all(TMS.map((t) => move(t.api)));
     TMS.forEach((tm, i) => {
@@ -572,7 +582,7 @@ export class CampScreen {
   // ── Objets (Miaouss) ─────────────────────────────────────────────────
   private renderItems(main: HTMLElement, ctx: CampCtx): void {
     const grid = el('div', 'cs-grid', main);
-    el('p', 'cs-quote wide', grid, 'Un objet tenu se donne à un Pokémon à la hutte de Porygon ; il le garde d’une run à l’autre. Un Super Bonbon s’y donne aussi, et s’y reprend.');
+    el('p', 'cs-quote wide', grid, 'À donner à un Pokémon chez Porygon.');
     this.candyCard(grid, ctx);
     for (const it of HELD_ITEMS) if (!it.crafted) this.itemCard(grid, it, ctx);
   }
@@ -655,7 +665,7 @@ export class CampScreen {
    */
   private renderGarden(main: HTMLElement, ctx: CampCtx): void {
     const save = ctx.save;
-    el('p', 'cs-quote', main, 'Dis-moi quoi planter : je m’en occupe dans la première parcelle libre. Ça pousse à chaque salle que tu franchis en run ; quand c’est en fleur, reviens récolter. Les plantes servent à l’atelier de l’artisan.');
+    el('p', 'cs-quote', main, 'Ça pousse à chaque salle de run. En fleur : récolte-le ici.');
     const grid = el('div', 'cs-grid', main);
     plots(save).forEach((p, i) => {
       const ripe = p !== null && p.left <= 0;
@@ -740,7 +750,7 @@ export class CampScreen {
    */
   private renderCraft(main: HTMLElement, ctx: CampCtx): void {
     const save = ctx.save;
-    el('p', 'cs-quote', main, 'Les matériaux viennent des coffres — chaque biome a les siens —, les herbes du potager d’Héliatronc. Un objet façonné se donne à la hutte de Porygon, comme ceux de Miaouss.');
+    el('p', 'cs-quote', main, 'Matériaux des coffres, herbes du potager. À donner à Porygon.');
     const grid = el('div', 'cs-grid', main);
     for (const r of RECIPES) {
       const out = recipeOutput(r);
@@ -773,7 +783,7 @@ export class CampScreen {
       el('small', 'cs-info', card, n.left > 0 ? `Son parfum porte loin : quelqu’un arrivera dans ${n.left} salle${n.left > 1 ? 's' : ''} franchie${n.left > 1 ? 's' : ''} en run.` : 'Ton visiteur attend à côté de la coupelle : va lui parler.');
     } else {
       const owned = Object.keys(NECTARS).filter((id) => (save.materials[id] ?? 0) > 0);
-      if (!owned.length) el('p', 'cs-quote wide', lure, 'Aucun nectar en réserve. Façonne-en un, puis pose-le ici : son parfum attire un Pokémon pas encore libéré, d’un type qu’il aime.');
+      if (!owned.length) el('p', 'cs-quote wide', lure, 'Aucun nectar. Façonnes-en un à l’atelier.');
       for (const id of owned) {
         const card = el('div', 'cs-card da-paper', lure);
         icon(NECTARS[id].icon, card);
@@ -1004,7 +1014,7 @@ export class CampScreen {
       if (this.news.has(String(sid))) newMark(row);
       const txt = el('div', '', row);
       el('b', '', txt, nameOf(sid));
-      el('small', '', txt, `${i === 0 ? '★ Mène · ' : ''}N.${startLevel(save, sid, BASE_TEAM_LEVEL)} · ⚖ ${weights.get(sid)?.total ?? '?'}`);
+      el('small', '', txt, `N.${startLevel(save, sid, BASE_TEAM_LEVEL)} · ⚖ ${weights.get(sid)?.total ?? '?'}`);
       const held = heldItem(save.held[sid]);
       if (held) icon(held.icon, row, 'cs-held');
       this.dragSource(row, { kind: 'mon', id: sid, from: 'team' });
@@ -1052,34 +1062,65 @@ export class CampScreen {
     const inTeam = save.team.includes(id);
     const card = el('div', 'cs-detail da-paper', wrap);
     card.style.setProperty('--c', typeColor(data.types[0]));
-    art(spOf(id), card, 'cs-big');
-    const head = el('div', 'cs-head', card);
+    // En-tête (retour de test : « l'interface est toujours pas folle ») : le sprite à gauche sur un disque de la
+    // couleur du type, et à droite le nom, les types, les pastilles et l'action.
+    const top = el('div', 'cs-top', card);
+    const disc = el('div', 'cs-disc', top);
+    art(spOf(id), disc, 'cs-big');
+    const who = el('div', 'cs-who', top);
+    const head = el('div', 'cs-head', who);
     // Le nom se renomme sur place : vide (ou le nom de l'espèce), plus de surnom.
     const nick = el('input', 'cs-nick', head) as HTMLInputElement;
     nick.type = 'text';
     nick.maxLength = NICK_MAX;
     nick.spellcheck = false;
     nick.placeholder = data.name;
-    const indiv = save.mons[id];
-    nick.value = nick.defaultValue = indiv.name ?? '';
+    const indiv0 = save.mons[id];
+    nick.value = nick.defaultValue = indiv0.name ?? '';
     nick.title = 'Cliquer pour le renommer';
     nick.addEventListener('change', () => {
       const v = nick.value.trim();
-      if (v && v !== data.name) indiv.name = v;
-      else delete indiv.name;
+      if (v && v !== data.name) indiv0.name = v;
+      else delete indiv0.name;
       ctx.persist();
       void this.render();
     });
     for (const t of data.types) typePill(t, head);
-    const where = inTeam ? (save.team[0] === id ? 'mène l’équipe' : 'dans l’équipe') : busy(save, id) ? 'en mission' : 'reste au camp';
-    const from = originText(save, id);
-    el('small', 'cs-info', card, `${indiv.name ? `${data.name} · ` : ''}N.${lvl} au départ · ${where}${from ? ` · ${from}` : ''}`);
-    // Ce qui le distingue d'un autre de son espèce (meta/mons.ts) : sa nature et ses talents.
-    const stars = talentStars(indiv);
-    const trait = el('small', 'cs-info cs-nature', card, `Nature : ${natureText(indiv.nature)} · Talent ${'★'.repeat(stars)}${'☆'.repeat(5 - stars)}`);
-    trait.title = TRAIT_STATS.map((k) => `${TRAIT_LABEL[k]} +${indiv.iv[k]} %`).join(' · ');
-    const w = weights.get(id);
-    if (w) el('small', 'cs-info cs-weigh', card, `⚖ Poids ${w.total} : Pokémon ${w.mon} · attaques ${w.moves} · objet ${w.item}`);
+    // Simplifié (retour de test : « il y a beaucoup trop d'infos » : mène l'équipe, niveau de départ, provenance,
+    // nature, talents en étoiles, poids…) : le niveau, et de quoi l'ajouter à l'équipe ou le laisser au camp.
+    // Quelques pastilles (poids, potentiel, nature, origine) disent le reste, avec leur info-bulle.
+    const indiv = save.mons[id];
+    el('small', 'cs-info cs-lv', head, `N.${lvl}`);
+    // Quelques icônes suffisent (retour de test : « ne mets pas des chips, les icônes suffisent ») : le poids, la
+    // nature, l'origine, chacun avec une info-bulle qui explique. Le « potentiel » est retiré.
+    const chips = el('div', 'cs-chips', who);
+    const chip = (icon: string, text: string, tip: string) => {
+      const c = el('span', 'cs-chip2', chips);
+      el('i', '', c, icon);
+      if (text) c.append(text);
+      c.title = tip;
+    };
+    const w0 = weights.get(id);
+    if (w0) chip('⚖', String(w0.total), `Poids ${w0.total} : Pokémon ${w0.mon} · attaques ${w0.moves} · objet ${w0.item}. L’équipe ne doit pas dépasser son plafond pour partir.`);
+    chip('✦', natureText(indiv.nature).split(' (')[0], `Nature : ${natureText(indiv.nature)}`);
+    const from = originShort(save, id);
+    if (from) chip('⚑', '', from);
+    const act = el('div', 'cs-actions', who);
+    if (busy(save, id)) el('small', 'cs-info', act, 'En mission chez Démolosse.');
+    else {
+      const full = !inTeam && save.team.length >= slots;
+      const last = inTeam && save.team.length < 2;
+      // Un bouton à l'allure d'un bout de scotch : « ＋ » jaune pour entrer dans l'équipe, « ⌂ » sur papier pour en sortir.
+      const add = el('button', `cs-add${inTeam ? ' out' : ''}`, act) as HTMLButtonElement;
+      el('i', '', add, inTeam ? '⌂' : '＋');
+      add.append(inTeam ? 'Mettre au camp' : 'Ajouter à l’équipe');
+      add.disabled = full || last;
+      add.title = full ? 'L’équipe est complète.' : last ? 'Il faut au moins un Pokémon dans l’équipe.' : '';
+      add.addEventListener('click', () => {
+        save.team = inTeam ? save.team.filter((x) => x !== id) : [...save.team, id];
+        this.commitTeam(ctx);
+      });
+    }
 
     // Statistiques au départ, nature, talents, objet tenu et Vitalité compris (comme main.ts les applique).
     const item = heldItem(save.held[id]);
@@ -1092,11 +1133,11 @@ export class CampScreen {
     const stats = el('div', 'cs-stats', card);
     const rows: [string, number, boolean][] = [
       ['PV', mon.maxHp, ups.has('hp') || vigor > 1],
-      ['ATT', mon.attack, ups.has('atk')],
-      ['DÉF', mon.defense, ups.has('def')],
-      ['ATT.S', mon.spAttack, ups.has('spAtk')],
-      ['DÉF.S', mon.spDefense, ups.has('spDef')],
-      ['VIT', mon.speed, ups.has('speed')],
+      ['Attaque', mon.attack, ups.has('atk')],
+      ['Défense', mon.defense, ups.has('def')],
+      ['Att. spé.', mon.spAttack, ups.has('spAtk')],
+      ['Déf. spé.', mon.spDefense, ups.has('spDef')],
+      ['Vitesse', mon.speed, ups.has('speed')],
     ];
     for (const [label, v, boosted] of rows) {
       const r = el('div', boosted ? 'up' : '', stats);
@@ -1149,7 +1190,7 @@ export class CampScreen {
       else el('div', 'empty', holder, 'Emplacement libre');
     }
     const rest = pool.filter((m) => !equipped.includes(m.api));
-    el('div', 'cs-label', card, rest.length ? 'Disponibles — glisse-les dans un emplacement' : 'Toutes ses attaques sont équipées');
+    if (rest.length) el('div', 'cs-label', card, 'Autres attaques — touche pour équiper');
     const spare = el('div', 'cs-moves spare', card);
     this.dropZone(spare, 'move', (d) => {
       if (d.kind === 'move' && d.from === 'slot') setLoadout(equipped.filter((a) => a !== d.api));
@@ -1280,7 +1321,7 @@ export class CampScreen {
 
   // ── CS ───────────────────────────────────────────────────────────────
   private renderCs(grid: HTMLElement, ctx: CampCtx): void {
-    el('p', 'cs-quote wide', grid, 'Une CS se garde pour toujours, et toute l’équipe en profite. Surf ouvre le lac du Repaire ; Coupe et Éclate-Roc ouvrent, en run, les alcôves où dorment les coffres.');
+    el('p', 'cs-quote wide', grid, 'Une CS est définitive, pour toute l’équipe.');
     for (const c of CS_LIST) {
       const owned = ctx.save.cs.includes(c.id);
       const card = el('div', `cs-card da-paper${owned ? ' owned' : !c.ready ? ' soon' : ctx.save.baies < c.price ? ' poor' : ''}`, grid);
@@ -1377,7 +1418,7 @@ export class CampScreen {
     const save = ctx.save;
     const full = save.quests.active.length >= MAX_ACTIVE;
     const grid = el('div', 'cs-grid', main);
-    el('p', 'cs-quote wide', grid, `Accepte une quête, puis remplis-la en run : rien ne compte avant de l’avoir acceptée. ${MAX_ACTIVE} à la fois, pas plus. (${save.quests.active.length} / ${MAX_ACTIVE} en cours.)`);
+    el('p', 'cs-quote wide', grid, `Accepte une quête, puis remplis-la en run. ${save.quests.active.length} / ${MAX_ACTIVE} en cours.`);
     // Les noms des Pokémon déjà gagnés seulement : les autres restent une surprise.
     const names = new Map((await Promise.all(QUESTS.filter((q) => questState(save, q.id) === 'done').map((q) => species(q.reward)))).map((d) => [d.id, d.name]));
     const order = { ready: 0, active: 1, open: 2, done: 3 } as const;
@@ -1491,7 +1532,7 @@ export class CampScreen {
     }
 
     // Le tableau : une carte par emplacement.
-    el('p', 'cs-quote wide', grid, 'Une mission avance à chaque salle franchie en run. Au retour, viens récolter ici. Un Pokémon parti ne peut pas entrer dans l’équipe.');
+    el('p', 'cs-quote wide', grid, 'La mission avance à chaque salle de run.');
     const slots = missionSlots(save);
     for (let i = 0; i < slots; i++) {
       const slot = save.missions[i];
@@ -1577,7 +1618,7 @@ export class CampScreen {
    */
   private renderOnline(main: HTMLElement, ctx: CampCtx): void {
     const save = ctx.save;
-    el('p', 'cs-quote', main, 'Jusqu’à six rebelles dans la même run : l’hôte ouvre son Repaire et donne son code, les autres l’y rejoignent et s’y promènent avec lui. Chacun emmène un Pokémon à lui : le meneur de sa propre équipe.');
+    el('p', 'cs-quote', main, 'Jusqu’à six joueurs. L’hôte donne son code, les autres le rejoignent.');
     if (net.status) el('p', 'cs-load over', main, net.status);
     if (net.role === 'off') {
       const grid = el('div', 'cs-online', main);
@@ -1769,7 +1810,7 @@ export class CampScreen {
     go.disabled = over;
     el('span', 'cs-go-word', go, 'Partir');
     el('span', 'cs-go-arrow', go, '➜');
-    el('kbd', '', go, 'Entrée');
+    if (!isTouch()) el('kbd', '', go, 'Entrée');
     go.addEventListener('click', () => void this.depart());
   }
 }

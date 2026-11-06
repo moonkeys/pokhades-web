@@ -56,12 +56,13 @@ import { CaveDirector } from './run/cave';
 import { ChestSite } from './run/chests';
 import { Merchant } from './run/merchant';
 import { rollSkillOffer, upgradeMove, type SkillOffer } from './run/rewards';
-import { COMBATS_PER_ACT, ROOMS_PER_ACT, Run } from './run/run';
+import { COMBATS_PER_ACT, LEAGUE_MASTER, ROOMS_PER_ACT, Run } from './run/run';
 import { Hud } from './ui/hud';
 import { loadOptions, saveOptions, type Options } from './ui/options';
 import { Panel } from './ui/panel';
 import { Journal } from './ui/journal';
 import { readInvite } from './net/invite';
+import { lockPage } from './ui/lockdown';
 import { RewardScreen } from './ui/rewardscreen';
 import { RunHud } from './ui/runhud';
 import { RecruitScreen } from './ui/recruitscreen';
@@ -136,6 +137,7 @@ async function boot(): Promise<void> {
   // ?debug : le menu principal sauté et l'objet `window.pokhades` exposé, pour les tests automatisés. Réservé au
   // serveur de dev : dans le jeu publié, le paramètre ne fait rien (retour de test : « les gens vont faire n'importe quoi »).
   const DEBUG = import.meta.env.DEV && new URLSearchParams(location.search).has('debug');
+  lockPage();
   const input = new Input();
   // Téléphone ou tablette : stick et boutons à l'écran, et le panneau de test replié.
   if (isTouch()) {
@@ -146,6 +148,8 @@ async function boot(): Promise<void> {
   // Météo de la salle (world/weather.ts) : ses particules ont leur couche, par-dessus celles du biome.
   const skyParticles = new Particles();
   let roomWeather: WeatherId = 'clear';
+  /** Le ciel de la dernière salle à ciel libre, même éclairci depuis : le suivant en découle (rollWeather). */
+  let lastSky: WeatherId = 'clear';
   /** La météo qui règne là où l'on est : celle de la salle, sauf à la boutique, en grotte et au Repaire. */
   const weatherNow = (): WeatherId => (mode === 'run' && !cave.active ? roomWeather : 'clear');
   const footprints = new Footprints();
@@ -233,9 +237,9 @@ async function boot(): Promise<void> {
     });
   };
   /**
-   * Le départ en run (retour de test : « un petit ralentissement, et qu'on rentre dans la run avec les petits
-   * halos des sorties de porte ») : sous l'arche, le temps ralentit, un halo doré monte autour du Pokémon
-   * (comme la lueur d'une porte ouverte), l'écran s'éteint, et la run commence.
+   * Le départ en run : sous l'arche, le temps ralentit, le halo de l'arche (toujours là, camp.ts) s'embrase,
+   * l'écran s'éteint, et la run commence. (Retour de test : le halo doit être « toujours présent sous
+   * l'arche », pas apparaître autour du Pokémon au moment de partir.)
    */
   let departing: { t: number; x: number; y: number } | null = null;
   const DEPART_TIME = 1.5;
@@ -245,39 +249,8 @@ async function boot(): Promise<void> {
     if (departing) return;
     departing = { t: 0, x: player.x, y: player.y };
   };
-  /** Le halo du départ, dessiné sous les Pokémon : une lueur qui s'élargit, des particules qui montent. */
-  const departExtras = (): { y: number; draw(b: CanvasRenderingContext2D, camX: number, camY: number, k: number): void }[] => {
-    const d = departing;
-    if (!d) return [];
-    return [
-      {
-        y: d.y * TILE - 1,
-        draw: (b, camX, camY, k) => {
-          const u = Math.min(1, d.t / DEPART_TIME);
-          const cx = Math.round((d.x * TILE - camX) * k);
-          const cy = Math.round((d.y * TILE - camY) * k);
-          const r = (1.4 + 5 * u) * TILE * k;
-          b.globalCompositeOperation = 'lighter';
-          const g = b.createRadialGradient(cx, cy, 0, cx, cy, r);
-          g.addColorStop(0, `rgba(255, 214, 90, ${0.35 + 0.5 * u})`);
-          g.addColorStop(1, 'rgba(255, 214, 90, 0)');
-          b.fillStyle = g;
-          b.beginPath();
-          b.ellipse(cx, cy, r, r * 0.6, 0, 0, Math.PI * 2);
-          b.fill();
-          // Les mêmes particules que les portes ouvertes (room.ts), qui montent vers le haut.
-          for (let i = 0; i < 26; i++) {
-            const ph = (d.t * 0.5 + i * 0.137) % 1;
-            const ox = (((i * 0.618) % 1) - 0.5) * 2 * (1 + 2 * u);
-            const oy = (((i * 0.382) % 1) - 0.5) * 2 * 0.8;
-            b.fillStyle = `rgba(255, 214, 90, ${1 - ph})`;
-            b.fillRect(Math.round(cx + ox * TILE * k), Math.round(cy + oy * TILE * k) - Math.round(ph * 30 * k), 2 * k, 2 * k);
-          }
-          b.globalCompositeOperation = 'source-over';
-        },
-      },
-    ];
-  };
+  /** Le halo de l'arche suit le départ : de 0 à 1 sur toute sa durée (remis à 0 sitôt la run lancée). */
+  const departGlow = () => (departing ? Math.min(1, departing.t / DEPART_TIME) : 0);
   const campScreen = new CampScreen(document.body);
   const netBadge = new NetBadge(document.body);
   combat.notify = (text) => runHud.message(text);
@@ -688,7 +661,9 @@ async function boot(): Promise<void> {
     const before = first ? 'clear' : roomWeather;
     // L'arène du Village est une salle d'intérieur : ni pluie, ni pollen.
     const indoor = run.isBoss() && run.biome === 'village';
-    roomWeather = run.isShop() || indoor ? 'clear' : opts.weather !== 'run' ? opts.weather : rollWeather(run.biome, run.mapSeed);
+    // Le ciel découle de celui de la salle d'avant (world/weather.ts) ; une boutique ou un intérieur le laisse en pause.
+    roomWeather = run.isShop() || indoor ? 'clear' : opts.weather !== 'run' ? opts.weather : rollWeather(run.biome, run.mapSeed, first ? undefined : lastSky);
+    if (!run.isShop() && !indoor) lastSky = roomWeather;
     setWeather(weatherNow());
     // Le ciel change : on dit ce que ça change au combat.
     if (roomWeather !== before && roomWeather !== 'clear') runHud.notify({ title: WEATHERS[roomWeather].name, text: WEATHERS[roomWeather].hint, icon: WEATHERS[roomWeather].icon });
@@ -731,7 +706,13 @@ async function boot(): Promise<void> {
    * boutique, de la Route Victoire ; le combat seulement chez le champion.
    */
   function roomMusic(): MusicId {
-    if (run.isBoss()) return 'boss';
+    // Le combat change selon l'adversaire (retour de test : « d'autres musiques vraiment plus d'ambiance ») :
+    // le Maître de la Ligue, le Conseil, le dresseur final, l'arène du Village, les champions.
+    if (run.isBoss()) {
+      if (run.onVictoryRoad) return run.champion.name === LEAGUE_MASTER ? 'bosschamp' : 'bosselite';
+      if (run.isFinal) return 'bosschamp';
+      return run.biome === 'village' ? 'gym' : 'bossgym';
+    }
     if (run.isShop()) return 'shop';
     if (run.onVictoryRoad) return 'victoire';
     return run.biome;
@@ -976,6 +957,23 @@ async function boot(): Promise<void> {
     buildTeam(at.x, at.y);
     player.dir = at.dir;
     netCamp();
+  };
+
+  /** Au Repaire : les cartes de l'équipe (portrait, nom, niveau de départ), refaites quand elle change. */
+  let campTeamKey = '';
+  const refreshCampTeam = () => {
+    const key = save.team.map((u) => `${u}:${speciesOf(save, u)}:${startLevel(save, u, BASE_TEAM_LEVEL)}:${save.mons[u]?.name ?? ''}`).join('|');
+    if (key === campTeamKey) return;
+    campTeamKey = key;
+    void Promise.all(
+      save.team.map(async (u) => {
+        const id = speciesOf(save, u);
+        const info = await loadInfo(id);
+        return { id, name: monName(save, u, info.name), level: startLevel(save, u, BASE_TEAM_LEVEL) };
+      }),
+    ).then((list) => {
+      if (key === campTeamKey) hud.setCampTeam(list);
+    });
   };
 
   /**
@@ -1691,7 +1689,7 @@ async function boot(): Promise<void> {
       },
       lines: () => [
         [chief(), 'Doucement, petit. On t’a ramassé dans la prairie, à moitié assommé.'],
-        [chief(), 'Ici, c’est le Repaire : des Pokémon qui refusent les Poké Balls. Chaque Pokémon que tu bats là-dehors, tu le libères… et certains nous rejoignent.'],
+        [chief(), 'Ici, c’est le Repaire : des Pokémon qui refusent les Poké Balls. Bats-en dehors, certains nous rejoindront.'],
         [chief(), 'Reprends des forces. Quand tu es prêt, viens me voir sous l’arche.'],
       ],
     };
@@ -1724,11 +1722,19 @@ async function boot(): Promise<void> {
         input.flush();
         // Le prologue : en garde, les touches qui comptent avant la première vague.
         if (mode === 'run')
-          runHud.tutorial([
-            [['←', '↑', '→', '↓'], 'Se déplacer'],
-            [['1·Q', '2·Z', '3·S', '4·D'], 'Lancer tes attaques (en bas de l’écran)'],
-            [['Espace'], 'Esquiver d’un bond'],
-          ]);
+          runHud.tutorial(
+            isTouch()
+              ? [
+                  [['Stick'], 'Se déplacer (à gauche)'],
+                  [['Cartes'], 'Toucher une attaque (en bas de l’écran)'],
+                  [['DASH'], 'Esquiver d’un bond'],
+                ]
+              : [
+                  [['←', '↑', '→', '↓'], 'Se déplacer'],
+                  [['1·Q', '2·Z', '3·S', '4·D'], 'Lancer tes attaques (en bas de l’écran)'],
+                  [['Espace'], 'Esquiver d’un bond'],
+                ],
+          );
         return;
       }
       // L'histoire se lit à son rythme : chaque réplique attend Entrée.
@@ -2433,6 +2439,8 @@ async function boot(): Promise<void> {
         const [dealt, taken] = sum.mem[net.id] ?? [0, 0];
         st.members.set(mine, { dealt, taken });
         clientEndT = -1;
+        if (end.won) setTimeout(() => runSummary.open && audio.playMusic('halloffame'), 2300);
+        else audio.playMusic('defeat');
         runSummary.show({ victory: end.won, rooms: end.rooms, act: sum.act, biome: sum.biome, color: sum.color, champion: { name: sum.champion } as Champion, boons: sum.boons, team: [mine], stats: st }, back);
       }
       return;
@@ -2463,14 +2471,17 @@ async function boot(): Promise<void> {
       {
         play: () => {
           input.flush();
+          audio.playMusic('camp');
           askStarter();
         },
         online: () => {
           input.flush();
+          audio.playMusic('camp');
           openOnline();
         },
         join: (code) => {
           input.flush();
+          audio.playMusic('camp');
           joinInvite(code);
         },
         settings: (tab, back) =>
@@ -2483,6 +2494,8 @@ async function boot(): Promise<void> {
       invite,
     );
   enterCamp();
+  // L'écran-titre a sa musique (Title.ogg) ; quitter le menu lance celle du Repaire.
+  if (titleScreen.open) audio.playMusic('title');
 
   let time = 0;
   let fps = 60;
@@ -2492,9 +2505,11 @@ async function boot(): Promise<void> {
       departing.t += dt;
       if (departing.t >= DEPART_TIME) {
         departing = null;
+        camp.departGlow = 0;
         campCtx.depart();
         return;
       }
+      camp.departGlow = departGlow();
       dt *= DEPART_SLOW;
     }
     // Grotte, boutique, Repaire : temps clair ; la salle retrouve son ciel en ressortant.
@@ -2617,7 +2632,9 @@ async function boot(): Promise<void> {
         if (runWon) {
           audio.playMusic(null);
           sfx('victory');
-        }
+          // Le jingle d'abord, puis le Panthéon sous le bilan ; une défaite s'accompagne d'une berceuse.
+          setTimeout(() => runSummary.open && audio.playMusic('halloffame'), 2300);
+        } else audio.playMusic('defeat');
         netEnd();
         runSummary.show(
           {
@@ -2671,7 +2688,7 @@ async function boot(): Promise<void> {
 
   startLoop(update, (alpha, frameDt) => {
     if (net.role === 'client' && mode === 'run' && me) return drawClient(alpha, frameDt, me);
-    const extras = [...runExtras(), ...camp.extras(time), ...departExtras()];
+    const extras = [...runExtras(), ...camp.extras(time)];
     // Au Repaire, en ligne : les autres joueurs qui s'y promènent.
     const others = mode !== 'camp' ? [] : net.role === 'host' ? visitors : net.role === 'client' && hostCamp ? field.list() : [];
     renderer.draw(world, player, [...team, ...others, ...wild, ...shop.npcs, ...merchant.npcs, ...camp.npcs, ...cave.npcs], particles, footprints, fieldFx, combat, director, extras, opts, alpha, time, { weather: weatherNow(), particles: skyParticles });
@@ -2688,6 +2705,10 @@ async function boot(): Promise<void> {
     merchant.placeLabels(proj);
     camp.placeLabels(proj);
     hud.update(frameDt, player, combat, wild, proj, time, team);
+    // L'équipe à gauche, au Repaire aussi (retour de test) : les cartes de ceux qui partiront, tenues à jour.
+    if (mode === 'camp') refreshCampTeam();
+    else hud.setCampTeam(null);
+    document.body.classList.toggle('net-on', mode === 'camp' && net.active);
     // Au Repaire, le stock (ressources, Éclats) à côté des Baies ; en run, les Rappels de toute l'équipe à côté des ₽.
     runHud.setStock(mode === 'camp' ? save : null);
     runHud.setRevives(mode === 'run' && level(save, 'revives') > 0 ? revives : null);

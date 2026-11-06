@@ -9,6 +9,7 @@ import { MW, MH, ZONES, paintPlan, type Region } from './worldplan';
 import { LEAGUE_GATE } from '../run/run';
 import { ShoreWaves } from '../render/shorewaves';
 import type { WorldMap } from '../world/generate';
+import { hint } from './hints';
 
 // Le plan du monde et le carnet des exploits (ajout), au Repaire.
 // Retour de test : « je ne vais pas ajouter encore une touche » ; « un panneau
@@ -173,7 +174,7 @@ export class Journal {
     el('span', 'da-tape', head, this.page === 'map' ? 'PLAN DU MONDE' : 'CARNET DES EXPLOITS');
     if (this.page === 'map') this.renderMap(card);
     else this.renderFeats(card);
-    el('p', 'jr-keys', card, this.page === 'map' ? 'Entrée, E ou Échap : fermer' : 'Entrée : tout réclamer · E ou Échap : fermer');
+    el('p', 'jr-keys', card, hint(this.page === 'map' ? 'Entrée, E ou Échap : fermer' : 'Entrée : tout réclamer · E ou Échap : fermer', 'Touche en dehors pour fermer'));
   }
 
   /** Le plan : peint aux tuiles du jeu (ui/worldplan.ts), puis noms, flèches et traversées par-dessus. */

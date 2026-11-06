@@ -1,5 +1,7 @@
 import { sfx } from '../audio/audio';
 import type { Options } from './options';
+import { hint } from './hints';
+import { isTouch } from '../input/touch';
 
 // Menu des réglages, ouvert par Échap au Repaire comme en run (le jeu se
 // fige). Le panneau de test (H) reste l'outil de DA ; ce menu-ci est celui du
@@ -31,8 +33,20 @@ interface Row {
 // Écart voulu (retour de test : « Zoom… plein d'onglets que tu peux supprimer ») : un seul
 // onglet de réglages, le son et les secousses ; le zoom, les particules, les halos et la
 // vignette ne se règlent plus que dans le panneau de test (H).
-const TABS = ['Réglages', 'Commandes'] as const;
+const TABS = ['Run', 'Réglages', 'Commandes'] as const;
 type Tab = (typeof TABS)[number];
+
+/** Les commandes au doigt (retour de test : pas de clavier sur téléphone) : les boutons de l'écran. */
+const TOUCH_CONTROLS: [string[], string][] = [
+  [['Stick'], 'Se déplacer (à gauche)'],
+  [['Cartes'], 'Attaques : toucher une carte en bas'],
+  [['DASH'], 'Esquive (on traverse les coups)'],
+  [['ACTION'], 'Parler, ramasser, ouvrir, choisir une porte'],
+  [['ULTI'], 'Ultime, jauge pleine'],
+  [['⇄'], 'Changer de Pokémon'],
+  [['Fiche'], 'Fiche de l’équipe'],
+  [['☰'], 'Ce menu'],
+];
 
 /** Liste des commandes : [touches, action]. Les touches séparées par « / » sont des alternatives. */
 const CONTROLS: [string[], string][] = [
@@ -130,8 +144,10 @@ export class SettingsMenu {
     this.onClose = onClose;
     this.leave = leave ?? null;
     this.confirming = false;
+    // En run, on ouvre l'onglet « Run » (continuer ou abandonner) ; sinon les réglages ou l'onglet demandé.
     if (tab) this.tab = tab;
-    this.sel = 0;
+    else this.tab = this.leave ? 'Run' : this.tab === 'Run' ? 'Réglages' : this.tab;
+    this.sel = this.tab === 'Run' ? 1 : 0;
     this.root.hidden = false;
     this.root.classList.remove('play');
     this.render();
@@ -146,6 +162,11 @@ export class SettingsMenu {
     const done = this.onClose;
     this.onClose = null;
     done?.();
+  }
+
+  /** L'onglet « Run » n'existe qu'en run (une sortie est proposée). */
+  private tabs(): readonly Tab[] {
+    return this.leave ? TABS : TABS.filter((t) => t !== 'Run');
   }
 
   private set<K extends Key>(key: K, value: Options[K]): void {
@@ -163,8 +184,9 @@ export class SettingsMenu {
 
   private adjust(dir: number): void {
     if (this.sel === 0) {
-      const i = TABS.indexOf(this.tab);
-      this.tab = TABS[(i + dir + TABS.length) % TABS.length];
+      const tabs = this.tabs();
+      const i = tabs.indexOf(this.tab);
+      this.tab = tabs[(i + dir + tabs.length) % tabs.length];
       sfx('click', -6);
     } else this.rows[this.sel - 1]?.adjust(dir);
     this.render();
@@ -228,18 +250,35 @@ export class SettingsMenu {
     };
   }
 
+  /** « Continuer » : le premier choix de l'onglet Run, on reprend la partie. */
+  private continueRow(): Row {
+    return {
+      label: 'Continuer',
+      hint: 'Reprendre la partie.',
+      render: (box) => {
+        const b = el('button', 'opt-big go', box, 'CONTINUER');
+        b.addEventListener('click', () => this.close());
+      },
+      adjust: () => {},
+      activate: () => this.close(),
+    };
+  }
+
   /**
-   * Quitter la run, depuis le menu (retour de test : « on devrait pouvoir quitter la run, revenir
-   * au hub : des fois on veut juste se barrer »). Deux appuis : le second confirme, pour qu'un
-   * Entrée de trop ne fasse pas perdre vingt minutes de run.
+   * Quitter la run, depuis le menu (retour de test : « je veux un onglet spécial pour abandonner la run, avec
+   * un bouton plus gros »). Deux appuis : le second confirme, pour qu'un Entrée de trop ne fasse pas perdre
+   * vingt minutes de run.
    */
   private leaveRow(l: LeaveOffer): Row {
     return {
       label: l.label,
       hint: this.confirming ? 'Appuie encore pour confirmer.' : l.hint,
       render: (box) => {
-        const b = el('button', `opt-switch${this.confirming ? ' on' : ''}`, box, this.confirming ? 'CONFIRMER' : 'QUITTER');
-        b.addEventListener('click', () => this.activate());
+        const b = el('button', `opt-big quit${this.confirming ? ' sure' : ''}`, box, this.confirming ? 'CONFIRMER : ABANDONNER' : l.label.toUpperCase());
+        b.addEventListener('click', () => {
+          this.sel = 2;
+          this.activate();
+        });
       },
       adjust: () => {
         this.confirming = false;
@@ -266,10 +305,11 @@ export class SettingsMenu {
         return [
           this.volume('music', 'Musique'),
           this.volume('sfx', 'Bruitages'),
-          this.toggle('muted', 'Couper le son', 'Touche M, partout.'),
+          this.toggle('muted', 'Couper le son', hint('Touche M, partout.', '')),
           this.toggle('shake', 'Secousses de l’écran', 'Coups, explosions, champions.'),
-          ...(this.leave ? [this.leaveRow(this.leave)] : []),
         ];
+      case 'Run':
+        return this.leave ? [this.continueRow(), this.leaveRow(this.leave)] : [];
       case 'Commandes':
         return [];
     }
@@ -286,10 +326,10 @@ export class SettingsMenu {
     const sheet = el('div', 'poster opt-sheet', wrap);
     const head = el('div', 'opt-head', sheet);
     el('span', 'banner da-tape', head, 'PAUSE');
-    el('h3', '', head, 'RÉGLAGES');
+    el('h3', '', head, this.tab === 'Run' ? 'LA RUN' : 'RÉGLAGES');
 
     const tabs = el('div', `opt-tabs${this.sel === 0 ? ' focus' : ''}`, sheet);
-    for (const t of TABS) {
+    for (const t of this.tabs()) {
       const b = el('button', t === this.tab ? 'sel' : '', tabs, t.toUpperCase());
       b.addEventListener('click', () => {
         this.tab = t;
@@ -301,6 +341,21 @@ export class SettingsMenu {
 
     const body = el('div', 'opt-body', sheet);
     if (this.tab === 'Commandes') this.renderControls(body);
+    if (this.tab === 'Run') {
+      // Deux gros boutons, l'un sous l'autre : continuer, ou abandonner (avec confirmation).
+      const big = el('div', 'opt-bigs', body);
+      this.rows.forEach((r, i) => {
+        const cell = el('div', `opt-bigcell${this.sel === i + 1 ? ' sel' : ''}`, big);
+        cell.addEventListener('pointerenter', () => {
+          if (this.sel === i + 1) return;
+          this.sel = i + 1;
+          for (const o of big.querySelectorAll('.opt-bigcell')) o.classList.toggle('sel', o === cell);
+          tabs.classList.remove('focus');
+        });
+        r.render(cell);
+        if (r.hint) el('small', '', cell, r.hint);
+      });
+    } else
     this.rows.forEach((r, i) => {
       const line = el('div', `opt-row${this.sel === i + 1 ? ' sel' : ''}`, body);
       line.addEventListener('pointerenter', () => {
@@ -315,7 +370,7 @@ export class SettingsMenu {
       r.render(el('div', 'opt-ctrl', line));
     });
 
-    el('p', 'keys', sheet, this.tab === 'Commandes' ? '←→ onglet · Échap : reprendre' : '↑↓ choisir · ←→ régler · Échap : reprendre');
+    el('p', 'keys', sheet, hint(this.tab === 'Commandes' ? '←→ onglet · Échap : reprendre' : this.tab === 'Run' ? '↑↓ choisir · Entrée valider · Échap : reprendre' : '↑↓ choisir · ←→ régler · Échap : reprendre', 'Touche pour régler · touche en dehors : reprendre'));
     for (const [side, rot] of [
       ['left: 6%', -12],
       ['right: 6%', 9],
@@ -328,7 +383,7 @@ export class SettingsMenu {
 
   private renderControls(body: HTMLElement): void {
     const list = el('div', 'opt-keys', body);
-    for (const [keys, action] of CONTROLS) {
+    for (const [keys, action] of isTouch() ? TOUCH_CONTROLS : CONTROLS) {
       const line = el('div', 'opt-keyline', list);
       const caps = el('div', 'opt-caps', line);
       keys.forEach((k, i) => {

@@ -2,6 +2,7 @@ import { STARTER_IDS } from '../data/species';
 import { typeColor } from '../render/combatfx';
 import { species } from './campscreen';
 import { typePill } from './hud';
+import { hint } from './hints';
 
 // Choix du starter, au premier lancement (StarterSelect du jeu Godot) : rien
 // n'est encore débloqué, on choisit son partenaire parmi les neuf de
@@ -97,7 +98,7 @@ export class StarterScreen {
     const page = el('div', 'stats-page starter-page', this.root);
     const head = el('div', 'stats-head', page);
     el('span', 'da-tape', head, o.tape);
-    el('small', 'stats-keys', head, `Flèches ou clic : choisir · Entrée : valider${o.later ? ' · Échap : plus tard' : ''}`);
+    el('small', 'stats-keys', head, hint(`Flèches ou clic : choisir · Entrée : valider${o.later ? ' · Échap : plus tard' : ''}`, 'Touche un Pokémon, puis valide'));
     el('p', 'starter-quote', page, o.quote);
     const grid = el('div', 'starter-grid', page);
     this.cards = o.ids.map((id, i) => {

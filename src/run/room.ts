@@ -634,20 +634,16 @@ export class RoomDirector {
   }
 
   /**
-   * Ligne de front : annonce la vague avant ses anneaux. Grondement, sol qui
-   * tremble et une flèche vers le bout d'où elle vient (au bord de l'écran
-   * s'il est hors champ), sans texte : ça se lit d'un coup d'œil.
+   * Ligne de front : annonce la vague avant ses anneaux : grondement et sol qui
+   * tremble, sans flèche ni texte.
    * Rend le préavis, en secondes.
    */
   private announce(world: WorldMap, player: Actor): number {
     const end = this.frontEnd(world, player);
     if (!end) return 0;
+    // Plus de flèche rose vers le bout d'où vient la vague (retour de test : « c'est un peu chiant ») :
+    // le grondement et la secousse suffisent à prévenir.
     this.dropIncoming();
-    const el = document.createElement('div');
-    el.className = 'room-incoming';
-    el.append(document.createElement('i'));
-    this.layer.append(el);
-    this.incoming = { x: end.x, y: end.y, t: FRONT_WARN + SPAWN_ANNOUNCE, el };
     sfx('quake');
     this.host.rumble();
     return FRONT_WARN;
@@ -993,8 +989,10 @@ export class RoomDirector {
       // Une porte ordinaire : son icône flotte juste au-dessus de la sortie elle-même (retour de
       // test), un peu en retrait du bord pour rester à l'écran.
       const onDoor = d.label.classList.contains('icon-only');
-      const ox = e.side === 'W' ? (onDoor ? 0.9 : 2.2 * far) : e.side === 'E' ? (onDoor ? -0.9 : -2.2 * far) : 0;
-      const oy = e.side === 'N' ? (onDoor ? 0.6 : 1.6 * far) : e.side === 'S' ? (onDoor ? -1.8 : -1.6 * far) : onDoor ? -1.4 : -1;
+      // Sur une porte ordinaire, l'icône se centre sur le halo de la sortie (retour de test : « il est un peu sur la
+      // gauche du halo flottant ») : à peine rentrée vers la carte, pour que le bord de l'écran ne la coupe pas.
+      const ox = e.side === 'W' ? (onDoor ? 0.3 : 2.2 * far) : e.side === 'E' ? (onDoor ? -0.3 : -2.2 * far) : 0;
+      const oy = e.side === 'N' ? (onDoor ? 0.5 : 1.6 * far) : e.side === 'S' ? (onDoor ? -0.6 : -1.6 * far) : onDoor ? -0.4 : -1;
       const p = proj.toCss(e.x + ox, e.y + oy);
       d.label.style.transform = `translate(${p.x}px, ${p.y}px) translate(-50%, -50%)`;
     }

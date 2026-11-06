@@ -1760,6 +1760,53 @@
   min-width: calc(11 * var(--u));
   text-align: center;
 }
+.opt-bigs {
+  display: grid;
+  gap: calc(1 * var(--u));
+  padding: calc(0.6 * var(--u)) calc(2 * var(--u));
+}
+.opt-bigcell {
+  position: relative;
+  display: grid;
+  gap: calc(0.3 * var(--u));
+}
+/* La flèche rose du menu principal, dans la marge de la ligne choisie. */
+.opt-bigcell.sel::before {
+  content: '▶';
+  position: absolute;
+  left: calc(-2 * var(--u));
+  top: calc(1.2 * var(--u));
+  font-size: calc(1.8 * var(--u));
+  color: var(--spray);
+}
+.opt-bigcell small {
+  text-align: center;
+  opacity: 0.65;
+}
+/* Onglet Run (retour de test : « fais des boutons plus simples ») : deux lignes à l'encre, comme le menu
+   principal : « Continuer » sur la bande jaune, « Abandonner » en simple cadre, rose au moment de confirmer. */
+.opt-big {
+  width: 100%;
+  min-height: max(48px, calc(5 * var(--u)));
+  font-family: var(--head);
+  font-size: max(19px, calc(2.2 * var(--u)));
+  letter-spacing: 0.06em;
+  color: var(--ink);
+  background: transparent;
+  border: 3px solid var(--ink);
+  cursor: pointer;
+}
+.opt-big.go {
+  background: var(--yel);
+}
+.opt-big:hover {
+  background: color-mix(in srgb, var(--yel) 55%, transparent);
+}
+.opt-big.quit.sure {
+  color: var(--paper);
+  background: var(--spray);
+  border-color: var(--ink);
+}
 .opt-switch,
 .opt-arrow {
   font: normal calc(1.35 * var(--u)) var(--head);
@@ -2211,6 +2258,81 @@
   line-height: 1;
   letter-spacing: 0.03em;
 }
+.cs-actions {
+  display: flex;
+  align-items: center;
+  gap: calc(1 * var(--u));
+  margin: calc(0.8 * var(--u)) calc(11 * var(--u)) calc(0.4 * var(--u)) 0;
+}
+/* « Ajouter à l'équipe » (retour de test : « un bouton chelou ») : un simple cadre d'encre, comme les autres
+   boutons de papier ; il se remplit de jaune au survol. */
+.camp-screen .cs-add {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(0.7 * var(--u));
+  font-family: var(--head);
+  font-size: max(15px, calc(1.7 * var(--u)));
+  letter-spacing: 0.05em;
+  padding: calc(0.5 * var(--u)) calc(1.8 * var(--u)) calc(0.5 * var(--u)) calc(1.2 * var(--u));
+  min-height: 40px;
+  color: var(--ink);
+  background: var(--yel);
+  border: 2px solid var(--ink);
+  box-shadow: 0.25em 0.25em 0 var(--ink);
+  rotate: -1deg;
+  cursor: pointer;
+  transition:
+    translate 0.1s,
+    box-shadow 0.1s;
+}
+.camp-screen .cs-add i {
+  font-style: normal;
+  font-size: 1.25em;
+  line-height: 1;
+}
+/* Sortir de l'équipe : sur papier, plus discret que l'entrée. */
+.camp-screen .cs-add.out {
+  background: var(--paper-hi);
+}
+.camp-screen .cs-add:hover:not(:disabled) {
+  translate: -0.1em -0.1em;
+  box-shadow: 0.35em 0.35em 0 var(--ink);
+}
+.camp-screen .cs-add:active:not(:disabled) {
+  translate: 0.1em 0.1em;
+  box-shadow: 0.1em 0.1em 0 var(--ink);
+}
+.camp-screen .cs-add:disabled {
+  opacity: 0.4;
+  box-shadow: none;
+  rotate: 0deg;
+  cursor: not-allowed;
+}
+/* Les pastilles d'infos de la fiche : icône et mot, en ligne. */
+.cs-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(1.6 * var(--u));
+  margin: calc(0.8 * var(--u)) calc(11 * var(--u)) 0 0;
+}
+.cs-chip2 {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(0.4 * var(--u));
+  padding: calc(0.2 * var(--u)) calc(0.9 * var(--u));
+  font-size: max(11px, calc(1.05 * var(--u)));
+  font-weight: 700;
+  color: var(--ink);
+}
+.cs-chip2 i {
+  font-style: normal;
+  color: var(--spray);
+}
+.cs-lv {
+  padding: 0 calc(0.8 * var(--u));
+  color: var(--paper);
+  background: var(--ink);
+}
 .cs-info,
 .cs-next {
   font-size: calc(1 * var(--u));
@@ -2352,6 +2474,14 @@
   right: calc(1.5 * var(--u));
   width: calc(12 * var(--u));
   filter: drop-shadow(0 calc(0.6 * var(--u)) calc(0.8 * var(--u)) rgba(0, 0, 0, 0.3));
+}
+/* Fiche d'équipe : le grand sprite reste dans le cadre (il était coupé en haut), et le titre lui laisse la place. */
+.cs-detail > .cs-big {
+  top: calc(0.8 * var(--u));
+  width: calc(10 * var(--u));
+}
+.cs-detail > .cs-head {
+  margin-right: calc(11 * var(--u));
 }
 /* Pokédex (poste de Porygon) : une grille de petites cartes, la fiche à droite.
    Verrouillée, l'espèce n'est qu'une silhouette d'encre (PokedexScreen). */
@@ -2991,7 +3121,7 @@
   font-weight: normal;
   letter-spacing: 0.3em;
   line-height: 1;
-  user-select: all;
+  user-select: none;
 }
 .cs-net-empty {
   align-self: center;
@@ -4703,4 +4833,98 @@
 .journal .jr-rec small {
   font: 500 11px var(--body);
   color: var(--muted);
+}
+
+/* ── Fiche d'équipe (poste de Porygon), refaite (retour de test : « l'interface est toujours pas folle ») ──
+   En-tête : le sprite sur un disque de la couleur du type, le nom et ses pastilles à droite ; dessous, les
+   statistiques en trois colonnes, les attaques, l'objet. Plus aucun grand sprite qui déborde. */
+.cs-detail {
+  display: grid;
+  gap: calc(1.3 * var(--u));
+  padding: calc(1.6 * var(--u)) calc(2 * var(--u));
+}
+.cs-detail > * {
+  margin: 0;
+}
+.cs-top {
+  display: grid;
+  grid-template-columns: calc(12 * var(--u)) 1fr;
+  gap: calc(1.8 * var(--u));
+  align-items: center;
+}
+.cs-disc {
+  display: grid;
+  place-items: center;
+  width: calc(12 * var(--u));
+  aspect-ratio: 1;
+}
+.cs-disc .cs-big {
+  position: static;
+  width: 92%;
+  margin-top: 4%;
+}
+.cs-who {
+  display: grid;
+  gap: calc(0.7 * var(--u));
+  min-width: 0;
+}
+.cs-who .cs-head,
+.cs-who .cs-chips,
+.cs-who .cs-actions {
+  margin: 0;
+}
+.cs-who .cs-head b,
+.cs-who .cs-nick {
+  font-size: calc(3 * var(--u));
+}
+.cs-who .cs-chip2 {
+  font-size: max(12px, calc(1.2 * var(--u)));
+  padding: 0;
+}
+.cs-detail .cs-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: calc(0.9 * var(--u)) calc(2 * var(--u));
+}
+.cs-detail .cs-moves.spare:empty {
+  display: none;
+}
+.cs-detail .cs-label {
+  margin: calc(0.4 * var(--u)) 0 0;
+}
+@media (max-width: 760px) {
+  .cs-top {
+    grid-template-columns: calc(9 * var(--u)) 1fr;
+  }
+  .cs-disc {
+    width: calc(9 * var(--u));
+  }
+  .cs-detail .cs-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.cs-who .cs-nick {
+  width: auto;
+  min-width: 3ch;
+  max-width: 100%;
+}
+.cs-who .cs-head {
+  gap: calc(0.8 * var(--u));
+}
+
+/* Au Repaire, l'équipe à gauche (hud.ts, setCampTeam) : de simples cartes, sans clic ; le meneur est en avant.
+   En ligne, la liste des joueurs prend la place du haut : l'équipe passe dessous. */
+.hud-team .member.camp {
+  cursor: default;
+  pointer-events: none;
+}
+.hud-team .member.camp.active {
+  opacity: 1;
+}
+.hud-team .member.camp .nm small {
+  font-weight: 700;
+  opacity: 0.7;
+}
+body.net-on .hud-team {
+  top: calc(30 * var(--u));
 }
