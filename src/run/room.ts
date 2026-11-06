@@ -993,8 +993,10 @@ export class RoomDirector {
       // Une porte ordinaire : son icône flotte juste au-dessus de la sortie elle-même (retour de
       // test), un peu en retrait du bord pour rester à l'écran.
       const onDoor = d.label.classList.contains('icon-only');
-      const ox = e.side === 'W' ? (onDoor ? 0.9 : 2.2 * far) : e.side === 'E' ? (onDoor ? -0.9 : -2.2 * far) : 0;
-      const oy = e.side === 'N' ? (onDoor ? 0.6 : 1.6 * far) : e.side === 'S' ? (onDoor ? -1.8 : -1.6 * far) : onDoor ? -1.4 : -1;
+      // Sur une porte ordinaire, l'icône se centre sur le halo de la sortie (retour de test : « il est un peu sur la
+      // gauche du halo flottant ») : à peine rentrée vers la carte, pour que le bord de l'écran ne la coupe pas.
+      const ox = e.side === 'W' ? (onDoor ? 0.3 : 2.2 * far) : e.side === 'E' ? (onDoor ? -0.3 : -2.2 * far) : 0;
+      const oy = e.side === 'N' ? (onDoor ? 0.5 : 1.6 * far) : e.side === 'S' ? (onDoor ? -0.6 : -1.6 * far) : onDoor ? -0.4 : -1;
       const p = proj.toCss(e.x + ox, e.y + oy);
       d.label.style.transform = `translate(${p.x}px, ${p.y}px) translate(-50%, -50%)`;
     }
