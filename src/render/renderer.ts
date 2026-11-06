@@ -73,6 +73,9 @@ export class Renderer {
   /** Agrandissement entier tampon → écran. */
   scale = 1;
   camX = 0;
+  /** Le terrain répété au-delà des bords de la carte (draw), refait quand la carte change. */
+  private beyond: CanvasPattern | null = null;
+  private beyondFor: HTMLCanvasElement | null = null;
   camY = 0;
 
   constructor(
@@ -707,6 +710,24 @@ export class Renderer {
     b.globalAlpha = 1;
     b.fillStyle = '#10140f';
     b.fillRect(0, 0, this.buf.width, this.buf.height);
+    // Écran plus grand que la carte (grande fenêtre, salle étroite) : au-delà du bord, le terrain se
+    // répète, assombri, au lieu d'un fond noir (retour de test : « sur grand écran, le fond est noir »).
+    if (mapW < this.viewW || mapH < this.viewH) {
+      if (this.beyondFor !== ground) {
+        this.beyondFor = ground;
+        this.beyond = b.createPattern(ground, 'repeat');
+      }
+      if (this.beyond) {
+        b.save();
+        b.scale(k, k);
+        b.translate(-camX, -camY);
+        b.fillStyle = this.beyond;
+        b.fillRect(camX, camY, this.viewW, this.viewH);
+        b.fillStyle = 'rgba(8, 12, 8, 0.5)';
+        b.fillRect(camX, camY, this.viewW, this.viewH);
+        b.restore();
+      }
+    }
     b.drawImage(ground, camX, camY, this.viewW, this.viewH, 0, 0, this.viewW * k, this.viewH * k);
     this.waves.draw(b, camX, camY, this.viewW, this.viewH, k, time);
 
