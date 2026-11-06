@@ -1,8 +1,0 @@
-name = "pokhades-turn"
-main = "turn-worker.js"
-compatibility_date = "2026-01-01"
-
-[vars]
-# Les sites autorisés à demander des identifiants : l'adresse de ton jeu sur GitHub Pages
-# (l'origine seule, sans chemin), par exemple "https://moonkeys.github.io".
-ALLOWED_ORIGINS = "https://moonkeys.github.io"
