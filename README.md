@@ -844,7 +844,7 @@ d'écran d'accueil : la Poké Ball enchaînée du logo (`public/favicon-32.png`,
   et le jet animé de l'autotile `Fountain1.png`.
 
 
-## Multijoueur : relais TURN (Cloudflare, gratuit)
+## Multijoueur : relais TURN (ExpressTURN, gratuit)
 
 La connexion entre joueurs est directe (WebRTC via PeerJS). Entre un téléphone et un ordinateur,
 même sur un seul Wi-Fi, elle échoue souvent (adresses locales masquées par le navigateur, box qui
@@ -852,25 +852,19 @@ ne les relaie pas, 4G/5G) : l'invité voit « en attente, l'hôte ne répond pas
 **relais TURN**. Le TURN public de PeerJS (`*.turn.peerjs.com`) n'existe plus (nom de domaine
 disparu, vérifié le 6 novembre 2026).
 
-On prend celui de Cloudflare : 1 000 Go par mois offerts, soit des milliers de parties entre amis.
-Cloudflare ne donne pas d'identifiant fixe, et sa clé ne doit pas être dans le jeu publié : un
-petit Worker (`worker/turn-worker.js`, gratuit lui aussi : 100 000 appels par jour) la garde et
-fabrique des identifiants qui expirent seuls. Mise en place, une fois :
+On prend l'offre gratuite d'ExpressTURN (1 000 Go par mois d'après leur site ; la carte bancaire
+n'y est pas mentionnée : ne pas en saisir). Mise en place, une fois :
 
-1. Sur <https://dash.cloudflare.com> : *Realtime → TURN* (ou *Calls*) → créer une **clé TURN**.
-   Noter son **Key ID** et son **API token**.
-2. Depuis ce dossier :
-   ```bash
-   cd worker
-   npx wrangler login
-   npx wrangler secret put TURN_KEY_ID
-   npx wrangler secret put TURN_KEY_API_TOKEN
-   npx wrangler deploy
-   ```
-   Vérifier avant que `ALLOWED_ORIGINS`, dans `worker/wrangler.toml`, est bien l'adresse de ton
-   jeu sur GitHub Pages. `deploy` affiche l'adresse du Worker (`https://pokhades-turn.xxx.workers.dev`).
-3. Sur GitHub : *Settings → Secrets and variables → Actions → Variables*, créer `TURN_ENDPOINT`
-   avec l'adresse du Worker, puis relancer le déploiement. En local, mettre
-   `VITE_TURN_ENDPOINT=…` dans `.env.local`.
+1. Créer un compte sur <https://www.expressturn.com>, puis ouvrir le tableau de bord : il donne
+   l'adresse du serveur (`host:3478`), un **Username** et un **Password**.
+2. Sur GitHub : *Settings → Secrets and variables → Actions*.
+   - Variables : `TURN_URLS` = `turn:HOTE:3478,turn:HOTE:3478?transport=tcp` (l'hôte du tableau de
+     bord) ; `TURN_USERNAME` = le Username.
+   - Secret : `TURN_CREDENTIAL` = le Password.
+3. Relancer le déploiement (merge, ou *Actions → Pages → Run workflow*). En local, mettre
+   `VITE_TURN_URLS`, `VITE_TURN_USERNAME` et `VITE_TURN_CREDENTIAL` dans `.env.local`.
 
-Sans `TURN_ENDPOINT`, le jeu marche seulement entre deux appareils qui se joignent directement.
+Ces identifiants sont lisibles dans le jeu publié : c'est un compte gratuit à quota. Si quelqu'un
+en abuse, « Refresh Username, Password » dans le tableau de bord les change (puis mettre à jour
+les variables GitHub). Sans ces variables, le jeu marche seulement entre deux appareils qui se
+joignent directement.
