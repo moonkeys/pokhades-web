@@ -11,7 +11,7 @@ import { BIOME_GRUNTS, GRUNT_THEMES } from '../data/grunts';
 import { BIOMES } from '../world/biomes';
 import { MISSIONS, available, busy, collect, mission, missionSlots, open as missionOpen, recall, rewardText, send, type Mission, type MissionId } from '../meta/missions';
 import { NICK_MAX, capacity, isBaseForm, recruitThreshold, welcomeMon, level, monName, ownedSpecies, ownsSpecies, roster as rosterIds, speciesOf, startLevel, type Save } from '../meta/save';
-import { natureText, talentStars, TRAIT_LABEL, TRAIT_STATS, applyTraits } from '../meta/mons';
+import { natureText, applyTraits } from '../meta/mons';
 import { MAX_ACTIVE, QUESTS, abandonQuest, acceptQuest, claimQuest, questFor, questState } from '../meta/quests';
 import { memberWeight, moveWeight, weightCap, type MemberWeight } from '../meta/weight';
 import { typeColor } from '../render/combatfx';
@@ -1091,21 +1091,20 @@ export class CampScreen {
     // Quelques pastilles (poids, potentiel, nature, origine) disent le reste, avec leur info-bulle.
     const indiv = save.mons[id];
     el('small', 'cs-info cs-lv', head, `N.${lvl}`);
-    // Quelques pastilles lisibles, chacune avec son icône et une info-bulle qui dit ce que c'est.
+    // Quelques icônes suffisent (retour de test : « ne mets pas des chips, les icônes suffisent ») : le poids, la
+    // nature, l'origine, chacun avec une info-bulle qui explique. Le « potentiel » est retiré.
     const chips = el('div', 'cs-chips', who);
     const chip = (icon: string, text: string, tip: string) => {
       const c = el('span', 'cs-chip2', chips);
       el('i', '', c, icon);
-      c.append(text);
+      if (text) c.append(text);
       c.title = tip;
     };
-    const stars = talentStars(indiv);
     const w0 = weights.get(id);
-    if (w0) chip('⚖', `Poids ${w0.total}`, `Poids : Pokémon ${w0.mon} · attaques ${w0.moves} · objet ${w0.item}. L’équipe ne doit pas dépasser son plafond pour partir.`);
-    chip('★', `Potentiel ${stars}/5`, `Ce qui le distingue d’un autre de son espèce : plus il y a d’étoiles, plus il est doué. ${TRAIT_STATS.map((k) => `${TRAIT_LABEL[k]} +${indiv.iv[k]} %`).join(' · ')}`);
+    if (w0) chip('⚖', String(w0.total), `Poids ${w0.total} : Pokémon ${w0.mon} · attaques ${w0.moves} · objet ${w0.item}. L’équipe ne doit pas dépasser son plafond pour partir.`);
     chip('✦', natureText(indiv.nature).split(' (')[0], `Nature : ${natureText(indiv.nature)}`);
     const from = originShort(save, id);
-    if (from) chip('⚑', from, 'D’où il vient.');
+    if (from) chip('⚑', '', from);
     const act = el('div', 'cs-actions', who);
     if (busy(save, id)) el('small', 'cs-info', act, 'En mission chez Démolosse.');
     else {
