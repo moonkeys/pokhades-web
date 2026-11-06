@@ -19,9 +19,10 @@ export const PLAYER_SPECIES: readonly { id: number; name: string }[] = [
 /**
  * Starters proposés au premier lancement (GameManager.STARTER_IDS) : Pikachu,
  * Zorua, Absol, Flamiaou, Grenousse, Ouisticram, Pandespiègle, Baggiguane,
- * Riolu. Seul celui qu'on choisit est débloqué (StarterScreen).
+ * Riolu, et Carapuce (ajout, retour de test). Seul celui qu'on choisit est
+ * débloqué (StarterScreen).
  */
-export const STARTER_IDS: readonly number[] = [25, 570, 359, 725, 656, 390, 674, 559, 447];
+export const STARTER_IDS: readonly number[] = [25, 570, 359, 725, 656, 390, 674, 559, 447, 7];
 
 export const BIOME_IDS = ['prairie', 'foret', 'automne', 'lac', 'marais', 'volcan', 'rocailleux', 'village', 'plage', 'ocean', 'glace'] as const;
 export type BiomeId = (typeof BIOME_IDS)[number];
