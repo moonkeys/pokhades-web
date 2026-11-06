@@ -1705,11 +1705,19 @@ async function boot(): Promise<void> {
         input.flush();
         // Le prologue : en garde, les touches qui comptent avant la première vague.
         if (mode === 'run')
-          runHud.tutorial([
-            [['←', '↑', '→', '↓'], 'Se déplacer'],
-            [['1·Q', '2·Z', '3·S', '4·D'], 'Lancer tes attaques (en bas de l’écran)'],
-            [['Espace'], 'Esquiver d’un bond'],
-          ]);
+          runHud.tutorial(
+            isTouch()
+              ? [
+                  [['Stick'], 'Se déplacer (à gauche)'],
+                  [['Cartes'], 'Toucher une attaque (en bas de l’écran)'],
+                  [['DASH'], 'Esquiver d’un bond'],
+                ]
+              : [
+                  [['←', '↑', '→', '↓'], 'Se déplacer'],
+                  [['1·Q', '2·Z', '3·S', '4·D'], 'Lancer tes attaques (en bas de l’écran)'],
+                  [['Espace'], 'Esquiver d’un bond'],
+                ],
+          );
         return;
       }
       // L'histoire se lit à son rythme : chaque réplique attend Entrée.

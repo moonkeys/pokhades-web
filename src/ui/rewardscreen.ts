@@ -6,6 +6,7 @@ import { typeColor } from '../render/combatfx';
 import { canUpgrade, MOVE_SLOTS, UPGRADE_PCT, type SkillOffer } from '../run/rewards';
 import { typePill } from './hud';
 import { curve, halves, spray } from './spray';
+import { hint } from './hints';
 
 // Écran de récompense (dons de légendaires, nouvelle attaque), d'après
 // BoutiqueScreen.gd, dans la DA « Tag sacré » (src/ui/da.css, planche
@@ -205,7 +206,7 @@ export class RewardScreen {
       m.addEventListener('click', () => this.select(i));
       return m;
     });
-    if (team.length > 1) el('div', 'keys', pick, 'Clique un Pokémon (ou Tab) pour en changer');
+    if (team.length > 1) el('div', 'keys', pick, hint('Clique un Pokémon (ou Tab) pour en changer', 'Touche un Pokémon pour en changer'));
     this.highlight();
 
     const boon = el('div', 'rw-boon', this.root);
@@ -219,7 +220,7 @@ export class RewardScreen {
     el('h2', 'rw-title', text, o.title);
     el('p', 'rw-quote', text, o.line);
     const list = el('div', 'rw-cards', text);
-    el('p', 'rw-keys', text, 'Clic, chiffre de la carte, ou ↑ ↓ puis Entrée · Échap : plus tard (la récompense reste là)');
+    el('p', 'rw-keys', text, hint('Clic, chiffre de la carte, ou ↑ ↓ puis Entrée · Échap : plus tard (la récompense reste là)', 'Touche une carte · touche en dehors : plus tard (la récompense reste là)'));
     // L'ouverture se joue une fois la charpente posée (les cartes arrivent l'une après l'autre).
     requestAnimationFrame(() => this.root.classList.add('play'));
     return list;

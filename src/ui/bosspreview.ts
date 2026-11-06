@@ -5,6 +5,7 @@ import type { Champion } from '../data/champions';
 import { typeColor } from '../render/combatfx';
 import { typePill } from './hud';
 import { curve, spray } from './spray';
+import { hint } from './hints';
 
 // Affiche du prochain combat, reprise de BossPreviewScreen.gd et redessinée
 // dans la DA « Tag sacré » (src/ui/da.css) : l'affiche officielle de la
@@ -111,7 +112,7 @@ export class BossPreview {
       }
       void loadInfo(id).then((inf) => (name.textContent = inf.name));
     });
-    el('p', 'keys', poster, 'Entrée, E ou Échap : compris');
+    el('p', 'keys', poster, hint('Entrée, E ou Échap : compris', 'Touche pour continuer'));
     // Deux bouts de scotch qui tiennent l'affiche au mur.
     for (const [side, rot] of [
       ['left: 4%', -14],

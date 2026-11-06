@@ -5,6 +5,7 @@ import { DASH_RECHARGE, type Actor } from '../entities/actor';
 import { BUFF_TIME, type Move } from '../combat/moves';
 import { typeColor, type Projector } from '../render/combatfx';
 import { GROWTH_FR, growthOf } from '../data/growth';
+import { hint } from './hints';
 
 // HUD de combat, repris de HUD.gd et redessiné dans la DA « Tag sacré »
 // (src/ui/da.css, planche ui-r4.html) : en bas à gauche, la carte du Pokémon
@@ -184,7 +185,7 @@ export class Hud {
       this.teamList.replaceChildren();
       this.members = [];
       if (team.length > 1) {
-        el('div', 'lbl', this.teamList, 'Équipe · Tab ou clic');
+        el('div', 'lbl', this.teamList, hint('Équipe · Tab ou clic', 'Équipe · touche un membre'));
         team.forEach((a, i) => {
           const m = el('div', 'member da-paper', this.teamList);
           // mousedown plutôt que click : le changement part au premier appui, en plein combat.

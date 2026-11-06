@@ -1,5 +1,7 @@
 import { sfx } from '../audio/audio';
 import type { Options } from './options';
+import { hint } from './hints';
+import { isTouch } from '../input/touch';
 
 // Menu des réglages, ouvert par Échap au Repaire comme en run (le jeu se
 // fige). Le panneau de test (H) reste l'outil de DA ; ce menu-ci est celui du
@@ -33,6 +35,18 @@ interface Row {
 // vignette ne se règlent plus que dans le panneau de test (H).
 const TABS = ['Run', 'Réglages', 'Commandes'] as const;
 type Tab = (typeof TABS)[number];
+
+/** Les commandes au doigt (retour de test : pas de clavier sur téléphone) : les boutons de l'écran. */
+const TOUCH_CONTROLS: [string[], string][] = [
+  [['Stick'], 'Se déplacer (à gauche)'],
+  [['Cartes'], 'Attaques : toucher une carte en bas'],
+  [['DASH'], 'Esquive (on traverse les coups)'],
+  [['ACTION'], 'Parler, ramasser, ouvrir, choisir une porte'],
+  [['ULTI'], 'Ultime, jauge pleine'],
+  [['⇄'], 'Changer de Pokémon'],
+  [['Fiche'], 'Fiche de l’équipe'],
+  [['☰'], 'Ce menu'],
+];
 
 /** Liste des commandes : [touches, action]. Les touches séparées par « / » sont des alternatives. */
 const CONTROLS: [string[], string][] = [
@@ -291,7 +305,7 @@ export class SettingsMenu {
         return [
           this.volume('music', 'Musique'),
           this.volume('sfx', 'Bruitages'),
-          this.toggle('muted', 'Couper le son', 'Touche M, partout.'),
+          this.toggle('muted', 'Couper le son', hint('Touche M, partout.', '')),
           this.toggle('shake', 'Secousses de l’écran', 'Coups, explosions, champions.'),
         ];
       case 'Run':
@@ -356,7 +370,7 @@ export class SettingsMenu {
       r.render(el('div', 'opt-ctrl', line));
     });
 
-    el('p', 'keys', sheet, this.tab === 'Commandes' ? '←→ onglet · Échap : reprendre' : this.tab === 'Run' ? '↑↓ choisir · Entrée valider · Échap : reprendre' : '↑↓ choisir · ←→ régler · Échap : reprendre');
+    el('p', 'keys', sheet, hint(this.tab === 'Commandes' ? '←→ onglet · Échap : reprendre' : this.tab === 'Run' ? '↑↓ choisir · Entrée valider · Échap : reprendre' : '↑↓ choisir · ←→ régler · Échap : reprendre', 'Touche pour régler · touche en dehors : reprendre'));
     for (const [side, rot] of [
       ['left: 6%', -12],
       ['right: 6%', 9],
@@ -369,7 +383,7 @@ export class SettingsMenu {
 
   private renderControls(body: HTMLElement): void {
     const list = el('div', 'opt-keys', body);
-    for (const [keys, action] of CONTROLS) {
+    for (const [keys, action] of isTouch() ? TOUCH_CONTROLS : CONTROLS) {
       const line = el('div', 'opt-keyline', list);
       const caps = el('div', 'opt-caps', line);
       keys.forEach((k, i) => {

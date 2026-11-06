@@ -1,6 +1,7 @@
 import type { Pokemon } from '../combat/pokemon';
 import { NICK_MAX } from '../meta/save';
 import { statCard } from './statsheet';
+import { hint } from './hints';
 
 // Fiche de recrutement, en grotte : le prisonnier qu'on vient de libérer. À gauche sa bande de papier (la même que la fiche des
 // statistiques, touche C : PV, stats, attaques) ; à droite un surnom à lui
@@ -89,7 +90,7 @@ export class RecruitScreen {
     const page = el('div', 'stats-page recruit-page', this.root);
     const head = el('div', 'stats-head', page);
     el('span', 'da-tape', head, text.tape);
-    el('small', 'stats-keys', head, 'Entrée : valider · Échap : plus tard');
+    el('small', 'stats-keys', head, hint('Entrée : valider · Échap : plus tard', 'Touche « Plus tard » pour décider après'));
 
     const body = el('div', 'recruit-body', page);
     const card = statCard(body, { mon });

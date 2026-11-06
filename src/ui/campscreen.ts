@@ -21,6 +21,8 @@ import { LORE, TYPES_CHAPTER, type LoreChapter } from '../data/lore';
 import { TYPE_CHART } from '../combat/damage';
 import { resIcon } from './resicon';
 import { MAX_PLAYERS, cleanCode, net, type Loadout } from '../net/net';
+import { hint } from './hints';
+import { isTouch } from '../input/touch';
 
 // Écrans des postes du Repaire, dans la DA « Tag sacré » : à gauche le gardien
 // du poste en grand (son illustration détourée de blanc), son rôle au
@@ -381,7 +383,16 @@ export class CampScreen {
     shard.title = 'Éclats de Champion';
     el('b', '', shard, String(ctx.save.shards));
     icon(SHARDS.icon, shard, 'cs-res-ico');
-    el('div', 'cs-keys', page, this.station === 'start' ? 'Entrée : partir · Échap : rester au camp' : this.station === 'team' && this.teamTab === 'team' ? 'Clique un Pokémon puis « Ajouter à l’équipe » (ou glisse-le) · Échap : fermer' : 'Flèches + Entrée, ou clic : choisir · Échap : fermer');
+    el(
+      'div',
+      'cs-keys',
+      page,
+      this.station === 'start'
+        ? hint('Entrée : partir · Échap : rester au camp', 'Touche ✕ pour rester au camp')
+        : this.station === 'team' && this.teamTab === 'team'
+          ? hint('Clique un Pokémon puis « Ajouter à l’équipe » (ou glisse-le) · Échap : fermer', 'Touche un Pokémon puis « Ajouter à l’équipe »')
+          : hint('Flèches + Entrée, ou clic : choisir · Échap : fermer', 'Touche pour choisir · ✕ pour fermer'),
+    );
     const close = el('button', 'cs-close', page, '✕');
     close.addEventListener('click', () => this.close());
 
@@ -1792,7 +1803,7 @@ export class CampScreen {
     go.disabled = over;
     el('span', 'cs-go-word', go, 'Partir');
     el('span', 'cs-go-arrow', go, '➜');
-    el('kbd', '', go, 'Entrée');
+    if (!isTouch()) el('kbd', '', go, 'Entrée');
     go.addEventListener('click', () => void this.depart());
   }
 }

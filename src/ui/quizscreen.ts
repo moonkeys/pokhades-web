@@ -3,6 +3,7 @@ import { STARTER_IDS } from '../data/species';
 import { applyTraits, natureText, TRAIT_STATS, type NatureId, type TraitStat } from '../meta/mons';
 import { NICK_MAX } from '../meta/save';
 import { statCard } from './statsheet';
+import { hint } from './hints';
 
 // Le questionnaire du premier lancement (ajout, retour de test : « un petit questionnaire,
 // un peu comme dans Donjon Mystère, qui permet de définir un Pokémon de départ »). Cinq
@@ -145,7 +146,7 @@ export class QuizScreen {
     const page = el('div', 'stats-page starter-page quiz-page', this.root);
     const head = el('div', 'stats-head', page);
     el('span', 'da-tape', head, tape);
-    el('small', 'stats-keys', head, 'Flèches ou clic : choisir · Entrée : valider');
+    el('small', 'stats-keys', head, hint('Flèches ou clic : choisir · Entrée : valider', 'Touche une réponse'));
     return page;
   }
 
