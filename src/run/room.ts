@@ -372,7 +372,12 @@ export class RoomDirector {
     }
   }
 
-  update(dt: number, input: InputSample, world: WorldMap, run: Run, player: Actor, enemies: readonly Actor[]): void {
+  /**
+   * `others` : les invités debout (en ligne) ; `claimers` : ceux qui ont pressé E depuis le dernier pas.
+   * N'importe quel joueur peut passer une porte ou prendre la récompense (retour de test : « n'importe qui
+   * pourrait lancer la zone suivante, pas forcément l'hôte : ça peut foutre la merde, c'est marrant »).
+   */
+  update(dt: number, input: InputSample, world: WorldMap, run: Run, player: Actor, enemies: readonly Actor[], others: readonly Actor[] = [], claimers: readonly Actor[] = []): void {
     this.capture.update(dt, input, player);
     if (this.village && this.phase === 'waves') this.updateThrows(dt, run, player);
     for (const e of enemies) {
@@ -475,7 +480,7 @@ export class RoomDirector {
         this.openDoors();
         break;
       case 'open':
-        this.updateOpen(input, world, run, player);
+        this.updateOpen(input, world, run, player, others, claimers);
         break;
       case 'fadeOut':
         this.fade = Math.min(1, this.fade + dt / FADE);
@@ -700,10 +705,11 @@ export class RoomDirector {
     this.host.prepareReward(run.reward);
   }
 
-  private updateOpen(input: InputSample, world: WorldMap, run: Run, player: Actor): void {
+  private updateOpen(input: InputSample, world: WorldMap, run: Run, player: Actor, others: readonly Actor[], claimers: readonly Actor[]): void {
+    const everyone = [player, ...others];
     // Bouche de grotte : on s'avance dans le trou, contre la paroi (la case de paroi bloque, le pied s'arrête au ras).
     const cave = world.cave;
-    if (cave && !cave.used && Math.abs(player.x - (cave.x + 0.5)) < 0.9 && player.y < cave.y + 1.75) {
+    if (cave && !cave.used && everyone.some((a) => Math.abs(a.x - (cave.x + 0.5)) < 0.9 && a.y < cave.y + 1.75)) {
       this.toCave = true;
       this.phase = 'fadeOut';
       sfx('doorEnter');
@@ -711,12 +717,14 @@ export class RoomDirector {
     }
     const p = this.pedestal;
     if (p) {
-      const near = Math.hypot(player.x - p.x, player.y - p.y) < PICKUP_RADIUS + 0.6;
-      p.label.classList.toggle('open', near);
-      if (near && input.interact) this.claim(run);
+      const nearTo = (a: Actor) => Math.hypot(a.x - p.x, a.y - p.y) < PICKUP_RADIUS + 0.6;
+      p.label.classList.toggle('open', everyone.some(nearTo));
+      // L'écran de choix s'ouvre chez l'hôte, qu'il soit le preneur ou un invité (le don est pour toute l'équipe).
+      if ((nearTo(player) && input.interact) || claimers.some(nearTo)) this.claim(run);
     }
     for (const d of this.doors) {
-      if (this.atExit(world, player, d.exit)) {
+      const who = everyone.find((a) => this.atExit(world, a, d.exit));
+      if (who) {
         if (d.offer.locked) {
           if (this.nag <= 0) this.host.message(`Il faut la CS ${csName(d.offer.locked)} pour aller ${toBiome(d.offer.biome!)}`);
           this.nag = LOCKED_NAG;
