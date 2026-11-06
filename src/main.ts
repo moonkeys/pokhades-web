@@ -959,6 +959,23 @@ async function boot(): Promise<void> {
     netCamp();
   };
 
+  /** Au Repaire : les cartes de l'équipe (portrait, nom, niveau de départ), refaites quand elle change. */
+  let campTeamKey = '';
+  const refreshCampTeam = () => {
+    const key = save.team.map((u) => `${u}:${speciesOf(save, u)}:${startLevel(save, u, BASE_TEAM_LEVEL)}:${save.mons[u]?.name ?? ''}`).join('|');
+    if (key === campTeamKey) return;
+    campTeamKey = key;
+    void Promise.all(
+      save.team.map(async (u) => {
+        const id = speciesOf(save, u);
+        const info = await loadInfo(id);
+        return { id, name: monName(save, u, info.name), level: startLevel(save, u, BASE_TEAM_LEVEL) };
+      }),
+    ).then((list) => {
+      if (key === campTeamKey) hud.setCampTeam(list);
+    });
+  };
+
   /**
    * Le Repaire où l'on se tient : le sien, ou celui de l'hôte quand on le
    * visite en ligne (Roucarnage) — ses aménagements, ses libérés et ses recrues en
@@ -2688,6 +2705,10 @@ async function boot(): Promise<void> {
     merchant.placeLabels(proj);
     camp.placeLabels(proj);
     hud.update(frameDt, player, combat, wild, proj, time, team);
+    // L'équipe à gauche, au Repaire aussi (retour de test) : les cartes de ceux qui partiront, tenues à jour.
+    if (mode === 'camp') refreshCampTeam();
+    else hud.setCampTeam(null);
+    document.body.classList.toggle('net-on', mode === 'camp' && net.active);
     // Au Repaire, le stock (ressources, Éclats) à côté des Baies ; en run, les Rappels de toute l'équipe à côté des ₽.
     runHud.setStock(mode === 'camp' ? save : null);
     runHud.setRevives(mode === 'run' && level(save, 'revives') > 0 ? revives : null);

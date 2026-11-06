@@ -4887,3 +4887,20 @@
 .cs-who .cs-head {
   gap: calc(0.8 * var(--u));
 }
+
+/* Au Repaire, l'équipe à gauche (hud.ts, setCampTeam) : de simples cartes, sans clic ; le meneur est en avant.
+   En ligne, la liste des joueurs prend la place du haut : l'équipe passe dessous. */
+.hud-team .member.camp {
+  cursor: default;
+  pointer-events: none;
+}
+.hud-team .member.camp.active {
+  opacity: 1;
+}
+.hud-team .member.camp .nm small {
+  font-weight: 700;
+  opacity: 0.7;
+}
+body.net-on .hud-team {
+  top: calc(30 * var(--u));
+}

@@ -112,6 +112,9 @@ export class Hud {
   private readonly ko = el('div', 'hud-ko', undefined, 'K.O. !');
   private readonly teamList = el('div', 'hud-team');
   private teamKey = '';
+  /** Au Repaire, l'équipe se montre aussi (setCampTeam) : updateTeam, celui de la run, s'efface alors. */
+  private campMode = false;
+  private campKey = '';
   private members: { el: HTMLElement; hp: HTMLElement; xp: HTMLElement; lv: HTMLElement }[] = [];
   private readonly tags = new Map<Actor, HTMLElement>();
   private readonly tagLayer = el('div', 'hud-tags');
@@ -178,7 +181,42 @@ export class Hud {
   }
 
   /** L'équipe à gauche : reconstruite quand sa composition change, PV et état tenus à jour. */
+  /**
+   * L'équipe à gauche, au Repaire comme en run (retour de test : « afficher l'équipe à gauche dans le hub également »).
+   * Ses membres n'y sont pas sur le terrain : de simples cartes (portrait, nom, niveau de départ), sans PV.
+   * `null` (ou moins de deux membres, comme en run) l'efface.
+   */
+  setCampTeam(entries: { id: number; name: string; level: number }[] | null): void {
+    if (!entries || entries.length < 2) {
+      if (this.campMode) {
+        this.campMode = false;
+        this.campKey = '';
+        this.teamKey = '';
+        this.teamList.replaceChildren();
+      }
+      return;
+    }
+    this.campMode = true;
+    const key = JSON.stringify(entries);
+    if (key === this.campKey) return;
+    this.campKey = key;
+    this.teamKey = 'camp';
+    this.members = [];
+    this.teamList.replaceChildren();
+    el('div', 'lbl', this.teamList, 'Équipe');
+    entries.forEach((e, i) => {
+      const m = el('div', `member da-paper camp${i === 0 ? ' active' : ''}`, this.teamList);
+      const img = el('img', '', m) as HTMLImageElement;
+      img.src = `/game/artwork/${e.id}.png`;
+      img.alt = '';
+      const body = el('div', '', m);
+      const nm = el('div', 'nm', body, e.name);
+      el('small', '', nm, ` N.${e.level}`);
+    });
+  }
+
   private updateTeam(team: readonly Actor[], player: Actor): void {
+    if (this.campMode) return;
     const key = team.map((a) => `${a.speciesId}:${a.pokemon ? 1 : 0}`).join();
     if (key !== this.teamKey) {
       this.teamKey = key;
