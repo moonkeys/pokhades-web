@@ -669,20 +669,42 @@ body.touch .hud-move .key {
   --s: 1.9em;
 }
 
-/* Le badge d'un don : l'illustration du légendaire, détourée d'encre, sur un halo de son type. */
+/* Le don d'un légendaire, en médaillon (retour de test : « c'est juste le sprite qui flotte, je ne suis
+   pas convaincu ») : une pièce ronde, au fond de la couleur de son type, cerclée d'or et d'encre,
+   avec son illustration dedans et un reflet. */
 .rw-badge.art {
   --s: 2.6em;
-  background: radial-gradient(circle, color-mix(in srgb, var(--c) 55%, transparent) 0%, transparent 68%);
-  border: 0;
-  box-shadow: none;
+  --gold: #f0cf74;
+  border-radius: 50%;
+  overflow: hidden;
   rotate: 0deg;
+  background:
+    radial-gradient(circle at 50% 108%, color-mix(in srgb, var(--c) 35%, #000) 0%, transparent 55%),
+    radial-gradient(circle at 35% 28%, color-mix(in srgb, var(--c) 45%, #fff) 0%, var(--c) 58%, color-mix(in srgb, var(--c) 60%, #000) 100%);
+  border: 0.09em solid #1a1008;
+  box-shadow:
+    inset 0 0 0 0.1em var(--gold),
+    inset 0 0 0 0.16em #8a6a22,
+    inset 0 0 0 0.2em rgba(26, 16, 8, 0.6),
+    0.08em 0.16em 0 rgba(26, 16, 8, 0.5),
+    0 0 0.9em color-mix(in srgb, var(--c) 60%, transparent);
+}
+/* Le reflet de la pièce : un croissant clair en haut à gauche. */
+.rw-badge.art::after {
+  content: '';
+  position: absolute;
+  inset: 0.2em;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0) 38%);
+  pointer-events: none;
 }
 .rw-badge.art img {
-  width: 118%;
-  height: 118%;
+  width: 92%;
+  height: 92%;
+  margin-top: 4%;
   object-fit: contain;
   image-rendering: auto;
-  filter: drop-shadow(1px 0 0 #1a1008) drop-shadow(-1px 0 0 #1a1008) drop-shadow(0 1px 0 #1a1008) drop-shadow(0 -1px 0 #1a1008) drop-shadow(0 3px 2px rgba(26, 16, 8, 0.45));
+  filter: drop-shadow(0 0.08em 0.05em rgba(26, 16, 8, 0.55));
 }
 .room-label.icon-only .rw-badge.art {
   --s: 3.4em;
