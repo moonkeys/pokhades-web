@@ -31,6 +31,10 @@ export type TitleTab = 'Réglages' | 'Commandes';
 export interface TitleHooks {
   /** « Jouer » : l'écran est déjà fermé quand on l'appelle. */
   play: () => void;
+  /** « Jouer en ligne » : l'écran est déjà fermé ; main.ts ouvre le relais de Roucarnage. */
+  online: () => void;
+  /** Un lien d'invitation (?join=CODE) a ouvert la page : rejoint cette partie. L'écran est déjà fermé. */
+  join: (code: string) => void;
   /** Ouvre le menu des réglages sur cet onglet, et appelle `back` à sa fermeture. */
   settings: (tab: TitleTab, back: () => void) => void;
 }
@@ -82,12 +86,17 @@ export class TitleScreen {
   }
 
   /** `started` : une partie existe déjà (« Jouer » ramène au Repaire, sinon le questionnaire). */
-  show(hooks: TitleHooks, started: boolean): void {
+  show(hooks: TitleHooks, started: boolean, invite = ''): void {
     this.hooks = hooks;
     this.sel = 0;
     this.sub = false;
     this.items = [
-      { label: 'Jouer', hint: started ? 'Retour au Repaire' : 'Nouvelle partie', run: () => this.play() },
+      // Un ami a donné son lien (QR code) : c'est la première chose à proposer. Sans premier
+      // Pokémon, il n'y a rien à emmener en ligne : on dit alors quoi faire d'abord.
+      ...(invite && started ? [{ label: `Rejoindre ${invite}`, hint: 'Invitation reçue', run: () => this.leave((h) => h.join(invite)) }] : []),
+      { label: 'Jouer', hint: started ? 'Retour au Repaire' : invite ? `Nouvelle partie, puis ${invite}` : 'Nouvelle partie', run: () => this.play() },
+      // Une fois le premier Pokémon libéré : héberger ou rejoindre une partie depuis le menu.
+      ...(started ? [{ label: 'Jouer en ligne', hint: 'Héberger ou rejoindre', run: () => this.leave((h) => h.online()) }] : []),
       { label: 'Réglages', hint: 'Musique, bruitages, secousses', run: () => this.open_('Réglages') },
       { label: 'Commandes', hint: 'Clavier et manette tactile', run: () => this.open_('Commandes') },
     ];
@@ -110,6 +119,15 @@ export class TitleScreen {
     this.hooks = null;
     this.close();
     h?.play();
+  }
+
+  /** Ferme le menu et passe la main au jeu (comme « Jouer », mais vers autre chose que le Repaire). */
+  private leave(go: (h: TitleHooks) => void): void {
+    sfx('confirm');
+    const h = this.hooks;
+    this.hooks = null;
+    this.close();
+    if (h) go(h);
   }
 
   private open_(tab: TitleTab): void {

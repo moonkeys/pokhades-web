@@ -267,7 +267,7 @@ export class CampScreen {
   /** Élément choisi au clavier (rang dans NAV), -1 tant qu'on n'a pas touché aux flèches. */
   private navIndex = -1;
   /** Code saisi chez Roucarnage, gardé d'un rendu à l'autre. */
-  private joinCode = '';
+  joinCode = '';
   private readonly keys = (e: KeyboardEvent) => {
     if (!this.open) return;
     // Dans le champ du surnom, la frappe lui revient (flèches comprises) :
@@ -1588,13 +1588,14 @@ export class CampScreen {
       open.addEventListener('click', () => {
         sfx('click', -6);
         open.disabled = true;
-        // La partie ouverte, on rend la main : le code reste affiché en haut (ui/netbadge.ts), on se promène en attendant.
+        // La partie ouverte, on rend la main : le code et son QR code restent affichés en haut
+        // (ui/netbadge.ts), on se promène et on prépare la run en attendant ses alliés.
         void ctx.online
           .loadout()
           .then((lo) => net.host(lo))
           .then(() => {
             if (net.role !== 'host' || !net.code) return;
-            ctx.notify('Partie ouverte', `Code ${net.code} : il reste affiché en haut de l’écran. Tes alliés arrivent dans ton Repaire.`, STATIONS.online.id);
+            ctx.notify('Partie ouverte', `Code ${net.code} : il reste affiché en haut de l’écran, avec un QR code à scanner. Tes alliés arrivent dans ton Repaire.`, STATIONS.online.id);
             this.close();
           });
       });
@@ -1635,7 +1636,7 @@ export class CampScreen {
     const box = el('div', 'cs-net-room da-paper', main);
     el('small', '', box, net.role === 'host' ? 'Ton code de partie' : 'Partie');
     el('b', 'cs-net-code', box, net.code || '…');
-    if (net.role === 'host' && net.code) el('small', '', box, 'Donne-le à tes alliés : ils l’entrent chez Roucarnage, et arrivent dans ton Repaire.');
+    if (net.role === 'host' && net.code) el('small', '', box, 'Donne-le à tes alliés : ils l’entrent chez Roucarnage, ou scannent le QR code affiché en haut, et arrivent dans ton Repaire.');
     if (net.role === 'client') el('small', '', box, 'Tu es dans le Repaire de l’hôte. Ton Pokémon : le meneur de ton équipe, à choisir chez Porygon.');
     const list = el('div', 'cs-lineup cs-net-players', main);
     for (const p of net.players) {

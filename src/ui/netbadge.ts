@@ -1,5 +1,7 @@
 import { sfx } from '../audio/audio';
 import { net } from '../net/net';
+import { inviteUrl } from '../net/invite';
+import { qrSvg } from './qr';
 
 // Le jeu en ligne, toujours sous les yeux (ajout, retour de test : « ouvrir
 // la partie sans rester coincé chez Roucarnage ») : en haut, un bandeau avec
@@ -17,6 +19,8 @@ const el = (tag: string, cls: string, parent?: HTMLElement, text?: string) => {
 export class NetBadge {
   private readonly badge: HTMLElement;
   private readonly list: HTMLElement;
+  /** Le QR code de l'invitation, sous le bandeau (hôte, au Repaire, avant le départ). */
+  private readonly qr: HTMLElement;
   /** Au Repaire : la liste des joueurs se montre ; en run, le bandeau seul (le HUD d'équipe a déjà sa place). */
   private inCamp = true;
 
@@ -28,6 +32,17 @@ export class NetBadge {
       if (!net.code) return;
       void navigator.clipboard?.writeText(net.code).then(
         () => this.flash('Code copié !'),
+        () => {},
+      );
+      sfx('click', -6);
+    });
+    this.qr = el('button', 'net-qr', parent);
+    this.qr.hidden = true;
+    this.qr.title = 'Copier le lien d’invitation';
+    this.qr.addEventListener('click', () => {
+      if (!net.code) return;
+      void navigator.clipboard?.writeText(inviteUrl(net.code)).then(
+        () => this.flashQr('Lien copié !'),
         () => {},
       );
       sfx('click', -6);
@@ -44,6 +59,13 @@ export class NetBadge {
     this.render();
   }
 
+  private flashQr(text: string): void {
+    const tip = this.qr.querySelector('small');
+    if (!tip) return;
+    tip.textContent = text;
+    setTimeout(() => this.render(), 1200);
+  }
+
   private flash(text: string): void {
     const tip = this.badge.querySelector('.net-tip');
     if (!tip) return;
@@ -55,6 +77,10 @@ export class NetBadge {
     const on = net.active && !!net.code;
     this.badge.hidden = !on;
     this.list.hidden = !on || !this.inCamp;
+    // Le QR code ne sert qu'à inviter : l'hôte, au Repaire, tant que la run n'a pas commencé.
+    const showQr = on && net.role === 'host' && this.inCamp && !net.inRun;
+    this.qr.hidden = !showQr;
+    if (showQr) this.qr.replaceChildren(qrSvg(inviteUrl(net.code)), el('small', '', undefined, 'Scanne pour rejoindre'));
     if (!on) return;
     this.badge.replaceChildren();
     el('span', 'net-dot', this.badge);

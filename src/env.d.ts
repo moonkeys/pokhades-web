@@ -2,3 +2,10 @@
 
 /** Version du jeu, « 0.1.42 » en prod (42e mise en ligne), « 0.1.0-dev » en local. */
 declare const __APP_VERSION__: string;
+
+interface ImportMetaEnv {
+  /** Relais TURN du multijoueur (adresses séparées par des virgules) et ses identifiants, cf. net/net.ts. */
+  readonly VITE_TURN_URLS?: string;
+  readonly VITE_TURN_USERNAME?: string;
+  readonly VITE_TURN_CREDENTIAL?: string;
+}
