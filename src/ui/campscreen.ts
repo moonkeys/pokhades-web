@@ -21,8 +21,6 @@ import { LORE, TYPES_CHAPTER, type LoreChapter } from '../data/lore';
 import { TYPE_CHART } from '../combat/damage';
 import { resIcon } from './resicon';
 import { MAX_PLAYERS, cleanCode, net, type Loadout } from '../net/net';
-import { inviteUrl } from '../net/invite';
-import { qrSvg } from './qr';
 
 // Écrans des postes du Repaire, dans la DA « Tag sacré » : à gauche le gardien
 // du poste en grand (son illustration détourée de blanc), son rôle au
@@ -1590,10 +1588,16 @@ export class CampScreen {
       open.addEventListener('click', () => {
         sfx('click', -6);
         open.disabled = true;
-        // La partie ouverte, l'écran reste là : le code et son QR code à montrer (retour de test :
-        // « un QR code, comme ça les gens n'ont qu'à scanner »). Le code reste aussi affiché en haut
-        // (ui/netbadge.ts) une fois l'écran fermé, pour se promener en attendant ses alliés.
-        void ctx.online.loadout().then((lo) => net.host(lo));
+        // La partie ouverte, on rend la main : le code et son QR code restent affichés en haut
+        // (ui/netbadge.ts), on se promène et on prépare la run en attendant ses alliés.
+        void ctx.online
+          .loadout()
+          .then((lo) => net.host(lo))
+          .then(() => {
+            if (net.role !== 'host' || !net.code) return;
+            ctx.notify('Partie ouverte', `Code ${net.code} : il reste affiché en haut de l’écran, avec un QR code à scanner. Tes alliés arrivent dans ton Repaire.`, STATIONS.online.id);
+            this.close();
+          });
       });
       const join = el('div', 'cs-card da-paper', grid);
       el('div', 'cs-head', join).append(el('b', '', undefined, 'Rejoindre une partie'));
@@ -1632,20 +1636,7 @@ export class CampScreen {
     const box = el('div', 'cs-net-room da-paper', main);
     el('small', '', box, net.role === 'host' ? 'Ton code de partie' : 'Partie');
     el('b', 'cs-net-code', box, net.code || '…');
-    if (net.role === 'host' && net.code) {
-      el('small', '', box, 'Donne ce code à tes alliés, ou fais-leur scanner le QR code : ils arrivent dans ton Repaire.');
-      const link = inviteUrl(net.code);
-      const qr = el('div', 'cs-net-qr', box);
-      qr.append(qrSvg(link));
-      const copy = el('button', 'cs-net-btn', qr, 'Copier le lien') as HTMLButtonElement;
-      copy.addEventListener('click', () => {
-        sfx('click', -6);
-        void navigator.clipboard?.writeText(link).then(
-          () => (copy.textContent = 'Lien copié !'),
-          () => (copy.textContent = link),
-        );
-      });
-    }
+    if (net.role === 'host' && net.code) el('small', '', box, 'Donne-le à tes alliés : ils l’entrent chez Roucarnage, ou scannent le QR code affiché en haut, et arrivent dans ton Repaire.');
     if (net.role === 'client') el('small', '', box, 'Tu es dans le Repaire de l’hôte. Ton Pokémon : le meneur de ton équipe, à choisir chez Porygon.');
     const list = el('div', 'cs-lineup cs-net-players', main);
     for (const p of net.players) {
