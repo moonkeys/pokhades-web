@@ -1760,6 +1760,48 @@
   min-width: calc(11 * var(--u));
   text-align: center;
 }
+.opt-bigs {
+  display: grid;
+  gap: calc(1.4 * var(--u));
+  padding: calc(1 * var(--u)) 0;
+}
+.opt-bigcell {
+  display: grid;
+  gap: calc(0.4 * var(--u));
+  padding: calc(0.4 * var(--u));
+  border-radius: 4px;
+}
+.opt-bigcell.sel {
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
+}
+.opt-bigcell small {
+  text-align: center;
+  opacity: 0.7;
+}
+/* Gros boutons de l'onglet Run : faciles à viser au doigt (retour de test). */
+.opt-big {
+  width: 100%;
+  min-height: max(56px, calc(6 * var(--u)));
+  font-family: var(--head);
+  font-size: max(22px, calc(2.6 * var(--u)));
+  letter-spacing: 0.05em;
+  color: var(--paper);
+  background: var(--ink);
+  border: 0;
+  cursor: pointer;
+  box-shadow: 0.3em 0.3em 0 var(--spray);
+}
+.opt-big.go {
+  background: #2f7d3a;
+}
+.opt-big.quit {
+  background: #7a2a22;
+}
+.opt-big.quit.sure {
+  background: #c43a2c;
+  animation: net-pulse 0.9s ease-in-out infinite;
+}
 .opt-switch,
 .opt-arrow {
   font: normal calc(1.35 * var(--u)) var(--head);
