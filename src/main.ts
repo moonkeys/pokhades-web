@@ -26,7 +26,7 @@ import { MATERIALS, NECTARS, materialName, tickCraft } from './meta/crafting';
 import { campNews, fresh as freshNews, markSeen as markNewsSeen } from './meta/news';
 import { BossPreview } from './ui/bosspreview';
 import { RunSummary } from './ui/runsummary';
-import { SettingsMenu } from './ui/settingsmenu';
+import { SettingsMenu, type LeaveOffer } from './ui/settingsmenu';
 import { RunStats } from './meta/runstats';
 import { Dialogue, type Speaker } from './ui/dialogue';
 import { Combat, DEATH_TIME } from './combat/combat';
@@ -1791,6 +1791,28 @@ async function boot(): Promise<void> {
         break;
     }
   };
+  /**
+   * Quitter la run depuis le menu (retour de test : « des fois on veut juste se barrer »). Seul, ou chez
+   * l'hôte : la run s'arrête comme une défaite (même consolation en Baies, bilan, retour au Repaire), sans
+   * attendre le temps de la chute ; en ligne, les invités reçoivent la fin et reviennent aussi. Un invité,
+   * lui, quitte seulement la partie et retrouve son Repaire.
+   */
+  const runExit = (): LeaveOffer | undefined => {
+    if (mode !== 'run' || endT >= 0 || titleScreen.open) return undefined;
+    if (net.role === 'client') return { label: 'Quitter la partie', hint: 'Retour à ton Repaire ; les autres continuent.', run: () => net.leave() };
+    const together = net.role === 'host' && net.guests.length > 0;
+    return {
+      label: 'Abandonner la run',
+      hint: together ? 'Retour au Repaire pour tout le monde.' : 'Retour au Repaire, avec la consolation d’une défaite.',
+      run: () => {
+        if (mode !== 'run' || endT >= 0) return;
+        runWon = false;
+        defeat();
+        // Pas d'attente : le bilan s'ouvre tout de suite.
+        endT = endDelay;
+      },
+    };
+  };
   // Le menu des réglages (Échap) : le panneau, qui montre les mêmes options, se remet à jour derrière.
   const settingsMenu = new SettingsMenu(document.body, opts, (changed) => {
     applyOption(changed);
@@ -1799,7 +1821,7 @@ async function boot(): Promise<void> {
   addEventListener('keydown', (e) => {
     if (e.code !== 'Escape' || e.repeat || paused() || dialogue.open) return;
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement) return;
-    settingsMenu.show(() => input.flush());
+    settingsMenu.show(() => input.flush(), undefined, runExit());
   });
   const panel = new Panel(opts, applyOption, (act, kind) => {
     if (kind === 'camp') return enterCamp();
