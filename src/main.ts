@@ -2510,9 +2510,12 @@ async function boot(): Promise<void> {
     for (const m of team) if (m.deathT >= 0 && !m.downed) m.lieDown();
     separate();
     // En grotte, c'est elle qui mène ; la salle du dehors attend, figée.
+    // En ligne, les invités debout (et ceux qui viennent d'appuyer sur E) comptent aussi pour les portes et la récompense.
+    const guests = net.inRun ? team.filter((m) => m.remote && m.deathT < 0) : [];
+    const claimers = guests.filter((m) => remoteInteract.has(m));
     if (mode === 'run') {
       if (cave.active) cave.update(dt, sample, world, run, player, wild);
-      else director.update(dt, sample, world, run, player, wild);
+      else director.update(dt, sample, world, run, player, wild, guests, claimers);
     }
     trainer?.update(dt, world, Math.random);
     // L'Aimant à Baies d'Alakazam attire les baies tombées.
