@@ -22,6 +22,30 @@ const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const CODE_LEN = 5;
 /** Préfixe des identifiants PeerJS : le serveur de signalisation est partagé avec le monde entier. */
 const PREFIX = 'pokhades-web-';
+
+/**
+ * Serveurs ICE de la connexion directe (WebRTC). Retour de test : mobile contre ordinateur,
+ * même sur le même Wi-Fi, « l'hôte ne répond pas ». Deux causes : les navigateurs masquent les
+ * adresses locales (mDNS) que bien des box ne relaient pas, et la 4G/5G ou un Wi-Fi public
+ * bloquent le pair-à-pair. Il faut alors un relais TURN. Celui que PeerJS fournit par défaut
+ * (turn:*.turn.peerjs.com) n'existe plus : son nom de domaine ne se résout plus, d'où l'échec.
+ *
+ * Passer `config` à PeerJS remplace ses serveurs : on met des STUN, plus le relais TURN du projet
+ * (ExpressTURN, offre gratuite sans carte) si le build en reçoit les identifiants :
+ * VITE_TURN_URLS (adresses séparées par des virgules), VITE_TURN_USERNAME, VITE_TURN_CREDENTIAL.
+ * Ils sont lisibles dans le jeu publié : un compte gratuit à quota, qu'on change au besoin.
+ */
+function iceServers(): RTCIceServer[] {
+  const servers: RTCIceServer[] = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun.cloudflare.com:3478'] }];
+  const env = import.meta.env;
+  const urls = String(env.VITE_TURN_URLS ?? '').split(',').map((u) => u.trim()).filter(Boolean);
+  if (urls.length) servers.push({ urls, username: String(env.VITE_TURN_USERNAME ?? ''), credential: String(env.VITE_TURN_CREDENTIAL ?? '') });
+  return servers;
+}
+const PEER_OPTIONS = { config: { iceServers: iceServers(), sdpSemantics: 'unified-plan' } as RTCConfiguration };
+/** Délai pour établir la liaison avec l'hôte : via un relais TURN, elle prend plus de 12 s. */
+const JOIN_TIMEOUT_MS = 30000;
+
 /** Un hôte et un invité de versions différentes ne se comprendraient pas (Net._reject_version). */
 export const NET_VERSION = 1;
 
@@ -241,7 +265,7 @@ export class Net {
 
   private openHost(loadout: Loadout, attempt: number): Promise<void> {
     const code = makeCode();
-    const peer = new Peer(PREFIX + code);
+    const peer = new Peer(PREFIX + code, PEER_OPTIONS);
     this.peer = peer;
     return new Promise((resolve) => {
       peer.on('open', (id) => {
@@ -326,7 +350,7 @@ export class Net {
     this.code = clean;
     this.status = 'Connexion à l’hôte…';
     this.changed();
-    const peer = new Peer();
+    const peer = new Peer(PEER_OPTIONS);
     this.peer = peer;
     return new Promise((resolve) => {
       const fail = (why: string) => {
@@ -340,7 +364,12 @@ export class Net {
         this.id = id;
         const conn = peer.connect(PREFIX + clean, { reliable: true });
         this.hostConn = conn;
-        const timer = setTimeout(() => fail('L’hôte ne répond pas.'), 12000);
+        const timer = setTimeout(
+          () => fail('Liaison impossible avec l’hôte : la connexion directe est bloquée entre vos deux appareils (il manque le relais TURN du jeu).'),
+          JOIN_TIMEOUT_MS,
+        );
+        this.status = 'Connexion à l’hôte… (jusqu’à 30 s via un relais)';
+        this.changed();
         conn.on('open', () => {
           clearTimeout(timer);
           this.status = '';

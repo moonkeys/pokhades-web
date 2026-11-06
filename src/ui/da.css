@@ -4182,6 +4182,36 @@
 .net-tip {
   opacity: 0.6;
 }
+/* Le QR code de la partie, sous le bandeau (netbadge.ts) : au Repaire seulement, tant que la run
+   n'a pas commencé. Un fond blanc franc, la marge dont les lecteurs ont besoin ; un clic copie le lien. */
+.net-qr {
+  position: absolute;
+  top: calc(5.6 * var(--u));
+  right: calc(1.6 * var(--u));
+  z-index: 15;
+  display: grid;
+  justify-items: center;
+  gap: calc(0.3 * var(--u));
+  padding: calc(0.5 * var(--u));
+  background: var(--paper);
+  color: var(--ink);
+  border: none;
+  box-shadow: 0 calc(0.3 * var(--u)) calc(0.8 * var(--u)) #0007;
+  rotate: 1deg;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.net-qr[hidden] {
+  display: none;
+}
+.net-qr svg {
+  width: max(88px, calc(9 * var(--u)));
+  height: auto;
+  border: 2px solid var(--ink);
+}
+.net-qr small {
+  font-size: calc(1 * var(--u));
+}
 .net-players {
   position: absolute;
   left: calc(2 * var(--u));

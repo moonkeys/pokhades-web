@@ -61,6 +61,7 @@ import { Hud } from './ui/hud';
 import { loadOptions, saveOptions, type Options } from './ui/options';
 import { Panel } from './ui/panel';
 import { Journal } from './ui/journal';
+import { readInvite } from './net/invite';
 import { RewardScreen } from './ui/rewardscreen';
 import { RunHud } from './ui/runhud';
 import { RecruitScreen } from './ui/recruitscreen';
@@ -856,6 +857,13 @@ async function boot(): Promise<void> {
     if (feats) runHud.notify({ title: 'Exploits', text: `${feats > 1 ? `${feats} exploits sont` : 'Un exploit est'} à réclamer auprès de Xatu, près de l’arche.`, art: CAMP_NPCS.feats, color: 'var(--yel)' });
     welcomeStory();
     askStarter();
+    // Invité par un lien avant d'avoir son premier Pokémon : le voilà prêt, la partie l'attend.
+    if (invite && save.started && !titleScreen.open && !net.active) {
+      const code = invite;
+      invite = '';
+      campScreen.joinCode = code; // déjà saisi quand il ouvrira l'écran de Roucarnage
+      runHud.notify({ title: 'Invitation', text: `La partie ${code} t'attend : parle à Roucarnage, le code est déjà saisi.`, art: CAMP_NPCS.online, color: '#7ac0e8' });
+    }
   };
 
   /** « Le Repaire · 5/6 Pokémon · 2 en attente » : la jauge des places, en haut à gauche. */
@@ -1537,6 +1545,26 @@ async function boot(): Promise<void> {
         if (overlap > 0) a.nudge(world, (d > 1e-4 ? dx / d : 1) * overlap, (d > 1e-4 ? dy / d : 0) * overlap);
       }
     }
+  };
+
+  /** L'écran de Roucarnage (héberger ou rejoindre), ouvert depuis le menu principal. */
+  const openOnline = () => {
+    if (campScreen.open) return;
+    campScreen.show('online', campCtx, () => {
+      input.flush();
+      refreshNews();
+    });
+  };
+
+  /**
+   * Rejoint la partie d'un lien d'invitation : l'écran de Roucarnage s'ouvre pour montrer la
+   * connexion (et l'échec s'il y en a un), puis on y entre avec le meneur de son équipe.
+   */
+  const joinInvite = (code: string) => {
+    invite = '';
+    if (net.active) return;
+    openOnline();
+    void myLoadout().then((lo) => net.join(code, lo));
   };
 
   /**
@@ -2316,12 +2344,23 @@ async function boot(): Promise<void> {
   // Le menu principal d'abord, par-dessus le Repaire qui se charge derrière (figé : paused()).
   // enterCamp n'ouvre pas le questionnaire tant qu'il est là : « Jouer » le fait. Sauté sous
   // ?debug, pour les tests automatisés.
+  // Un lien d'invitation (QR code d'un ami, net/invite.ts) : on garde son code ; il se rejoint depuis
+  // le menu, ou une fois le premier Pokémon libéré pour qui n'a encore rien (enterCamp).
+  let invite = readInvite();
   if (!new URLSearchParams(location.search).has('debug'))
     titleScreen.show(
       {
         play: () => {
           input.flush();
           askStarter();
+        },
+        online: () => {
+          input.flush();
+          openOnline();
+        },
+        join: (code) => {
+          input.flush();
+          joinInvite(code);
         },
         settings: (tab, back) =>
           settingsMenu.show(() => {
@@ -2330,6 +2369,7 @@ async function boot(): Promise<void> {
           }, tab),
       },
       save.started,
+      invite,
     );
   enterCamp();
 

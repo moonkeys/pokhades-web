@@ -843,3 +843,40 @@ d'écran d'accueil : la Poké Ball enchaînée du logo (`public/favicon-32.png`,
 - La fontaine des villages (et du plan) est celle d'Essentials : le bassin d'`Outside.png`
   et le jet animé de l'autotile `Fountain1.png`.
 
+
+## Jouer en ligne : menu, lien et QR code
+
+Une fois le premier Pokémon libéré, le menu principal propose **Jouer en ligne** (ouvre l'écran de
+Roucarnage : héberger ou rejoindre). L'hôte qui ouvre sa partie voit son code et, dessous, un
+**QR code** (`ui/qr.ts`), affiché en haut sous le bandeau du code (`ui/netbadge.ts`) : l'écran de
+Roucarnage se referme, on peut se promener et préparer la run. Le QR code ne se montre qu'au Repaire
+de l'hôte, et disparaît au départ de la run ; un clic dessus copie le lien d'invitation, l'adresse du
+jeu suivie de `?join=CODE` (`net/invite.ts`). Qui ouvre ce lien arrive sur le menu avec « Rejoindre CODE » en premier choix ;
+le paramètre est retiré de la barre d'adresse (un rechargement ne rejoint pas une partie fermée).
+Sans premier Pokémon, rien à emmener en ligne : le code est gardé, et une notification le rappelle
+au Repaire une fois le starter choisi.
+
+## Multijoueur : relais TURN (ExpressTURN, gratuit)
+
+La connexion entre joueurs est directe (WebRTC via PeerJS). Entre un téléphone et un ordinateur,
+même sur un seul Wi-Fi, elle échoue souvent (adresses locales masquées par le navigateur, box qui
+ne les relaie pas, 4G/5G) : l'invité voit « en attente, l'hôte ne répond pas ». Il faut un
+**relais TURN**. Le TURN public de PeerJS (`*.turn.peerjs.com`) n'existe plus (nom de domaine
+disparu, vérifié le 6 novembre 2026).
+
+On prend l'offre gratuite d'ExpressTURN (1 000 Go par mois d'après leur site ; la carte bancaire
+n'y est pas mentionnée : ne pas en saisir). Mise en place, une fois :
+
+1. Créer un compte sur <https://www.expressturn.com>, puis ouvrir le tableau de bord : il donne
+   l'adresse du serveur (`host:3478`), un **Username** et un **Password**.
+2. Sur GitHub : *Settings → Secrets and variables → Actions*.
+   - Variables : `TURN_URLS` = `turn:HOTE:3478,turn:HOTE:3478?transport=tcp` (l'hôte du tableau de
+     bord) ; `TURN_USERNAME` = le Username.
+   - Secret : `TURN_CREDENTIAL` = le Password.
+3. Relancer le déploiement (merge, ou *Actions → Pages → Run workflow*). En local, mettre
+   `VITE_TURN_URLS`, `VITE_TURN_USERNAME` et `VITE_TURN_CREDENTIAL` dans `.env.local`.
+
+Ces identifiants sont lisibles dans le jeu publié : c'est un compte gratuit à quota. Si quelqu'un
+en abuse, « Refresh Username, Password » dans le tableau de bord les change (puis mettre à jour
+les variables GitHub). Sans ces variables, le jeu marche seulement entre deux appareils qui se
+joignent directement.

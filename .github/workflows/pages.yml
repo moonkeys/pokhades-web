@@ -32,16 +32,8 @@ jobs:
           BASE_PATH: /${{ github.event.repository.name }}/
           # Dernier chiffre de la version affichée au menu : monte à chaque mise en prod.
           DEPLOY_NUMBER: ${{ github.run_number }}
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+          # Relais TURN du multijoueur (net/net.ts, README). Settings → Secrets and variables →
+          # Actions : variables TURN_URLS et TURN_USERNAME, secret TURN_CREDENTIAL.
+          VITE_TURN_URLS: ${{ vars.TURN_URLS }}
+          VITE_TURN_USERNAME: ${{ vars.TURN_USERNAME }}
+          VITE_TURN_CREDENTIAL: ${{ secrets.TURN_CREDENTIAL }}
