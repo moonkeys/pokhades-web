@@ -24,22 +24,22 @@ const CODE_LEN = 5;
 const PREFIX = 'pokhades-web-';
 
 /**
- * Serveurs ICE de la connexion directe (WebRTC). Sur un téléphone en 4G/5G, le réseau de
- * l'opérateur (NAT symétrique) bloque presque toujours le pair-à-pair : la partie ne passe
- * alors que par un relais TURN (retour de test : « je suis en attente, l'autre ne répond
- * pas », mobile contre ordinateur). Passer `config` à PeerJS remplace ses serveurs par défaut :
- * on les remet (STUN Google + TURN public de peerjs.com, gratuit mais souvent saturé), en ajoutant
- * d'autres STUN, et le TURN du projet s'il est fourni au build (VITE_TURN_URLS : adresses
- * séparées par des virgules ; VITE_TURN_USERNAME ; VITE_TURN_CREDENTIAL — cf. README).
+ * Serveurs ICE de la connexion directe (WebRTC). Retour de test : mobile contre ordinateur,
+ * même sur le même Wi-Fi, « l'hôte ne répond pas ». Deux causes : les navigateurs masquent les
+ * adresses locales (mDNS) que bien des box ne relaient pas, et la 4G/5G ou un Wi-Fi public
+ * bloquent le pair-à-pair. Il faut alors un relais TURN. Celui que PeerJS fournit par défaut
+ * (turn:*.turn.peerjs.com) n'existe plus : son nom de domaine ne se résout plus, d'où l'échec.
+ * Passer `config` à PeerJS remplace ses serveurs : on met des STUN, et le TURN du projet s'il est
+ * fourni au build (VITE_TURN_URLS : adresses séparées par des virgules ; VITE_TURN_USERNAME ;
+ * VITE_TURN_CREDENTIAL — cf. README).
  */
 function iceServers(): RTCIceServer[] {
   const servers: RTCIceServer[] = [
     { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302', 'stun:global.stun.twilio.com:3478'] },
-    { urls: ['turn:eu-0.turn.peerjs.com:3478', 'turn:us-0.turn.peerjs.com:3478'], username: 'peerjs', credential: 'peerjsp' },
   ];
   const env = import.meta.env;
   const urls = String(env.VITE_TURN_URLS ?? '').split(',').map((u) => u.trim()).filter(Boolean);
-  if (urls.length) servers.unshift({ urls, username: String(env.VITE_TURN_USERNAME ?? ''), credential: String(env.VITE_TURN_CREDENTIAL ?? '') });
+  if (urls.length) servers.push({ urls, username: String(env.VITE_TURN_USERNAME ?? ''), credential: String(env.VITE_TURN_CREDENTIAL ?? '') });
   return servers;
 }
 const PEER_OPTIONS = { config: { iceServers: iceServers(), sdpSemantics: 'unified-plan' } };
@@ -365,7 +365,7 @@ export class Net {
         const conn = peer.connect(PREFIX + clean, { reliable: true });
         this.hostConn = conn;
         const timer = setTimeout(
-          () => fail('Liaison impossible avec l’hôte : un des deux réseaux (4G, Wi-Fi public) bloque la connexion directe. Essaie en Wi-Fi des deux côtés.'),
+          () => fail('Liaison impossible avec l’hôte : la connexion directe est bloquée entre vos deux appareils (il manque le relais TURN du jeu).'),
           JOIN_TIMEOUT_MS,
         );
         this.status = 'Connexion à l’hôte… (jusqu’à 30 s via un relais)';
