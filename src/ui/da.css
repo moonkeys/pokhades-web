@@ -1762,45 +1762,50 @@
 }
 .opt-bigs {
   display: grid;
-  gap: calc(1.4 * var(--u));
-  padding: calc(1 * var(--u)) 0;
+  gap: calc(1 * var(--u));
+  padding: calc(0.6 * var(--u)) calc(2 * var(--u));
 }
 .opt-bigcell {
+  position: relative;
   display: grid;
-  gap: calc(0.4 * var(--u));
-  padding: calc(0.4 * var(--u));
-  border-radius: 4px;
+  gap: calc(0.3 * var(--u));
 }
-.opt-bigcell.sel {
-  outline: 3px solid var(--ink);
-  outline-offset: 3px;
+/* La flèche rose du menu principal, dans la marge de la ligne choisie. */
+.opt-bigcell.sel::before {
+  content: '▶';
+  position: absolute;
+  left: calc(-2 * var(--u));
+  top: calc(1.2 * var(--u));
+  font-size: calc(1.8 * var(--u));
+  color: var(--spray);
 }
 .opt-bigcell small {
   text-align: center;
-  opacity: 0.7;
+  opacity: 0.65;
 }
-/* Gros boutons de l'onglet Run : faciles à viser au doigt (retour de test). */
+/* Onglet Run (retour de test : « fais des boutons plus simples ») : deux lignes à l'encre, comme le menu
+   principal : « Continuer » sur la bande jaune, « Abandonner » en simple cadre, rose au moment de confirmer. */
 .opt-big {
   width: 100%;
-  min-height: max(56px, calc(6 * var(--u)));
+  min-height: max(48px, calc(5 * var(--u)));
   font-family: var(--head);
-  font-size: max(22px, calc(2.6 * var(--u)));
-  letter-spacing: 0.05em;
-  color: var(--paper);
-  background: var(--ink);
-  border: 0;
+  font-size: max(19px, calc(2.2 * var(--u)));
+  letter-spacing: 0.06em;
+  color: var(--ink);
+  background: transparent;
+  border: 3px solid var(--ink);
   cursor: pointer;
-  box-shadow: 0.3em 0.3em 0 var(--spray);
 }
 .opt-big.go {
-  background: #2f7d3a;
+  background: var(--yel);
 }
-.opt-big.quit {
-  background: #7a2a22;
+.opt-big:hover {
+  background: color-mix(in srgb, var(--yel) 55%, transparent);
 }
 .opt-big.quit.sure {
-  background: #c43a2c;
-  animation: net-pulse 0.9s ease-in-out infinite;
+  color: var(--paper);
+  background: var(--spray);
+  border-color: var(--ink);
 }
 .opt-switch,
 .opt-arrow {
