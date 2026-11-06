@@ -147,6 +147,8 @@ export type HostMsg =
       /** Le Repaire de l'hôte, où les invités se promènent : ses aménagements et les libérés qui y vivent. */
       built: string[];
       dwellers: number[];
+      /** Les recrues qui attendent chez l'hôte (espèces) : l'invité les voit autour du feu, sans pouvoir leur parler. */
+      recruits?: number[];
       /** Où chaque nouvel arrivant apparaît (identifiant de pair → position). */
       spawn: Record<string, { x: number; y: number }>;
     }
@@ -200,7 +202,28 @@ export type HostMsg =
       text?: string;
     }
   | { t: 'dialogue'; speaker: unknown; text: string }
-  | { t: 'end'; won: boolean; rooms: number; baies: number }
+  | {
+      t: 'end';
+      won: boolean;
+      rooms: number;
+      baies: number;
+      /** Le bilan de la run, pour l'écran de fin de l'invité (retour de test : « je ne vois pas le résultat quand je meurs »). */
+      sum?: {
+        act: number;
+        biome: string;
+        color: string;
+        champion: string;
+        boons: number;
+        time: number;
+        kos: number;
+        dealt: number;
+        taken: number;
+        shards: number;
+        champions: string[];
+        /** Identifiant de pair → [PV infligés, PV encaissés] de son Pokémon. */
+        mem: Record<string, [number, number]>;
+      };
+    }
   | { t: 'bye'; reason: string };
 
 export type Role = 'off' | 'host' | 'client';

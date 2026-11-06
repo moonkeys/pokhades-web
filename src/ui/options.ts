@@ -69,10 +69,11 @@ export const DEFAULTS: Options = {
   wild: true,
   debug: false,
   shake: true,
-  music: 0.3,
+  // Musique plus basse par défaut (retour de test : « dès que je lance un truc, ça fout de la musique »).
+  music: 0.2,
   sfx: 0.5,
   muted: false,
-  version: 3,
+  version: 4,
 };
 
 const KEY = 'pokhades-proto-2d';
@@ -90,6 +91,8 @@ export function loadOptions(): Options {
       // Plus réglables depuis le menu (ui/settingsmenu.ts) : on revient au
       // rendu prévu, même si un ancien réglage les avait changés.
       const opts = { ...DEFAULTS, ...saved, size: DEFAULTS.size, shadows: true, treeFade: true, grading: true, version: DEFAULTS.version };
+      // Version 4 : la musique par défaut a baissé ; qui n'avait pas encore changé de réglage la retrouve plus basse.
+      if ((saved.version ?? 0) < 4) opts.music = DEFAULTS.music;
       // Jeu publié : le panneau n'a plus ces réglages de test (ui/panel.ts) ; un ancien
       // réglage gardé dans le navigateur ne doit pas fausser la partie.
       if (import.meta.env.PROD) Object.assign(opts, { biome: DEFAULTS.biome, weather: DEFAULTS.weather, layout: DEFAULTS.layout, wild: true, debug: false });

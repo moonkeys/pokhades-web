@@ -1,5 +1,6 @@
 import { sfx } from '../audio/audio';
 import { logo } from './logo';
+import { autoFullscreen, toggleFullscreen, wantsFullscreenButton } from './fullscreen';
 
 // Le menu principal (demande du joueur : « ajouter un menu principal »), au lancement. Le
 // Repaire se charge derrière, figé (main.ts compte cet écran dans `paused()`) et flouté :
@@ -97,6 +98,10 @@ export class TitleScreen {
       { label: 'Jouer', hint: started ? 'Retour au Repaire' : invite ? `Nouvelle partie, puis ${invite}` : 'Nouvelle partie', run: () => this.play() },
       // Une fois le premier Pokémon libéré : héberger ou rejoindre une partie depuis le menu.
       ...(started ? [{ label: 'Jouer en ligne', hint: 'Héberger ou rejoindre', run: () => this.leave((h) => h.online()) }] : []),
+      // Sur téléphone, une barre de navigateur mange l'écran : le plein écran, ou l'écran d'accueil sur iPhone.
+      ...(wantsFullscreenButton()
+        ? [{ label: 'Plein écran', hint: 'Sans la barre du navigateur', run: () => void this.fullscreen() }]
+        : []),
       { label: 'Réglages', hint: 'Musique, bruitages, secousses', run: () => this.open_('Réglages') },
       { label: 'Commandes', hint: 'Clavier et manette tactile', run: () => this.open_('Commandes') },
     ];
@@ -115,6 +120,7 @@ export class TitleScreen {
   private play(): void {
     // Le premier son du jeu : ce geste débloque le Web Audio (audio.ts écoute keydown et pointerdown).
     sfx('confirm');
+    autoFullscreen();
     const h = this.hooks;
     this.hooks = null;
     this.close();
@@ -124,10 +130,24 @@ export class TitleScreen {
   /** Ferme le menu et passe la main au jeu (comme « Jouer », mais vers autre chose que le Repaire). */
   private leave(go: (h: TitleHooks) => void): void {
     sfx('confirm');
+    autoFullscreen();
     const h = this.hooks;
     this.hooks = null;
     this.close();
     if (h) go(h);
+  }
+
+  private async fullscreen(): Promise<void> {
+    sfx('confirm');
+    const r = await toggleFullscreen();
+    const b = this.buttons[this.items.findIndex((i) => i.label === 'Plein écran')];
+    const hint = b?.querySelector('small');
+    if (!hint) return;
+    if (r === 'on') {
+      // Le bouton disparaît du menu (plus utile) au prochain affichage ; ici on le confirme.
+      hint.textContent = 'Activé';
+    } else if (r === 'ios') hint.textContent = 'iPhone : Partager → Sur l’écran d’accueil';
+    else if (r === 'refused') hint.textContent = 'Refusé par le navigateur';
   }
 
   private open_(tab: TitleTab): void {

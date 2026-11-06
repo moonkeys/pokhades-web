@@ -26,7 +26,7 @@ import { MATERIALS, NECTARS, materialName, tickCraft } from './meta/crafting';
 import { campNews, fresh as freshNews, markSeen as markNewsSeen } from './meta/news';
 import { BossPreview } from './ui/bosspreview';
 import { RunSummary } from './ui/runsummary';
-import { SettingsMenu } from './ui/settingsmenu';
+import { SettingsMenu, type LeaveOffer } from './ui/settingsmenu';
 import { RunStats } from './meta/runstats';
 import { Dialogue, type Speaker } from './ui/dialogue';
 import { Combat, DEATH_TIME } from './combat/combat';
@@ -133,6 +133,9 @@ async function boot(): Promise<void> {
   /** Progression permanente (Baies, équipe, CT, améliorations, objets) : src/meta/save.ts. */
   const save = loadSave();
   const renderer = new Renderer(canvas, atlas, surf, fieldSheet);
+  // ?debug : le menu principal sauté et l'objet `window.pokhades` exposé, pour les tests automatisés. Réservé au
+  // serveur de dev : dans le jeu publié, le paramètre ne fait rien (retour de test : « les gens vont faire n'importe quoi »).
+  const DEBUG = import.meta.env.DEV && new URLSearchParams(location.search).has('debug');
   const input = new Input();
   // Téléphone ou tablette : stick et boutons à l'écran, et le panneau de test replié.
   if (isTouch()) {
@@ -226,8 +229,54 @@ async function boot(): Promise<void> {
         return;
       }
       sfx('doorEnter');
-      campCtx.depart();
+      startDeparture();
     });
+  };
+  /**
+   * Le départ en run (retour de test : « un petit ralentissement, et qu'on rentre dans la run avec les petits
+   * halos des sorties de porte ») : sous l'arche, le temps ralentit, un halo doré monte autour du Pokémon
+   * (comme la lueur d'une porte ouverte), l'écran s'éteint, et la run commence.
+   */
+  let departing: { t: number; x: number; y: number } | null = null;
+  const DEPART_TIME = 1.5;
+  /** Le temps file à cette allure pendant le départ. */
+  const DEPART_SLOW = 0.3;
+  const startDeparture = () => {
+    if (departing) return;
+    departing = { t: 0, x: player.x, y: player.y };
+  };
+  /** Le halo du départ, dessiné sous les Pokémon : une lueur qui s'élargit, des particules qui montent. */
+  const departExtras = (): { y: number; draw(b: CanvasRenderingContext2D, camX: number, camY: number, k: number): void }[] => {
+    const d = departing;
+    if (!d) return [];
+    return [
+      {
+        y: d.y * TILE - 1,
+        draw: (b, camX, camY, k) => {
+          const u = Math.min(1, d.t / DEPART_TIME);
+          const cx = Math.round((d.x * TILE - camX) * k);
+          const cy = Math.round((d.y * TILE - camY) * k);
+          const r = (1.4 + 5 * u) * TILE * k;
+          b.globalCompositeOperation = 'lighter';
+          const g = b.createRadialGradient(cx, cy, 0, cx, cy, r);
+          g.addColorStop(0, `rgba(255, 214, 90, ${0.35 + 0.5 * u})`);
+          g.addColorStop(1, 'rgba(255, 214, 90, 0)');
+          b.fillStyle = g;
+          b.beginPath();
+          b.ellipse(cx, cy, r, r * 0.6, 0, 0, Math.PI * 2);
+          b.fill();
+          // Les mêmes particules que les portes ouvertes (room.ts), qui montent vers le haut.
+          for (let i = 0; i < 26; i++) {
+            const ph = (d.t * 0.5 + i * 0.137) % 1;
+            const ox = (((i * 0.618) % 1) - 0.5) * 2 * (1 + 2 * u);
+            const oy = (((i * 0.382) % 1) - 0.5) * 2 * 0.8;
+            b.fillStyle = `rgba(255, 214, 90, ${1 - ph})`;
+            b.fillRect(Math.round(cx + ox * TILE * k), Math.round(cy + oy * TILE * k) - Math.round(ph * 30 * k), 2 * k, 2 * k);
+          }
+          b.globalCompositeOperation = 'source-over';
+        },
+      },
+    ];
   };
   const campScreen = new CampScreen(document.body);
   const netBadge = new NetBadge(document.body);
@@ -931,13 +980,14 @@ async function boot(): Promise<void> {
 
   /**
    * Le Repaire où l'on se tient : le sien, ou celui de l'hôte quand on le
-   * visite en ligne (Roucarnage) — ses aménagements et ses libérés, sans les
-   * récoltes ni les recrues, qui sont les siennes.
+   * visite en ligne (Roucarnage) — ses aménagements, ses libérés et ses recrues en
+   * attente (qu'on voit sans leur parler), sans les récoltes, qui sont les siennes.
    */
   function buildCampWorld(): void {
     const built = (hostCamp?.built ?? save.built) as typeof save.built;
     world = generate(REPAIRE, CAMP_SEED, { camp: true, glade: built.includes('clearing'), eastGlade: built.includes('eastglade'), atelier: built.includes('atelier'), pockets: campPockets(built) });
-    if (hostCamp) camp.build(world, built, hostCamp.dwellers);
+    // Les recrues de l'hôte se voient autour du feu (retour de test : « je ne vois pas tous les Pokémon en attente »), mais restent les siennes.
+    if (hostCamp) camp.build(world, built, hostCamp.dwellers, { garden: [], nectar: null, candidates: hostCamp.recruits.map((species) => ({ species })) });
     else camp.build(world, save.built, campDwellers(), save);
   }
 
@@ -1124,9 +1174,12 @@ async function boot(): Promise<void> {
         news,
       );
     };
-    // Chez l'hôte, ses gardiens le servent lui : Roucarnage (la partie) et Porygon (sa propre équipe) seuls répondent.
-    if (hostCamp && station !== 'online' && station !== 'team') {
-      runHud.notify({ title: 'Repaire de l’hôte', text: station === 'start' ? 'C’est l’hôte qui lance la run, chez Dracolosse.' : 'Ce gardien sert l’hôte : ici, seuls Roucarnage et Porygon te répondent.', art: CAMP_NPCS.online, color: '#7ac0e8' });
+    // Chez l'hôte, ses gardiens le servent lui : seuls Roucarnage (la partie), Porygon (sa propre équipe) et les
+    // boutiques répondent à l'invité (retour de test : « si je n'ai pas toutes les améliorations, je ne peux pas
+    // les acheter une fois dans la session »). Monsieur Mime (attaques), Alakazam (améliorations) et Miaouss
+    // (objets) lui vendent avec SA sauvegarde ; Démolosse (missions) et le Charpentier restent ceux de l'hôte.
+    if (hostCamp && !HOST_CAMP_OPEN.has(station)) {
+      runHud.notify({ title: 'Repaire de l’hôte', text: station === 'start' ? 'C’est l’hôte qui lance la run, chez Dracolosse.' : 'Ce gardien sert l’hôte : ici, tu peux parler à Roucarnage, Porygon et aux boutiques.', art: CAMP_NPCS.online, color: '#7ac0e8' });
       return;
     }
     if (station === 'map') return openJournal('map');
@@ -1738,6 +1791,28 @@ async function boot(): Promise<void> {
         break;
     }
   };
+  /**
+   * Quitter la run depuis le menu (retour de test : « des fois on veut juste se barrer »). Seul, ou chez
+   * l'hôte : la run s'arrête comme une défaite (même consolation en Baies, bilan, retour au Repaire), sans
+   * attendre le temps de la chute ; en ligne, les invités reçoivent la fin et reviennent aussi. Un invité,
+   * lui, quitte seulement la partie et retrouve son Repaire.
+   */
+  const runExit = (): LeaveOffer | undefined => {
+    if (mode !== 'run' || endT >= 0 || titleScreen.open) return undefined;
+    if (net.role === 'client') return { label: 'Quitter la partie', hint: 'Retour à ton Repaire ; les autres continuent.', run: () => net.leave() };
+    const together = net.role === 'host' && net.guests.length > 0;
+    return {
+      label: 'Abandonner la run',
+      hint: together ? 'Retour au Repaire pour tout le monde.' : 'Retour au Repaire, avec la consolation d’une défaite.',
+      run: () => {
+        if (mode !== 'run' || endT >= 0) return;
+        runWon = false;
+        defeat();
+        // Pas d'attente : le bilan s'ouvre tout de suite.
+        endT = endDelay;
+      },
+    };
+  };
   // Le menu des réglages (Échap) : le panneau, qui montre les mêmes options, se remet à jour derrière.
   const settingsMenu = new SettingsMenu(document.body, opts, (changed) => {
     applyOption(changed);
@@ -1746,7 +1821,7 @@ async function boot(): Promise<void> {
   addEventListener('keydown', (e) => {
     if (e.code !== 'Escape' || e.repeat || paused() || dialogue.open) return;
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement) return;
-    settingsMenu.show(() => input.flush());
+    settingsMenu.show(() => input.flush(), undefined, runExit());
   });
   const panel = new Panel(opts, applyOption, (act, kind) => {
     if (kind === 'camp') return enterCamp();
@@ -1796,6 +1871,8 @@ async function boot(): Promise<void> {
   let me: Actor | null = null;
   let clientHud: Extract<HostMsg, { t: 'snap' }>['hud'] | null = null;
   let clientEndT = -1;
+  /** Invité : le bilan reçu de l'hôte, montré une fois le fondu fini (comme l'hôte voit le sien). */
+  let clientEnd: Extract<HostMsg, { t: 'end' }> | null = null;
   let pendingMove = -1;
   /** Hôte : les Pokémon des invités dans son Repaire. */
   const visitors: Actor[] = [];
@@ -1905,7 +1982,9 @@ async function boot(): Promise<void> {
     combat.hooks.drawZones = (b, camX, camY, k, t) => (remote() ? undefined : zones(b, camX, camY, k, t));
   }
   /** Invité : le Repaire de l'hôte, où l'on se promène (null : chez soi). */
-  let hostCamp: { built: string[]; dwellers: number[] } | null = null;
+  let hostCamp: { built: string[]; dwellers: number[]; recruits: number[] } | null = null;
+  /** Les gardiens du Repaire d'un hôte qui répondent à ses invités (et vendent avec leur propre sauvegarde). */
+  const HOST_CAMP_OPEN: ReadonlySet<string> = new Set(['online', 'team', 'moves', 'upgrades', 'items']);
   /** Invité : où l'hôte nous attend dans son Repaire (à côté de lui, pas sur lui). */
   let campSpawn: { x: number; y: number } | null = null;
   let awaitSpawn = false;
@@ -2001,7 +2080,7 @@ async function boot(): Promise<void> {
       }
       spawn[v.remote!] = { x: v.x, y: v.y };
     });
-    net.broadcast({ t: 'camp', epoch: netEpoch, built: [...save.built], dwellers: campDwellers(), spawn });
+    net.broadcast({ t: 'camp', epoch: netEpoch, built: [...save.built], dwellers: campDwellers(), recruits: save.candidates.map((c) => c.species), spawn });
   };
 
   /** Hôte : où en sont l'hôte et ses invités dans le Repaire. */
@@ -2082,7 +2161,15 @@ async function boot(): Promise<void> {
   const netEnd = () => {
     if (net.role !== 'host' || !net.inRun) return;
     net.inRun = false;
-    net.broadcast({ t: 'end', won: runWon, rooms: runWon ? run.room + 1 : run.room, baies: runBaies });
+    const mem: Record<string, [number, number]> = {};
+    for (const m of team) if (m.remote) mem[m.remote] = [stats.members.get(m)?.dealt ?? 0, stats.members.get(m)?.taken ?? 0];
+    net.broadcast({
+      t: 'end',
+      won: runWon,
+      rooms: runWon ? run.room + 1 : run.room,
+      baies: runBaies,
+      sum: { act: run.act, biome: BIOMES[run.biome].name, color: BIOME_COLOR[run.biome], champion: run.champion.name, boons: run.boons.owned.size, time: stats.time, kos: stats.kos, dealt: stats.dealt, taken: stats.taken, shards: stats.shards, champions: [...stats.champions], mem },
+    });
   };
 
   // Hôte : les effets et les annonces de la run partent aussi chez les invités.
@@ -2197,7 +2284,7 @@ async function boot(): Promise<void> {
     if (msg.t === 'camp') {
       // Le Repaire de l'hôte : on y arrive (première fois), ou il change autour de nous.
       const first = !hostCamp;
-      hostCamp = { built: msg.built, dwellers: msg.dwellers };
+      hostCamp = { built: msg.built, dwellers: msg.dwellers, recruits: msg.recruits ?? [] };
       netEpoch = msg.epoch;
       // En fin de run, le Repaire de l'hôte arrive avant qu'on y rentre : la place est gardée pour enterCamp.
       campSpawn = msg.spawn[net.id] ?? null;
@@ -2260,6 +2347,7 @@ async function boot(): Promise<void> {
       // Les Baies de la run, versées au Repaire de l'invité comme à l'hôte.
       net.inRun = false;
       clientEndT = 0;
+      clientEnd = msg;
       if (msg.won) runHud.announce('Victoire !', '#ffd23f', 'MAÎTRE DE LA LIGUE');
       else runHud.toast('Fin de la run', `${msg.rooms} salle${msg.rooms > 1 ? 's' : ''} traversée${msg.rooms > 1 ? 's' : ''}`);
       return;
@@ -2323,7 +2411,30 @@ async function boot(): Promise<void> {
     if (clientEndT >= 0) {
       clientEndT += dt;
       director.fade = Math.min(1, clientEndT / 1.5);
-      if (clientEndT >= 2.5) enterCamp();
+      if (clientEndT >= 2.5 && !runSummary.open) {
+        const end = clientEnd;
+        clientEnd = null;
+        const back = () => {
+          input.flush();
+          enterCamp();
+        };
+        if (!end?.sum) return back();
+        // Le bilan de l'hôte, lu avec mon Pokémon (le seul que je connaisse ici), puis le Repaire.
+        const sum = end.sum;
+        const st = new RunStats();
+        st.time = sum.time;
+        st.kos = sum.kos;
+        st.dealt = sum.dealt;
+        st.taken = sum.taken;
+        st.baies = end.baies;
+        st.shards = sum.shards;
+        st.champions.push(...sum.champions);
+        const mine = me ?? player;
+        const [dealt, taken] = sum.mem[net.id] ?? [0, 0];
+        st.members.set(mine, { dealt, taken });
+        clientEndT = -1;
+        runSummary.show({ victory: end.won, rooms: end.rooms, act: sum.act, biome: sum.biome, color: sum.color, champion: { name: sum.champion } as Champion, boons: sum.boons, team: [mine], stats: st }, back);
+      }
       return;
     }
     const all = me ? [me, ...field.list()] : field.list();
@@ -2347,7 +2458,7 @@ async function boot(): Promise<void> {
   // Un lien d'invitation (QR code d'un ami, net/invite.ts) : on garde son code ; il se rejoint depuis
   // le menu, ou une fois le premier Pokémon libéré pour qui n'a encore rien (enterCamp).
   let invite = readInvite();
-  if (!new URLSearchParams(location.search).has('debug'))
+  if (!DEBUG)
     titleScreen.show(
       {
         play: () => {
@@ -2376,6 +2487,16 @@ async function boot(): Promise<void> {
   let time = 0;
   let fps = 60;
   const update = (dt: number) => {
+    // Départ sous l'arche : le temps ralentit, puis la run commence.
+    if (departing) {
+      departing.t += dt;
+      if (departing.t >= DEPART_TIME) {
+        departing = null;
+        campCtx.depart();
+        return;
+      }
+      dt *= DEPART_SLOW;
+    }
     // Grotte, boutique, Repaire : temps clair ; la salle retrouve son ciel en ressortant.
     setWeather(weatherNow());
     // En ligne : l'hôte décrit le terrain aux invités, même figé derrière un écran.
@@ -2448,9 +2569,12 @@ async function boot(): Promise<void> {
     for (const m of team) if (m.deathT >= 0 && !m.downed) m.lieDown();
     separate();
     // En grotte, c'est elle qui mène ; la salle du dehors attend, figée.
+    // En ligne, les invités debout (et ceux qui viennent d'appuyer sur E) comptent aussi pour les portes et la récompense.
+    const guests = net.inRun ? team.filter((m) => m.remote && m.deathT < 0) : [];
+    const claimers = guests.filter((m) => remoteInteract.has(m));
     if (mode === 'run') {
       if (cave.active) cave.update(dt, sample, world, run, player, wild);
-      else director.update(dt, sample, world, run, player, wild);
+      else director.update(dt, sample, world, run, player, wild, guests, claimers);
     }
     trainer?.update(dt, world, Math.random);
     // L'Aimant à Baies d'Alakazam attire les baies tombées.
@@ -2538,7 +2662,8 @@ async function boot(): Promise<void> {
     placeNetLabels(proj);
     fx.placeNumbers(proj);
     combat.focus(self);
-    hud.update(frameDt, self, combat, field.enemies(), proj, time, [self]);
+    // L'équipe du HUD : moi et les autres joueurs (retour de test : « je ne vois pas mon équipe » en tant qu'invité).
+    hud.update(frameDt, self, combat, field.enemies(), proj, time, [self, ...field.list().filter((a) => a.remote === 'net')]);
     runHud.setStock(null);
     runHud.setRevives(null);
     runHud.update(frameDt, clientHud?.place ?? 'En ligne', clientHud?.money ?? 0, director.fade);
@@ -2546,7 +2671,7 @@ async function boot(): Promise<void> {
 
   startLoop(update, (alpha, frameDt) => {
     if (net.role === 'client' && mode === 'run' && me) return drawClient(alpha, frameDt, me);
-    const extras = [...runExtras(), ...camp.extras(time)];
+    const extras = [...runExtras(), ...camp.extras(time), ...departExtras()];
     // Au Repaire, en ligne : les autres joueurs qui s'y promènent.
     const others = mode !== 'camp' ? [] : net.role === 'host' ? visitors : net.role === 'client' && hostCamp ? field.list() : [];
     renderer.draw(world, player, [...team, ...others, ...wild, ...shop.npcs, ...merchant.npcs, ...camp.npcs, ...cave.npcs], particles, footprints, fieldFx, combat, director, extras, opts, alpha, time, { weather: weatherNow(), particles: skyParticles });
@@ -2568,7 +2693,7 @@ async function boot(): Promise<void> {
     runHud.setRevives(mode === 'run' && level(save, 'revives') > 0 ? revives : null);
     // Au Repaire, les places : combien de Pokémon il loge sur combien, et ceux qui attendent qu'on
     // leur parle (retour de test : « avoir un moyen de voir combien t'as de place dans ton hub »).
-    if (mode === 'camp') runHud.update(frameDt, hostCamp ? REPAIRE.name : campPlaces(), save.baies, 0, 'Baies');
+    if (mode === 'camp') runHud.update(frameDt, hostCamp ? REPAIRE.name : campPlaces(), save.baies, departing ? Math.max(0, Math.min(1, (departing.t - 0.55 * DEPART_TIME) / (0.45 * DEPART_TIME))) : 0, 'Baies');
     else runHud.update(frameDt, placeName(), run.money, Math.max(director.fade, cave.fade));
     if (frameDt > 0) fps += (1 / frameDt - fps) * 0.05;
     const name = player.info?.name ?? '…';
@@ -2578,7 +2703,7 @@ async function boot(): Promise<void> {
   }, () => net.active);
 
   // Objet de debug, uniquement derrière ?debug (pas de globale sinon).
-  if (new URLSearchParams(location.search).has('debug')) {
+  if (DEBUG) {
     Object.assign(window, {
       pokhades: {
         get world() {
@@ -2612,6 +2737,8 @@ async function boot(): Promise<void> {
         combat,
         hazards,
         opts,
+        /** Lance le départ en run (ralenti et halo), comme en passant l'arche. */
+        startDeparture,
         /** Les écrans, pour les ouvrir à la main (vérifier la DA sans jouer une salle entière). */
         ui: { hud, runHud, rewardScreen, dialogue, bossPreview, speaker },
         /** Saute à une salle de la run (0 à 27), PV et dons conservés. */

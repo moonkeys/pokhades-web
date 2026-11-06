@@ -56,6 +56,15 @@ class AudioEngine {
     };
     addEventListener('keydown', unlock);
     addEventListener('pointerdown', unlock);
+    // Onglet caché (ou app mise en arrière-plan sur téléphone) : le son se coupe, et reprend au retour
+    // (retour de test : « quand on n'est pas sur l'onglet, ça coupe la musique »). Le jeu, lui, continue
+    // de tourner : en ligne, il ne faut pas lâcher les autres joueurs.
+    document.addEventListener('visibilitychange', () => {
+      const ctx = this.ctx;
+      if (!ctx) return;
+      if (document.hidden) void ctx.suspend();
+      else void ctx.resume();
+    });
   }
 
   /** Le contexte, créé au premier besoin (null si Web Audio manque). */

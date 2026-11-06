@@ -46,8 +46,8 @@ const CONTROLS: [string[], string][] = [
   [['C'], 'Fiche de l’équipe'],
   [['M'], 'Couper le son'],
   [['Échap'], 'Ce menu'],
-  [['H'], 'Panneau de test (DA)'],
-  [['N'], 'Nouvelle run (test)'],
+  // Les outils de test n'existent pas dans le jeu publié.
+  ...(import.meta.env.PROD ? [] : ([[['H'], 'Panneau de test (DA)'], [['N'], 'Nouvelle run (test)']] as [string[], string][])),
 ];
 
 const el = (tag: string, cls: string, parent?: HTMLElement, text?: string) => {
@@ -58,6 +58,13 @@ const el = (tag: string, cls: string, parent?: HTMLElement, text?: string) => {
   return e;
 };
 
+/** Une ligne « quitter » ajoutée aux réglages par main.ts (en run seulement). */
+export interface LeaveOffer {
+  label: string;
+  hint: string;
+  run: () => void;
+}
+
 export class SettingsMenu {
   private readonly root: HTMLElement;
   private tab: Tab = 'Réglages';
@@ -65,6 +72,9 @@ export class SettingsMenu {
   private sel = 0;
   private rows: Row[] = [];
   private onClose: (() => void) | null = null;
+  /** Une sortie proposée dans les réglages (quitter la run), avec sa confirmation en deux temps. */
+  private leave: LeaveOffer | null = null;
+  private confirming = false;
 
   constructor(
     parent: HTMLElement,
@@ -115,9 +125,11 @@ export class SettingsMenu {
   }
 
   /** `tab` : l'onglet à ouvrir (le menu principal ouvre directement « Commandes »). */
-  show(onClose: () => void, tab?: Tab): void {
+  show(onClose: () => void, tab?: Tab, leave?: LeaveOffer): void {
     sfx('menuOpen');
     this.onClose = onClose;
+    this.leave = leave ?? null;
+    this.confirming = false;
     if (tab) this.tab = tab;
     this.sel = 0;
     this.root.hidden = false;
@@ -142,6 +154,7 @@ export class SettingsMenu {
   }
 
   private move(dir: number): void {
+    this.confirming = false;
     const n = this.rows.length + 1;
     this.sel = (this.sel + dir + n) % n;
     sfx('click', -8);
@@ -215,6 +228,35 @@ export class SettingsMenu {
     };
   }
 
+  /**
+   * Quitter la run, depuis le menu (retour de test : « on devrait pouvoir quitter la run, revenir
+   * au hub : des fois on veut juste se barrer »). Deux appuis : le second confirme, pour qu'un
+   * Entrée de trop ne fasse pas perdre vingt minutes de run.
+   */
+  private leaveRow(l: LeaveOffer): Row {
+    return {
+      label: l.label,
+      hint: this.confirming ? 'Appuie encore pour confirmer.' : l.hint,
+      render: (box) => {
+        const b = el('button', `opt-switch${this.confirming ? ' on' : ''}`, box, this.confirming ? 'CONFIRMER' : 'QUITTER');
+        b.addEventListener('click', () => this.activate());
+      },
+      adjust: () => {
+        this.confirming = false;
+      },
+      activate: () => {
+        if (!this.confirming) {
+          this.confirming = true;
+          sfx('click', -6);
+          return;
+        }
+        this.confirming = false;
+        this.close();
+        l.run();
+      },
+    };
+  }
+
   private rowsOf(tab: Tab): Row[] {
     switch (tab) {
       case 'Réglages':
@@ -226,6 +268,7 @@ export class SettingsMenu {
           this.volume('sfx', 'Bruitages'),
           this.toggle('muted', 'Couper le son', 'Touche M, partout.'),
           this.toggle('shake', 'Secousses de l’écran', 'Coups, explosions, champions.'),
+          ...(this.leave ? [this.leaveRow(this.leave)] : []),
         ];
       case 'Commandes':
         return [];
