@@ -847,10 +847,13 @@ d'écran d'accueil : la Poké Ball enchaînée du logo (`public/favicon-32.png`,
 ## Multijoueur : relais TURN
 
 La connexion entre joueurs est directe (WebRTC via PeerJS). Entre un téléphone en 4G/5G et un
-ordinateur, le réseau de l'opérateur la bloque presque toujours : l'invité voit « en attente,
-l'hôte ne répond pas ». Il faut alors un **relais TURN** (`src/net/net.ts`, `iceServers`).
-Sans configuration, le jeu n'utilise que le TURN public de peerjs.com, gratuit mais souvent
-saturé. Pour un relais fiable (par exemple l'offre gratuite de Metered ou de Cloudflare) :
+ordinateur, le réseau de l'opérateur la bloque presque toujours, et même sur un seul Wi-Fi
+elle échoue souvent (adresses locales masquées par le navigateur, box qui ne les relaie pas) :
+l'invité voit « en attente, l'hôte ne répond pas ». Il faut un **relais TURN**
+(`src/net/net.ts`, `iceServers`). Le TURN public de PeerJS (`*.turn.peerjs.com`) n'existe plus
+(nom de domaine disparu, vérifié le 6 novembre 2026) : sans configuration, il n'y a donc aucun
+relais, et le jeu ne passe qu'entre deux appareils qui se joignent directement. Pour un relais
+(l'offre gratuite de Metered ou de Cloudflare, par exemple) :
 
 - en local, un fichier `.env.local` avec `VITE_TURN_URLS` (adresses séparées par des virgules,
   par exemple `turn:xxx:80,turn:xxx:443?transport=tcp`), `VITE_TURN_USERNAME` et
