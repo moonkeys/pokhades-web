@@ -4928,3 +4928,35 @@
 body.net-on .hud-team {
   top: calc(30 * var(--u));
 }
+
+/* Choix d'une évolution (ui/evolutionscreen.ts) : le Pokémon qui évolue en tête, puis une carte par forme. */
+.evo-from {
+  display: flex;
+  align-items: center;
+  gap: calc(1.4 * var(--u));
+  margin: calc(0.4 * var(--u)) 0 calc(1.2 * var(--u));
+  color: var(--paper);
+}
+.evo-from .art {
+  width: calc(8 * var(--u));
+  filter: drop-shadow(0 calc(0.4 * var(--u)) calc(0.6 * var(--u)) rgba(0, 0, 0, 0.5));
+}
+.evo-from b {
+  display: block;
+  font-family: var(--head);
+  font-size: calc(3 * var(--u));
+  font-weight: normal;
+  letter-spacing: 0.04em;
+}
+.evo-from small {
+  font-size: calc(1.3 * var(--u));
+  opacity: 0.8;
+}
+.evo-grid {
+  grid-template-columns: repeat(4, 1fr);
+}
+@media (max-width: 760px) {
+  .evo-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
