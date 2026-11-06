@@ -130,7 +130,11 @@ export class Renderer {
     // Échelle entière la plus proche de la hauteur visée, puis vue élargie
     // juste assez pour couvrir la fenêtre : pas de bandes noires, et la
     // hauteur réelle reste à ±1 facteur de la résolution choisie.
-    this.scale = Math.max(1, Math.round(ph / (opts.viewHeight * this.k)));
+    // En portrait (retour de test : plus de rotation forcée), l'échelle de la hauteur ne laisserait que quelques
+    // cases de large : on la plafonne pour garder au moins 224 px de monde en largeur.
+    const byHeight = Math.round(ph / (opts.viewHeight * this.k));
+    const byWidth = Math.floor(pw / (224 * this.k));
+    this.scale = Math.max(1, Math.min(byHeight, byWidth));
     // Plancher : une fenêtre momentanément à 0 px (onglet replié, panneau
     // redimensionné) donnerait un tampon vide, que drawImage refuse net.
     this.viewH = Math.max(90, Math.ceil(ph / (this.scale * this.k)));

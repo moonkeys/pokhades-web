@@ -440,6 +440,29 @@ div.touch {
     --t: 0.72;
   }
 }
+/* En portrait (plus de rotation forcée) : le stick, le dash et la grille d'attaques doivent tenir en largeur
+   (≈ 470 px à l'échelle 1). */
+@media (max-width: 520px) {
+  body.touch {
+    --t: 0.78;
+  }
+}
+@media (max-width: 440px) {
+  body.touch {
+    --t: 0.7;
+  }
+}
+@media (max-width: 380px) {
+  body.touch {
+    --t: 0.62;
+  }
+}
+/* …et la barre du Pokémon passe au-dessus de la grille d'attaques, qu'elle recouvrirait. */
+@media (max-width: 520px) {
+  body.touch .hud {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + var(--t) * 132px);
+  }
+}
 /* Derrière un écran de choix ou pendant un dialogue : ce sont eux qu'on touche. */
 .modal .touch,
 .talking .touch {
@@ -612,37 +635,6 @@ body.touch .hud-move.down {
   padding: 0 calc(var(--t) * 10px);
   border-radius: calc(var(--t) * 10px);
   font-size: calc(var(--t) * 18px);
-}
-
-/* L'interface est pensée en 16:9 : en portrait sur un téléphone, on demande de tourner l'appareil
-   (une tablette en portrait reste assez large pour jouer). */
-.touch-rotate {
-  display: none;
-}
-@media (orientation: portrait) and (max-width: 700px) {
-  body.touch .touch-rotate {
-    position: fixed;
-    inset: 0;
-    z-index: 1000;
-    display: grid;
-    place-content: center;
-    gap: 16px;
-    text-align: center;
-    background: #0b0d0a;
-    color: var(--paper);
-    font-family: var(--head);
-    font-size: 26px;
-    letter-spacing: 0.05em;
-  }
-  body.touch .touch-rotate b {
-    font-size: 72px;
-    color: var(--gold-da);
-    animation: touch-rotate 2s ease-in-out infinite;
-  }
-}
-@keyframes touch-rotate {
-  0%, 30% { transform: rotate(0); }
-  60%, 100% { transform: rotate(90deg); }
 }
 
 /* Au doigt, les rappels de touches du HUD ne disent rien. */
