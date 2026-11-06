@@ -17,7 +17,7 @@ import { Camp, CAMP_SEED, campPockets, STATIONS, stationId, type Station } from 
 import { CampScreen, movePool, teamWeight, type CampCtx } from './ui/campscreen';
 import { NetBadge } from './ui/netbadge';
 import { BAIES, FIELD_FOOD, RESOURCES, RESOURCE_IDS, SHARDS, UPGRADES, applyHeld, heldItem, teamSlots } from './meta/catalog';
-import { addMon, capacity, exile, isFull, level, loadSave, markSeen, monName, ownedSpecies, ownsSpecies, recordDefeat, resetSave, roster, speciesOf, startLevel, welcomeMon, writeSave } from './meta/save';
+import { addMon, capacity, exile, grantAlly, isFull, level, loadSave, markSeen, monName, ownedSpecies, ownsSpecies, recordDefeat, resetSave, roster, speciesOf, startLevel, welcomeMon, writeSave } from './meta/save';
 import { applyTraits, natureText } from './meta/mons';
 import { quest, questEvent, type QuestEvent } from './meta/quests';
 import { leagueOpen, readyFeats } from './meta/feats';
@@ -2073,6 +2073,26 @@ async function boot(): Promise<void> {
     if (msg.interact && mode === 'run') remoteInteract.add(a);
     if (msg.move >= 0 && mode === 'run') remoteMoves.push({ a, slot: msg.move, mx: msg.mx, my: msg.my });
   };
+  /**
+   * En ligne, chacun reçoit le Pokémon de tête des autres joueurs, sous sa forme de base, s'il ne l'a pas (retour de
+   * test : « chez un joueur qui n'a pas Évoli, ça le débloque dans le Pokédex, et vice versa »). Une fois par espèce.
+   */
+  const shareAllies = () => {
+    if (!net.active) return;
+    let got = false;
+    for (const pl of net.players) {
+      if (pl.id === net.id || !pl.loadout) continue;
+      const r = grantAlly(save, pl.loadout.species);
+      if (!r) continue;
+      got = true;
+      sfx('pkmnGet', -4);
+      void loadInfo(r.id).then((i) =>
+        runHud.notify({ title: 'Allié rencontré', text: r.waiting ? `${i.name} veut te rejoindre : il t’attend au Repaire.` : `★ ${i.name} rejoint la rébellion !`, art: r.id, color: '#7ac0e8' }),
+      );
+    }
+    if (got) writeSave(save);
+  };
+  net.onChange(shareAllies);
   net.onJoin = (id) => {
     netCamp();
     // L'hôte voit arriver ses alliés, même loin de Roucarnage.
