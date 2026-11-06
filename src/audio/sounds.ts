@@ -82,12 +82,14 @@ export const SOUNDS = {
   vs: { files: se('Vs flash'), db: -4, jitter: 0 },
 
   // ── Exploration ────────────────────────────────────────────────────────
+  // Les sons qui accompagnent une notification (baie, butin, coffre, nouveau Pokémon) sont très discrets : retour de
+  // test, « on n'entend que ça, ça fait trop de notifs ».
   /** Baie ramassée : le tintement des jetons du Voltorbataille. */
-  coin: { files: se('Voltorb Flip point'), db: -12, jitter: 0.12, gap: 0.06 },
+  coin: { files: se('Voltorb Flip point'), db: -20, jitter: 0.12, gap: 0.06 },
   /** Butin en ₽ pris au centre de la salle. */
-  loot: { files: se('Voltorb Flip gain coins'), db: -8, jitter: 0, gap: 0.5 },
+  loot: { files: se('Voltorb Flip gain coins'), db: -18, jitter: 0, gap: 0.5 },
   /** Coffre ouvert : le jingle de l'objet trouvé. */
-  chest: { files: me('Item get'), db: -6, jitter: 0, gap: 1 },
+  chest: { files: me('Item get'), db: -22, jitter: 0, gap: 1 },
   /** On choisit une porte, on entre dans une grotte, on en ressort. */
   doorEnter: { files: se('Door enter'), db: -4, jitter: 0, gap: 0.3 },
   doorExit: { files: se('Door exit'), db: -4, jitter: 0, gap: 0.3 },
@@ -104,7 +106,7 @@ export const SOUNDS = {
   victory: { files: me('Badge get'), db: -4, jitter: 0, gap: 2 },
   defeat: { files: me('Voltorb Flip game over'), db: -4, jitter: 0, gap: 2 },
   /** Nouveau Pokémon débloqué. */
-  pkmnGet: { files: me('Pkmn get'), db: -4, jitter: 0, gap: 2 },
+  pkmnGet: { files: me('Pkmn get'), db: -12, jitter: 0, gap: 2 },
   moveLearnt: { files: se('Pkmn move learnt'), db: -2, jitter: 0 },
   evoStart: { files: me('Evolution start'), db: -2, jitter: 0 },
   evoSuccess: { files: me('Evolution success'), db: -2, jitter: 0 },
