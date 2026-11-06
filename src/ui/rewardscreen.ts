@@ -205,7 +205,7 @@ export class RewardScreen {
       m.addEventListener('click', () => this.select(i));
       return m;
     });
-    if (team.length > 1) el('div', 'keys', pick, 'Tab : changer de Pokémon');
+    if (team.length > 1) el('div', 'keys', pick, 'Clique un Pokémon (ou Tab) pour en changer');
     this.highlight();
 
     const boon = el('div', 'rw-boon', this.root);
