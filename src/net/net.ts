@@ -147,6 +147,8 @@ export type HostMsg =
       /** Le Repaire de l'hôte, où les invités se promènent : ses aménagements et les libérés qui y vivent. */
       built: string[];
       dwellers: number[];
+      /** Les recrues qui attendent chez l'hôte (espèces) : l'invité les voit autour du feu, sans pouvoir leur parler. */
+      recruits?: number[];
       /** Où chaque nouvel arrivant apparaît (identifiant de pair → position). */
       spawn: Record<string, { x: number; y: number }>;
     }
