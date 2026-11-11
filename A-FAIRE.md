@@ -50,7 +50,8 @@ l'ordre proposé au joueur (les animations par attaque et l'évolution des
 attaques au renforcement sont faites, voir README ; reste à les juger en jeu,
 et à les montrer à l'invité en ligne) :
 - sons des Poké Balls à revoir ;
-- rééquilibrer les dons ;
+- dons rééquilibrés (12 novembre 2026, voir `RARITY_SCALE` de
+  combat/boons.ts) : à juger en jeu ;
 - méga-évolutions et formes régionales faites (voir README) : à juger en
   jeu (aura, taille, fréquence des formes régionales) ; reste le choix
   X / Y, une Méga pour les champions, Canarticho de Galar sans évolution
