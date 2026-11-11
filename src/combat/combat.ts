@@ -588,6 +588,29 @@ export class Combat {
     this.fx.number('super', e.x, e.y - 0.4, 0, text);
   }
 
+  /**
+   * Une marque de sauvage ou une zone de champion qui va frapper en (x, y) :
+   * le point d'où fuir (son centre, ou pour un rayon et un cône le point de
+   * l'axe le plus proche), ou null si l'endroit est sûr. Les compagnons s'en
+   * écartent (companion.ts).
+   */
+  threatAt(x: number, y: number): { x: number; y: number } | null {
+    for (const o of this.strikes) {
+      if (!o.hostile || o.t >= o.dur) continue;
+      if (o.area) {
+        if (!o.area.source?.pokemon || !this.inArea(o, o.area.shape, x, y)) continue;
+        const sh = o.area.shape;
+        if (sh.kind === 'line' || sh.kind === 'cone') {
+          const along = Math.max(0, (x - o.x) * sh.dx + (y - o.y) * sh.dy);
+          return { x: o.x + sh.dx * along, y: o.y + sh.dy * along };
+        }
+        return { x: o.x, y: o.y };
+      }
+      if (Math.hypot(x - o.x, y - o.y) <= ENEMY_STRIKE_RADIUS + 0.35) return { x: o.x, y: o.y };
+    }
+    return null;
+  }
+
   /** Le point (px, py) est-il dans la zone ? */
   private inArea(o: Strike, shape: AreaShape, px: number, py: number): boolean {
     const rx = px - o.x;

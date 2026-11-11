@@ -33,6 +33,11 @@ champion 4 de chaque plus 4 Nourriture (`ROOM_RES`, annoncés au retour) ; les
 coffres donnent aussi l'autre ressource ; missions de bois et de pierre plus
 courtes et mieux payées. Les champions alignent autant de Pokémon que
 l'équipe, moins un, plus l'acte (4 au plus au premier acte, `reinforce`).
+Compagnons plus malins (`companion.ts`) : ils sortent des marques et des
+zones avant l'impact (`Combat.threatAt`), restent à moins de 9 cases du
+Pokémon joué, protègent d'abord celui-ci et achèvent les affaiblis, prennent
+l'attaque la plus efficace contre leur cible, gardent leurs distances avec
+une attaque à distance et se replient sous 30 % de PV.
 À juger en jeu : le rythme des ressources et des places.
 
 Lot 4 (11 novembre 2026, retour de test). Fait : « Pour qui ? » cliquable
@@ -47,7 +52,6 @@ et à les montrer à l'invité en ligne) :
 - sons des Poké Balls à revoir ;
 - rééquilibrer les dons ;
 - méga-évolutions ; formes régionales et leurs évolutions ;
-- compagnons plus malins (ils foncent dans le tas).
 
 ---
 
