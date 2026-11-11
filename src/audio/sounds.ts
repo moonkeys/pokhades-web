@@ -105,8 +105,18 @@ export const SOUNDS = {
   /** Run gagnée (CombatArena.gd:1855) et champion vaincu : le jingle du badge. */
   victory: { files: me('Badge get'), db: -4, jitter: 0, gap: 2 },
   defeat: { files: me('Voltorb Flip game over'), db: -4, jitter: 0, gap: 2 },
-  /** Nouveau Pokémon débloqué. */
-  pkmnGet: { files: me('Pkmn get'), db: -12, jitter: 0, gap: 2 },
+  /**
+   * Nouveau Pokémon débloqué. Écart de 8 s : plusieurs déblocages d'affilée
+   * (alliés du jeu en ligne, K.O. en rafale) ne rejouent pas la fanfare à
+   * chaque notification.
+   */
+  pkmnGet: { files: me('Pkmn get'), db: -12, jitter: 0, gap: 8 },
+  /**
+   * Récompense réclamée (exploits de Xatu) : le cliquetis des jetons, pas une
+   * fanfare (retour de test : cinq exploits réclamés, cinq fois la musique de
+   * victoire).
+   */
+  claim: { files: se('Voltorb Flip gain coins'), db: -16, jitter: 0.04, gap: 0.6 },
   moveLearnt: { files: se('Pkmn move learnt'), db: -2, jitter: 0 },
   evoStart: { files: me('Evolution start'), db: -2, jitter: 0 },
   evoSuccess: { files: me('Evolution success'), db: -2, jitter: 0 },

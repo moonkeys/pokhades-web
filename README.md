@@ -509,14 +509,28 @@ débloquent un duo, et dès l'acte 2 la 3ᵉ carte peut être une ultime (jauge
 qui se charge en frappant et en encaissant, touche R). Sur les 83 dons, les
 9 qui supposent une équipe, un allié, l'évolution ou les ressources du camp
 ne sont pas proposés. « ✦ Nouvelle attaque » propose d'apprendre une attaque
-forte du répertoire de l'espèce ou d'en renforcer une (+25 %).
+forte du répertoire de l'espèce ou d'en renforcer une (+25 %). Au deuxième
+renforcement, une capacité d'une lignée évolue (Pistolet à O → Vibraqua →
+Hydrocanon, Flammèche → Rebondifeu → Lance-Flammes → Déflagration…,
+`MOVE_EVOLUTIONS` de src/run/rewards.ts) : même type, même classe, puissance
+jamais en baisse, renforcements remis à zéro ; la carte le montre.
 
 Combat (porté de `TeamMember.gd`, `EnemyAI.gd` et `CombatVFX.gd`) : niveau 10,
 capacités par défaut du jeu, portée et recharge propres à chaque attaque,
 combo de 3 coups, attaques spéciales qui frappent directement leur cible
 (plus d'orbe ; une marque au sol à la couleur du type les annonce 0,12 s),
 statuts, hitstop et secousse. Chaque coup joue une planche d'Essentials
-choisie par capacité quand elle existe, sinon par type (src/data/attackanims.ts).
+choisie par capacité quand elle existe, sinon par type (src/data/attackanims.ts),
+et un effet dessiné selon la famille de la capacité (src/data/movestyles.ts,
+src/render/movefx.ts) : rayon qui part du lanceur (Ultralaser, Laser Glace),
+projectile avec traînée (Ball'Ombre, Flammèche), salve (Tranch'Herbe,
+Météores), souffle en cône (Lance-Flammes), ondes (Surf, Mégaphone), foudre
+ou rochers venus du ciel (Tonnerre, Éboulement), anneaux psychiques,
+tourbillon, sol qui se fend (Séisme), absorption qui revient au lanceur ; au
+contact, mâchoires qui se referment (Morsure, Crocs Feu), griffes, lame,
+croix, poing, pied, estoc, fouet (Fouet Lianes), ruée et coup de masse. Les
+sauvages jouent les mêmes ; un tir de sauvage arrive sur sa marque au moment
+où elle frappe. Pas encore chez l'invité en ligne (il ne reçoit que les marques).
 Les sauvages touchés et les Pokémon de champion portent une barre de vie
 au-dessus de la tête.
 

@@ -179,6 +179,8 @@ export class Combat {
    * ou null s'il n'y a rien.
    */
   breakables: (x: number, y: number, reach: number) => { x: number; y: number } | null = () => null;
+  /** L'arbre à baies encore chargé le plus proche, sans le frapper (visée des tirs). */
+  breakableNear: (x: number, y: number, reach: number) => { x: number; y: number } | null = () => null;
   readonly hooks: BoonHooks;
   private player: Actor | null = null;
   private enemies: readonly Actor[] = [];
@@ -512,8 +514,10 @@ export class Combat {
   }
 
   /** Mêlée d'un sauvage : dégâts calculés au moment du coup (EnemyAI._do_attack). */
-  enemyMelee(e: Actor, target: Actor, power: number, type: string, cls: string): void {
+  enemyMelee(e: Actor, target: Actor, power: number, type: string, cls: string, api?: string): void {
     if (!e.pokemon || !target.pokemon) return;
+    // L'effet joue même si le coup rate : on voit les crocs claquer dans le vide.
+    this.fx.moveCast(api, type, cls === 'special', () => e, () => target, 0, power);
     if (this.random() < e.pokemon.missChance) {
       this.fx.number('dodge', target.x, target.y);
       return;
@@ -528,7 +532,7 @@ export class Combat {
     const res = calculateDamage(e.pokemon, target.pokemon, move.power, move.type, 'special', this.random);
     // Précision baissée (Jet de Sable…) : le coup part quand même, mais il est voué à rater.
     const miss = this.random() < e.pokemon.missChance;
-    this.strikes.push({
+    const strike: Strike = {
       hostile: true,
       target,
       x: target.x,
@@ -542,7 +546,11 @@ export class Combat {
       color: typeColor(move.type),
       damage: res.damage,
       kind: miss ? 'dodge' : res.crit ? 'crit' : 'player',
-    });
+      move: move.power > 0 ? move.api : undefined,
+    };
+    this.strikes.push(strike);
+    // Le tir part du sauvage et arrive sur la marque quand elle frappe : on le voit venir.
+    this.fx.moveCast(strike.move, move.type, true, () => e, () => strike, ENEMY_STRIKE_DELAY, move.power);
   }
 
 
@@ -791,6 +799,8 @@ export class Combat {
         const dmg = Math.max(1, Math.round(res.damage * this.hooks.dmgOut(player, e)));
         if (!first) first = dmg;
         this.hitEnemy(e, dmg, player.x, player.y, t, t === type ? color : typeColor(t), finisher, res.crit ? 'crit' : kindFromMultiplier(res.effectiveness), false, t === type ? moveApi : undefined, player);
+        // L'effet de la capacité sur chaque cible : crocs, griffes, poing…
+        this.fx.moveCast(t === type ? moveApi : undefined, t, false, () => player, () => e, 0, power);
       }
       if (player === this.player) {
         this.addShake(finisher ? 0.22 : 0.05);
@@ -806,6 +816,7 @@ export class Combat {
       aimX = p.x;
       aimY = p.y;
       this.fx.attackAnim(type, aimX, aimY, moveApi);
+      this.fx.moveCast(moveApi, type, false, () => player, () => p, 0, power);
     }
     this.face(player, aimX, aimY);
     const dx = aimX - player.x;
@@ -841,7 +852,11 @@ export class Combat {
       strike.y = best.y;
       this.face(player, best.x, best.y);
     } else {
-      const p = this.swingPoint(player, input, Math.min(reach, 7));
+      // Pas d'ennemi : le tir vise l'arbre à baies le plus proche, comme le
+      // corps à corps (sinon il part droit devant, dans l'une des huit
+      // directions, et passe à côté du tronc d'une case). Il bute sur sa case
+      // bloquée (lineBlocked) et le frappe.
+      const p = this.breakableNear(player.x, player.y, Math.min(reach, 7)) ?? this.swingPoint(player, input, Math.min(reach, 7));
       strike.x = p.x;
       strike.y = p.y;
       this.face(player, p.x, p.y);
@@ -849,6 +864,8 @@ export class Combat {
     // Morphing a pu changer le type : la planche propre à la capacité ne vaut que pour son type d'origine.
     if (strike.type === type) strike.move = moveApi;
     this.strikes.push(strike);
+    // Le rayon, le projectile ou le souffle part du tireur et suit la marque (qui suit la cible).
+    this.fx.moveCast(strike.move, strike.type, true, () => player, () => strike, STRIKE_DELAY, power);
     return player.playAction(['Shoot', 'Charge', 'Attack'], 0.4);
   }
 

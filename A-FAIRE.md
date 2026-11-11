@@ -25,6 +25,21 @@ Pokédex des formes de base ; plus de nage sans Surf ; recrues visibles au
 Repaire, « Plus tard », jauge des places, arbres dégagés. À regarder au
 prochain test : l'équilibre réel des niveaux (non joué de bout en bout).
 
+Lot 4 (11 novembre 2026, retour de test). Fait : « Pour qui ? » cliquable
+sur l'écran de récompense (la colonne était sous `.rw-boon`) ; les attaques
+spéciales visent l'arbre à baies le plus proche (`Combat.breakableNear`) ;
+notifications refaites (étiquette d'encre, pastille colorée, « ×n » pour les
+doublons) ; exploits de Xatu réclamés au cliquetis des jetons (`claim`), plus
+la fanfare, et la fanfare du déblocage espacée de 8 s. En attente, dans
+l'ordre proposé au joueur (les animations par attaque et l'évolution des
+attaques au renforcement sont faites, voir README ; reste à les juger en jeu,
+et à les montrer à l'invité en ligne) :
+- sons des Poké Balls à revoir ;
+- rééquilibrer les dons ;
+- méga-évolutions ; formes régionales et leurs évolutions ;
+- équipes des champions qui grandissent avec celle du joueur ;
+- compagnons plus malins (ils foncent dans le tas).
+
 ---
 
 ## 0. Pour reprendre

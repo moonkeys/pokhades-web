@@ -55,7 +55,7 @@ import { Hazards } from './run/hazards';
 import { CaveDirector } from './run/cave';
 import { ChestSite } from './run/chests';
 import { Merchant } from './run/merchant';
-import { rollSkillOffer, upgradeMove, type SkillOffer } from './run/rewards';
+import { evolveMove, rollSkillOffer, upgradeMove, type SkillOffer } from './run/rewards';
 import { COMBATS_PER_ACT, LEAGUE_MASTER, ROOMS_PER_ACT, Run } from './run/run';
 import { Hud } from './ui/hud';
 import { loadOptions, saveOptions, type Options } from './ui/options';
@@ -300,6 +300,7 @@ async function boot(): Promise<void> {
   /** Les dangers du terrain : la lave du Volcan (avec Surf), les tourbillons des Rocailleux (run/hazards.ts). */
   const hazards = new Hazards(fx);
   combat.breakables = (x, y, reach) => (outside() ? berries.hit(x, y, reach) : null);
+  combat.breakableNear = (x, y, reach) => (outside() ? berries.near(x, y, reach) : null);
   // Coffre de la salle (A-FAIRE 1.5) : des Baies et des ressources de
   // construction, versées tout de suite à la sauvegarde comme les Baies.
   const chests = new ChestSite(document.body, fx, {
@@ -787,10 +788,22 @@ async function boot(): Promise<void> {
     runHud.notify({ title: 'Nouvelle attaque', text: `${mon.name} apprend ${learned.name}.`, art: mon.id, color: typeColor(learned.type) });
   };
   const strengthen = (mon: Pokemon, slot: number) => {
-    upgradeMove(mon.moves[slot]);
-    sfx('moveLearnt');
-    mon.movesVersion++;
-    runHud.notify({ title: 'Attaque renforcée', text: `${mon.moves[slot].name} : puissance ${mon.moves[slot].power}.`, art: mon.id, color: typeColor(mon.moves[slot].type) });
+    const old = mon.moves[slot];
+    // Deuxième renforcement d'une lignée (Pistolet à O → Vibraqua → Hydrocanon) : la capacité évolue.
+    void evolveMove(old).then((evo) => {
+      if (mon.moves[slot] !== old) return;
+      if (evo) {
+        mon.moves[slot] = evo;
+        sfx('moveLearnt');
+        mon.movesVersion++;
+        runHud.notify({ title: 'Attaque évoluée', text: `${old.name} devient ${evo.name} (puissance ${evo.power}).`, art: mon.id, color: typeColor(evo.type) });
+        return;
+      }
+      upgradeMove(old);
+      sfx('moveLearnt');
+      mon.movesVersion++;
+      runHud.notify({ title: 'Attaque renforcée', text: `${old.name} : puissance ${old.power}.`, art: mon.id, color: typeColor(old.type) });
+    });
   };
 
   /** Le don choisi : une ultime remplace la précédente ; un don de statistique s'applique tout de suite. */
