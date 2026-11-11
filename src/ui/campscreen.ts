@@ -3,7 +3,7 @@ import { sfx } from '../audio/audio';
 import { fetchJson } from '../assets/json';
 import { BASE_TEAM_LEVEL, Pokemon } from '../combat/pokemon';
 import { sheetOf } from '../data/bestiary';
-import { BUILDINGS, CANDY, CS_LIST, HELD_ITEMS, RESOURCES, RESOURCE_IDS, SHARDS, TMS, UPGRADES, applyHeld, buildingsShown, canAfford, heldBoosts, heldItem, heldText, teamSlots, type Cost, type HeldItem, type ResourceId, type Upgrade } from '../meta/catalog';
+import { BUILDINGS, BUNKS, BUNK_ROOM, bunkPrice, CANDY, CS_LIST, HELD_ITEMS, RESOURCES, RESOURCE_IDS, SHARDS, TMS, UPGRADES, applyHeld, buildingsShown, canAfford, heldBoosts, heldItem, heldText, teamSlots, type Cost, type HeldItem, type ResourceId, type Upgrade } from '../meta/catalog';
 import { evolutionsOf } from '../data/evolutions';
 import { BIOME_IDS, CAMP_NPCS, FAUNA, LEGENDARY_SPECIES, MERC_POOLS, QUEST_SPECIES, STARTER_IDS, type BiomeId } from '../data/species';
 import { BIOME_MATERIAL, GARDEN, MATERIALS, NECTARS, NECTAR_ROOMS, RECIPES, canCraft, craft, harvest, materialName, pickVisitor, plots, recipeOutput, sow } from '../meta/crafting';
@@ -1359,6 +1359,7 @@ export class CampScreen {
     const supply = built.includes('outpost') ? ' Pour le bois, la pierre et les vivres, fouille les coffres en run, ou demande à Démolosse.' : ' Pour le bois, la pierre et les vivres, fouille les coffres en run.';
     el('p', 'cs-quote', main, quote + supply);
     const grid = el('div', 'cs-grid', main);
+    this.bunkCard(grid, ctx);
     // Le champ et les maisons attendent la clairière ; le bourg, celle de
     // l'est. Écart voulu (retour de test) : ce qui attend un chantier ne se
     // montre pas, et n'apparaît qu'une run après qu'il est bâti — la suite se
@@ -1394,6 +1395,32 @@ export class CampScreen {
       }
     }
     if (waiting && !shown.some((b) => built.includes(b.id))) this.builderTeaser(grid);
+  }
+
+  /**
+   * Lits superposés : la façon simple d'agrandir le Repaire, en Baies seules
+   * et sans attendre de chantier (retour de test du 11 novembre 2026 : trop
+   * de recrues en attente, trop peu de places). Toujours en tête de liste.
+   */
+  private bunkCard(grid: HTMLElement, ctx: CampCtx): void {
+    const save = ctx.save;
+    const price = bunkPrice(save.bunks);
+    const card = el('div', `cs-card cs-build da-paper${price === null ? ' owned' : save.baies < price ? ' poor' : ''}`, grid);
+    art(39, card, 'cs-icon cs-build-art');
+    el('div', 'cs-head', card).append(el('b', '', undefined, 'Lits superposés'));
+    el('small', 'cs-info', card, `On serre les paillasses : +${BUNK_ROOM} places au Repaire. ${save.bunks} / ${BUNKS.length} · ${capacity(save)} places en tout.`);
+    if (price === null) {
+      el('div', 'da-tape cs-tag', card, 'Au complet');
+      return;
+    }
+    el('div', 'da-stamp cs-price', card, String(price));
+    card.addEventListener('click', () =>
+      this.buy(price, () => {
+        save.bunks++;
+        ctx.notify('Lits superposés', `+${BUNK_ROOM} places : le Repaire loge ${capacity(save)} libérés.`, stationId('builder', save.built));
+        ctx.teamChanged();
+      }),
+    );
   }
 
   /** Une carte « la suite après ta prochaine run », avant le déjà bâti. */

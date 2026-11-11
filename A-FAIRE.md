@@ -25,6 +25,16 @@ Pokédex des formes de base ; plus de nage sans Surf ; recrues visibles au
 Repaire, « Plus tard », jauge des places, arbres dégagés. À regarder au
 prochain test : l'équilibre réel des niveaux (non joué de bout en bout).
 
+Lot 4 bis (11 novembre 2026) : places au Repaire 8 au départ (au lieu de 6),
+Dortoir +4, Maisons +6, Bourg +8, et des **Lits superposés** rachetables chez
+le bâtisseur (+2 places, 60 à 400 Baies, six fois, `BUNKS`, `Save.bunks`) ;
+chantiers moins chers ; chaque salle libérée rapporte 1 Bois et 1 Pierre, un
+champion 4 de chaque plus 4 Nourriture (`ROOM_RES`, annoncés au retour) ; les
+coffres donnent aussi l'autre ressource ; missions de bois et de pierre plus
+courtes et mieux payées. Les champions alignent autant de Pokémon que
+l'équipe, moins un, plus l'acte (4 au plus au premier acte, `reinforce`).
+À juger en jeu : le rythme des ressources et des places.
+
 Lot 4 (11 novembre 2026, retour de test). Fait : « Pour qui ? » cliquable
 sur l'écran de récompense (la colonne était sous `.rw-boon`) ; les attaques
 spéciales visent l'arbre à baies le plus proche (`Combat.breakableNear`) ;
@@ -37,7 +47,6 @@ et à les montrer à l'invité en ligne) :
 - sons des Poké Balls à revoir ;
 - rééquilibrer les dons ;
 - méga-évolutions ; formes régionales et leurs évolutions ;
-- équipes des champions qui grandissent avec celle du joueur ;
 - compagnons plus malins (ils foncent dans le tas).
 
 ---

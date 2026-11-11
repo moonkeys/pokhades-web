@@ -16,7 +16,7 @@ import { Shop } from './run/shop';
 import { Camp, CAMP_SEED, campPockets, STATIONS, stationId, type Station } from './run/camp';
 import { CampScreen, movePool, teamWeight, type CampCtx } from './ui/campscreen';
 import { NetBadge } from './ui/netbadge';
-import { BAIES, FIELD_FOOD, RESOURCES, RESOURCE_IDS, SHARDS, UPGRADES, applyHeld, heldItem, teamSlots } from './meta/catalog';
+import { BAIES, FIELD_FOOD, RESOURCES, RESOURCE_IDS, ROOM_RES, SHARDS, UPGRADES, applyHeld, heldItem, teamSlots, type ResourceId } from './meta/catalog';
 import { addMon, capacity, exile, grantAlly, isFull, level, loadSave, markSeen, monName, ownedSpecies, ownsSpecies, recordDefeat, resetSave, roster, speciesOf, startLevel, welcomeMon, writeSave } from './meta/save';
 import { applyTraits, natureText } from './meta/mons';
 import { quest, questEvent, type QuestEvent } from './meta/quests';
@@ -397,6 +397,8 @@ async function boot(): Promise<void> {
   let mode: 'camp' | 'run' = 'camp';
   /** Baies gagnées pendant la run en cours : on les annonce en rentrant au Repaire. */
   let runBaies = 0;
+  /** Bois, pierre et vivres gagnés au fil des salles de la run en cours (annoncés au retour). */
+  const runRes: Record<ResourceId, number> = { wood: 0, stone: 0, food: 0 };
   /**
    * Rappels qui restent à l'équipe (Ceinture de Rappels) : une réserve
    * commune, utilisée seule au K.O. de n'importe quel membre.
@@ -834,6 +836,7 @@ async function boot(): Promise<void> {
     combat.hooks.metaDash = level(save, 'dash');
     run.money = 100 * level(save, 'purse');
     runBaies = 0;
+    for (const r of RESOURCE_IDS) runRes[r] = 0;
     stats.reset();
     runWon = false;
     save.runs++;
@@ -902,6 +905,9 @@ async function boot(): Promise<void> {
     for (const v of visitors) v.remoteIn = null;
     netCamp();
     if (runBaies > 0) runHud.notify({ title: 'Retour au Repaire', text: `+${runBaies} Baies rapportées de la run.`, icon: '✦', color: 'var(--yel)' });
+    const resGain = RESOURCE_IDS.filter((r) => runRes[r] > 0).map((r) => `+${runRes[r]} ${RESOURCES[r].name}`);
+    if (resGain.length) runHud.notify({ title: 'Ressources', text: `${resGain.join(' · ')} ramassés en chemin.`, icon: '✦', color: 'var(--yel)' });
+    for (const r of RESOURCE_IDS) runRes[r] = 0;
     runBaies = 0;
     const back = save.missions.filter((m) => m && m.left <= 0).length;
     if (back) runHud.notify({ title: 'Missions', text: `${back > 1 ? `${back} Pokémon sont rentrés` : 'Un Pokémon est rentré'} de mission : récolte chez Démolosse.`, art: CAMP_NPCS.missions, color: 'var(--yel)' });
@@ -1102,7 +1108,7 @@ async function boot(): Promise<void> {
           names,
           subs: uids.map((u) => natureText(save.mons[u].nature)),
           tape: 'Le Repaire est plein',
-          quote: `« ${mon.name} veut nous rejoindre, mais le Repaire ne loge que ${capacity(save)} libérés. Bâtissez de quoi en loger plus chez le bâtisseur, ou choisissez qui doit partir. »`,
+          quote: `« ${mon.name} veut nous rejoindre, mais le Repaire ne loge que ${capacity(save)} libérés. Le bâtisseur vend des lits superposés contre des Baies, et bâtit des logements. Sinon, choisissez qui doit partir. »`,
           go: 'Il s’en va…',
           cancel: `Renvoyer ${mon.name}`,
           later: 'Plus tard',
@@ -1272,9 +1278,18 @@ async function boot(): Promise<void> {
       const back = tickMissions(save);
       // Le champ de la clairière rapporte un peu de Nourriture à chaque salle (sans annonce : c'est le fond du camp).
       if (save.built.includes('field')) save.resources.food += FIELD_FOOD;
+      // Chaque salle libérée rapporte un peu de bois et de pierre, un champion
+      // davantage, vivres compris (retour de test du 11 novembre 2026 : sans
+      // coffre ni biome rocheux, pas moyen de gagner de la pierre). Sans
+      // annonce : le compte tombe au retour au Repaire.
+      const gain = run.isBoss() ? ROOM_RES.boss : ROOM_RES.room;
+      for (const r of RESOURCE_IDS) {
+        save.resources[r] += gain[r] ?? 0;
+        runRes[r] += gain[r] ?? 0;
+      }
       // Le potager pousse, le nectar attend son visiteur (meta/crafting.ts).
       const grown = tickCraft(save);
-      if (back.length || save.built.includes('field') || save.nectar) writeSave(save);
+      writeSave(save);
       if (grown.ripe) runHud.notify({ title: 'Potager', text: `${grown.ripe > 1 ? `${grown.ripe} parcelles sont mûres` : 'Une parcelle est mûre'} : récolte chez Héliatronc.`, art: CAMP_NPCS.garden, color: 'var(--yel)' });
       if (grown.visitor && save.nectar) {
         const id = save.nectar.visitor;

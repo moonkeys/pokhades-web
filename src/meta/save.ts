@@ -84,6 +84,8 @@ export interface Save {
    * tout d'un coup).
    */
   builtAt: Partial<Record<BuildingId, number>>;
+  /** Lits superposés achetés chez le bâtisseur (catalog.ts, BUNKS) : +2 places chacun. */
+  bunks: number;
   /** Niveaux de départ gagnés aux Super Bonbons (et à l'entraînement), par individu (start_level_bonus). */
   levels: Record<number, number>;
   /** Super Bonbons achetés (candies_bought) : leur prix en dépend. */
@@ -179,6 +181,7 @@ const DEFAULTS: Save = {
   cs: [],
   built: [],
   builtAt: {},
+  bunks: 0,
   levels: {},
   candies: 0,
   candied: {},
@@ -262,6 +265,7 @@ export function migrate(save: Save): Save {
   save.nectar = n && n.id in NECTARS && Number.isInteger(n.visitor) ? { id: n.id, left: Math.max(0, Math.floor(Number(n.left) || 0)), visitor: n.visitor } : null;
   // Bâtis avant builtAt : comme s'ils dataient d'avant la dernière run.
   save.builtAt = save.builtAt && typeof save.builtAt === 'object' ? save.builtAt : {};
+  save.bunks = Math.max(0, Math.floor(Number(save.bunks) || 0));
   save.newsSeen = save.newsSeen && typeof save.newsSeen === 'object' ? save.newsSeen : {};
   // Le Poste d'expédition et la Buvette n'existaient pas (Démolosse et Kangourex étaient là
   // d'office) : une partie qui s'en servait déjà les garde, comme bâtis de longue date.
@@ -384,7 +388,7 @@ export function grantAlly(save: Save, species: number): { id: number; waiting: b
 }
 
 /** Combien de libérés le Repaire loge (catalog.ts, campCapacity). */
-export const capacity = (save: Save): number => campCapacity(save.built);
+export const capacity = (save: Save): number => campCapacity(save.built, save.bunks);
 export const isFull = (save: Save): boolean => roster(save).length >= capacity(save);
 
 /**

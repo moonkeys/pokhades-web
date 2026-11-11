@@ -213,7 +213,11 @@ export class Run {
    * type pris dans la faune de la Ligue, rangés avant l'as, escortés de leur forme de base.
    */
   private reinforce(champ: Champion, act: number): Champion {
-    const want = MIN_CHAMPION_TEAM[Math.min(act, MIN_CHAMPION_TEAM.length - 1)];
+    // Plus ton équipe est grande, plus la sienne l'est (retour de test du 11 novembre
+    // 2026) : autant de Pokémon que toi, moins un, plus l'acte ; quatre au plus au
+    // premier acte, six ensuite. Seul, on retrouve le plancher de l'acte.
+    const floor = MIN_CHAMPION_TEAM[Math.min(act, MIN_CHAMPION_TEAM.length - 1)];
+    const want = Math.min(act === 0 ? 4 : 6, Math.max(floor, this.teamSize - 1 + act));
     if (champ.team.length >= want) return champ;
     const have = new Set(champ.team.map(([f]) => f));
     const mates = typeMates(champ.type).filter((id) => !have.has(id) && preEvolutionOf(id) !== null);

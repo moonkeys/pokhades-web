@@ -54,9 +54,12 @@ export interface Loot {
 export function rollLoot(seed: number, x: number, y: number, act: number, guarded: boolean, main: 'wood' | 'stone'): Omit<Loot, 'mats'> {
   let n = 0;
   const r = (k: number) => Math.floor(hash2(x, y, seed + 977 * ++n) * k);
+  // L'autre ressource aussi, en moindre quantité (retour de test : la Prairie
+  // et la Forêt, gardées par des arbustes, ne donnaient jamais de pierre).
+  const other = main === 'wood' ? 'stone' : 'wood';
   return guarded
-    ? { baies: 10 + 4 * act + r(6), res: { [main]: 8 + r(7), food: 3 + r(4) } }
-    : { baies: 6 + 2 * act + r(5), res: { [main]: 4 + r(4), food: r(3) } };
+    ? { baies: 10 + 4 * act + r(6), res: { [main]: 10 + r(7), [other]: 3 + r(3), food: 4 + r(4) } }
+    : { baies: 6 + 2 * act + r(5), res: { [main]: 5 + r(4), [other]: 1 + r(3), food: 1 + r(3) } };
 }
 
 export interface ChestHost {
