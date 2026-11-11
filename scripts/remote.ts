@@ -8,7 +8,7 @@
 // Ce module n'importe que Node : import-assets.ts le charge sans bundler.
 import fs from 'node:fs';
 import path from 'node:path';
-import { megaById } from '../src/data/megas.ts';
+import { formById } from '../src/data/forms.ts';
 
 export const COLLAB = 'https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master';
 const POKEAPI = 'https://pokeapi.co/api/v2';
@@ -62,7 +62,7 @@ async function buildPokemon(id: number) {
   const p = await getJson<ApiPokemon>(`${POKEAPI}/pokemon/${id}`);
   if (!p) return null;
   const species = await getJson<{ names: Localized[]; evolves_from_species: unknown }>(p.species?.url ?? `${POKEAPI}/pokemon-species/${id}`);
-  const mega = megaById(id);
+  const mega = formById(id);
   const levelUp: { level: number; name: string }[] = [];
   for (const m of p.moves) {
     const lv = m.version_group_details.find((v) => v.move_learn_method.name === 'level-up');
@@ -78,7 +78,7 @@ async function buildPokemon(id: number) {
     sprite_url: p.sprites.front_default ?? '',
     level_up_moves: levelUp.slice(0, 20),
     learnable_moves: p.moves.map((m) => m.move.name),
-    is_base_form: !mega && !species?.evolves_from_species,
+    is_base_form: !mega?.mega && !species?.evolves_from_species,
     height_m: p.height / 10,
     weight_kg: p.weight / 10,
   };
@@ -116,13 +116,13 @@ export async function fetchRemote(cache: string, rel: string): Promise<string | 
   if (pmd) {
     try {
       // Une Méga range ses planches dans un sous-dossier de son espèce (« 0006/0001 »).
-      const dir = megaById(Number(pmd[1]))?.collab ?? pmd[1];
+      const dir = formById(Number(pmd[1]))?.collab ?? pmd[1];
       const res = await fetch(`${COLLAB}/sprite/${dir}/${pmd[2]}`);
       if (res.ok) body = Buffer.from(await res.arrayBuffer());
     } catch {
       // Hors ligne : rien à copier.
     }
-  } else if (mon && (Number(mon[1]) <= LAST_DEX || megaById(Number(mon[1])))) {
+  } else if (mon && (Number(mon[1]) <= LAST_DEX || formById(Number(mon[1])))) {
     const d = await buildPokemon(Number(mon[1]));
     if (d) body = Buffer.from(JSON.stringify(d));
   } else if (move) {

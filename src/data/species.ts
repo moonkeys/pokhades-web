@@ -36,7 +36,7 @@ export type BiomeId = (typeof BIOME_IDS)[number];
 export const FAUNA: Record<BiomeId, readonly number[]> = bestiary.biomes;
 
 /** Espèces qui nagent d'elles-mêmes (sans monture) quand elles sont dans l'eau. */
-export const SWIMMERS = new Set([54, 72, 90, 98, 116, 117, 118, 119, 120, 121, 129, 130, 131, 170, 211, 349, 550]);
+export const SWIMMERS = new Set([54, 72, 90, 98, 116, 117, 118, 119, 120, 121, 129, 130, 131, 170, 211, 349, 550, 10173]);
 
 /** Toutes les espèces dont le prototype peut avoir besoin (pour la copie au build). */
 /** Les 10 légendaires donateurs (RunBoons.GODS) : leur sprite sert de portrait sur l'écran de dons. */

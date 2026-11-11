@@ -1,4 +1,4 @@
-import { dexOf } from './megas';
+import { dexOf } from './forms';
 // Courbes d'expérience des jeux Pokémon : chaque espèce appartient à un groupe
 // de croissance, qui donne l'XP cumulée pour atteindre le niveau n. Le jeu
 // Godot n'en avait qu'une (n³, PokemonInstance._xp_for_level) : un Ronflex

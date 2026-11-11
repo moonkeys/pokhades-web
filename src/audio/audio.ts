@@ -1,4 +1,4 @@
-import { dexOf } from '../data/megas';
+import { dexOf } from '../data/forms';
 import { animFile, CRY_FALLBACK, cryPath, MUSIC, moveSoundFile, SOUNDS, servedPath, TYPE_SOUNDS, type MusicId, type SoundId } from './sounds';
 
 // Moteur audio (Sfx.gd du jeu Godot) : des bruitages qui se chevauchent sans

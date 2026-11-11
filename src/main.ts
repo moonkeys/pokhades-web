@@ -10,7 +10,8 @@ import { audio, cry, sfx } from './audio/audio';
 import { MUSIC, type MusicId } from './audio/sounds';
 import { buildAtlas } from './assets/atlas';
 import { PLAYER_ACTIONS, WILD_ACTIONS, loadImage, loadInfo, loadSheet } from './assets/pmd';
-import { MEGA_FORMS, megaById, sheetIdOf } from './data/megas';
+import { sheetIdOf } from './data/forms';
+import { MEGA_FORMS, megaById } from './data/megas';
 import { FINAL_BOSS_DEFEAT, FINAL_BOSS_INTRO, MASTER_DEFEAT, type Champion } from './data/champions';
 import { Trainer } from './entities/trainer';
 import { Shop } from './run/shop';
@@ -39,7 +40,7 @@ import { BASE_TEAM_LEVEL, Pokemon } from './combat/pokemon';
 import { STEP, startLoop } from './core/loop';
 import { Rng } from './core/rng';
 import { CAMP_NPCS, SWIMMERS } from './data/species';
-import { evolutionChoices, evolutionOf, evolutionsOf, evolvedStart } from './data/evolutions';
+import { evolutionChoices, evolutionOf, regionalEvolution, evolutionsOf, evolvedStart } from './data/evolutions';
 import { Actor, dirFromVector } from './entities/actor';
 import { Input } from './input/input';
 import { CombatFx, typeColor } from './render/combatfx';
@@ -346,8 +347,10 @@ async function boot(): Promise<void> {
       });
       return;
     }
-    const next = evolutionOf(mon.id, mon.level);
-    if (next === null || next === mon.id) return;
+    const plain = evolutionOf(mon.id, mon.level);
+    if (plain === null || plain === mon.id) return;
+    // Dans certains biomes, l'évolution prend sa forme régionale (Pikachu à la Plage → Raichu d'Alola).
+    const next = regionalEvolution(plain, mode === 'run' ? run.biome : null);
     beginEvolution(m, mon, next);
   };
   /** Charge la forme `next` puis joue l'évolution de `m` (combat.evolve). */

@@ -515,6 +515,18 @@ Hydrocanon, Flammèche → Rebondifeu → Lance-Flammes → Déflagration…,
 `MOVE_EVOLUTIONS` de src/run/rewards.ts) : même type, même classe, puissance
 jamais en baisse, renforcements remis à zéro ; la carte le montre.
 
+Formes régionales (ajout, src/data/forms.ts) : 42 formes d'Alola, de Galar,
+de Hisui et de Paldéa, chacune une espèce à part sous son numéro de forme
+PokéAPI (Goupix d'Alola : 10103), avec ses planches SpriteCollab. Vingt formes
+de base vivent dans la faune des biomes (Goupix et Sabelette d'Alola en
+Glace, Caninos de Hisui au Volcan, Axoloto de Paldéa au Marais…) : on les
+bat, on les débloque, elles ont leur ligne au Pokédex, rangée après leur
+espèce. Elles évoluent en leurs formes régionales (ou en Ixon, Berserkatt,
+Terraiste…, data/evolutions.ts). Certaines évolutions ordinaires prennent la
+forme régionale selon le biome où elles ont lieu en run
+(`REGIONAL_EVOLUTIONS`) : Pikachu à la Plage → Raichu d'Alola, Feurisson en
+Automne → Typhlosion de Hisui, Smogo au Village → Smogogo de Galar.
+
 Méga-évolutions (ajout, src/data/megas.ts) : le **Méga-Anneau** (6 Éclats de
 Champion, chez Alakazam) permet, en run, de faire méga-évoluer le Pokémon joué
 avec **F** (bouton MÉGA au doigt), une fois par salle, s'il a une forme Méga

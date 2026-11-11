@@ -3,6 +3,7 @@ import { sfx } from '../audio/audio';
 import { fetchJson } from '../assets/json';
 import { BASE_TEAM_LEVEL, Pokemon } from '../combat/pokemon';
 import { sheetOf } from '../data/bestiary';
+import { dexOf } from '../data/forms';
 import { BUILDINGS, BUNKS, BUNK_ROOM, bunkPrice, CANDY, CS_LIST, HELD_ITEMS, RESOURCES, RESOURCE_IDS, SHARDS, TMS, UPGRADES, applyHeld, buildingsShown, canAfford, heldBoosts, heldItem, heldText, teamSlots, type Cost, type HeldItem, type ResourceId, type Upgrade } from '../meta/catalog';
 import { evolutionsOf } from '../data/evolutions';
 import { BIOME_IDS, CAMP_NPCS, FAUNA, LEGENDARY_SPECIES, MERC_POOLS, QUEST_SPECIES, STARTER_IDS, type BiomeId } from '../data/species';
@@ -855,7 +856,8 @@ export class CampScreen {
     const save = ctx.save;
     const unlocked = new Set(ownedSpecies(save));
     const seen = new Set([...save.seen, ...unlocked, ...Object.keys(save.defeats).map(Number)]);
-    const all = [...new Set([...Object.values(FAUNA).flat(), ...STARTER_IDS, ...MERC_POOLS.champion, ...QUEST_SPECIES, ...seen])].filter(isBaseForm).sort((a, b) => a - b);
+    const all = [...new Set([...Object.values(FAUNA).flat(), ...STARTER_IDS, ...MERC_POOLS.champion, ...QUEST_SPECIES, ...seen])].filter(isBaseForm).sort((a, b) => dexOf(a) - dexOf(b) || a - b);
+    // (Une forme régionale se range juste après son espèce, au même numéro.)
     const shown = all.filter((id) =>
       this.dexFilter === 'unlocked' ? unlocked.has(id) : this.dexFilter === 'locked' ? seen.has(id) && !unlocked.has(id) : this.dexFilter === 'seen' ? seen.has(id) : true,
     );
@@ -885,7 +887,7 @@ export class CampScreen {
       const card = el('button', `cs-dex-card${own ? ' own' : ''}${id === this.dexId ? ' sel' : ''}`, grid);
       art(id, card, own ? '' : 'shadow');
       if (this.news.has(String(id))) newMark(card);
-      el('small', 'no', card, `n°${String(id).padStart(3, '0')}`);
+      el('small', 'no', card, `n°${String(dexOf(id)).padStart(3, '0')}`);
       el('b', '', card, names.get(id) ?? '???');
       el('small', 'state', card, waiting(id) ? '! Au Repaire' : own ? '★ Débloqué' : questFor(id) ? 'Quête' : !seen.has(id) ? '—' : gauge(id));
       card.addEventListener('click', () => {
@@ -906,7 +908,7 @@ export class CampScreen {
     const head = el('div', 'cs-head', card);
     el('b', '', head, data?.name ?? '???');
     for (const t of data?.types ?? []) typePill(t, head);
-    el('small', 'cs-info', card, `n°${String(id).padStart(3, '0')}${met ? ` · ${wins(id)} victoire${wins(id) > 1 ? 's' : ''}` : ''}`);
+    el('small', 'cs-info', card, `n°${String(dexOf(id)).padStart(3, '0')}${met ? ` · ${wins(id)} victoire${wins(id) > 1 ? 's' : ''}` : ''}`);
     // Où le trouver, une fois croisé : ses biomes, et les grottes qui le gardent.
     if (met) {
       const { wild, caves } = habitat(id);

@@ -116,12 +116,3 @@ const BY_ID = new Map(Object.entries(MEGA_FORMS).map(([base, m]) => [m.id, { ...
 
 /** La forme Méga d'un numéro de forme, avec son espèce de base, ou undefined. */
 export const megaById = (id: number): (MegaForm & { base: number }) | undefined => BY_ID.get(id);
-
-/** Planches à charger pour une espèce : celles de la Méga si SpriteCollab les a, sinon celles de la base. */
-export const sheetIdOf = (id: number): number => {
-  const m = BY_ID.get(id);
-  return m && !m.collab ? m.base : id;
-};
-
-/** Numéro de Pokédex d'une espèce ou d'une Méga (cris, Pokédex). */
-export const dexOf = (id: number): number => BY_ID.get(id)?.base ?? id;
