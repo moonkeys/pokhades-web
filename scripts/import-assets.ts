@@ -27,6 +27,7 @@ import bestiary from '../src/data/bestiary.json' with { type: 'json' };
 import { ANIM_FILES, CRIES_DIR, essentialsName, MUSIC, SOUNDS, cryPath, servedPath } from '../src/audio/sounds.ts';
 import { cacheDir, fetchRemote } from './remote.ts';
 import { MEGA_FORMS } from '../src/data/megas.ts';
+import { formById } from '../src/data/forms.ts';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const WEB = path.join(HERE, '..');
@@ -211,6 +212,8 @@ for (const name of moves) files.push(`data/pokeapi/move/${name}.json`);
 // pas les noms internes d'Essentials). Générations 6+ : pas de cri, le jeu
 // joue un son de remplacement (CRY_FALLBACK).
 for (const id of species) {
+  // Une forme (régionale, Méga) crie comme son espèce : le jeu joue le cri de dexOf (data/forms.ts).
+  if (formById(id)) continue;
   const src = await source(`data/pokeapi/pokemon/${id}.json`);
   if (!src) continue;
   const { name_en } = JSON.parse(fs.readFileSync(src, 'utf8')) as { name_en?: string };
