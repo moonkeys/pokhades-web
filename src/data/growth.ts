@@ -1,3 +1,4 @@
+import { dexOf } from './megas';
 // Courbes d'expérience des jeux Pokémon : chaque espèce appartient à un groupe
 // de croissance, qui donne l'XP cumulée pour atteindre le niveau n. Le jeu
 // Godot n'en avait qu'une (n³, PokemonInstance._xp_for_level) : un Ronflex
@@ -75,4 +76,5 @@ export const GROWTH_FR: Record<Growth, string> = {
   slow: 'lente',
 };
 
-export const growthOf = (id: number): Growth => GROWTH[id] ?? 'medium-fast';
+/** Une Méga (data/megas.ts) suit la courbe de son espèce de base. */
+export const growthOf = (id: number): Growth => GROWTH[dexOf(id)] ?? 'medium-fast';

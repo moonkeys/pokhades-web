@@ -479,6 +479,21 @@
   color: var(--ink);
   text-shadow: none;
 }
+/* Méga-évolution (main.ts) : un ruban aux couleurs du symbole Méga, qui pulse quand elle est prête. */
+.hud-mega {
+  width: fit-content;
+  margin-top: calc(0.4 * var(--u));
+  padding: 0 calc(0.8 * var(--u));
+  font-family: var(--head);
+  font-size: calc(1.15 * var(--u));
+  line-height: calc(1.6 * var(--u));
+  letter-spacing: 0.06em;
+  color: #fff;
+  background: linear-gradient(90deg, #8c6eff, #ff7ad9 60%, #6edcff);
+}
+.hud-mega.ready {
+  animation: hud-ult-glow 0.7s ease-in-out infinite alternate;
+}
 /* Attaques en 2 × 2, comme dans les jeux Pokémon : une bande de papier chacune, un trait
    de feutre à la couleur du type, le type collé au nom, la touche sur ruban noir. */
 .hud-moves {

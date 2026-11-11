@@ -130,6 +130,12 @@ export class Actor {
    * pendant ce temps. null : aucune en cours.
    */
   evolve: { t: number; dur: number; swapAt: number; swap: (() => void) | null } | null = null;
+  /**
+   * Méga-évolué pour la salle (main.ts, data/megas.ts) : 0 sinon, ou le
+   * grossissement du sprite (1,2 quand la Méga reprend la planche de sa base,
+   * 1 avec la sienne). Le rendu l'entoure aussi de son aura.
+   */
+  mega = 0;
   /** Caché dans l'herbe haute : ni dessiné, ni visé par les tirs. */
   hidden = false;
   /**

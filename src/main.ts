@@ -10,6 +10,7 @@ import { audio, cry, sfx } from './audio/audio';
 import { MUSIC, type MusicId } from './audio/sounds';
 import { buildAtlas } from './assets/atlas';
 import { PLAYER_ACTIONS, WILD_ACTIONS, loadImage, loadInfo, loadSheet } from './assets/pmd';
+import { MEGA_FORMS, megaById, sheetIdOf } from './data/megas';
 import { FINAL_BOSS_DEFEAT, FINAL_BOSS_INTRO, MASTER_DEFEAT, type Champion } from './data/champions';
 import { Trainer } from './entities/trainer';
 import { Shop } from './run/shop';
@@ -383,6 +384,85 @@ async function boot(): Promise<void> {
       });
     });
   };
+  // ── Méga-évolution (data/megas.ts, Méga-Anneau chez Alakazam) ─────────
+  // Le Pokémon joué méga-évolue à la touche F, une fois par salle (une par
+  // combat dans les jeux), s'il a une forme Méga et qu'il reste des ennemis.
+  // Même mise en scène que l'évolution (Combat.evolve). Il le reste jusqu'à
+  // la fin de la salle : la salle libérée, la suivante ou le retour au
+  // Repaire lui rendent sa forme, PV, niveau, XP et attaques compris.
+  /** La forme d'avant de chaque membre méga-évolué. */
+  const megaFrom = new Map<Actor, { pokemon: Pokemon; sheet: Actor['sheet']; info: Actor['info']; speciesId: number }>();
+  let megaUsed = false;
+  const megaReady = (): boolean => {
+    const mon = player?.pokemon;
+    return (
+      mode === 'run' &&
+      level(save, 'mega') > 0 &&
+      !megaUsed &&
+      !!mon &&
+      !mon.fainted &&
+      player.deathT < 0 &&
+      !player.evolve &&
+      !player.trapped &&
+      !evolving.has(player) &&
+      !!MEGA_FORMS[mon.id] &&
+      wild.some((e) => e.pokemon && !e.pokemon.fainted && e.deathT < 0)
+    );
+  };
+  const megaEvolve = () => {
+    if (!megaReady()) return;
+    const m = player;
+    const mon = m.pokemon!;
+    const form = MEGA_FORMS[mon.id];
+    megaUsed = true;
+    evolving.add(m);
+    void Promise.all([loadSheet(sheetIdOf(form.id), PLAYER_ACTIONS), Pokemon.load(form.id, mon.level, false), loadInfo(form.id)]).then(([sheet, mega, info]) => {
+      evolving.delete(m);
+      // Membre tombé, changé ou run finie pendant le chargement : la Méga de la salle reste à prendre.
+      if (!sheet || m.pokemon !== mon || mon.fainted || m.deathT >= 0 || mode !== 'run') {
+        megaUsed = false;
+        return;
+      }
+      sfx('ability');
+      combat.evolve(m, () => {
+        const ratio = mon.hp / mon.maxHp;
+        mega.inherit(mon);
+        mega.hp = Math.max(1, Math.round(mega.maxHp * ratio));
+        mega.status = mon.status;
+        megaFrom.set(m, { pokemon: mon, sheet: m.sheet, info: m.info, speciesId: m.speciesId });
+        m.speciesId = form.id;
+        m.sheet = sheet;
+        m.info = info;
+        m.pokemon = mega;
+        m.mega = form.collab ? 1 : 1.2;
+        runHud.notify({ title: 'Méga-évolution', text: `${mon.name} méga-évolue en ${form.name} !`, art: form.id, color: '#ff7ad9' });
+      });
+    });
+  };
+  const megaRevert = () => {
+    for (const [m, was] of megaFrom) {
+      const mega = m.pokemon;
+      if (mega && m.speciesId === megaById(m.speciesId)?.id) {
+        const ratio = mega.hp / mega.maxHp;
+        was.pokemon.inherit(mega);
+        was.pokemon.hp = Math.round(was.pokemon.maxHp * ratio);
+        was.pokemon.status = mega.status;
+        m.pokemon = was.pokemon;
+        m.speciesId = was.speciesId;
+        m.sheet = was.sheet;
+        m.info = was.info;
+      }
+      m.mega = 0;
+      m.evolve = null;
+    }
+    megaFrom.clear();
+  };
+  addEventListener('keydown', (e) => {
+    if (e.code !== 'KeyF' || e.repeat || e.metaKey || e.ctrlKey || paused() || dialogue.open) return;
+    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement) return;
+    megaEvolve();
+  });
+
   /** Offres de la récompense de la salle : tirées quand elle apparaît, fixes ensuite. */
   let boonOffer: BoonOffer | null = null;
   let skillOffer: SkillOffer | null = null;
@@ -649,6 +729,8 @@ async function boot(): Promise<void> {
     roomKey = { kind: 'room', biome: run.biome, seed, store: run.isShop(), cave: run.hasCave(), layout, mouthUsed: false, entry: arena ? 'S' : run.entrySide, arena };
     world = roomWorld(roomKey);
     outdoor = null;
+    megaRevert();
+    megaUsed = false;
     cave.clear();
     berries.build(world, BIOMES[run.biome].berry);
     hazards.build(world, run.mapSeed, run.isBoss());
@@ -864,6 +946,7 @@ async function boot(): Promise<void> {
    */
 
   const enterCamp = () => {
+    megaRevert();
     netEnd();
     clearNetScene();
     me = null;
@@ -1253,6 +1336,7 @@ async function boot(): Promise<void> {
       loadRoom(false);
     },
     roomCleared: () => {
+      megaRevert();
       combat.hooks.onRoomClear(player, run);
       // Le ciel se dégage une fois la salle libérée (retour de test : sous la grêle, on ne pouvait
       // ni fouiller ni prendre son don sans perdre trop de PV).
@@ -2770,6 +2854,7 @@ async function boot(): Promise<void> {
     shop.placeLabels(proj);
     merchant.placeLabels(proj);
     camp.placeLabels(proj);
+    hud.setMega(megaReady() ? 'ready' : megaFrom.has(player) ? 'on' : null);
     hud.update(frameDt, player, combat, wild, proj, time, team);
     // L'équipe à gauche, au Repaire aussi (retour de test) : les cartes de ceux qui partiront, tenues à jour.
     if (mode === 'camp') refreshCampTeam();
@@ -2834,7 +2919,14 @@ async function boot(): Promise<void> {
           run.special = null;
           loadRoom(false);
         },
+        /** Méga-évolution du Pokémon joué (touche F), et si elle est possible. */
+        mega: () => {
+          const ready = megaReady();
+          megaEvolve();
+          return ready;
+        },
         /** Avance la simulation de n pas de 1/60 s, même onglet masqué (tests automatisés). */
+
         step: (n: number) => {
           for (let i = 0; i < n; i++) update(STEP);
         },

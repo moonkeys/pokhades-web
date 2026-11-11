@@ -573,6 +573,9 @@ div.touch {
   background: var(--spray);
   animation: touch-ult 0.8s ease-in-out infinite alternate;
 }
+/* Méga-évolution : au-dessus de l'ultime, aux couleurs du symbole Méga. */
+.touch-btn.ult.mega { --b: 172px; font-size: calc(var(--t) * 12px); }
+.touch-btn.ult.mega.full { background: linear-gradient(135deg, #8c6eff, #ff7ad9 60%, #6edcff); }
 @keyframes touch-ult {
   to {
     box-shadow: 0 0 calc(var(--t) * 14px) var(--spray);

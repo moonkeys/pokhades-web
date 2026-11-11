@@ -2,7 +2,7 @@
 // (UpgradeShopScreen et ShopScreen « La Réserve »), les CT du tuteur
 // (MoveShopScreen.MOVE_LIST) et les objets tenus (ItemCatalog.ITEMS).
 
-export type UpgradeId = 'slots' | 'xp' | 'purse' | 'vigor' | 'dash' | 'revives' | 'magnet' | 'weight';
+export type UpgradeId = 'slots' | 'xp' | 'purse' | 'vigor' | 'dash' | 'revives' | 'magnet' | 'weight' | 'mega';
 
 export interface Upgrade {
   id: UpgradeId;
@@ -99,6 +99,18 @@ export const UPGRADES: readonly Upgrade[] = [
     max: WEIGHT_CAP_COSTS.length,
     price: (n) => WEIGHT_CAP_COSTS[n],
     icon: 'MACHOBRACE',
+    currency: 'shards',
+  },
+  {
+    // Ajout (retour de test du 11 novembre 2026) : les méga-évolutions (data/megas.ts). En run, F
+    // fait méga-évoluer le Pokémon joué s'il a une forme Méga, une fois par salle, jusqu'à la fin
+    // de la salle. Payé en Éclats : c'est la récompense des champions.
+    id: 'mega',
+    name: 'Méga-Anneau',
+    effect: () => 'Méga-évolution en run : touche F, une fois par salle',
+    max: 1,
+    price: () => 6,
+    icon: 'DAWNSTONE',
     currency: 'shards',
   },
 ];

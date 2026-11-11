@@ -515,6 +515,18 @@ Hydrocanon, Flammèche → Rebondifeu → Lance-Flammes → Déflagration…,
 `MOVE_EVOLUTIONS` de src/run/rewards.ts) : même type, même classe, puissance
 jamais en baisse, renforcements remis à zéro ; la carte le montre.
 
+Méga-évolutions (ajout, src/data/megas.ts) : le **Méga-Anneau** (6 Éclats de
+Champion, chez Alakazam) permet, en run, de faire méga-évoluer le Pokémon joué
+avec **F** (bouton MÉGA au doigt), une fois par salle, s'il a une forme Méga
+et qu'il reste des ennemis. Même mise en scène que l'évolution ; la Méga prend
+types et stats de sa forme (fiche PokéAPI à son numéro de forme, 10034 pour
+Méga-Dracaufeu X…), garde attaques, niveau et part de PV, et reprend sa forme
+quand la salle est libérée, à la salle suivante ou au retour au Repaire. Une
+aura violette et rose l'entoure ; quand SpriteCollab n'a pas ses planches
+(Florizarre, Tortank…), elle garde celles de sa base, grandies de 20 %. Le HUD
+dit « Méga-évolution — F » quand elle est prête. Une forme par espèce (X avant
+Y) ; 38 Méga importées pour les espèces du jeu, dont 15 avec leurs planches.
+
 Combat (porté de `TeamMember.gd`, `EnemyAI.gd` et `CombatVFX.gd`) : niveau 10,
 capacités par défaut du jeu, portée et recharge propres à chaque attaque,
 combo de 3 coups, attaques spéciales qui frappent directement leur cible

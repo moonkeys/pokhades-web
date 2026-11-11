@@ -26,6 +26,7 @@ import { CANDY, HELD_ITEMS, RESOURCES, SHARDS, TMS, UPGRADES } from '../src/meta
 import bestiary from '../src/data/bestiary.json' with { type: 'json' };
 import { ANIM_FILES, CRIES_DIR, essentialsName, MUSIC, SOUNDS, cryPath, servedPath } from '../src/audio/sounds.ts';
 import { cacheDir, fetchRemote } from './remote.ts';
+import { MEGA_FORMS } from '../src/data/megas.ts';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const WEB = path.join(HERE, '..');
@@ -87,7 +88,15 @@ const playable = new Set([...isPlayer, ...MERC_SPECIES]);
 const evolved = new Set([...EVOLVED_SPECIES, ...Object.values(FAUNA).flat(), ...QUEST_SPECIES]);
 // Espèces jouées, sauvages, légendaires donateurs et Pokémon des champions.
 const species = [...new Set([...allSpecies(), ...championSpecies(), ...gruntSpecies()])].sort((a, b) => a - b);
-for (const id of species) {
+// Méga-évolutions (src/data/megas.ts) : la forme Méga de chaque espèce du jeu qui en a une.
+// Sa fiche et son illustration toujours ; ses planches de combat quand SpriteCollab les a
+// (sinon le jeu reprend celles de la base).
+const megas = species.flatMap((id) => (MEGA_FORMS[id] ? [MEGA_FORMS[id]] : []));
+for (const m of megas) {
+  files.push(`data/pokeapi/pokemon/${m.id}.json`);
+  if (m.collab) evolved.add(m.id);
+}
+for (const id of [...species, ...megas.filter((m) => m.collab).map((m) => m.id)]) {
   const dir = `data/pmd/${String(id).padStart(4, '0')}`;
   files.push(`${dir}/AnimData.xml`, `${dir}/Walk-Anim.png`, `data/pokeapi/pokemon/${id}.json`);
   const xmlPath = await source(`${dir}/AnimData.xml`);
@@ -271,7 +280,7 @@ const ART = path.join(OUT, 'artwork');
 const ART_URL = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork';
 fs.mkdirSync(ART, { recursive: true });
 const toFetch: number[] = [];
-for (const id of species) {
+for (const id of [...species, ...megas.map((m) => m.id)]) {
   const dst = path.join(ART, `${id}.png`);
   const local = path.join(GODOT, `data/artwork/${id}.png`);
   if (fs.existsSync(local)) fs.copyFileSync(local, dst);
