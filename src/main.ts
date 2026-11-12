@@ -14,7 +14,7 @@ import { sheetIdOf } from './data/forms';
 import { megaById, megaFormsOf, type MegaForm } from './data/megas';
 import { FINAL_BOSS_DEFEAT, FINAL_BOSS_INTRO, MASTER_DEFEAT, type Champion } from './data/champions';
 import { Trainer } from './entities/trainer';
-import { Shop } from './run/shop';
+import { MERC_RETAINER, Shop } from './run/shop';
 import { Camp, CAMP_SEED, campPockets, STATIONS, stationId, type Station } from './run/camp';
 import { CampScreen, movePool, teamWeight, type CampCtx } from './ui/campscreen';
 import { NetBadge } from './ui/netbadge';
@@ -190,11 +190,12 @@ async function boot(): Promise<void> {
     {
       message: (text) => runHud.message(text),
       team: () => team,
-      recruit: (id, level, x, y) => {
+      recruit: (id, level, x, y, price) => {
         // Mercenaire : un allié de run, jamais ranimé (TeamMember.run_ally), qui part de là où il se tenait.
         const m = newMember(id, x, y, level);
         m.runAlly = true;
         team.push(m);
+        mercs.set(m, price);
       },
       openPoster: () => bossPreview.show(run.champion, run.isFinal || run.act === run.acts - 1, run.champion.team.map((_, w) => run.bossLevel(w, run.room + 1)), () => input.flush()),
       openMoves: (price, paid) => {
@@ -673,6 +674,40 @@ async function boot(): Promise<void> {
     }
     return -1;
   };
+  /** Mercenaires engagés à la boutique, avec leur prix : ils réclament leur solde à la suivante. */
+  const mercs = new Map<Actor, number>();
+  /**
+   * Solde des mercenaires (CombatArena._collect_merc_retainers), à l'entrée d'une nouvelle
+   * boutique : chacun encore debout réclame MERC_RETAINER de son prix ; sans l'argent, il s'en
+   * va. Un mercenaire tombé ne réclame plus rien (il ne se relève jamais).
+   */
+  const payMercs = () => {
+    for (const [m, price] of [...mercs]) {
+      const fallen = m.deathT >= 0 || !!m.pokemon?.fainted;
+      if (!team.includes(m) || fallen) {
+        mercs.delete(m);
+        continue;
+      }
+      const due = Math.round(price * MERC_RETAINER);
+      const name = m.pokemon?.name ?? 'Le mercenaire';
+      if (run.money >= due) {
+        run.money -= due;
+        runHud.notify({ title: 'Solde versée', text: `${name} reste — ${due} ₽.`, art: m.speciesId, color: '#8fd18f' });
+        continue;
+      }
+      if (m === player) {
+        // On le jouait : la main passe au suivant ; seul debout, il reste (sans solde, faute de mieux).
+        const next = nextAlive();
+        if (next < 0) continue;
+        switchTo(next);
+      }
+      mercs.delete(m);
+      m.ally?.reset();
+      team.splice(team.indexOf(m), 1);
+      active = team.indexOf(player);
+      runHud.notify({ title: 'Mercenaire parti', text: `${name} s’en va, faute d’être payé (${due} ₽).`, art: m.speciesId, ko: true, color: '#e84040' });
+    }
+  };
   /**
    * Passe la main au membre i, là où il est : celui qu'on quitte redevient
    * compagnon, et sa chaîne de combo retombe (CombatArena._set_active).
@@ -878,6 +913,7 @@ async function boot(): Promise<void> {
     dialogue.close();
     // Boutique : le marchand derrière son comptoir, l'étal, l'affiche et les Pokémon de la place.
     shop.clear();
+    if (run.isShop() && net.role !== 'client') payMercs();
     if (run.isShop()) shop.start(world, run, run.rng);
     merchant.clear();
     // Son propre tirage, tiré de la graine de la salle : parier ou non ne change pas les portes suivantes.

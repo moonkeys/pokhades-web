@@ -30,8 +30,12 @@ import type { Run } from './run';
 //   rotation 3D du jeu se lisait comme un objet qui s'écrase) ;
 // - recharger l'étal ne rouvre pas la CT déjà achetée (le jeu contournait
 //   ainsi sa règle « une capacité par visite »), et la CT achetée quitte l'étal ;
-// - un mercenaire ne réclame pas encore de solde à la boutique suivante, et
-//   ni les lots de Baies ni l'échoppe de rachat ne sont là (pas de camp).
+// - ni les lots de Baies ni l'échoppe de rachat ne sont là (pas de camp).
+//
+// Solde (CombatArena._collect_merc_retainers) : à la boutique suivante, chaque
+// mercenaire encore debout réclame MERC_RETAINER de son prix ; faute de quoi
+// il s'en va (main.ts, avant que la place ne se remplisse : la place libérée
+// peut servir tout de suite).
 
 /** ShopStock.HEALS : soins vendus en run (heal < 0 : PV au maximum), Rappels (part des PV max). */
 const HEALS = {
@@ -55,6 +59,9 @@ const POSTER_REACH = 2.2;
 const TALK_REACH = 2;
 /** Plafond d'une équipe en run (CombatArena.MAX_RUN_TEAM). */
 const MAX_TEAM = 6;
+
+/** Part du prix qu'un mercenaire réclame à chaque boutique suivante (CombatArena.MERC_RETAINER). */
+export const MERC_RETAINER = 0.5;
 
 /** Rangs des mercenaires (CombatArena.ALLY_RANKS) : décalage de niveau, prix de base, espèces. */
 const RANKS = [
@@ -107,7 +114,7 @@ export interface ShopHost {
   /** L'équipe, pour soigner, ranimer et recruter. */
   team(): readonly Actor[];
   /** Un mercenaire rejoint l'équipe, là où il se tient. */
-  recruit(id: number, level: number, x: number, y: number): void;
+  recruit(id: number, level: number, x: number, y: number, price: number): void;
 }
 
 /** CombatArena.gd:4770-4804 et NpcDialogue.gd:65-80. */
@@ -469,7 +476,7 @@ export class Shop {
       if (run.money < p.merc.price) return this.say(p, `${p.merc.price} ₽, pas un de moins.`);
       run.money -= p.merc.price;
       sfx('buy');
-      this.host.recruit(p.actor.speciesId, p.merc.level, p.actor.x, p.actor.y);
+      this.host.recruit(p.actor.speciesId, p.merc.level, p.actor.x, p.actor.y, p.merc.price);
       this.host.message(`${name} rejoint l’équipe (N.${p.merc.level}).`);
       p.bubble.remove();
       this.people = this.people.filter((x) => x !== p);
@@ -641,7 +648,7 @@ export class Shop {
       typePill(mv.type, row);
       el('small', '', row, mv.power > 0 ? `${mv.damageClass === 'special' ? 'Spéciale' : 'Physique'} · ${mv.power}` : 'Statut');
     }
-    el('div', 'shop-note', card, refuse || 'Un allié de run : aucun Rappel ne le relève.');
+    el('div', 'shop-note', card, refuse || `Solde de ${Math.round(m.price * MERC_RETAINER)} ₽ à chaque boutique, sinon il part. Aucun Rappel ne le relève.`);
     if (!refuse) el('div', 'shop-buy', card, '✔ Recruter [E]');
     this.prompt.classList.toggle('refused', Boolean(refuse));
     this.prompt.hidden = false;

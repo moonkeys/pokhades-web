@@ -609,7 +609,6 @@ Si d'autres se voient en jeu, noter leur emplacement.
   dans la carte) ; pas de reconnexion en cours de run ; à tester entre deux
   machines (NAT strict : il faudrait un serveur TURN).
 - **Revente** à la boutique de run (il faut d'abord un inventaire en run).
-- **Solde des mercenaires** à la boutique suivante (le jeu la réclamait).
 - **Surf en run** : au Repaire, on ne nage qu'avec Surf ; en run, on nage
   toujours (certaines cartes risqueraient de bloquer leurs sorties
   autrement). Le graphe de biomes (1.2) ne laisse entrer à l'Océan qu'avec

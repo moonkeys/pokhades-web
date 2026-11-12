@@ -475,7 +475,14 @@ caractère (commère, ronchon, militant, froussard, gourmand, rêveur, sage,
 farceur, src/data/chatter.ts) et ses répliques ; rarement, l'un d'eux fait
 un cadeau (quelques ₽, une Potion, une Baie Oran pour l'équipe), un par
 visite au plus. On les contourne, ils ne se laissent pas pousser. Pas de lots de
-Baies, de solde des mercenaires ni de rachat : ils supposent le camp.
+Baies ni de rachat : ils supposent le camp.
+
+**Solde des mercenaires** (`CombatArena._collect_merc_retainers`) : à
+l'entrée de chaque boutique suivante, un mercenaire encore debout réclame la
+moitié de son prix (`MERC_RETAINER`, annoncé sur sa fiche) ; sans l'argent,
+il quitte l'équipe (sauf s'il est le dernier debout), avant que la place ne
+se remplisse, pour que sa place puisse resservir tout de suite. Un
+mercenaire tombé ne réclame plus rien.
 
 Boss (porté de `CombatArena.gd`, `PokePools.gd`, `TrainerNPC.gd`,
 `PokeballFX.gd`, `ChampionDialogueScreen.gd`) : chaque acte a son champion,
