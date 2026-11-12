@@ -378,8 +378,9 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
   libre × 25 graines) : une sortie au moins, et la zone jouable atteignable.
 - Reste :
   - juger les formes en jeu et ajuster les poids des listes ;
-  - régler les vagues selon la taille (une Arène 38 × 30 reçoit autant
-    d'ennemis qu'une Clairière 58 × 38) ;
+  - vagues selon la taille (fait) : l'effectif suit la racine des cases
+    libres rapportées à 800 (`AREA_REF`, room.ts), entre ×0,75 et ×1,3 ;
+    à juger en jeu ;
   - d'autres formes : une île au Lac, des terrasses au Rocailleux ;
   - Ligne de front : juger en jeu le préavis (1,3 s), la largeur du sentier
     de Forêt et la densité des champs de Prairie (sauvages cachés : trop

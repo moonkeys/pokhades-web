@@ -76,6 +76,23 @@ const TRAP_RADIUS = 3;
 const TRAP_LEVELS = 3;
 const TRAP_WAVES = 3;
 const TRAP_CROWD = 1.5;
+/**
+ * Surface libre (cases où l'on marche) d'une salle de taille moyenne. Les effectifs
+ * des vagues suivent la racine du rapport, entre CROWD_MIN et CROWD_MAX : une Arène
+ * étroite reçoit moins de sauvages qu'une grande Clairière (A-FAIRE 1.12).
+ */
+// Mesuré sur 120 salles de combat (6 graines) : 260 à 1 730 cases libres, médiane ≈ 650,
+// troisième quartile ≈ 1 100.
+export const AREA_REF = 800;
+const CROWD_MIN = 0.75;
+const CROWD_MAX = 1.3;
+/** Facteur d'effectif d'une carte, selon ses cases libres. */
+export const crowdOf = (open: number): number => Math.min(CROWD_MAX, Math.max(CROWD_MIN, Math.sqrt(open / AREA_REF)));
+export function openCells(world: WorldMap): number {
+  let open = 0;
+  for (let i = 0; i < world.blocked.length; i++) if (!world.blocked[i]) open++;
+  return open;
+}
 
 /** `armed` : salle piège, avant l'embuscade. */
 type Phase = 'armed' | 'intro' | 'waves' | 'cleared' | 'open' | 'fadeOut' | 'over';
@@ -180,6 +197,8 @@ export class RoomDirector {
   phase: Phase = 'over';
   private t = 0;
   private waves: WaveMon[][] = [];
+  /** Cases libres de la salle : l'effectif des vagues en dépend (crowdOf). */
+  open = 0;
   /** Les dresseurs de la salle de combat (aucun en salle de boss : le champion a le sien). */
   private groups: TrainerGroup[] = [];
   private wave = 0;
@@ -304,12 +323,14 @@ export class RoomDirector {
     this.host.setTimer(null);
     const plan = run.waves();
     this.level = plan.level;
+    this.open = openCells(world);
+    const crowd = crowdOf(this.open);
     if (run.isBoss() && enemiesOn) {
       this.waves = run.bossWaves();
     } else if (this.special === 'trap' && enemiesOn) {
       // Embuscade : trois vagues plus fournies, plus fortes, réparties de même.
       const pool = run.fauna();
-      const count = Math.min(36, Math.ceil(plan.perWave * TRAP_CROWD) * TRAP_WAVES);
+      const count = Math.min(36, Math.max(TRAP_WAVES, Math.round(Math.ceil(plan.perWave * TRAP_CROWD) * TRAP_WAVES * crowd)));
       this.level = plan.level + TRAP_LEVELS;
       for (let w = 0; w < TRAP_WAVES; w++) this.waves.push([]);
       for (let n = 0; n < count; n++) this.waves[n % TRAP_WAVES].push({ id: this.rng.pick(pool), level: this.level, role: 'wild' });
@@ -318,7 +339,7 @@ export class RoomDirector {
       // Ligne de front : autant d'ennemis, en une vague de moins (deux au moins) —
       // des groupes plus fournis, qui chargent ensemble depuis l'autre bout.
       const pool = run.fauna();
-      const count = Math.min(30, plan.count * plan.perWave);
+      const count = Math.min(30, Math.max(plan.count, Math.round(plan.count * plan.perWave * crowd)));
       const waves = world.front ? Math.max(2, plan.count - 1) : plan.count;
       for (let w = 0; w < waves; w++) this.waves.push([]);
       for (let n = 0; n < count; n++) {

@@ -105,7 +105,9 @@ biomes du dernier étage, +6 niveaux), au bout de laquelle attend Régis, le
 Maître de la Ligue, et ses six Pokémon. Le
 champion de l'acte est tiré quand on choisit son biome, rangé par étage
 (`BIOME_CHAMPIONS` : Giovanni garde les Rocailleux, plus le Village). Chaque
-salle lance ses vagues, se libère (+₽), pose une récompense au centre et
+salle lance ses vagues (plus ou moins fournies selon sa surface libre :
+×0,75 pour une petite Arène, jusqu'à ×1,3 pour une grande Clairière,
+`crowdOf` dans room.ts), se libère (+₽), pose une récompense au centre et
 ouvre ses portes : chacune annonce la récompense de la salle suivante. Une
 barrière ferme les sorties tant que la salle n'est pas libérée. Le Pokémon
 joué tombe : le suivant encore debout prend le relais ; toute l'équipe K.O.,
