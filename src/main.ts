@@ -1002,6 +1002,9 @@ async function boot(): Promise<void> {
     combat.hooks.metaXp = 1 + 0.2 * level(save, 'xp');
     combat.hooks.metaDash = level(save, 'dash');
     run.money = 100 * level(save, 'purse');
+    runNuzlocke = opts.nuzlocke && !net.inRun;
+    nuzCaptured.clear();
+    if (runNuzlocke) runHud.notify({ title: 'Mode Nuzlocke', text: 'Un Pokémon encore K.O. ou capturé en fin de run sera relâché pour de bon.', icon: '☠', color: '#e84040' });
     runBaies = 0;
     for (const r of RESOURCE_IDS) runRes[r] = 0;
     stats.reset();
@@ -1013,6 +1016,31 @@ async function boot(): Promise<void> {
     world = generate(BIOMES[run.biome], run.mapSeed, { layout: opts.layout === 'auto' ? undefined : opts.layout });
     buildTeam(world.spawn.x, world.spawn.y);
     loadRoom(true);
+  };
+
+  // ── Mode Nuzlocke (option des réglages) ──────────────────────────────
+  /** L'option, figée au départ de la run (la changer en cours ne vaut que pour la suivante). */
+  let runNuzlocke = false;
+  /** Membres capturés par un sbire et pas encore libérés : perdus en fin de run en Nuzlocke. */
+  const nuzCaptured = new Set<Actor>();
+  /**
+   * Fin de run en Nuzlocke : chaque membre du Repaire encore K.O. (ni Rappel ni Source ne l'a
+   * relevé) ou resté capturé est relâché pour de bon. Jamais le dernier Pokémon de l'équipe
+   * (exile le refuse), ni un allié de passage ou un joueur en ligne. Rend leurs noms.
+   */
+  const nuzlockeToll = (): string[] => {
+    if (!runNuzlocke) return [];
+    const lost: string[] = [];
+    for (const a of [...team, ...nuzCaptured]) {
+      if (a.runAlly || a.remote || !save.mons[a.baseId]) continue;
+      const down = nuzCaptured.has(a) || !a.pokemon || a.pokemon.fainted || a.deathT >= 0;
+      if (!down) continue;
+      const name = monName(save, a.baseId, a.pokemon?.name ?? '?');
+      if (exile(save, a.baseId)) lost.push(name);
+    }
+    nuzCaptured.clear();
+    if (lost.length) writeSave(save);
+    return lost;
   };
 
   /** Baies gagnées : versées tout de suite (une run abandonnée ne les perd pas), annoncées au retour. */
@@ -1699,6 +1727,7 @@ async function boot(): Promise<void> {
   /** Un membre capturé (sbire des grottes, dresseurs du Village) : il quitte l'équipe jusqu'à la défaite du ravisseur. */
   function captureMember(a: Actor, by: string): void {
     const name = a.pokemon?.name ?? '?';
+    if (!net.inRun) nuzCaptured.add(a);
     // En ligne : capturé, on est simplement K.O. ; on se relève à 1 PV si la salle est libérée
     // (retour de test : sinon un joueur se retrouvait sans Pokémon).
     if (net.inRun && a.pokemon) {
@@ -1727,6 +1756,7 @@ async function boot(): Promise<void> {
   /** Le ravisseur battu rend ses prises : elles ressortent de leur Ball autour de lui. */
   function releaseMembers(captives: readonly Actor[], x: number, y: number): void {
     captives.forEach((c, k) => {
+      nuzCaptured.delete(c);
       c.trapped = false;
       const ang = (k / Math.max(1, captives.length)) * Math.PI * 2;
       c.x = c.prevX = x + Math.cos(ang) * 0.8;
@@ -2888,6 +2918,8 @@ async function boot(): Promise<void> {
           setTimeout(() => runSummary.open && audio.playMusic('halloffame'), 2300);
         } else audio.playMusic('defeat');
         netEnd();
+        // Nuzlocke : les tombés et les capturés s'en vont avant le bilan (annoncés au retour).
+        const nuzLost = nuzlockeToll();
         // Records de la sauvegarde : salles, K.O., victoire la plus rapide.
         const rooms = runWon ? run.room + 1 : run.room;
         const rec = save.records;
@@ -2914,6 +2946,7 @@ async function boot(): Promise<void> {
             opts.seed += 1;
             saveOptions(opts);
             enterCamp();
+            if (nuzLost.length) runHud.notify({ title: 'Nuzlocke', text: `${nuzLost.join(', ')} ${nuzLost.length > 1 ? 'ont quitté' : 'a quitté'} la rébellion pour de bon.`, icon: '☠', color: '#e84040' });
           },
         );
       }

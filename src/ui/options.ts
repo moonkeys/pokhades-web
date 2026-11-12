@@ -41,6 +41,11 @@ export interface Options {
   debug: boolean;
   /** Secousses de l'écran (Combat.addShake) ; à couper si elles gênent. */
   shake: boolean;
+  /**
+   * Mode Nuzlocke (A-FAIRE 1.6 bis) : en fin de run, un Pokémon encore K.O. ou resté capturé
+   * est relâché pour de bon (main.ts, nuzlockeToll). Vaut pour les runs lancées ensuite.
+   */
+  nuzlocke: boolean;
   /** Volumes de la musique et des bruitages, 0..1 (src/audio/audio.ts) ; `muted` coupe tout (touche M). */
   music: number;
   sfx: number;
@@ -69,6 +74,7 @@ export const DEFAULTS: Options = {
   wild: true,
   debug: false,
   shake: true,
+  nuzlocke: false,
   // Musique plus basse par défaut (retour de test : « dès que je lance un truc, ça fout de la musique »).
   music: 0.2,
   sfx: 0.5,

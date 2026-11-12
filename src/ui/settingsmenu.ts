@@ -43,6 +43,7 @@ const TOUCH_CONTROLS: [string[], string][] = [
   [['DASH'], 'Esquive (on traverse les coups)'],
   [['ACTION'], 'Parler, ramasser, ouvrir, choisir une porte'],
   [['ULTI'], 'Ultime, jauge pleine'],
+  [['MÉGA'], 'Méga-évolution, quand elle est prête'],
   [['⇄'], 'Changer de Pokémon'],
   [['Fiche'], 'Fiche de l’équipe'],
   [['☰'], 'Ce menu'],
@@ -55,6 +56,7 @@ const CONTROLS: [string[], string][] = [
   [['1', '2', '3', '4'], 'Capacités'],
   [['Q', 'Z', 'S', 'D'], 'Capacités (autre disposition)'],
   [['R'], 'Ultime, jauge pleine'],
+  [['F'], 'Méga-évolution (Méga-Anneau, une fois par salle)'],
   [['E'], 'Parler, ramasser, ouvrir, choisir une porte'],
   [['Tab'], 'Changer de Pokémon'],
   [['C'], 'Fiche de l’équipe'],
@@ -307,6 +309,7 @@ export class SettingsMenu {
           this.volume('sfx', 'Bruitages'),
           this.toggle('muted', 'Couper le son', hint('Touche M, partout.', '')),
           this.toggle('shake', 'Secousses de l’écran', 'Coups, explosions, champions.'),
+          this.toggle('nuzlocke', 'Mode Nuzlocke', 'Un Pokémon encore K.O. ou capturé en fin de run est relâché pour de bon. Vaut à la prochaine run.'),
         ];
       case 'Run':
         return this.leave ? [this.continueRow(), this.leaveRow(this.leave)] : [];

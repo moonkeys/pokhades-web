@@ -237,8 +237,9 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
   (`CaveHost.capture`) ; rendu au sbire vaincu (`CaveHost.release`), perdu
   pour la run si l'on fuit. Le dernier debout capturé : défaite.
 - Grotte agrandie à 54 × 36 (arène 12 × 7), pour avoir la place d'esquiver.
-- Reste : **mode Nuzlocke** (option de run) où un Pokémon capturé est perdu
-  pour de bon (retiré du Repaire) ; d'autres sbires (Team Aqua, Magma…) si le
+- **Mode Nuzlocke** (fait : Échap → Réglages, `Options.nuzlocke`, `nuzlockeToll`
+  de main.ts) : en fin de run, un Pokémon encore K.O. ou resté capturé est
+  relâché pour de bon (jamais le dernier de l'équipe). Reste : d'autres sbires (Team Aqua, Magma…) si le
   dépôt en a les planches ; un sbire qui change de place en lançant ; des
   répliques de défaite.
 
