@@ -2846,10 +2846,19 @@ async function boot(): Promise<void> {
           setTimeout(() => runSummary.open && audio.playMusic('halloffame'), 2300);
         } else audio.playMusic('defeat');
         netEnd();
+        // Records de la sauvegarde : salles, K.O., victoire la plus rapide.
+        const rooms = runWon ? run.room + 1 : run.room;
+        const rec = save.records;
+        const beaten: ('rooms' | 'kos' | 'fastestWin')[] = [];
+        if (rooms > rec.rooms) (rec.rooms = rooms), beaten.push('rooms');
+        if (stats.kos > rec.kos) (rec.kos = stats.kos), beaten.push('kos');
+        if (runWon && (rec.fastestWin === null || stats.time < rec.fastestWin)) (rec.fastestWin = stats.time), beaten.push('fastestWin');
+        if (beaten.length) writeSave(save);
         runSummary.show(
           {
+            records: { ...rec, beaten },
             victory: runWon,
-            rooms: runWon ? run.room + 1 : run.room,
+            rooms,
             act: run.act,
             biome: BIOMES[run.biome].name,
             color: BIOME_COLOR[run.biome],

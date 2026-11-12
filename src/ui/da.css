@@ -5035,3 +5035,16 @@ body.net-on .hud-team {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* Records de la sauvegarde au bilan de fin de run (runsummary.ts). */
+.sum-records {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(0.4 * var(--u)) calc(1.6 * var(--u));
+  margin: calc(0.6 * var(--u)) 0 0;
+}
+.sum-records .da-stamp {
+  margin-left: calc(0.4 * var(--u));
+  font-size: calc(1.1 * var(--u));
+  font-style: normal;
+}

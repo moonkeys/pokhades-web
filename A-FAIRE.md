@@ -326,7 +326,8 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
 - `src/meta/runstats.ts` compte en run (dégâts par membre, K.O., Baies,
   Éclats, champions, durée) ; `src/ui/runsummary.ts` l'affiche quand le
   voile de fin tombe, Entrée rentre au Repaire.
-- Reste : un record par sauvegarde (meilleure salle, meilleur temps), le
+- Records par sauvegarde (`Save.records` : salle la plus lointaine, K.O.,
+  victoire la plus rapide) au bilan, « Record ! » sur ceux battus. Reste : le
   bilan d'une run abandonnée (N, panneau).
 - Menu des réglages : reste à pouvoir réassigner les touches, et une
   entrée « Abandonner la run » / « Retour au Repaire ».

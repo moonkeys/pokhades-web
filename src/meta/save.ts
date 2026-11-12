@@ -86,6 +86,12 @@ export interface Save {
   builtAt: Partial<Record<BuildingId, number>>;
   /** Lits superposés achetés chez le bâtisseur (catalog.ts, BUNKS) : +2 places chacun. */
   bunks: number;
+  /**
+   * Records de la sauvegarde (A-FAIRE 1.11), montrés au bilan de fin de run :
+   * la salle la plus lointaine, le plus de K.O. en une run, la victoire la
+   * plus rapide (s, null avant la première).
+   */
+  records: { rooms: number; kos: number; fastestWin: number | null };
   /** Niveaux de départ gagnés aux Super Bonbons (et à l'entraînement), par individu (start_level_bonus). */
   levels: Record<number, number>;
   /** Super Bonbons achetés (candies_bought) : leur prix en dépend. */
@@ -182,6 +188,7 @@ const DEFAULTS: Save = {
   built: [],
   builtAt: {},
   bunks: 0,
+  records: { rooms: 0, kos: 0, fastestWin: null },
   levels: {},
   candies: 0,
   candied: {},
@@ -266,6 +273,8 @@ export function migrate(save: Save): Save {
   // Bâtis avant builtAt : comme s'ils dataient d'avant la dernière run.
   save.builtAt = save.builtAt && typeof save.builtAt === 'object' ? save.builtAt : {};
   save.bunks = Math.max(0, Math.floor(Number(save.bunks) || 0));
+  const rec = (save.records ?? {}) as Partial<Save['records']>;
+  save.records = { rooms: Math.max(0, Number(rec.rooms) || 0), kos: Math.max(0, Number(rec.kos) || 0), fastestWin: Number(rec.fastestWin) > 0 ? Number(rec.fastestWin) : null };
   save.newsSeen = save.newsSeen && typeof save.newsSeen === 'object' ? save.newsSeen : {};
   // Le Poste d'expédition et la Buvette n'existaient pas (Démolosse et Kangourex étaient là
   // d'office) : une partie qui s'en servait déjà les garde, comme bâtis de longue date.

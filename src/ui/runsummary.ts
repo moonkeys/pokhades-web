@@ -24,6 +24,8 @@ export interface SummaryData {
   boons: number;
   team: readonly Actor[];
   stats: RunStats;
+  /** Records de la sauvegarde après cette run, et ceux qu'elle vient de battre. */
+  records?: { rooms: number; kos: number; fastestWin: number | null; beaten: readonly ('rooms' | 'kos' | 'fastestWin')[] };
 }
 
 const el = (tag: string, cls: string, parent?: HTMLElement, text?: string) => {
@@ -138,6 +140,20 @@ export class RunSummary {
     stat(fmt(s.taken), 'PV encaissés');
     stat(`+${fmt(s.baies)}`, 'Baies rapportées');
     stat(`+${s.shards} ✦`, s.shards > 1 ? 'Éclats de Champion' : 'Éclat de Champion');
+
+    // Records de la sauvegarde (ajout, A-FAIRE 1.11) : ceux que la run vient de battre sur étiquette jaune.
+    const r = d.records;
+    if (r) {
+      const row = el('p', 'sum-records weak', poster);
+      const part = (label: string, value: string, beat: boolean) => {
+        const span = el('span', '', row, `${label} : `);
+        el('b', '', span, value);
+        if (beat) el('em', 'da-stamp', span, 'Record !');
+      };
+      part('Plus loin', `salle ${r.rooms}`, r.beaten.includes('rooms'));
+      part('Plus de K.O.', fmt(r.kos), r.beaten.includes('kos'));
+      if (r.fastestWin !== null) part('Victoire la plus rapide', formatDuration(r.fastestWin), r.beaten.includes('fastestWin'));
+    }
 
     el('div', 'team-title', poster, "L'ÉQUIPE");
     const team = el('div', 'team', poster);
