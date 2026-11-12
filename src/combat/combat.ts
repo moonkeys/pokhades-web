@@ -168,6 +168,10 @@ export class Combat {
   levelUp: (member: Actor) => void = () => {};
   /** Un ennemi tombe, quel que soit l'auteur du coup : le décompte des victoires (déblocage, main.ts). */
   defeated: (e: Actor) => void = () => {};
+  /** Une capacité de météo a été lancée (main.ts change le temps de la salle). */
+  weatherMove: (weather: 'rain' | 'sun' | 'sand' | 'hail', by: Actor) => void = () => {};
+  /** Un Pokémon de champion vient de perdre une barre de PV (main.ts : la Méga de l'as). */
+  phase: (e: Actor) => void = () => {};
   /** Le Pokémon mené vient d'encaisser un coup (quête « Sans une égratignure », main.ts). */
   hurt: () => void = () => {};
   /** Bilan de run (meta/runstats.ts) : PV ôtés à un ennemi par `by` (null : on ne sait pas qui), et PV perdus par un membre. */
@@ -179,6 +183,8 @@ export class Combat {
    * ou null s'il n'y a rien.
    */
   breakables: (x: number, y: number, reach: number) => { x: number; y: number } | null = () => null;
+  /** L'arbre à baies encore chargé le plus proche, sans le frapper (visée des tirs). */
+  breakableNear: (x: number, y: number, reach: number) => { x: number; y: number } | null = () => null;
   readonly hooks: BoonHooks;
   private player: Actor | null = null;
   private enemies: readonly Actor[] = [];
@@ -242,6 +248,7 @@ export class Combat {
       e.flash = { color: '#fff0b3', t: 0.2, dur: 0.2, alpha: 0.85 };
       this.fx.impact(e.x, e.y, '#ffe666');
       this.addShake(0.12);
+      this.phase(e);
       return false;
     }
     return true;
@@ -512,8 +519,10 @@ export class Combat {
   }
 
   /** Mêlée d'un sauvage : dégâts calculés au moment du coup (EnemyAI._do_attack). */
-  enemyMelee(e: Actor, target: Actor, power: number, type: string, cls: string): void {
+  enemyMelee(e: Actor, target: Actor, power: number, type: string, cls: string, api?: string): void {
     if (!e.pokemon || !target.pokemon) return;
+    // L'effet joue même si le coup rate : on voit les crocs claquer dans le vide.
+    this.fx.moveCast(api, type, cls === 'special', () => e, () => target, 0, power);
     if (this.random() < e.pokemon.missChance) {
       this.fx.number('dodge', target.x, target.y);
       return;
@@ -528,7 +537,7 @@ export class Combat {
     const res = calculateDamage(e.pokemon, target.pokemon, move.power, move.type, 'special', this.random);
     // Précision baissée (Jet de Sable…) : le coup part quand même, mais il est voué à rater.
     const miss = this.random() < e.pokemon.missChance;
-    this.strikes.push({
+    const strike: Strike = {
       hostile: true,
       target,
       x: target.x,
@@ -542,7 +551,11 @@ export class Combat {
       color: typeColor(move.type),
       damage: res.damage,
       kind: miss ? 'dodge' : res.crit ? 'crit' : 'player',
-    });
+      move: move.power > 0 ? move.api : undefined,
+    };
+    this.strikes.push(strike);
+    // Le tir part du sauvage et arrive sur la marque quand elle frappe : on le voit venir.
+    this.fx.moveCast(strike.move, move.type, true, () => e, () => strike, ENEMY_STRIKE_DELAY, move.power);
   }
 
 
@@ -578,6 +591,29 @@ export class Combat {
   /** Nom de l'attaque signature d'un champion, au-dessus du lanceur, au moment où il la pose. */
   callout(e: Actor, text: string): void {
     this.fx.number('super', e.x, e.y - 0.4, 0, text);
+  }
+
+  /**
+   * Une marque de sauvage ou une zone de champion qui va frapper en (x, y) :
+   * le point d'où fuir (son centre, ou pour un rayon et un cône le point de
+   * l'axe le plus proche), ou null si l'endroit est sûr. Les compagnons s'en
+   * écartent (companion.ts).
+   */
+  threatAt(x: number, y: number): { x: number; y: number } | null {
+    for (const o of this.strikes) {
+      if (!o.hostile || o.t >= o.dur) continue;
+      if (o.area) {
+        if (!o.area.source?.pokemon || !this.inArea(o, o.area.shape, x, y)) continue;
+        const sh = o.area.shape;
+        if (sh.kind === 'line' || sh.kind === 'cone') {
+          const along = Math.max(0, (x - o.x) * sh.dx + (y - o.y) * sh.dy);
+          return { x: o.x + sh.dx * along, y: o.y + sh.dy * along };
+        }
+        return { x: o.x, y: o.y };
+      }
+      if (Math.hypot(x - o.x, y - o.y) <= ENEMY_STRIKE_RADIUS + 0.35) return { x: o.x, y: o.y };
+    }
+    return null;
   }
 
   /** Le point (px, py) est-il dans la zone ? */
@@ -752,6 +788,10 @@ export class Combat {
         mon.status = null;
         this.fx.attackAnim('fx_heal', player.x, player.y);
         break;
+      case 'weather':
+        this.fx.attackAnim(move.type, player.x, player.y, move.api);
+        this.weatherMove(effect.weather, player);
+        break;
     }
     const speedScale = Math.min(1.3, Math.max(0.6, 1 - (mon.speed - 60) / 300));
     const cd = move.cooldown * speedScale * this.hooks.cooldownMult(player);
@@ -791,6 +831,8 @@ export class Combat {
         const dmg = Math.max(1, Math.round(res.damage * this.hooks.dmgOut(player, e)));
         if (!first) first = dmg;
         this.hitEnemy(e, dmg, player.x, player.y, t, t === type ? color : typeColor(t), finisher, res.crit ? 'crit' : kindFromMultiplier(res.effectiveness), false, t === type ? moveApi : undefined, player);
+        // L'effet de la capacité sur chaque cible : crocs, griffes, poing…
+        this.fx.moveCast(t === type ? moveApi : undefined, t, false, () => player, () => e, 0, power);
       }
       if (player === this.player) {
         this.addShake(finisher ? 0.22 : 0.05);
@@ -806,6 +848,7 @@ export class Combat {
       aimX = p.x;
       aimY = p.y;
       this.fx.attackAnim(type, aimX, aimY, moveApi);
+      this.fx.moveCast(moveApi, type, false, () => player, () => p, 0, power);
     }
     this.face(player, aimX, aimY);
     const dx = aimX - player.x;
@@ -841,7 +884,11 @@ export class Combat {
       strike.y = best.y;
       this.face(player, best.x, best.y);
     } else {
-      const p = this.swingPoint(player, input, Math.min(reach, 7));
+      // Pas d'ennemi : le tir vise l'arbre à baies le plus proche, comme le
+      // corps à corps (sinon il part droit devant, dans l'une des huit
+      // directions, et passe à côté du tronc d'une case). Il bute sur sa case
+      // bloquée (lineBlocked) et le frappe.
+      const p = this.breakableNear(player.x, player.y, Math.min(reach, 7)) ?? this.swingPoint(player, input, Math.min(reach, 7));
       strike.x = p.x;
       strike.y = p.y;
       this.face(player, p.x, p.y);
@@ -849,6 +896,8 @@ export class Combat {
     // Morphing a pu changer le type : la planche propre à la capacité ne vaut que pour son type d'origine.
     if (strike.type === type) strike.move = moveApi;
     this.strikes.push(strike);
+    // Le rayon, le projectile ou le souffle part du tireur et suit la marque (qui suit la cible).
+    this.fx.moveCast(strike.move, strike.type, true, () => player, () => strike, STRIKE_DELAY, power);
     return player.playAction(['Shoot', 'Charge', 'Attack'], 0.4);
   }
 

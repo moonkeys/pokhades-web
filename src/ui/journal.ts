@@ -161,7 +161,7 @@ export class Journal {
     const ready = FEATS.filter((f) => featState(c.save, f) === 'ready');
     if (!ready.length) return;
     for (const f of ready) claimFeat(c.save, f.id);
-    sfx('pkmnGet', -4);
+    sfx('claim');
     c.claimed(ready.length > 1 ? `${ready.length} exploits réclamés.` : `${ready[0].name} : ${rewardText(ready[0].reward)}.`);
     this.render();
   }
@@ -313,7 +313,7 @@ export class Journal {
           b.type = 'button';
           b.addEventListener('click', () => {
             if (!claimFeat(c.save, f.id)) return;
-            sfx('pkmnGet', -4);
+            sfx('claim');
             c.claimed(`${f.name} : ${rewardText(f.reward)}.`);
             this.render();
           });

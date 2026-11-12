@@ -73,7 +73,7 @@ const b = (id: string, god: BoonDef['god'], name: string, scope: 'S' | 'T', base
 /** RunBoons.CATALOG (RB:124-347). Descriptions du jeu, ajustées là où le prototype diffère. */
 const LIST: BoonDef[] = [
   b('elec_ricochet', 'electhor', 'Arc Vagabond', 'S', 0.4, 'pct', 'Tes attaques de mêlée ricochent sur un 2ᵉ ennemi proche.'),
-  b('elec_static', 'electhor', 'Décharge Statique', 'S', 6, 'mult', 'Tous les 10 coups, tu te décharges en zone autour de toi.'),
+  b('elec_static', 'electhor', 'Décharge Statique', 'S', 3.5, 'mult', 'Tous les 10 coups, tu te décharges en zone autour de toi.'),
   b('elec_dash', 'electhor', 'Nerf à Vif', 'S', 1, 'flag', 'Ton dash laisse un sillage qui paralyse.'),
   b('elec_finisher', 'electhor', 'Fusible', 'S', 4, 'radius', 'Ton finisher paralyse tout autour de la cible.'),
   b('elec_network', 'electhor', 'Réseau', 'T', 0.25, 'pct', 'Les ennemis paralysés subissent plus de dégâts.'),
@@ -84,29 +84,29 @@ const LIST: BoonDef[] = [
   b('feu_finisher', 'sulfura', 'Terre Brûlée', 'S', 4.5, 'radius', 'Ton finisher embrase tout autour de la cible.'),
   b('feu_dash', 'sulfura', 'Traînée', 'S', 1, 'flag', 'Ton dash laisse un chemin de flammes.'),
   b('feu_poise', 'sulfura', 'Attisement', 'T', 1, 'flag', 'Frapper un ennemi qui brûle le fait reculer, ténacité ignorée.'),
-  b('feu_phoenix', 'sulfura', 'Phénix', 'T', 0.4, 'pct', 'Une fois par salle, tu te relèves au lieu de tomber K.O.'),
+  b('feu_phoenix', 'sulfura', 'Phénix', 'T', 0.3, 'pct', 'Une fois par salle, tu te relèves au lieu de tomber K.O.'),
   b('feu_kill', 'sulfura', 'Colère du Volcan', 'T', 4, 'radius', 'Chaque ennemi tué embrase ses voisins.'),
   b('feu_cauldron', 'sulfura', 'Chaudron', 'T', 2, 'mult', 'Tes brûlures durent bien plus longtemps.'),
   b('feu_fury', 'sulfura', 'Fureur', 'S', 1, 'stat', 'Attaque nettement augmentée.'),
-  b('glace_freeze', 'artikodin', 'Souffle Gelé', 'S', 0.2, 'pct', 'Chaque coup peut geler.'),
+  b('glace_freeze', 'artikodin', 'Souffle Gelé', 'S', 0.12, 'pct', 'Chaque coup peut geler.'),
   b('glace_dash', 'artikodin', 'Verglas', 'S', 1, 'flag', "Ton dash gèle ce qu'il traverse."),
-  b('glace_shatter', 'artikodin', 'Éclat', 'T', 1.5, 'pct', 'Frapper un ennemi gelé le brise — dégâts majorés, le gel saute au voisin.'),
+  b('glace_shatter', 'artikodin', 'Éclat', 'T', 0.7, 'pct', 'Frapper un ennemi gelé le brise — dégâts majorés, le gel saute au voisin.'),
   b('glace_finisher', 'artikodin', 'Blizzard de Poche', 'S', 0.5, 'pct', 'Ton finisher ralentit toute la salle.'),
   b('glace_shield', 'artikodin', 'Armure de Givre', 'T', 0.6, 'pct', 'Un bouclier absorbe une partie du premier coup encaissé.'),
-  b('glace_execute', 'artikodin', 'Zéro Absolu', 'T', 0.15, 'pct', 'Un ennemi affaibli gèle net dès que tu le touches.'),
+  b('glace_execute', 'artikodin', 'Zéro Absolu', 'T', 0.15, 'pct', 'Un sauvage affaibli gèle net dès que tu le touches.'),
   b('glace_ward', 'artikodin', 'Rempart de Givre', 'S', 1, 'stat', 'Défense Spéciale nettement augmentée.'),
   b('glace_hail', 'artikodin', 'Grêle', 'S', 0.4, 'pct', 'Tes tirs laissent une nappe de froid qui ralentit ce qui la traverse.'),
   b('psy_empathy', 'mew', 'Empathie', 'T', 0.3, 'pct', 'Tes compagnons IA infligent plus de dégâts.', false),
-  b('psy_transfer', 'mew', 'Transfert', 'T', 0.15, 'pct', 'Une part de tes dégâts te soigne.'),
+  b('psy_transfer', 'mew', 'Transfert', 'T', 0.08, 'pct', 'Une part de tes dégâts te soigne.'),
   b('psy_morph', 'mew', 'Morphing', 'S', 1, 'flag', 'Tes attaques de type Normal prennent le type le plus efficace contre la cible.'),
   b('psy_finisher', 'mew', 'Lien Psychique', 'S', 1, 'flag', "Ton finisher déclenche l'attaque de tous tes compagnons.", false),
   b('psy_summon', 'mew', 'Invocation', 'T', 1, 'flag', 'Un allié rejoint ton équipe sur-le-champ, pour toute la run.', false),
   b('psy_focus', 'mew', 'Concentration', 'S', 1, 'stat', 'Attaque Spéciale nettement augmentée.'),
-  b('psy_premonition', 'mew', 'Prémonition', 'S', 1, 'flag', 'Un coup évité par ton dash est renvoyé à moitié au plus proche.'),
+  b('psy_premonition', 'mew', 'Prémonition', 'S', 1, 'flag', 'Un coup évité par ton dash est renvoyé en entier au plus proche.'),
   b('psy_hivemind', 'mew', 'Conscience Collective', 'T', 1, 'flag', 'Tes compagnons copient la capacité que tu as sélectionnée.', false),
-  b('tenb_sleep', 'darkrai', 'Cauchemar', 'S', 0.25, 'pct', 'Tes coups endorment ; les endormis encaissent double.'),
+  b('tenb_sleep', 'darkrai', 'Cauchemar', 'S', 0.15, 'pct', 'Tes coups endorment ; les endormis encaissent double.'),
   b('tenb_steal', 'darkrai', 'Vol d’Ombre', 'S', 0.25, 'pct', 'Tu frappes plus fort, mais tu perds des PV max à chaque salle.'),
-  b('tenb_execute', 'darkrai', 'Exécution', 'S', 0.2, 'pct', 'Ton finisher achève net un ennemi déjà bas.'),
+  b('tenb_execute', 'darkrai', 'Exécution', 'S', 0.15, 'pct', 'Ton finisher achève net un sauvage déjà bas (pas un Pokémon de champion).'),
   // Le dash rend déjà invulnérable dans le prototype : Ombre Portée prolonge cette invulnérabilité.
   b('tenb_phase', 'darkrai', 'Ombre Portée', 'S', 1, 'flag', 'Tu restes intangible un instant de plus après ton dash.'),
   b('tenb_lastbreath', 'darkrai', 'Dernier Souffle', 'T', 0.5, 'pct', 'Sous 30 % de PV, tu cognes plus fort et plus vite.'),
@@ -116,20 +116,20 @@ const LIST: BoonDef[] = [
   b('sol_reach', 'groudon', 'Séisme', 'S', 0.5, 'pct', 'Tes attaques portent plus loin.'),
   b('sol_finisher', 'groudon', 'Impact', 'S', 0.6, 'pct', 'Ton finisher frappe en zone et étourdit.'),
   b('sol_dash', 'groudon', 'Charge', 'S', 0.55, 'pct', 'Ton dash inflige des dégâts et repousse.'),
-  b('sol_steady', 'groudon', 'Inébranlable', 'T', 1, 'flag', 'Rien ne t’immobilise : gel et sommeil se dissipent aussitôt.'),
+  b('sol_steady', 'groudon', 'Inébranlable', 'T', 1, 'flag', 'Rien ne t’immobilise : gel, sommeil et paralysie se dissipent aussitôt.'),
   b('sol_shell', 'groudon', 'Carapace', 'T', 0.08, 'pct', 'Chaque salle libérée sans encaisser de coup augmente tes PV max.'),
   b('sol_thorns', 'groudon', 'Épines', 'T', 0.3, 'pct', 'Une part des dégâts encaissés est renvoyée à l’agresseur.'),
   b('sol_bulk', 'groudon', 'Masse', 'S', 1, 'stat', 'PV maximum nettement augmentés.'),
   b('sol_guard', 'groudon', 'Rempart', 'S', 1, 'stat', 'Défense nettement augmentée.'),
   b('sol_continent', 'groudon', 'Continent', 'S', 0.55, 'pct', 'Tous les cinq coups, une faille s’ouvre sous ta cible.'),
-  b('temps_cooldown', 'celebi', 'Feuillage', 'T', 0.2, 'pct', 'Toutes tes cadences sont raccourcies.'),
+  b('temps_cooldown', 'celebi', 'Feuillage', 'T', 0.15, 'pct', 'Toutes tes cadences sont raccourcies.'),
   b('temps_regen', 'celebi', 'Sève', 'T', 0.015, 'pct', 'Tu régénères tant que tu ne prends pas de coup.'),
   b('temps_finisher', 'celebi', 'Vrille', 'S', 1, 'flag', 'Ton finisher recharge instantanément tes capacités.'),
   b('temps_speed', 'celebi', 'Printemps', 'T', 0.2, 'pct', 'Tu te déplaces et tu frappes plus vite à chaque nouvelle salle.'),
-  b('temps_journey', 'celebi', 'Voyage', 'T', 1, 'flag', 'Tu entres dans chaque salle cadences pleines et dash rechargé.'),
+  b('temps_journey', 'celebi', 'Voyage', 'T', 0.08, 'pct', 'Tu entres dans chaque salle cadences pleines, dash rechargé et soigné d’une part de tes PV.'),
   b('temps_haste', 'celebi', 'Hâte', 'S', 1, 'stat', 'Tes capacités reviennent plus vite.'),
   b('temps_rewind', 'celebi', 'Rembobinage', 'S', 1, 'flag', 'Ton dash te ramène à la position et aux PV d’il y a trois secondes.'),
-  b('sacre_lifesteal', 'hooh', 'Flamme Sacrée', 'S', 0.08, 'pct', 'Tes coups brûlent et te soignent.'),
+  b('sacre_lifesteal', 'hooh', 'Flamme Sacrée', 'S', 0.05, 'pct', 'Tes coups brûlent et te soignent.'),
   b('sacre_xp', 'hooh', 'Cendres', 'T', 0.25, 'pct', 'Tu gagnes plus d’XP sur chaque ennemi vaincu.'),
   b('sacre_revive', 'hooh', 'Résurrection', 'T', 0.3, 'pct', 'Un compagnon K.O. se relève à la fin de chaque salle.', false),
   b('sacre_level', 'hooh', 'Ascension', 'T', 2, 'count', 'Toute l’équipe monte d’un niveau toutes les deux salles.', false),
@@ -139,11 +139,11 @@ const LIST: BoonDef[] = [
   b('dragon_dash_hit', 'rayquaza', 'Piqué', 'S', 0.7, 'pct', 'Dasher dans un ennemi le frappe.'),
   b('dragon_momentum', 'rayquaza', 'Ascendant', 'S', 0.08, 'pct', 'Chaque ennemi tué dans la salle te rend plus rapide.'),
   b('dragon_finisher', 'rayquaza', 'Turbulence', 'S', 1, 'flag', 'Ton finisher te rend une charge de dash.'),
-  b('dragon_delta', 'rayquaza', 'Delta', 'S', 0.45, 'pct', 'Tes cadences fondent tant que tu restes en mouvement.'),
+  b('dragon_delta', 'rayquaza', 'Delta', 'S', 0.3, 'pct', 'Tes cadences fondent tant que tu restes en mouvement.'),
   b('dragon_swift', 'rayquaza', 'Célérité', 'S', 1, 'stat', 'Vitesse de déplacement et de frappe augmentée.'),
   b('dragon_evade', 'rayquaza', 'Insaisissable', 'S', 1, 'stat', 'Tu esquives une partie des coups.'),
   b('astre_coin', 'jirachi', 'Étoile Filante', 'S', 0.1, 'pct', 'Tes coups font parfois tomber des Pokédollars.'),
-  b('astre_bounty', 'jirachi', 'Aubaine', 'T', 0.5, 'money', 'Les salles libérées rapportent davantage.'),
+  b('astre_bounty', 'jirachi', 'Aubaine', 'T', 0.8, 'money', 'Les salles libérées rapportent davantage.'),
   b('astre_wish', 'jirachi', 'Souhait', 'T', 1, 'flag', 'Une fois par salle, un coup fatal te laisse à 1 PV.'),
   b('astre_finisher', 'jirachi', 'Fortune', 'S', 0.12, 'pct', 'Ton finisher te soigne.'),
   b('astre_resource', 'jirachi', 'Pluie d’Étoiles', 'T', 2, 'count', 'Les salles libérées livrent aussi des ressources de camp.', false),
@@ -159,22 +159,34 @@ const LIST: BoonDef[] = [
 ];
 export const BOONS: Record<string, BoonDef> = Object.fromEntries(LIST.map((d) => [d.id, d]));
 
-/** Dons de statistique (RB.STAT_EFFECTS) : appliqués une fois, à la prise, sans effet de rareté. */
+/**
+ * Dons de statistique (RB.STAT_EFFECTS) : appliqués à chaque prise, sans
+ * effet de rareté (le reprendre ajoute la même hausse). Rééquilibrage du
+ * 12 novembre 2026 : +25 % au lieu de +20 % (ils pâlissaient à côté des
+ * autres dons, qui eux montent avec la rareté).
+ */
 export const STAT_BOONS: Record<string, { label: string; apply: 'atk' | 'def' | 'spAtk' | 'spDef' | 'speed' | 'range' | 'cooldown' | 'crit' | 'dodge' | 'hp'; value: number }> = {
-  sol_bulk: { label: 'PV max +20 %', apply: 'hp', value: 1.2 },
-  sol_guard: { label: 'Défense +20 %', apply: 'def', value: 1.2 },
-  glace_ward: { label: 'Défense Spé +20 %', apply: 'spDef', value: 1.2 },
-  dragon_swift: { label: 'Vitesse +20 %', apply: 'speed', value: 1.2 },
+  sol_bulk: { label: 'PV max +25 %', apply: 'hp', value: 1.25 },
+  sol_guard: { label: 'Défense +25 %', apply: 'def', value: 1.25 },
+  glace_ward: { label: 'Défense Spé +25 %', apply: 'spDef', value: 1.25 },
+  dragon_swift: { label: 'Vitesse +25 %', apply: 'speed', value: 1.25 },
   dragon_evade: { label: 'Esquive +12 pts', apply: 'dodge', value: 0.12 },
-  feu_fury: { label: 'Attaque +20 %', apply: 'atk', value: 1.2 },
-  psy_focus: { label: 'Attaque Spé +20 %', apply: 'spAtk', value: 1.2 },
+  feu_fury: { label: 'Attaque +25 %', apply: 'atk', value: 1.25 },
+  psy_focus: { label: 'Attaque Spé +25 %', apply: 'spAtk', value: 1.25 },
   tenb_precision: { label: 'Critique +15 pts', apply: 'crit', value: 0.15 },
-  temps_haste: { label: 'Cadence −15 %', apply: 'cooldown', value: 0.85 },
-  elec_range: { label: 'Portée +20 %', apply: 'range', value: 1.2 },
+  temps_haste: { label: 'Cadence −18 %', apply: 'cooldown', value: 0.82 },
+  elec_range: { label: 'Portée +25 %', apply: 'range', value: 1.25 },
 };
 
 /** RB:63-84 : échelle de valeur, noms, couleurs (fond nuit). */
-export const RARITY_SCALE = [1, 1.5, 2.2, 3];
+// Rééquilibrage (retour de test du 11 novembre 2026, « rééquilibrer les dons ») :
+// ×1,4 / ×1,85 / ×2,4 au lieu de ×1,5 / ×2,2 / ×3. Au Prismatique, plusieurs
+// dons devenaient écrasants (Éclat +450 % sur un gelé, Décharge Statique ×18,
+// Transfert et Flamme Sacrée cumulés rendaient ~70 % des dégâts en PV) ; leurs
+// bases ont aussi baissé, et les dons trop faibles ont été relevés (Voyage
+// soigne, Prémonition renvoie tout, Inébranlable lève aussi la paralysie,
+// Aubaine rapporte plus, dons de statistique à +25 %).
+export const RARITY_SCALE = [1, 1.4, 1.85, 2.4];
 export const RARITY_NAME = ['Commun', 'Rare', 'Épique', 'Prismatique'];
 export const RARITY_COLOR = ['#e3c287', '#57b04a', '#f2c24f', '#40e0d1'];
 
@@ -241,6 +253,8 @@ export class Boons {
   sinceHurt = 0;
   stormT = 0;
   stillT = 0;
+  /** Crans de rareté ajoutés à la prochaine offre (pacte de l'Autel maudit), remis à 0 après elle. */
+  bonus = 0;
 
   has(id: string): boolean {
     return this.owned.has(id);
@@ -281,7 +295,7 @@ export class Boons {
     let r = roll < 0.1 + 0.02 * room ? 2 : roll < 0.35 + 0.03 * room ? 1 : 0;
     if (this.roomHurts === 0) r++;
     if (this.has('tenb_debt')) r++;
-    return Math.min(3, r);
+    return Math.min(3, r + this.bonus);
   }
 
   /**

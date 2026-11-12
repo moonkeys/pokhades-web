@@ -1,6 +1,8 @@
 import { moveSfx, sfx } from '../audio/audio';
 import { loadImage } from '../assets/pmd';
 import { MOVE_SHEETS, TYPE_SHEETS } from '../data/attackanims';
+import { styleOf } from '../data/movestyles';
+import { MoveFx } from './movefx';
 import { TILE } from '../world/tiles';
 import type { AreaShape } from '../combat/combat';
 
@@ -117,6 +119,8 @@ export class CombatFx {
   private ballImg: Record<string, HTMLImageElement> = {};
   private readonly sheets = new Map<string, Promise<HTMLCanvasElement[]>>();
   private readonly layer: HTMLElement;
+  /** Effets dessinés des attaques (rayons, projectiles, crocs…), render/movefx.ts. */
+  private readonly moves = new MoveFx();
 
   constructor(parent: HTMLElement) {
     this.layer = document.createElement('div');
@@ -144,6 +148,7 @@ export class CombatFx {
     this.poofs = [];
     this.balls = [];
     this.anims = [];
+    this.moves.reset();
     for (const n of this.numbers) n.el.remove();
     this.numbers = [];
   }
@@ -190,6 +195,28 @@ export class CombatFx {
     });
   }
 
+  /**
+   * L'effet de la capacité, du lanceur vers la cible (data/movestyles.ts
+   * choisit la famille : rayon, projectile, crocs…). `from` et `to` sont
+   * relus à chaque image ; `arrive` : dans combien de secondes le coup
+   * touche (0 au corps à corps). La planche d'Essentials, elle, part à
+   * l'impact (attackAnim), comme avant.
+   */
+  moveCast(api: string | undefined, type: string, special: boolean, from: () => { x: number; y: number }, to: () => { x: number; y: number }, arrive: number, power = 60): void {
+    this.moves.play(styleOf(api, type, special), type, from, to, arrive, power, api);
+  }
+
+  /**
+   * La même, entre deux points fixes : ce que l'hôte envoie aux invités en
+   * ligne (main.ts, file des effets), les fonctions de suivi ne passant pas
+   * le réseau. Les positions sont celles du lancer.
+   */
+  moveCastAt(api: string | undefined, type: string, special: boolean, fx0: number, fy0: number, tx: number, ty: number, arrive: number, power = 60): void {
+    const from = { x: fx0, y: fy0 };
+    const to = { x: tx, y: ty };
+    this.moves.play(styleOf(api, type, special), type, () => from, () => to, arrive, power, api);
+  }
+
   /** `text` remplace le montant (« ATT ↑ », « +12 »…). */
   number(kind: NumberKind, x: number, y: number, amount = 0, text?: string): void {
     const style = NUMBER_STYLE[kind];
@@ -219,6 +246,7 @@ export class CombatFx {
     this.balls = this.balls.filter((ball) => ball.t < 1.05);
     for (const a of this.anims) a.t += dt;
     this.anims = this.anims.filter((a) => a.t * a.fps < a.frames.length);
+    this.moves.update(dt);
     for (const n of this.numbers) n.t += dt;
     this.numbers = this.numbers.filter((n) => {
       if (n.t < 0.75) return true;
@@ -232,6 +260,8 @@ export class CombatFx {
     const sx = (x: number) => Math.round((x * TILE - camX) * k);
     const sy = (y: number, h: number) => Math.round((y * TILE - h * TILE - camY) * k);
 
+    // Sous les planches : le rayon ou le projectile arrive, la planche éclate dessus.
+    this.moves.draw(b, camX, camY, k);
     for (const a of this.anims) {
       const f = a.frames[Math.min(a.frames.length - 1, Math.floor(a.t * a.fps))];
       b.drawImage(f, sx(a.x) - (ANIM_PX * k) / 2, sy(a.y, a.h) - (ANIM_PX * k) / 2, ANIM_PX * k, ANIM_PX * k);

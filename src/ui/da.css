@@ -479,6 +479,21 @@
   color: var(--ink);
   text-shadow: none;
 }
+/* Méga-évolution (main.ts) : un ruban aux couleurs du symbole Méga, qui pulse quand elle est prête. */
+.hud-mega {
+  width: fit-content;
+  margin-top: calc(0.4 * var(--u));
+  padding: 0 calc(0.8 * var(--u));
+  font-family: var(--head);
+  font-size: calc(1.15 * var(--u));
+  line-height: calc(1.6 * var(--u));
+  letter-spacing: 0.06em;
+  color: #fff;
+  background: linear-gradient(90deg, #8c6eff, #ff7ad9 60%, #6edcff);
+}
+.hud-mega.ready {
+  animation: hud-ult-glow 0.7s ease-in-out infinite alternate;
+}
 /* Attaques en 2 × 2, comme dans les jeux Pokémon : une bande de papier chacune, un trait
    de feutre à la couleur du type, le type collé au nom, la touche sur ruban noir. */
 .hud-moves {
@@ -720,47 +735,79 @@
 .run-toast .da-stamp {
   font-size: calc(1.7 * var(--u));
 }
-/* Notifications : petites bandes à droite, la plus récente en haut. */
+/* Notifications : petites cartes à droite, la plus récente en haut.
+   Refaites (retour de test : « les notifs sont un peu moches ») : une
+   étiquette d'encre collée de biais plutôt qu'une bande de papier plate ;
+   l'icône dans une pastille à la couleur de la notification, qui déborde un
+   peu ; le titre à cette couleur ; elles glissent hors de l'écran au lieu de
+   pâlir sur place. Deux notifications identiques se fondent (« ×2 »). */
 .run-notifs {
   position: absolute;
-  right: calc(2 * var(--u));
+  right: calc(1.6 * var(--u));
   top: calc(6 * var(--u));
-  width: calc(26 * var(--u));
+  width: calc(25 * var(--u));
   display: grid;
-  gap: calc(0.7 * var(--u));
+  gap: calc(0.8 * var(--u));
   pointer-events: none;
 }
+.notif.da-paper {
+  clip-path: none;
+}
 .notif {
+  --c0: var(--c, var(--yel));
   position: relative;
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: calc(0.9 * var(--u));
+  gap: calc(1 * var(--u));
   align-items: center;
-  padding: calc(0.6 * var(--u)) calc(2 * var(--u)) calc(0.6 * var(--u)) calc(1.4 * var(--u));
-  animation: notif-in 0.4s cubic-bezier(0.2, 1, 0.3, 1) both;
-  transition: opacity 0.5s;
+  min-height: calc(4 * var(--u));
+  padding: calc(0.55 * var(--u)) calc(1.6 * var(--u)) calc(0.55 * var(--u)) calc(0.7 * var(--u));
+  color: var(--paper);
+  background:
+    linear-gradient(100deg, color-mix(in srgb, var(--c0) 26%, transparent) 0, transparent calc(7 * var(--u))),
+    rgba(20, 16, 14, 0.9);
+  border-radius: calc(0.35 * var(--u));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--c0) 35%, transparent),
+    0 calc(0.35 * var(--u)) calc(0.9 * var(--u)) rgba(0, 0, 0, 0.45);
+  rotate: -0.8deg;
+  animation: notif-in 0.45s cubic-bezier(0.2, 1.35, 0.4, 1) both;
+  transition:
+    opacity 0.5s,
+    translate 0.5s cubic-bezier(0.5, 0, 0.8, 0.3);
 }
+.notif:nth-child(even) {
+  rotate: 0.6deg;
+}
+/* Le bout de ruban qui la tient au mur. */
 .notif::before {
   content: '';
   position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: calc(0.5 * var(--u));
-  background: var(--c, var(--spray));
+  left: 50%;
+  top: calc(-0.5 * var(--u));
+  width: calc(3.2 * var(--u));
+  height: calc(1 * var(--u));
+  background: color-mix(in srgb, var(--paper) 70%, transparent);
+  translate: -50% 0;
+  rotate: 4deg;
+  opacity: 0.55;
 }
 .notif .ico {
   display: grid;
   place-items: center;
-  width: calc(3.6 * var(--u));
-  height: calc(3.6 * var(--u));
+  width: calc(3.8 * var(--u));
+  height: calc(3.8 * var(--u));
   font-size: calc(1.8 * var(--u));
   color: var(--ink);
+  background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--c0) 55%, #fff), var(--c0));
+  border-radius: 50%;
+  box-shadow: 0 0 0 calc(0.18 * var(--u)) var(--ink), 0 0 0 calc(0.32 * var(--u)) color-mix(in srgb, var(--c0) 60%, transparent);
 }
 .notif .ico img {
-  width: 135%;
+  width: 130%;
   max-width: none;
-  filter: drop-shadow(0 calc(0.15 * var(--u)) calc(0.2 * var(--u)) rgba(0, 0, 0, 0.35));
+  margin-top: -18%;
+  filter: drop-shadow(0 calc(0.15 * var(--u)) calc(0.2 * var(--u)) rgba(0, 0, 0, 0.45));
 }
 .notif .ico.ko img {
   filter: grayscale(1) brightness(0.85);
@@ -768,24 +815,49 @@
 .notif b {
   display: block;
   font-family: var(--head);
-  font-size: calc(1.5 * var(--u));
+  font-size: calc(1.55 * var(--u));
   font-weight: normal;
   line-height: 1;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
+  color: var(--c0);
 }
 .notif span {
-  font-size: calc(1.1 * var(--u));
+  display: block;
+  font-size: calc(1.08 * var(--u));
+  line-height: 1.25;
+  color: color-mix(in srgb, var(--paper) 92%, transparent);
+}
+/* Fusion de notifications identiques : le compteur, en étiquette jaune au coin. */
+.notif .times {
+  position: absolute;
+  right: calc(-0.6 * var(--u));
+  top: calc(-0.6 * var(--u));
+  padding: 0 calc(0.5 * var(--u));
+  font-family: var(--head);
+  font-size: calc(1.3 * var(--u));
+  color: var(--ink);
+  background: var(--yel);
+  rotate: 8deg;
+}
+.notif .times.bump {
+  animation: notif-bump 0.3s cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+@keyframes notif-bump {
+  from {
+    scale: 1.6;
+  }
 }
 .notif.old {
-  opacity: 0.6;
+  opacity: 0.7;
 }
 .notif.gone {
   opacity: 0;
+  translate: 120% 0;
 }
 @keyframes notif-in {
   from {
     opacity: 0;
-    transform: translateX(110%);
+    transform: translateX(115%) rotate(4deg);
   }
 }
 /* Annonce de zone : le nom seul, à la couleur du biome, souligné d'un trait de bombe. */
@@ -969,8 +1041,11 @@
   opacity: 0.8;
   rotate: -14deg;
 }
-/* Pour qui ? La liste de l'équipe : le don ou l'attaque va au Pokémon choisi. */
+/* Pour qui ? La liste de l'équipe : le don ou l'attaque va au Pokémon choisi.
+   Au-dessus de .rw-boon, posé après lui et plein écran, qui avalait les clics
+   (on ne pouvait changer de Pokémon qu'avec Tab). */
 .rw-pick {
+  z-index: 1;
   left: calc(2.5 * var(--u));
   top: 50%;
   width: calc(14.5 * var(--u));
@@ -1862,6 +1937,84 @@
 .opt-caps .or {
   font-size: var(--u);
   color: var(--muted);
+}
+
+/* Commandes réassignables : deux colonnes de lignes choisissables, la touche
+   principale en noir, les autres plus pâles ; « … » attend la nouvelle. */
+.opt-binds {
+  display: grid;
+  grid-template-rows: repeat(8, auto);
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: calc(0.2 * var(--u)) calc(2 * var(--u));
+}
+.opt-keyline.bind {
+  padding: calc(0.25 * var(--u)) calc(0.6 * var(--u));
+  border-left: calc(0.35 * var(--u)) solid transparent;
+  cursor: pointer;
+}
+.opt-keyline.bind.sel {
+  border-left-color: var(--ink);
+  background: color-mix(in srgb, var(--yel) 30%, transparent);
+}
+.opt-capbox .opt-caps kbd.alt {
+  background: color-mix(in srgb, var(--ink) 55%, var(--paper));
+}
+.opt-caps kbd.wait {
+  min-width: calc(4 * var(--u));
+  color: var(--ink);
+  background: var(--yel);
+  animation: opt-wait 0.8s steps(2) infinite;
+}
+@keyframes opt-wait {
+  50% {
+    opacity: 0.4;
+  }
+}
+.opt-keys.fixed {
+  margin-top: calc(1 * var(--u));
+  padding-top: calc(0.8 * var(--u));
+  border-top: calc(0.15 * var(--u)) dashed color-mix(in srgb, var(--ink) 35%, transparent);
+  grid-template-columns: repeat(auto-fit, minmax(calc(16 * var(--u)), 1fr));
+}
+
+/* Nouveautés : les notes de version dans un cadre qui défile, titres à l'encre. */
+.opt-notes {
+  max-height: calc(34 * var(--u));
+  overflow-y: auto;
+  padding-right: var(--u);
+  font-size: calc(1.2 * var(--u));
+  line-height: 1.4;
+}
+.opt-note + .opt-note {
+  margin-top: calc(1.6 * var(--u));
+  padding-top: calc(1.2 * var(--u));
+  border-top: calc(0.15 * var(--u)) dashed color-mix(in srgb, var(--ink) 35%, transparent);
+}
+.opt-note-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--u);
+  font: normal calc(1.7 * var(--u)) var(--head);
+  letter-spacing: 0.02em;
+}
+.opt-note h4 {
+  margin: calc(1 * var(--u)) 0 calc(0.3 * var(--u));
+  font: normal calc(1.4 * var(--u)) var(--head);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.opt-note ul {
+  margin: 0;
+  padding-left: calc(1.6 * var(--u));
+}
+.opt-note li + li {
+  margin-top: calc(0.25 * var(--u));
+}
+.opt-note li::marker {
+  color: var(--red, #e84040);
 }
 
 /* ── Boutique : étiquettes de prix, fiche d'article, bulles, mercenaires ── */
@@ -4959,4 +5112,17 @@ body.net-on .hud-team {
   .evo-grid {
     grid-template-columns: repeat(2, 1fr);
   }
+}
+
+/* Records de la sauvegarde au bilan de fin de run (runsummary.ts). */
+.sum-records {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(0.4 * var(--u)) calc(1.6 * var(--u));
+  margin: calc(0.6 * var(--u)) 0 0;
+}
+.sum-records .da-stamp {
+  margin-left: calc(0.4 * var(--u));
+  font-size: calc(1.1 * var(--u));
+  font-style: normal;
 }

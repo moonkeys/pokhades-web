@@ -105,7 +105,9 @@ biomes du dernier étage, +6 niveaux), au bout de laquelle attend Régis, le
 Maître de la Ligue, et ses six Pokémon. Le
 champion de l'acte est tiré quand on choisit son biome, rangé par étage
 (`BIOME_CHAMPIONS` : Giovanni garde les Rocailleux, plus le Village). Chaque
-salle lance ses vagues, se libère (+₽), pose une récompense au centre et
+salle lance ses vagues (plus ou moins fournies selon sa surface libre :
+×0,75 pour une petite Arène, jusqu'à ×1,3 pour une grande Clairière,
+`crowdOf` dans room.ts), se libère (+₽), pose une récompense au centre et
 ouvre ses portes : chacune annonce la récompense de la salle suivante. Une
 barrière ferme les sorties tant que la salle n'est pas libérée. Le Pokémon
 joué tombe : le suivant encore debout prend le relais ; toute l'équipe K.O.,
@@ -158,7 +160,14 @@ sa récompense comme une autre ; la récompense attend au centre d'une salle
 vide, et en approchant, trois vagues serrées à +3 niveaux surgissent (₽ ×2).
 Le **Marchand ambulant** (`src/run/merchant.ts`, Miaouss, son Pari et son
 Échange) n'est plus tiré (retour de test : « le marchand, j'en veux pas ») ;
-son code reste.
+son code reste. **Source** ✚ (`run/spring.ts`) : un bassin qui soigne l'équipe.
+**Autel maudit** ☠ (`run/altar.ts`) : sans ennemis, Feuforêve veille sur une
+dalle aux flammes violettes ; [E], une fois, signe un pacte : un don d'un
+cran plus rare (`Boons.bonus`), contre une malédiction tirée à l'arrivée et
+lisible sur la fiche, qui pèse jusqu'à la fin de l'acte (`Run.curse`, écrite
+sous le lieu en haut à gauche) : **Sauvages enragés** (+2 niveaux, champion
+compris), **Bourse percée** (₽ des salles divisés par deux) ou **Sans repos**
+(les K.O. ne se relèvent plus en fin de salle). On peut passer son chemin.
 
 Météo (ajout, `src/world/weather.ts`) : chaque salle de combat tire son ciel
 selon le biome — souvent clair, parfois Pluie, Soleil ardent, Tempête de
@@ -474,8 +483,18 @@ paire qui bavarde face à face. Chacun a un
 caractère (commère, ronchon, militant, froussard, gourmand, rêveur, sage,
 farceur, src/data/chatter.ts) et ses répliques ; rarement, l'un d'eux fait
 un cadeau (quelques ₽, une Potion, une Baie Oran pour l'équipe), un par
-visite au plus. On les contourne, ils ne se laissent pas pousser. Pas de lots de
-Baies, de solde des mercenaires ni de rachat : ils supposent le camp.
+visite au plus. On les contourne, ils ne se laissent pas pousser. Sur l'étal,
+un **lot de Baies** par visite (7, 17 ou 40 Baies pour 100, 220 ou 480 ₽,
+`BERRY_PACKS`, les quantités du jeu divisées par trois) : convertir sa bourse
+en monnaie du Repaire, à un taux exprès ingrat. Pas encore de rachat (il
+faudrait un inventaire en run).
+
+**Solde des mercenaires** (`CombatArena._collect_merc_retainers`) : à
+l'entrée de chaque boutique suivante, un mercenaire encore debout réclame la
+moitié de son prix (`MERC_RETAINER`, annoncé sur sa fiche) ; sans l'argent,
+il quitte l'équipe (sauf s'il est le dernier debout), avant que la place ne
+se remplisse, pour que sa place puisse resservir tout de suite. Un
+mercenaire tombé ne réclame plus rien.
 
 Boss (porté de `CombatArena.gd`, `PokePools.gd`, `TrainerNPC.gd`,
 `PokeballFX.gd`, `ChampionDialogueScreen.gd`) : chaque acte a son champion,
@@ -509,14 +528,56 @@ débloquent un duo, et dès l'acte 2 la 3ᵉ carte peut être une ultime (jauge
 qui se charge en frappant et en encaissant, touche R). Sur les 83 dons, les
 9 qui supposent une équipe, un allié, l'évolution ou les ressources du camp
 ne sont pas proposés. « ✦ Nouvelle attaque » propose d'apprendre une attaque
-forte du répertoire de l'espèce ou d'en renforcer une (+25 %).
+forte du répertoire de l'espèce ou d'en renforcer une (+25 %). Au deuxième
+renforcement, une capacité d'une lignée évolue (Pistolet à O → Vibraqua →
+Hydrocanon, Flammèche → Rebondifeu → Lance-Flammes → Déflagration…,
+`MOVE_EVOLUTIONS` de src/run/rewards.ts) : même type, même classe, puissance
+jamais en baisse, renforcements remis à zéro ; la carte le montre.
+
+Formes régionales (ajout, src/data/forms.ts) : 42 formes d'Alola, de Galar,
+de Hisui et de Paldéa, chacune une espèce à part sous son numéro de forme
+PokéAPI (Goupix d'Alola : 10103), avec ses planches SpriteCollab. Vingt formes
+de base vivent dans la faune des biomes (Goupix et Sabelette d'Alola en
+Glace, Caninos de Hisui au Volcan, Axoloto de Paldéa au Marais…) : on les
+bat, on les débloque, elles ont leur ligne au Pokédex, rangée après leur
+espèce. Elles évoluent en leurs formes régionales (ou en Ixon, Berserkatt,
+Terraiste…, data/evolutions.ts). Certaines évolutions ordinaires prennent la
+forme régionale selon le biome où elles ont lieu en run
+(`REGIONAL_EVOLUTIONS`) : Pikachu à la Plage → Raichu d'Alola, Feurisson en
+Automne → Typhlosion de Hisui, Smogo au Village → Smogogo de Galar.
+
+Méga-évolutions (ajout, src/data/megas.ts) : le **Méga-Anneau** (6 Éclats de
+Champion, chez Alakazam) permet, en run, de faire méga-évoluer le Pokémon joué
+avec **F** (bouton MÉGA au doigt), une fois par salle, s'il a une forme Méga
+et qu'il reste des ennemis. Même mise en scène que l'évolution ; la Méga prend
+types et stats de sa forme (fiche PokéAPI à son numéro de forme, 10034 pour
+Méga-Dracaufeu X…), garde attaques, niveau et part de PV, et reprend sa forme
+quand la salle est libérée, à la salle suivante ou au retour au Repaire. Une
+aura violette et rose l'entoure ; quand SpriteCollab n'a pas ses planches
+(Florizarre, Tortank…), elle garde celles de sa base, grandies de 20 %. Le HUD
+dit « Méga-évolution — F » quand elle est prête. Une espèce à deux formes
+(Dracaufeu, Mewtwo, Raichu X / Y ; Absol, Carchacrok, Lucario et leur forme Z)
+fait choisir, jeu en pause, à l'écran d'évolution (`MEGA_ALT_FORMS`). L'as
+d'un champion méga-évolue aussi, s'il en a une forme, en entamant ses deux
+dernières barres (`combat.phase`) : bonus de boss gardés, nom annoncé.
 
 Combat (porté de `TeamMember.gd`, `EnemyAI.gd` et `CombatVFX.gd`) : niveau 10,
 capacités par défaut du jeu, portée et recharge propres à chaque attaque,
 combo de 3 coups, attaques spéciales qui frappent directement leur cible
 (plus d'orbe ; une marque au sol à la couleur du type les annonce 0,12 s),
 statuts, hitstop et secousse. Chaque coup joue une planche d'Essentials
-choisie par capacité quand elle existe, sinon par type (src/data/attackanims.ts).
+choisie par capacité quand elle existe, sinon par type (src/data/attackanims.ts),
+et un effet dessiné selon la famille de la capacité (src/data/movestyles.ts,
+src/render/movefx.ts) : rayon qui part du lanceur (Ultralaser, Laser Glace),
+projectile avec traînée (Ball'Ombre, Flammèche), salve (Tranch'Herbe,
+Météores), souffle en cône (Lance-Flammes), ondes (Surf, Mégaphone), foudre
+ou rochers venus du ciel (Tonnerre, Éboulement), anneaux psychiques,
+tourbillon, sol qui se fend (Séisme), absorption qui revient au lanceur ; au
+contact, mâchoires qui se referment (Morsure, Crocs Feu), griffes, lame,
+croix, poing, pied, estoc, fouet (Fouet Lianes), ruée et coup de masse. Les
+sauvages jouent les mêmes ; un tir de sauvage arrive sur sa marque au moment
+où elle frappe. En ligne, l'hôte envoie aux invités chaque effet avec les
+points du lancer (`moveCastAt`).
 Les sauvages touchés et les Pokémon de champion portent une barre de vie
 au-dessus de la tête.
 
@@ -565,8 +626,9 @@ des réglages et au panneau (H) ; **M** coupe tout.
 Écart voulu : le jeu Godot (`Sfx.gd`) bruitait le combat avec des sons
 génériques Kenney. Ici tout vient d'Essentials, comme dans les jeux :
 - **attaques** : chaque animation d'attaque joue le son de sa capacité
-  (`SE/Anim` : Tranche, Force Poigne, Lance-Flammes, Séisme…), sinon un son
-  de son type ; les zones, tirs, dons et l'ultime compris ;
+  (`SE/Anim` : Tranche, Force Poigne, Lance-Flammes, Séisme…), sinon celui
+  de sa famille d'animation (`STYLE_SOUNDS` : un poing claque, une morsure
+  croque, un rayon a le son ample de son type), sinon un son de son type ; les zones, tirs, dons et l'ultime compris ;
 - **coups** : le « pac » des jeux selon l'efficacité (normal, super
   efficace ou critique, pas très efficace), plus grave quand l'équipe
   encaisse ;
@@ -598,6 +660,20 @@ boss, Battle victory leader ensuite. Les fichiers sont copiés dans
 plus qu'au panneau de test (H).
 ↑↓ choisit, ←→ règle, Échap reprend ; tout se clique aussi. Les réglages
 sont gardés avec ceux du panneau de test, qui se met à jour derrière.
+
+Onglet **Nouveautés** (aussi au menu principal, marqué « Nouveau ! » tant
+que la dernière note n'a pas été lue) : les notes de version,
+`src/data/patchnotes.ts` — en ajouter une en tête à chaque mise en ligne.
+
+Les touches se **réassignent** dans l'onglet Commandes (`src/input/bindings.ts`) :
+Entrée (ou un clic) sur une action, puis la nouvelle touche ; Échap annule.
+On change la touche principale de l'action, ses autres touches restent tant
+qu'elles ne servent pas ailleurs ; prendre la touche principale d'une autre
+action les échange. Échap, M, Entrée (et H, N en test) ne se prennent pas.
+« Rétablir » remet les touches d'origine. Les noms affichés suivent la
+disposition du clavier quand le navigateur la donne (AZERTY sinon), et les
+invites « [E] » prennent la nouvelle touche d'interaction. Mémorisé à part,
+dans le navigateur (`pokhades-keys`). Au tactile, rien à réassigner.
 
 ## Jeu en ligne (Roucarnage)
 

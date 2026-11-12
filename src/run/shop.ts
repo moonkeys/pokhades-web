@@ -30,8 +30,18 @@ import type { Run } from './run';
 //   rotation 3D du jeu se lisait comme un objet qui s'écrase) ;
 // - recharger l'étal ne rouvre pas la CT déjà achetée (le jeu contournait
 //   ainsi sa règle « une capacité par visite »), et la CT achetée quitte l'étal ;
-// - un mercenaire ne réclame pas encore de solde à la boutique suivante, et
-//   ni les lots de Baies ni l'échoppe de rachat ne sont là (pas de camp).
+// - pas d'échoppe de rachat (il faudrait un inventaire en run).
+//
+// Lot de Baies (ShopStock.BERRY_PACKS, porté depuis que le Repaire existe) :
+// un par étal, pour convertir des ₽ de run en Baies du Repaire, au taux
+// volontairement ingrat du jeu (≈ 0,08 Baie par ₽ ici, les Baies étant
+// divisées par trois) : ce qu'on achète quand la run est déjà gagnée ou
+// déjà perdue, jamais plus rentable que de quoi survivre.
+//
+// Solde (CombatArena._collect_merc_retainers) : à la boutique suivante, chaque
+// mercenaire encore debout réclame MERC_RETAINER de son prix ; faute de quoi
+// il s'en va (main.ts, avant que la place ne se remplisse : la place libérée
+// peut servir tout de suite).
 
 /** ShopStock.HEALS : soins vendus en run (heal < 0 : PV au maximum), Rappels (part des PV max). */
 const HEALS = {
@@ -45,6 +55,12 @@ const REVIVES = {
   max_revive: { name: 'Rappel Max', pct: 1, price: 280, icon: 'MAXREVIVE' },
 } as const;
 type HealId = keyof typeof HEALS;
+/** ShopStock.BERRY_PACKS, quantités divisées par trois comme toutes les Baies (lot 3). */
+const BERRY_PACKS = [
+  { amount: 7, price: 100 },
+  { amount: 17, price: 220 },
+  { amount: 40, price: 480 },
+] as const;
 /** CombatArena.BOUTIQUE_MOVE_PRICE */
 export const CT_PRICE = 110;
 /** Recharger l'étal : 60 × 1,6ⁿ ₽, n = recharges déjà faites à cette visite. */
@@ -56,6 +72,9 @@ const TALK_REACH = 2;
 /** Plafond d'une équipe en run (CombatArena.MAX_RUN_TEAM). */
 const MAX_TEAM = 6;
 
+/** Part du prix qu'un mercenaire réclame à chaque boutique suivante (CombatArena.MERC_RETAINER). */
+export const MERC_RETAINER = 0.5;
+
 /** Rangs des mercenaires (CombatArena.ALLY_RANKS) : décalage de niveau, prix de base, espèces. */
 const RANKS = [
   { name: 'Éclaireur', lvl: -2, price: 120, pool: MERC_POOLS.scout },
@@ -64,7 +83,7 @@ const RANKS = [
 ] as const;
 
 interface Item {
-  kind: 'heal' | 'revive' | 'move' | 'reroll';
+  kind: 'heal' | 'revive' | 'move' | 'reroll' | 'berries';
   id: string;
   name: string;
   desc: string;
@@ -106,8 +125,10 @@ export interface ShopHost {
   openPoster(): void;
   /** L'équipe, pour soigner, ranimer et recruter. */
   team(): readonly Actor[];
+  /** Un lot de Baies acheté : versées au Repaire. */
+  earnBaies(n: number): void;
   /** Un mercenaire rejoint l'équipe, là où il se tient. */
-  recruit(id: number, level: number, x: number, y: number): void;
+  recruit(id: number, level: number, x: number, y: number, price: number): void;
 }
 
 /** CombatArena.gd:4770-4804 et NpcDialogue.gd:65-80. */
@@ -136,6 +157,8 @@ export class Shop {
   private items: Item[] = [];
   private rerolls = 0;
   private ctUsed = false;
+  /** Le lot de Baies de l'étal est pris (un par visite, même après une recharge). */
+  private berriesBought = false;
   private hub = { x: 0, y: 0 };
   poster = { x: 0, y: 0 };
   private near: Item | null = null;
@@ -159,7 +182,7 @@ export class Shop {
     this.prompt.className = 'shop-prompt da-paper';
     this.prompt.hidden = true;
     parent.append(this.layer, this.prompt);
-    for (const f of ['POTION', 'SUPERPOTION', 'HYPERPOTION', 'MAXPOTION', 'REVIVE', 'MAXREVIVE', 'machine_NORMAL', 'COINCASE']) {
+    for (const f of ['POTION', 'SUPERPOTION', 'HYPERPOTION', 'MAXPOTION', 'REVIVE', 'MAXREVIVE', 'machine_NORMAL', 'COINCASE', 'SITRUSBERRY']) {
       void loadImage(`/game/assets/essentials/items/${f}.png`)
         .then((img) => this.icons.set(f, img))
         .catch(() => {});
@@ -190,6 +213,7 @@ export class Shop {
     this.rng = rng;
     this.rerolls = 0;
     this.ctUsed = false;
+    this.berriesBought = false;
     this.hub = { x: Math.floor(world.hub.x) + 0.5, y: Math.floor(world.hub.y) + 0.9 };
     const place = (this.place = new Placer(world));
     const hx = Math.floor(this.hub.x);
@@ -324,6 +348,10 @@ export class Shop {
       const r = REVIVES[run.act >= 2 ? 'max_revive' : 'revive'];
       specs.push({ kind: 'revive', id: 'revive', name: r.name, desc: `Relève un membre K.O. avec ${Math.round(r.pct * 100)} % de ses PV.`, icon: r.icon, price: r.price, heal: r.pct });
     }
+    if (!this.berriesBought) {
+      const pack = BERRY_PACKS[rng.int(BERRY_PACKS.length)];
+      specs.push({ kind: 'berries', id: 'berries', name: `${pack.amount} Baies`, desc: 'Des Baies pour le Repaire : elles survivent à la run, contrairement aux Pokédollars.', icon: 'SITRUSBERRY', price: pack.price, heal: pack.amount });
+    }
     specs.push({
       kind: 'reroll',
       id: 'reroll',
@@ -358,6 +386,7 @@ export class Shop {
       note = d?.pokemon ? `Ranime ${d.pokemon.name}` : '';
       if (!d) refuse = 'Personne n’est K.O.';
     } else if (it.kind === 'move') note = 'Une capacité par visite';
+    else if (it.kind === 'berries') note = 'Un lot par visite';
     else if (it.kind === 'reroll') note = `La suivante coûtera ${rerollPrice(this.rerolls + 1)} ₽`;
     if (!refuse && money < it.price) refuse = `Pas assez de Pokédollars (${it.price} ₽ requis).`;
     return { note, refuse };
@@ -469,7 +498,7 @@ export class Shop {
       if (run.money < p.merc.price) return this.say(p, `${p.merc.price} ₽, pas un de moins.`);
       run.money -= p.merc.price;
       sfx('buy');
-      this.host.recruit(p.actor.speciesId, p.merc.level, p.actor.x, p.actor.y);
+      this.host.recruit(p.actor.speciesId, p.merc.level, p.actor.x, p.actor.y, p.merc.price);
       this.host.message(`${name} rejoint l’équipe (N.${p.merc.level}).`);
       p.bubble.remove();
       this.people = this.people.filter((x) => x !== p);
@@ -551,6 +580,10 @@ export class Shop {
       pm.hp = Math.max(1, Math.round(pm.maxHp * it.heal));
       it.sold = 0.01;
       this.host.message(`${pm.name} est ranimé — ${pm.hp}/${pm.maxHp} PV`);
+    } else if (it.kind === 'berries') {
+      this.berriesBought = true;
+      it.sold = 0.01;
+      this.host.earnBaies(it.heal);
     } else {
       this.rerolls++;
       this.restock();
@@ -641,7 +674,7 @@ export class Shop {
       typePill(mv.type, row);
       el('small', '', row, mv.power > 0 ? `${mv.damageClass === 'special' ? 'Spéciale' : 'Physique'} · ${mv.power}` : 'Statut');
     }
-    el('div', 'shop-note', card, refuse || 'Un allié de run : aucun Rappel ne le relève.');
+    el('div', 'shop-note', card, refuse || `Solde de ${Math.round(m.price * MERC_RETAINER)} ₽ à chaque boutique, sinon il part. Aucun Rappel ne le relève.`);
     if (!refuse) el('div', 'shop-buy', card, '✔ Recruter [E]');
     this.prompt.classList.toggle('refused', Boolean(refuse));
     this.prompt.hidden = false;

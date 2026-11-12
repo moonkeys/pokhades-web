@@ -25,6 +25,38 @@ Pokédex des formes de base ; plus de nage sans Surf ; recrues visibles au
 Repaire, « Plus tard », jauge des places, arbres dégagés. À regarder au
 prochain test : l'équilibre réel des niveaux (non joué de bout en bout).
 
+Lot 4 bis (11 novembre 2026) : places au Repaire 8 au départ (au lieu de 6),
+Dortoir +4, Maisons +6, Bourg +8, et des **Lits superposés** rachetables chez
+le bâtisseur (+2 places, 60 à 400 Baies, six fois, `BUNKS`, `Save.bunks`) ;
+chantiers moins chers ; chaque salle libérée rapporte 1 Bois et 1 Pierre, un
+champion 4 de chaque plus 4 Nourriture (`ROOM_RES`, annoncés au retour) ; les
+coffres donnent aussi l'autre ressource ; missions de bois et de pierre plus
+courtes et mieux payées. Les champions alignent autant de Pokémon que
+l'équipe, moins un, plus l'acte (4 au plus au premier acte, `reinforce`).
+Compagnons plus malins (`companion.ts`) : ils sortent des marques et des
+zones avant l'impact (`Combat.threatAt`), restent à moins de 9 cases du
+Pokémon joué, protègent d'abord celui-ci et achèvent les affaiblis, prennent
+l'attaque la plus efficace contre leur cible, gardent leurs distances avec
+une attaque à distance et se replient sous 30 % de PV.
+À juger en jeu : le rythme des ressources et des places.
+
+Lot 4 (11 novembre 2026, retour de test). Fait : « Pour qui ? » cliquable
+sur l'écran de récompense (la colonne était sous `.rw-boon`) ; les attaques
+spéciales visent l'arbre à baies le plus proche (`Combat.breakableNear`) ;
+notifications refaites (étiquette d'encre, pastille colorée, « ×n » pour les
+doublons) ; exploits de Xatu réclamés au cliquetis des jetons (`claim`), plus
+la fanfare, et la fanfare du déblocage espacée de 8 s. En attente, dans
+l'ordre proposé au joueur (les animations par attaque et l'évolution des
+attaques au renforcement sont faites, voir README ; reste à les juger en jeu ;
+l'invité en ligne les reçoit, non testé à deux machines) :
+- sons des Poké Balls à revoir ;
+- dons rééquilibrés (12 novembre 2026, voir `RARITY_SCALE` de
+  combat/boons.ts) : à juger en jeu ;
+- méga-évolutions et formes régionales faites (voir README) : à juger en
+  jeu (aura, taille, fréquence des formes régionales) ; choix X / Y et
+  Méga de l'as des champions faits ; reste : Canarticho de Galar sans évolution
+  (pas de planche de Palarticho) ;
+
 ---
 
 ## 0. Pour reprendre
@@ -157,7 +189,9 @@ chiffres au fil des tests (puissances `pow`, délais, portées).
   (`Save.resources`) paient, avec les Baies, les aménagements du bâtisseur
   (`BUILDINGS[].cost`) ; l'Étude reste en Baies seules, puisqu'elle vend les
   CS qui ouvrent les coffres.
-- Reste : Force (gros rocher à pousser, `ready: false`), d'autres sources de
+- **Force** (fait) : dans les biomes rocheux, un coffre gardé sur trois l'est
+  par un gros rocher (`Object boulder.png`) que la CS Force pousse de côté
+  (220 à l'Étude). Reste : d'autres sources de
   ressources (expéditions ?).
 - Jeu Godot : `scripts/world/Chest.gd`, `GameManager.CS_CATALOG`.
 
@@ -205,8 +239,9 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
   (`CaveHost.capture`) ; rendu au sbire vaincu (`CaveHost.release`), perdu
   pour la run si l'on fuit. Le dernier debout capturé : défaite.
 - Grotte agrandie à 54 × 36 (arène 12 × 7), pour avoir la place d'esquiver.
-- Reste : **mode Nuzlocke** (option de run) où un Pokémon capturé est perdu
-  pour de bon (retiré du Repaire) ; d'autres sbires (Team Aqua, Magma…) si le
+- **Mode Nuzlocke** (fait : Échap → Réglages, `Options.nuzlocke`, `nuzlockeToll`
+  de main.ts) : en fin de run, un Pokémon encore K.O. ou resté capturé est
+  relâché pour de bon (jamais le dernier de l'équipe). Reste : d'autres sbires (Team Aqua, Magma…) si le
   dépôt en a les planches ; un sbire qui change de place en lançant ; des
   répliques de défaite.
 
@@ -248,7 +283,9 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
   brouillard. Notification en entrant dans une salle dont le ciel change ;
   l'étiquette de zone dit « Biome · Pluie ».
 - Panneau (H) → « Météo » : la forcer partout.
-- Reste : des attaques qui la changent (Danse Pluie, Zénith…), des talents.
+- Danse Pluie, Zénith, Tempête de Sable et Grêle changent le temps de la
+  salle jusqu'à l'éclaircie (`weather` dans `EFFECTS`, `Combat.weatherMove`) ;
+  Danse Pluie et Zénith chez le tuteur (150). Reste : des talents.
 
 ### 1.9 Salles spéciales (fait)
 - Une porte sur plusieurs peut mener à une salle spéciale (`Run.offers`,
@@ -264,8 +301,13 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
   (un tiers des PV de l'équipe, sans K.O., contre un don de légendaire).
 - Panneau (H) → « Salle spéciale » : Défi, Piège, Marchand (2ᵉ salle de
   l'acte choisi).
-- Reste : d'autres salles (soin, autel à dons maudits…), un Marchand qui
-  vend aussi des objets.
+- **Source** ✚ (`run/spring.ts`, ajout) : sans ennemis, un bassin veillé par
+  Leveinard ; [E] une fois : chaque membre regagne 60 % de ses PV et perd son
+  statut, un K.O. se relève. Proposée par les portes comme Défi et Piège.
+- **Autel maudit** ☠ (`run/altar.ts`, ajout) : un don d'un cran plus rare
+  contre une malédiction jusqu'à la fin de l'acte (+2 niveaux, ₽ divisés
+  par deux, ou pas de relève en fin de salle). Panneau → « Autel ».
+- Reste : d'autres salles, un Marchand qui vend aussi des objets.
 
 ### 1.10 Son (fait)
 - `src/audio/sounds.ts` (catalogue, repris de `Sfx.gd`) et `audio.ts`
@@ -282,20 +324,25 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
   d'une seconde).
 - Reste :
   - Safari ne lit peut-être pas l'Ogg (convertir en m4a si besoin) ;
-  - une musique par biome ;
   - des cris pour les générations 6 et plus (absents d'Essentials) ;
-  - étendre `MOVE_SOUNDS` aux capacités qui tombent encore sur le son de
-    leur type ;
+  - (fait) une musique par biome (`BIOME_TRACKS`) ; les capacités rangées
+    dans une famille d'animation (`data/movestyles.ts`) prennent le son de
+    leur famille (`STYLE_SOUNDS` : poing, morsure, griffe, séisme…, et un
+    son de rayon par type) ; seules les autres tombent encore sur leur type ;
   - régler les volumes à l'oreille en jeu.
 
 ### 1.11 Bilan de fin de run (fait)
 - `src/meta/runstats.ts` compte en run (dégâts par membre, K.O., Baies,
   Éclats, champions, durée) ; `src/ui/runsummary.ts` l'affiche quand le
   voile de fin tombe, Entrée rentre au Repaire.
-- Reste : un record par sauvegarde (meilleure salle, meilleur temps), le
-  bilan d'une run abandonnée (N, panneau).
-- Menu des réglages : reste à pouvoir réassigner les touches, et une
-  entrée « Abandonner la run » / « Retour au Repaire ».
+- Records par sauvegarde (`Save.records` : salle la plus lointaine, K.O.,
+  victoire la plus rapide) au bilan, « Record ! » sur ceux battus. Une run
+  abandonnée par le menu (Échap → Abandonner) a son bilan ; seuls les
+  raccourcis de test (N, panneau) n'en montrent pas.
+- Menu des réglages : touches réassignables (Échap → Commandes,
+  `input/bindings.ts`, voir README) ; « Abandonner la run » est dans
+  l'onglet Run. Les écrans de choix (dialogues, récompenses) gardent
+  Entrée / E / Espace.
 
 ### 1.12 Formes des salles (fait)
 - `src/world/layouts.ts` décrit huit formes (Clairière, Arène, Couloir,
@@ -334,8 +381,9 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
   libre × 25 graines) : une sortie au moins, et la zone jouable atteignable.
 - Reste :
   - juger les formes en jeu et ajuster les poids des listes ;
-  - régler les vagues selon la taille (une Arène 38 × 30 reçoit autant
-    d'ennemis qu'une Clairière 58 × 38) ;
+  - vagues selon la taille (fait) : l'effectif suit la racine des cases
+    libres rapportées à 800 (`AREA_REF`, room.ts), entre ×0,75 et ×1,3 ;
+    à juger en jeu ;
   - d'autres formes : une île au Lac, des terrasses au Rocailleux ;
   - Ligne de front : juger en jeu le préavis (1,3 s), la largeur du sentier
     de Forêt et la densité des champs de Prairie (sauvages cachés : trop
@@ -492,7 +540,10 @@ Si d'autres se voient en jeu, noter leur emplacement.
 - Événements (`questEvent`) branchés dans `main.ts` : K.O., Baies des
   arbres, salle libérée (drapeau `Combat.hurt`), salle spéciale, champion,
   acte, victoire. Notification « Quête accomplie » en run.
-- Reste : des quêtes qui se renouvellent, des récompenses en objets.
+- **Contrats** (ajout) : trois petits objectifs de run toujours renouvelés
+  (K.O. d'un type, K.O., Baies, salles sans coup, Défi, champion), payés en
+  Baies, ressources ou Éclat (`Save.contracts`, `contractEvent`, sous les
+  quêtes chez Kangourex). Reste : des récompenses en objets.
 
 ### 2.6 Poids d'équipe (fait)
 - `src/meta/weight.ts` : Pokémon 3 / 5 / 8 selon le stade de départ,
@@ -561,8 +612,8 @@ Si d'autres se voient en jeu, noter leur emplacement.
   un obstacle coupé restent dessinés intacts chez l'invité (décor « cuit »
   dans la carte) ; pas de reconnexion en cours de run ; à tester entre deux
   machines (NAT strict : il faudrait un serveur TURN).
-- **Revente** à la boutique de run (il faut d'abord un inventaire en run).
-- **Solde des mercenaires** à la boutique suivante (le jeu la réclamait).
+- **Revente** à la boutique de run (il faut d'abord un inventaire en run). Les
+  lots de Baies de `ShopStock.gd` sont faits (un par étal).
 - **Surf en run** : au Repaire, on ne nage qu'avec Surf ; en run, on nage
   toujours (certaines cartes risqueraient de bloquer leurs sorties
   autrement). Le graphe de biomes (1.2) ne laisse entrer à l'Océan qu'avec

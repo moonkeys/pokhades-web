@@ -50,6 +50,7 @@ export class TouchControls {
   private oy = 0;
   private readonly act: HTMLElement;
   private readonly ult: HTMLElement;
+  private readonly mega: HTMLElement;
   private readonly swap: HTMLElement;
 
   constructor(private readonly input: Input) {
@@ -92,6 +93,8 @@ export class TouchControls {
     // Action (parler, ramasser, acheter…) : terne au repos, elle s'allume quand il y a quelque chose à faire.
     this.act = this.button(pad, 'act', 'KeyE', 'ACTION');
     this.ult = this.button(pad, 'ult', 'KeyR', 'ULTI');
+    // Méga-évolution (touche F) : seulement quand le HUD la dit prête.
+    this.mega = this.button(pad, 'ult mega', 'KeyF', 'MÉGA');
     this.swap = this.button(pad, 'swap', 'Tab', '⇄');
 
     // Les attaques : on touche directement leurs cartes dans le HUD.
@@ -191,6 +194,8 @@ export class TouchControls {
     const ult = document.querySelector<HTMLElement>('.hud-ult');
     this.ult.hidden = !ult || ult.hidden;
     this.ult.classList.toggle('full', !!ult?.classList.contains('full'));
+    this.mega.hidden = !document.querySelector('.hud-mega.ready:not([hidden])');
+    this.mega.classList.toggle('full', !this.mega.hidden);
     this.swap.hidden = !document.querySelector('.hud-team .member');
   }
 }

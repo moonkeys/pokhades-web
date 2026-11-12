@@ -8,25 +8,11 @@
 // si deux pas tombent dans la même frame, ils ne se déclenchent qu'une fois
 // (cf. le double saut parasite documenté dans PlatformMotion.gd:88-101).
 
-const UP = ['ArrowUp'];
-const DOWN = ['ArrowDown'];
-const LEFT = ['ArrowLeft'];
-const RIGHT = ['ArrowRight'];
-const DASH = ['ShiftLeft', 'ShiftRight', 'Space'];
-/** Controls.CATALOG : use_move_1..4 = 1/Q, 2/Z, 3/S, 4/D. */
-const MOVES = [
-  ['Digit1', 'KeyA'],
-  ['Digit2', 'KeyW'],
-  ['Digit3', 'KeyS'],
-  ['Digit4', 'KeyD'],
-];
-/** Interagir (ramasser une récompense) : E, comme le jeu. */
-const INTERACT = ['KeyE'];
-/** Ultime : R, ou W d'un clavier AZERTY (position KeyZ), comme Controls.CATALOG. */
-const ULT = ['KeyR', 'KeyZ'];
-/** Changer de Pokémon : Tab, comme Controls.CATALOG (switch_pokemon). */
-const SWAP = ['Tab'];
-const GAME_KEYS = new Set([...UP, ...DOWN, ...LEFT, ...RIGHT, ...DASH, ...MOVES.flat(), ...INTERACT, ...ULT, ...SWAP]);
+import { actionOf, keysOf, type Action } from './bindings';
+
+// Les touches de chaque action vivent dans bindings.ts : le joueur peut les
+// réassigner (Échap → Commandes) ; par défaut, celles de Controls.CATALOG.
+const MOVES: readonly Action[] = ['move1', 'move2', 'move3', 'move4'];
 
 /** Zone morte du stick, reprise de PlayerInput.STICK_DEADZONE. */
 const STICK_DEADZONE = 0.22;
@@ -76,13 +62,16 @@ export class Input {
   constructor() {
     addEventListener('keydown', (e) => {
       if (isFormField(e.target)) return;
-      if (GAME_KEYS.has(e.code)) e.preventDefault();
-      if (!this.held.has(e.code) && DASH.includes(e.code)) this.dashQueued = true;
-      const slot = MOVES.findIndex((keys) => keys.includes(e.code));
-      if (!this.held.has(e.code) && slot >= 0 && this.moveQueued < 0) this.moveQueued = slot;
-      if (!this.held.has(e.code) && INTERACT.includes(e.code)) this.interactQueued = true;
-      if (!this.held.has(e.code) && ULT.includes(e.code)) this.ultQueued = true;
-      if (!this.held.has(e.code) && SWAP.includes(e.code)) this.swapQueued = true;
+      const act = actionOf(e.code);
+      if (act && !e.metaKey && !e.ctrlKey) e.preventDefault();
+      if (!this.held.has(e.code)) {
+        if (act === 'dash') this.dashQueued = true;
+        const slot = act ? MOVES.indexOf(act) : -1;
+        if (slot >= 0 && this.moveQueued < 0) this.moveQueued = slot;
+        if (act === 'interact') this.interactQueued = true;
+        if (act === 'ult') this.ultQueued = true;
+        if (act === 'swap') this.swapQueued = true;
+      }
       this.held.add(e.code);
     });
     addEventListener('keyup', (e) => this.held.delete(e.code));
@@ -90,13 +79,13 @@ export class Input {
     addEventListener('blur', () => this.held.clear());
   }
 
-  private any(codes: readonly string[]): boolean {
-    return codes.some((c) => this.held.has(c));
+  private any(a: Action): boolean {
+    return keysOf(a).some((c) => this.held.has(c));
   }
 
   sample(): InputSample {
-    let mx = (this.any(RIGHT) ? 1 : 0) - (this.any(LEFT) ? 1 : 0);
-    let my = (this.any(DOWN) ? 1 : 0) - (this.any(UP) ? 1 : 0);
+    let mx = (this.any('right') ? 1 : 0) - (this.any('left') ? 1 : 0);
+    let my = (this.any('down') ? 1 : 0) - (this.any('up') ? 1 : 0);
     let dash = this.dashQueued;
     this.dashQueued = false;
     let move = this.moveQueued;

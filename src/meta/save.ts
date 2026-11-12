@@ -18,7 +18,7 @@ import { rollMon, type Mon } from './mons';
 import { campCapacity, RESOURCE_IDS, type BuildingId, type CsId, type ResourceId, type UpgradeId } from './catalog';
 import { GARDEN, MATERIALS, NECTARS, OLD_SEEDS } from './crafting';
 import { MISSIONS, type MissionId } from './missions';
-import { sanitizeQuests, type QuestId } from './quests';
+import { sanitizeContracts, sanitizeQuests, type Contract, type QuestId } from './quests';
 
 export interface Save {
   version: number;
@@ -51,6 +51,8 @@ export interface Save {
    * progression depuis qu'on les a acceptées, et celles déjà réclamées.
    */
   quests: { active: QuestId[]; progress: Partial<Record<QuestId, number>>; done: QuestId[] };
+  /** Contrats de Kangourex, renouvelés à chaque réclamation (meta/quests.ts) ; `seed` : compteur du tirage. */
+  contracts: { list: Contract[]; seed: number };
   /** Runs lancées depuis le Repaire. */
   runs: number;
   /** L'équipe (uid des individus) ; le premier mène, au camp comme en run. */
@@ -84,6 +86,14 @@ export interface Save {
    * tout d'un coup).
    */
   builtAt: Partial<Record<BuildingId, number>>;
+  /** Lits superposés achetés chez le bâtisseur (catalog.ts, BUNKS) : +2 places chacun. */
+  bunks: number;
+  /**
+   * Records de la sauvegarde (A-FAIRE 1.11), montrés au bilan de fin de run :
+   * la salle la plus lointaine, le plus de K.O. en une run, la victoire la
+   * plus rapide (s, null avant la première).
+   */
+  records: { rooms: number; kos: number; fastestWin: number | null };
   /** Niveaux de départ gagnés aux Super Bonbons (et à l'entraînement), par individu (start_level_bonus). */
   levels: Record<number, number>;
   /** Super Bonbons achetés (candies_bought) : leur prix en dépend. */
@@ -167,6 +177,7 @@ const DEFAULTS: Save = {
   nectar: null,
   missions: [],
   quests: { active: [], progress: {}, done: [] },
+  contracts: { list: [], seed: 0 },
   runs: 0,
   team: [1],
   loadouts: {},
@@ -179,6 +190,8 @@ const DEFAULTS: Save = {
   cs: [],
   built: [],
   builtAt: {},
+  bunks: 0,
+  records: { rooms: 0, kos: 0, fastestWin: null },
   levels: {},
   candies: 0,
   candied: {},
@@ -241,6 +254,7 @@ export function migrate(save: Save): Save {
   save.missions = (save.missions ?? []).map((m) => (m && MISSIONS.some((x) => x.id === m.type) ? { ...m, left: Math.max(0, m.left) } : null));
   // Quêtes inconnues oubliées, trois actives au plus, progression bornée à l'objectif.
   save.quests = sanitizeQuests(save.quests);
+  save.contracts = sanitizeContracts(save.contracts);
   // add_champion_shards : jamais sous 0, toujours entier.
   save.shards = Math.max(0, Math.floor(Number(save.shards) || 0));
   // Ressources : une clé manquante ou nulle donnerait NaN au premier ajout.
@@ -262,6 +276,9 @@ export function migrate(save: Save): Save {
   save.nectar = n && n.id in NECTARS && Number.isInteger(n.visitor) ? { id: n.id, left: Math.max(0, Math.floor(Number(n.left) || 0)), visitor: n.visitor } : null;
   // Bâtis avant builtAt : comme s'ils dataient d'avant la dernière run.
   save.builtAt = save.builtAt && typeof save.builtAt === 'object' ? save.builtAt : {};
+  save.bunks = Math.max(0, Math.floor(Number(save.bunks) || 0));
+  const rec = (save.records ?? {}) as Partial<Save['records']>;
+  save.records = { rooms: Math.max(0, Number(rec.rooms) || 0), kos: Math.max(0, Number(rec.kos) || 0), fastestWin: Number(rec.fastestWin) > 0 ? Number(rec.fastestWin) : null };
   save.newsSeen = save.newsSeen && typeof save.newsSeen === 'object' ? save.newsSeen : {};
   // Le Poste d'expédition et la Buvette n'existaient pas (Démolosse et Kangourex étaient là
   // d'office) : une partie qui s'en servait déjà les garde, comme bâtis de longue date.
@@ -384,7 +401,7 @@ export function grantAlly(save: Save, species: number): { id: number; waiting: b
 }
 
 /** Combien de libérés le Repaire loge (catalog.ts, campCapacity). */
-export const capacity = (save: Save): number => campCapacity(save.built);
+export const capacity = (save: Save): number => campCapacity(save.built, save.bunks);
 export const isFull = (save: Save): boolean => roster(save).length >= capacity(save);
 
 /**

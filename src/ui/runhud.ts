@@ -44,7 +44,7 @@ export interface Notice {
 }
 
 /** Combien de notifications à la fois, et combien de temps chacune reste. */
-const MAX_NOTICES = 6;
+const MAX_NOTICES = 5;
 /** Écart entre deux notifications mises en file (le butin d'un coffre, une par gain). */
 const QUEUE_GAP = 0.28;
 const NOTICE_TIME = 4.5;
@@ -99,7 +99,8 @@ export class RunHud {
   private lastMoney = -1;
   private titleT = Infinity;
   private toastT = Infinity;
-  private live: { el: HTMLElement; t: number }[] = [];
+  /** `key` : titre et texte, pour fondre deux notifications identiques ; `n` : combien déjà fondues. */
+  private live: { el: HTMLElement; t: number; key: string; n: number }[] = [];
 
   constructor(private readonly parent: HTMLElement) {
     const bar = el('div', 'run-bar', parent);
@@ -208,6 +209,22 @@ export class RunHud {
 
   /** Une notification à droite, en haut de la pile ; les plus anciennes pâlissent puis partent. */
   notify(n: Notice): void {
+    // La même notification encore à l'écran (dix baies, cinq exploits…) : on
+    // la remonte avec un compteur « ×n » plutôt que d'empiler des copies.
+    const key = `${n.title ?? ''}|${n.text}|${n.qty ?? ''}`;
+    const same = this.live.find((x) => x.key === key && !x.el.classList.contains('gone'));
+    if (same) {
+      same.n++;
+      same.t = 0;
+      same.el.classList.remove('old');
+      let times = same.el.querySelector<HTMLElement>('.times');
+      if (!times) times = el('em', 'times', same.el);
+      times.textContent = `×${same.n}`;
+      times.classList.remove('bump');
+      void times.offsetWidth;
+      times.classList.add('bump');
+      return;
+    }
     const card = el('div', 'notif da-paper');
     if (n.color) card.style.setProperty('--c', n.color);
     const ico = el('div', `ico${n.ko ? ' ko' : ''}${n.item || n.res ? ' item' : ''}`, card);
@@ -226,7 +243,7 @@ export class RunHud {
     el('span', '', body, n.text);
     if (n.qty) el('em', 'qty da-stamp', card, n.qty);
     this.notices.prepend(card);
-    this.live.unshift({ el: card, t: 0 });
+    this.live.unshift({ el: card, t: 0, key, n: 1 });
     for (const old of this.live.splice(MAX_NOTICES)) old.el.remove();
   }
 

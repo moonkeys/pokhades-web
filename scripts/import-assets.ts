@@ -26,6 +26,8 @@ import { CANDY, HELD_ITEMS, RESOURCES, SHARDS, TMS, UPGRADES } from '../src/meta
 import bestiary from '../src/data/bestiary.json' with { type: 'json' };
 import { ANIM_FILES, CRIES_DIR, essentialsName, MUSIC, SOUNDS, cryPath, servedPath } from '../src/audio/sounds.ts';
 import { cacheDir, fetchRemote } from './remote.ts';
+import { megaFormsOf } from '../src/data/megas.ts';
+import { formById } from '../src/data/forms.ts';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const WEB = path.join(HERE, '..');
@@ -87,7 +89,15 @@ const playable = new Set([...isPlayer, ...MERC_SPECIES]);
 const evolved = new Set([...EVOLVED_SPECIES, ...Object.values(FAUNA).flat(), ...QUEST_SPECIES]);
 // Espèces jouées, sauvages, légendaires donateurs et Pokémon des champions.
 const species = [...new Set([...allSpecies(), ...championSpecies(), ...gruntSpecies()])].sort((a, b) => a - b);
-for (const id of species) {
+// Méga-évolutions (src/data/megas.ts) : la forme Méga de chaque espèce du jeu qui en a une.
+// Sa fiche et son illustration toujours ; ses planches de combat quand SpriteCollab les a
+// (sinon le jeu reprend celles de la base).
+const megas = species.flatMap((id) => megaFormsOf(id));
+for (const m of megas) {
+  files.push(`data/pokeapi/pokemon/${m.id}.json`);
+  if (m.collab) evolved.add(m.id);
+}
+for (const id of [...species, ...megas.filter((m) => m.collab).map((m) => m.id)]) {
   const dir = `data/pmd/${String(id).padStart(4, '0')}`;
   files.push(`${dir}/AnimData.xml`, `${dir}/Walk-Anim.png`, `data/pokeapi/pokemon/${id}.json`);
   const xmlPath = await source(`${dir}/AnimData.xml`);
@@ -163,7 +173,7 @@ for (const [, berry] of BIOMES_SRC.matchAll(/^\s*berry: '(\w+)',/gm)) {
   renamed.push([`${ESSENTIALS}/Items/${berry}.png`, `assets/essentials/items/${berry}.png`]);
 }
 // Coffres de run (src/run/chests.ts) : les obstacles levés par les CS, et les icônes des ressources qu'on y trouve.
-for (const f of ['Object tree 1.png', 'Object rock.png']) renamed.push([`${ESSENTIALS}/Characters/${f}`, `assets/essentials/objects/${f}`]);
+for (const f of ['Object tree 1.png', 'Object rock.png', 'Object boulder.png']) renamed.push([`${ESSENTIALS}/Characters/${f}`, `assets/essentials/objects/${f}`]);
 for (const r of Object.values(RESOURCES)) if (r.icon) renamed.push([`${ESSENTIALS}/Items/${r.icon}.png`, `assets/essentials/items/${r.icon}.png`]);
 // La fontaine du village (bassin d'Outside.png, jet animé de l'autotile Fountain1) et l'arène
 // d'intérieur du champion du Village (Gyms interior.png). Planches entières : src/assets/atlas.ts
@@ -202,6 +212,8 @@ for (const name of moves) files.push(`data/pokeapi/move/${name}.json`);
 // pas les noms internes d'Essentials). Générations 6+ : pas de cri, le jeu
 // joue un son de remplacement (CRY_FALLBACK).
 for (const id of species) {
+  // Une forme (régionale, Méga) crie comme son espèce : le jeu joue le cri de dexOf (data/forms.ts).
+  if (formById(id)) continue;
   const src = await source(`data/pokeapi/pokemon/${id}.json`);
   if (!src) continue;
   const { name_en } = JSON.parse(fs.readFileSync(src, 'utf8')) as { name_en?: string };
@@ -271,7 +283,7 @@ const ART = path.join(OUT, 'artwork');
 const ART_URL = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork';
 fs.mkdirSync(ART, { recursive: true });
 const toFetch: number[] = [];
-for (const id of species) {
+for (const id of [...species, ...megas.map((m) => m.id)]) {
   const dst = path.join(ART, `${id}.png`);
   const local = path.join(GODOT, `data/artwork/${id}.png`);
   if (fs.existsSync(local)) fs.copyFileSync(local, dst);

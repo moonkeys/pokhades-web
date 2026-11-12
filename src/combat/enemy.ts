@@ -528,7 +528,7 @@ export class EnemyBrain {
     const type = first?.type ?? mon.types[0];
     const power = first && first.power > 0 ? first.power : 40;
     const cls = first?.damageClass === 'special' ? 'special' : 'physical';
-    combat.enemyMelee(a, target, power, type, cls);
+    combat.enemyMelee(a, target, power, type, cls, first && first.power > 0 ? first.api : undefined);
     this.lunge(target.x, target.y);
     a.playAction(['Attack'], 0.4);
     if (this.behavior === 'skirmisher') this.retreatT = SKIRMISH_RETREAT;

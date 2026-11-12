@@ -41,15 +41,18 @@ export interface Mission {
 }
 
 /** ExpeditionManager.TYPES (sans island_stone), plus nos deux missions. */
+// Pierre et bois plus vite (retour de test du 11 novembre 2026 : « je ne vois
+// pas comment gagner des pierres ») : missions courtes plus courtes, longues
+// mieux payées.
 export const MISSIONS: readonly Mission[] = [
   { id: 'food_short', name: 'Cueillette', desc: 'Des fruits et des racines, juste à l’orée du bois.', rooms: 2, res: { food: 6 } },
-  { id: 'wood_short', name: 'Coupe de bois', desc: 'Quelques fagots de branches mortes.', rooms: 3, res: { wood: 6 } },
-  { id: 'stone_short', name: 'Ramassage de pierres', desc: 'Les galets du torrent, un sac après l’autre.', rooms: 4, res: { stone: 5 } },
+  { id: 'wood_short', name: 'Coupe de bois', desc: 'Quelques fagots de branches mortes.', rooms: 2, res: { wood: 7 } },
+  { id: 'stone_short', name: 'Ramassage de pierres', desc: 'Les galets du torrent, un sac après l’autre.', rooms: 3, res: { stone: 7 } },
   { id: 'berries', name: 'Récolte de baies', desc: 'Les arbres à baies des clairières voisines.', rooms: 4, baies: 40 },
   { id: 'training', name: 'Entraînement', desc: 'Du matin au soir sur le terrain : il repartira plus fort.', rooms: 5, levels: 2, needs: 'training' },
   { id: 'food_long', name: 'Grande chasse', desc: 'Une longue traque : de quoi nourrir le camp.', rooms: 6, res: { food: 21 } },
-  { id: 'wood_long', name: 'Grande coupe', desc: 'Des troncs entiers, débités et traînés jusqu’ici.', rooms: 8, res: { wood: 20 } },
-  { id: 'stone_long', name: 'Ouvrir une carrière', desc: 'Tailler la falaise, bloc par bloc.', rooms: 9, res: { stone: 14 } },
+  { id: 'wood_long', name: 'Grande coupe', desc: 'Des troncs entiers, débités et traînés jusqu’ici.', rooms: 7, res: { wood: 22 } },
+  { id: 'stone_long', name: 'Ouvrir une carrière', desc: 'Tailler la falaise, bloc par bloc.', rooms: 7, res: { stone: 18 } },
 ];
 
 export const mission = (id: MissionId): Mission => MISSIONS.find((m) => m.id === id)!;

@@ -10,16 +10,18 @@ import { audio, cry, sfx } from './audio/audio';
 import { MUSIC, type MusicId } from './audio/sounds';
 import { buildAtlas } from './assets/atlas';
 import { PLAYER_ACTIONS, WILD_ACTIONS, loadImage, loadInfo, loadSheet } from './assets/pmd';
+import { sheetIdOf } from './data/forms';
+import { megaById, megaFormsOf, type MegaForm } from './data/megas';
 import { FINAL_BOSS_DEFEAT, FINAL_BOSS_INTRO, MASTER_DEFEAT, type Champion } from './data/champions';
 import { Trainer } from './entities/trainer';
-import { Shop } from './run/shop';
+import { MERC_RETAINER, Shop } from './run/shop';
 import { Camp, CAMP_SEED, campPockets, STATIONS, stationId, type Station } from './run/camp';
 import { CampScreen, movePool, teamWeight, type CampCtx } from './ui/campscreen';
 import { NetBadge } from './ui/netbadge';
-import { BAIES, FIELD_FOOD, RESOURCES, RESOURCE_IDS, SHARDS, UPGRADES, applyHeld, heldItem, teamSlots } from './meta/catalog';
+import { BAIES, FIELD_FOOD, RESOURCES, RESOURCE_IDS, ROOM_RES, SHARDS, UPGRADES, applyHeld, heldItem, teamSlots, type ResourceId } from './meta/catalog';
 import { addMon, capacity, exile, grantAlly, isFull, level, loadSave, markSeen, monName, ownedSpecies, ownsSpecies, recordDefeat, resetSave, roster, speciesOf, startLevel, welcomeMon, writeSave } from './meta/save';
 import { applyTraits, natureText } from './meta/mons';
-import { quest, questEvent, type QuestEvent } from './meta/quests';
+import { quest, questEvent, type QuestEvent, contractEvent, contractText } from './meta/quests';
 import { leagueOpen, readyFeats } from './meta/feats';
 import { busy, mission, rewardText, tick as tickMissions } from './meta/missions';
 import { MATERIALS, NECTARS, materialName, tickCraft } from './meta/crafting';
@@ -38,9 +40,10 @@ import { BASE_TEAM_LEVEL, Pokemon } from './combat/pokemon';
 import { STEP, startLoop } from './core/loop';
 import { Rng } from './core/rng';
 import { CAMP_NPCS, SWIMMERS } from './data/species';
-import { evolutionChoices, evolutionOf, evolutionsOf, evolvedStart } from './data/evolutions';
+import { evolutionChoices, evolutionOf, regionalEvolution, evolutionsOf, evolvedStart } from './data/evolutions';
 import { Actor, dirFromVector } from './entities/actor';
 import { Input } from './input/input';
+import { actionOf } from './input/bindings';
 import { CombatFx, typeColor } from './render/combatfx';
 import { FieldFx } from './render/fieldfx';
 import { Footprints } from './render/footprints';
@@ -55,8 +58,10 @@ import { Hazards } from './run/hazards';
 import { CaveDirector } from './run/cave';
 import { ChestSite } from './run/chests';
 import { Merchant } from './run/merchant';
-import { rollSkillOffer, upgradeMove, type SkillOffer } from './run/rewards';
-import { COMBATS_PER_ACT, LEAGUE_MASTER, ROOMS_PER_ACT, Run } from './run/run';
+import { SPRING_HEAL, Spring } from './run/spring';
+import { Altar } from './run/altar';
+import { evolveMove, rollSkillOffer, upgradeMove, type SkillOffer } from './run/rewards';
+import { COMBATS_PER_ACT, CURSES, LEAGUE_MASTER, ROOMS_PER_ACT, Run } from './run/run';
 import { Hud } from './ui/hud';
 import { loadOptions, saveOptions, type Options } from './ui/options';
 import { Panel } from './ui/panel';
@@ -186,11 +191,20 @@ async function boot(): Promise<void> {
     {
       message: (text) => runHud.message(text),
       team: () => team,
-      recruit: (id, level, x, y) => {
+      earnBaies: (n) => {
+        // Achetées avec la bourse de l'hôte : pas partagées avec les invités (contrairement à `earn`).
+        save.baies += n;
+        runBaies += n;
+        stats.baies += n;
+        writeSave(save);
+        runHud.notify({ title: 'Baies', text: 'Pour le Repaire', item: 'SITRUSBERRY', qty: `+${n}`, color: 'var(--yel)' });
+      },
+      recruit: (id, level, x, y, price) => {
         // Mercenaire : un allié de run, jamais ranimé (TeamMember.run_ally), qui part de là où il se tenait.
         const m = newMember(id, x, y, level);
         m.runAlly = true;
         team.push(m);
+        mercs.set(m, price);
       },
       openPoster: () => bossPreview.show(run.champion, run.isFinal || run.act === run.acts - 1, run.champion.team.map((_, w) => run.bossLevel(w, run.room + 1)), () => input.flush()),
       openMoves: (price, paid) => {
@@ -280,6 +294,7 @@ async function boot(): Promise<void> {
   const questProgress = (ev: QuestEvent) => {
     if (mode !== 'run') return;
     for (const id of questEvent(save, ev)) runHud.notify({ title: 'Quête accomplie', text: `${quest(id).name} — retourne voir Kangourex au Repaire.`, art: CAMP_NPCS.quests, color: 'var(--yel)' });
+    for (const c of contractEvent(save, ev)) runHud.notify({ title: 'Contrat rempli', text: `${contractText(c)} — réclame-le chez Kangourex.`, art: CAMP_NPCS.quests, color: 'var(--yel)' });
     writeSave(save);
   };
   /** Le meneur a-t-il encaissé un coup dans cette salle (quête « Sans une égratignure ») ? */
@@ -300,6 +315,7 @@ async function boot(): Promise<void> {
   /** Les dangers du terrain : la lave du Volcan (avec Surf), les tourbillons des Rocailleux (run/hazards.ts). */
   const hazards = new Hazards(fx);
   combat.breakables = (x, y, reach) => (outside() ? berries.hit(x, y, reach) : null);
+  combat.breakableNear = (x, y, reach) => (outside() ? berries.near(x, y, reach) : null);
   // Coffre de la salle (A-FAIRE 1.5) : des Baies et des ressources de
   // construction, versées tout de suite à la sauvegarde comme les Baies.
   const chests = new ChestSite(document.body, fx, {
@@ -327,6 +343,38 @@ async function boot(): Promise<void> {
       director.grant('boon');
     },
   });
+  // Autel maudit (salle spéciale, run/altar.ts) : un pacte, un don d'un cran plus rare contre une malédiction.
+  const altar = new Altar(document.body, fx, {
+    pact: (curse) => {
+      run.curse = curse;
+      run.curseAct = run.act;
+      runHud.notify({ title: `Pacte scellé : ${CURSES[curse].name}`, text: `${CURSES[curse].desc} Jusqu’à la fin de l’acte.`, icon: '☠', color: '#b48ce8' });
+      run.donor = run.boons.pickDonor(run.rng) ?? undefined;
+      run.boons.bonus = 1;
+      director.grant('boon');
+    },
+  });
+  // Source (salle spéciale de soin, run/spring.ts) : Leveinard veille sur un bassin qui soigne l'équipe.
+  const spring = new Spring(document.body, fx, {
+    message: (text) => runHud.message(text),
+    heal: () => {
+      let up = 0;
+      for (const m of team) {
+        const mon = m.pokemon;
+        if (!mon) continue;
+        // Un membre K.O. se relève comme sous un Rappel, puis est soigné avec les autres.
+        if (mon.fainted || m.deathT >= 0) {
+          m.getUp();
+          mon.hp = 1;
+          up++;
+        }
+        mon.status = null;
+        mon.hp = Math.min(mon.maxHp, mon.hp + Math.round(mon.maxHp * SPRING_HEAL));
+        fx.attackAnim('fx_heal', m.x, m.y, undefined, true);
+      }
+      return up;
+    },
+  });
   /** Membres dont la forme suivante se charge : un second niveau gagné entre-temps ne relance rien. */
   const evolving = new Set<Actor>();
   combat.levelUp = (m) => {
@@ -344,8 +392,10 @@ async function boot(): Promise<void> {
       });
       return;
     }
-    const next = evolutionOf(mon.id, mon.level);
-    if (next === null || next === mon.id) return;
+    const plain = evolutionOf(mon.id, mon.level);
+    if (plain === null || plain === mon.id) return;
+    // Dans certains biomes, l'évolution prend sa forme régionale (Pikachu à la Plage → Raichu d'Alola).
+    const next = regionalEvolution(plain, mode === 'run' ? run.biome : null);
     beginEvolution(m, mon, next);
   };
   /** Charge la forme `next` puis joue l'évolution de `m` (combat.evolve). */
@@ -382,6 +432,104 @@ async function boot(): Promise<void> {
       });
     });
   };
+  // ── Méga-évolution (data/megas.ts, Méga-Anneau chez Alakazam) ─────────
+  // Le Pokémon joué méga-évolue à la touche F, une fois par salle (une par
+  // combat dans les jeux), s'il a une forme Méga et qu'il reste des ennemis.
+  // Même mise en scène que l'évolution (Combat.evolve). Il le reste jusqu'à
+  // la fin de la salle : la salle libérée, la suivante ou le retour au
+  // Repaire lui rendent sa forme, PV, niveau, XP et attaques compris.
+  /** La forme d'avant de chaque membre méga-évolué. */
+  const megaFrom = new Map<Actor, { pokemon: Pokemon; sheet: Actor['sheet']; info: Actor['info']; speciesId: number }>();
+  let megaUsed = false;
+  const megaReady = (): boolean => {
+    const mon = player?.pokemon;
+    return (
+      mode === 'run' &&
+      level(save, 'mega') > 0 &&
+      !megaUsed &&
+      !!mon &&
+      !mon.fainted &&
+      player.deathT < 0 &&
+      !player.evolve &&
+      !player.trapped &&
+      !evolving.has(player) &&
+      megaFormsOf(mon.id).length > 0 &&
+      wild.some((e) => e.pokemon && !e.pokemon.fainted && e.deathT < 0)
+    );
+  };
+  const megaEvolve = () => {
+    if (!megaReady()) return;
+    const m = player;
+    const mon = m.pokemon!;
+    const forms = megaFormsOf(mon.id);
+    // Deux formes (Méga-Dracaufeu X ou Y…) : le joueur choisit, jeu en pause ; « Plus tard » garde la Méga de la salle.
+    if (forms.length > 1) {
+      megaUsed = true;
+      evolutionScreen.show(
+        { id: mon.id, name: mon.name, level: mon.level },
+        forms.map((f) => f.id),
+        (picked) => {
+          input.flush();
+          megaUsed = false;
+          const form = forms.find((f) => f.id === picked);
+          if (form && m === player && m.pokemon === mon) megaInto(m, mon, form);
+        },
+        { title: `${mon.name} méga-évolue !`, sub: 'Choisis sa forme Méga', go: 'Méga-évoluer !' },
+      );
+      return;
+    }
+    megaInto(m, mon, forms[0]);
+  };
+  const megaInto = (m: Actor, mon: Pokemon, form: MegaForm) => {
+    megaUsed = true;
+    evolving.add(m);
+    void Promise.all([loadSheet(sheetIdOf(form.id), PLAYER_ACTIONS), Pokemon.load(form.id, mon.level, false), loadInfo(form.id)]).then(([sheet, mega, info]) => {
+      evolving.delete(m);
+      // Membre tombé, changé ou run finie pendant le chargement : la Méga de la salle reste à prendre.
+      if (!sheet || m.pokemon !== mon || mon.fainted || m.deathT >= 0 || mode !== 'run') {
+        megaUsed = false;
+        return;
+      }
+      sfx('ability');
+      combat.evolve(m, () => {
+        const ratio = mon.hp / mon.maxHp;
+        mega.inherit(mon);
+        mega.hp = Math.max(1, Math.round(mega.maxHp * ratio));
+        mega.status = mon.status;
+        megaFrom.set(m, { pokemon: mon, sheet: m.sheet, info: m.info, speciesId: m.speciesId });
+        m.speciesId = form.id;
+        m.sheet = sheet;
+        m.info = info;
+        m.pokemon = mega;
+        m.mega = form.collab ? 1 : 1.2;
+        runHud.notify({ title: 'Méga-évolution', text: `${mon.name} méga-évolue en ${form.name} !`, art: form.id, color: '#ff7ad9' });
+      });
+    });
+  };
+  const megaRevert = () => {
+    for (const [m, was] of megaFrom) {
+      const mega = m.pokemon;
+      if (mega && m.speciesId === megaById(m.speciesId)?.id) {
+        const ratio = mega.hp / mega.maxHp;
+        was.pokemon.inherit(mega);
+        was.pokemon.hp = Math.round(was.pokemon.maxHp * ratio);
+        was.pokemon.status = mega.status;
+        m.pokemon = was.pokemon;
+        m.speciesId = was.speciesId;
+        m.sheet = was.sheet;
+        m.info = was.info;
+      }
+      m.mega = 0;
+      m.evolve = null;
+    }
+    megaFrom.clear();
+  };
+  addEventListener('keydown', (e) => {
+    if (actionOf(e.code) !== 'mega' || e.repeat || e.metaKey || e.ctrlKey || paused() || dialogue.open) return;
+    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement) return;
+    megaEvolve();
+  });
+
   /** Offres de la récompense de la salle : tirées quand elle apparaît, fixes ensuite. */
   let boonOffer: BoonOffer | null = null;
   let skillOffer: SkillOffer | null = null;
@@ -396,6 +544,8 @@ async function boot(): Promise<void> {
   let mode: 'camp' | 'run' = 'camp';
   /** Baies gagnées pendant la run en cours : on les annonce en rentrant au Repaire. */
   let runBaies = 0;
+  /** Bois, pierre et vivres gagnés au fil des salles de la run en cours (annoncés au retour). */
+  const runRes: Record<ResourceId, number> = { wood: 0, stone: 0, food: 0 };
   /**
    * Rappels qui restent à l'équipe (Ceinture de Rappels) : une réserve
    * commune, utilisée seule au K.O. de n'importe quel membre.
@@ -544,6 +694,40 @@ async function boot(): Promise<void> {
     }
     return -1;
   };
+  /** Mercenaires engagés à la boutique, avec leur prix : ils réclament leur solde à la suivante. */
+  const mercs = new Map<Actor, number>();
+  /**
+   * Solde des mercenaires (CombatArena._collect_merc_retainers), à l'entrée d'une nouvelle
+   * boutique : chacun encore debout réclame MERC_RETAINER de son prix ; sans l'argent, il s'en
+   * va. Un mercenaire tombé ne réclame plus rien (il ne se relève jamais).
+   */
+  const payMercs = () => {
+    for (const [m, price] of [...mercs]) {
+      const fallen = m.deathT >= 0 || !!m.pokemon?.fainted;
+      if (!team.includes(m) || fallen) {
+        mercs.delete(m);
+        continue;
+      }
+      const due = Math.round(price * MERC_RETAINER);
+      const name = m.pokemon?.name ?? 'Le mercenaire';
+      if (run.money >= due) {
+        run.money -= due;
+        runHud.notify({ title: 'Solde versée', text: `${name} reste — ${due} ₽.`, art: m.speciesId, color: '#8fd18f' });
+        continue;
+      }
+      if (m === player) {
+        // On le jouait : la main passe au suivant ; seul debout, il reste (sans solde, faute de mieux).
+        const next = nextAlive();
+        if (next < 0) continue;
+        switchTo(next);
+      }
+      mercs.delete(m);
+      m.ally?.reset();
+      team.splice(team.indexOf(m), 1);
+      active = team.indexOf(player);
+      runHud.notify({ title: 'Mercenaire parti', text: `${name} s’en va, faute d’être payé (${due} ₽).`, art: m.speciesId, ko: true, color: '#e84040' });
+    }
+  };
   /**
    * Passe la main au membre i, là où il est : celui qu'on quitte redevient
    * compagnon, et sa chaîne de combo retombe (CombatArena._set_active).
@@ -597,7 +781,7 @@ async function boot(): Promise<void> {
     statSheet.show(entries, mode === 'run' ? run.boons : null, () => input.flush());
   };
   addEventListener('keydown', (e) => {
-    if (e.code !== 'KeyC' || e.repeat || e.metaKey || e.ctrlKey || paused() || dialogue.open) return;
+    if (actionOf(e.code) !== 'stats' || e.repeat || e.metaKey || e.ctrlKey || paused() || dialogue.open) return;
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement) return;
     void openStats();
   });
@@ -635,6 +819,44 @@ async function boot(): Promise<void> {
     return a;
   };
 
+  // Danse Pluie, Zénith, Tempête de Sable, Grêle : le temps de la salle change jusqu'à ce qu'elle
+  // soit libérée (l'éclaircie de fin de salle le remet au clair). Pas en grotte, à la boutique ni
+  // au Repaire, où le ciel ne compte pas.
+  combat.weatherMove = (w) => {
+    if (mode !== 'run' || cave.active || run.isShop() || roomWeather === w) return;
+    roomWeather = w;
+    setWeather(weatherNow());
+    runHud.notify({ title: WEATHERS[w].name, text: WEATHERS[w].hint, icon: WEATHERS[w].icon });
+  };
+
+  /**
+   * L'as d'un champion méga-évolue en entamant ses deux dernières barres
+   * (ajout, comme les champions des jeux récents), s'il a une forme Méga :
+   * types et stats de la Méga, bonus de boss, attaques et barres gardés,
+   * nom annoncé au-dessus de lui. Le changement de forme est instantané : la
+   * barre qui se remplit et l'éclat doré font déjà la mise en scène.
+   */
+  combat.phase = (e) => {
+    const mon = e.pokemon;
+    const forms = mon && e.role === 'boss' && e.barsLeft === 2 && !e.mega ? megaFormsOf(mon.id) : [];
+    const form = forms[Math.floor(Math.random() * forms.length)];
+    if (!mon || !form) return;
+    e.mega = form.collab ? 1 : 1.2;
+    void Promise.all([loadSheet(sheetIdOf(form.id), PLAYER_ACTIONS), Pokemon.load(form.id, mon.level, false), loadInfo(form.id)]).then(([sheet, mega, info]) => {
+      if (!sheet || e.pokemon !== mon || mon.fainted || e.deathT >= 0) return;
+      mega.inherit(mon);
+      e.speciesId = form.id;
+      e.sheet = sheet;
+      e.info = info;
+      e.pokemon = mega;
+      e.flash = { color: '#ffffff', t: 0.35, dur: 0.35, alpha: 1 };
+      fx.attackAnim('fx_boost', e.x, e.y);
+      combat.callout(e, `Méga-évolution : ${form.name} !`);
+      combat.addShake(0.18);
+      sfx('ability');
+    });
+  };
+
   /** Génère la salle courante de la run et y place le joueur (PV et statuts conservés). */
   const loadRoom = (first: boolean) => {
     // Boutique et arène du champion : toujours les mêmes pour un biome donné (graine fixe), quelle que soit la run.
@@ -646,6 +868,8 @@ async function boot(): Promise<void> {
     roomKey = { kind: 'room', biome: run.biome, seed, store: run.isShop(), cave: run.hasCave(), layout, mouthUsed: false, entry: arena ? 'S' : run.entrySide, arena };
     world = roomWorld(roomKey);
     outdoor = null;
+    megaRevert();
+    megaUsed = false;
     cave.clear();
     berries.build(world, BIOMES[run.biome].berry);
     hazards.build(world, run.mapSeed, run.isBoss());
@@ -709,10 +933,16 @@ async function boot(): Promise<void> {
     dialogue.close();
     // Boutique : le marchand derrière son comptoir, l'étal, l'affiche et les Pokémon de la place.
     shop.clear();
+    if (run.isShop() && net.role !== 'client') payMercs();
     if (run.isShop()) shop.start(world, run, run.rng);
     merchant.clear();
     // Son propre tirage, tiré de la graine de la salle : parier ou non ne change pas les portes suivantes.
     if (run.special === 'merchant') merchant.start(world, run, new Rng(run.mapSeed ^ 0x4d656f77));
+    spring.clear();
+    if (run.special === 'spring') spring.start(world);
+    altar.clear();
+    // Tirage à part, de la graine de la salle, comme le marchand.
+    if (run.special === 'altar') altar.start(world, () => new Rng(run.mapSeed ^ 0x416c7472).next());
     combat.hooks.onRoomEnter(player, run, !first && run.room % 7 === 0, run.rng);
     // Test de la grotte (panneau) : chaque salle de combat part de sa grotte ; la salle attend dehors, figée.
     if (opts.biome === 'grotte' && !run.isShop() && !run.isBoss()) enterCave();
@@ -787,10 +1017,22 @@ async function boot(): Promise<void> {
     runHud.notify({ title: 'Nouvelle attaque', text: `${mon.name} apprend ${learned.name}.`, art: mon.id, color: typeColor(learned.type) });
   };
   const strengthen = (mon: Pokemon, slot: number) => {
-    upgradeMove(mon.moves[slot]);
-    sfx('moveLearnt');
-    mon.movesVersion++;
-    runHud.notify({ title: 'Attaque renforcée', text: `${mon.moves[slot].name} : puissance ${mon.moves[slot].power}.`, art: mon.id, color: typeColor(mon.moves[slot].type) });
+    const old = mon.moves[slot];
+    // Deuxième renforcement d'une lignée (Pistolet à O → Vibraqua → Hydrocanon) : la capacité évolue.
+    void evolveMove(old).then((evo) => {
+      if (mon.moves[slot] !== old) return;
+      if (evo) {
+        mon.moves[slot] = evo;
+        sfx('moveLearnt');
+        mon.movesVersion++;
+        runHud.notify({ title: 'Attaque évoluée', text: `${old.name} devient ${evo.name} (puissance ${evo.power}).`, art: mon.id, color: typeColor(evo.type) });
+        return;
+      }
+      upgradeMove(old);
+      sfx('moveLearnt');
+      mon.movesVersion++;
+      runHud.notify({ title: 'Attaque renforcée', text: `${old.name} : puissance ${old.power}.`, art: mon.id, color: typeColor(old.type) });
+    });
   };
 
   /** Le don choisi : une ultime remplace la précédente ; un don de statistique s'applique tout de suite. */
@@ -820,7 +1062,11 @@ async function boot(): Promise<void> {
     combat.hooks.metaXp = 1 + 0.2 * level(save, 'xp');
     combat.hooks.metaDash = level(save, 'dash');
     run.money = 100 * level(save, 'purse');
+    runNuzlocke = opts.nuzlocke && !net.inRun;
+    nuzCaptured.clear();
+    if (runNuzlocke) runHud.notify({ title: 'Mode Nuzlocke', text: 'Un Pokémon encore K.O. ou capturé en fin de run sera relâché pour de bon.', icon: '☠', color: '#e84040' });
     runBaies = 0;
+    for (const r of RESOURCE_IDS) runRes[r] = 0;
     stats.reset();
     runWon = false;
     save.runs++;
@@ -830,6 +1076,31 @@ async function boot(): Promise<void> {
     world = generate(BIOMES[run.biome], run.mapSeed, { layout: opts.layout === 'auto' ? undefined : opts.layout });
     buildTeam(world.spawn.x, world.spawn.y);
     loadRoom(true);
+  };
+
+  // ── Mode Nuzlocke (option des réglages) ──────────────────────────────
+  /** L'option, figée au départ de la run (la changer en cours ne vaut que pour la suivante). */
+  let runNuzlocke = false;
+  /** Membres capturés par un sbire et pas encore libérés : perdus en fin de run en Nuzlocke. */
+  const nuzCaptured = new Set<Actor>();
+  /**
+   * Fin de run en Nuzlocke : chaque membre du Repaire encore K.O. (ni Rappel ni Source ne l'a
+   * relevé) ou resté capturé est relâché pour de bon. Jamais le dernier Pokémon de l'équipe
+   * (exile le refuse), ni un allié de passage ou un joueur en ligne. Rend leurs noms.
+   */
+  const nuzlockeToll = (): string[] => {
+    if (!runNuzlocke) return [];
+    const lost: string[] = [];
+    for (const a of [...team, ...nuzCaptured]) {
+      if (a.runAlly || a.remote || !save.mons[a.baseId]) continue;
+      const down = nuzCaptured.has(a) || !a.pokemon || a.pokemon.fainted || a.deathT >= 0;
+      if (!down) continue;
+      const name = monName(save, a.baseId, a.pokemon?.name ?? '?');
+      if (exile(save, a.baseId)) lost.push(name);
+    }
+    nuzCaptured.clear();
+    if (lost.length) writeSave(save);
+    return lost;
   };
 
   /** Baies gagnées : versées tout de suite (une run abandonnée ne les perd pas), annoncées au retour. */
@@ -848,6 +1119,7 @@ async function boot(): Promise<void> {
    */
 
   const enterCamp = () => {
+    megaRevert();
     netEnd();
     clearNetScene();
     me = null;
@@ -863,6 +1135,8 @@ async function boot(): Promise<void> {
     wild = [];
     shop.clear();
     merchant.clear();
+    spring.clear();
+    altar.clear();
     director.clear();
     cave.clear();
     berries.clear();
@@ -889,6 +1163,9 @@ async function boot(): Promise<void> {
     for (const v of visitors) v.remoteIn = null;
     netCamp();
     if (runBaies > 0) runHud.notify({ title: 'Retour au Repaire', text: `+${runBaies} Baies rapportées de la run.`, icon: '✦', color: 'var(--yel)' });
+    const resGain = RESOURCE_IDS.filter((r) => runRes[r] > 0).map((r) => `+${runRes[r]} ${RESOURCES[r].name}`);
+    if (resGain.length) runHud.notify({ title: 'Ressources', text: `${resGain.join(' · ')} ramassés en chemin.`, icon: '✦', color: 'var(--yel)' });
+    for (const r of RESOURCE_IDS) runRes[r] = 0;
     runBaies = 0;
     const back = save.missions.filter((m) => m && m.left <= 0).length;
     if (back) runHud.notify({ title: 'Missions', text: `${back > 1 ? `${back} Pokémon sont rentrés` : 'Un Pokémon est rentré'} de mission : récolte chez Démolosse.`, art: CAMP_NPCS.missions, color: 'var(--yel)' });
@@ -1089,7 +1366,7 @@ async function boot(): Promise<void> {
           names,
           subs: uids.map((u) => natureText(save.mons[u].nature)),
           tape: 'Le Repaire est plein',
-          quote: `« ${mon.name} veut nous rejoindre, mais le Repaire ne loge que ${capacity(save)} libérés. Bâtissez de quoi en loger plus chez le bâtisseur, ou choisissez qui doit partir. »`,
+          quote: `« ${mon.name} veut nous rejoindre, mais le Repaire ne loge que ${capacity(save)} libérés. Le bâtisseur vend des lits superposés contre des Baies, et bâtit des logements. Sinon, choisissez qui doit partir. »`,
           go: 'Il s’en va…',
           cancel: `Renvoyer ${mon.name}`,
           later: 'Plus tard',
@@ -1234,6 +1511,7 @@ async function boot(): Promise<void> {
       loadRoom(false);
     },
     roomCleared: () => {
+      megaRevert();
       combat.hooks.onRoomClear(player, run);
       // Le ciel se dégage une fois la salle libérée (retour de test : sous la grêle, on ne pouvait
       // ni fouiller ni prendre son don sans perdre trop de PV).
@@ -1248,6 +1526,8 @@ async function boot(): Promise<void> {
       // repart). Les mercenaires, eux, ne reviennent jamais.
       for (const m of team) {
         if (m.deathT < 0 || !m.pokemon || m.runAlly) continue;
+        // Malédiction « Sans repos » (Autel maudit) : ils restent à terre jusqu'à la fin de l'acte.
+        if (run.cursed('rest')) continue;
         m.getUp();
         m.pokemon.status = null;
         m.pokemon.hp = 1;
@@ -1259,9 +1539,18 @@ async function boot(): Promise<void> {
       const back = tickMissions(save);
       // Le champ de la clairière rapporte un peu de Nourriture à chaque salle (sans annonce : c'est le fond du camp).
       if (save.built.includes('field')) save.resources.food += FIELD_FOOD;
+      // Chaque salle libérée rapporte un peu de bois et de pierre, un champion
+      // davantage, vivres compris (retour de test du 11 novembre 2026 : sans
+      // coffre ni biome rocheux, pas moyen de gagner de la pierre). Sans
+      // annonce : le compte tombe au retour au Repaire.
+      const gain = run.isBoss() ? ROOM_RES.boss : ROOM_RES.room;
+      for (const r of RESOURCE_IDS) {
+        save.resources[r] += gain[r] ?? 0;
+        runRes[r] += gain[r] ?? 0;
+      }
       // Le potager pousse, le nectar attend son visiteur (meta/crafting.ts).
       const grown = tickCraft(save);
-      if (back.length || save.built.includes('field') || save.nectar) writeSave(save);
+      writeSave(save);
       if (grown.ripe) runHud.notify({ title: 'Potager', text: `${grown.ripe > 1 ? `${grown.ripe} parcelles sont mûres` : 'Une parcelle est mûre'} : récolte chez Héliatronc.`, art: CAMP_NPCS.garden, color: 'var(--yel)' });
       if (grown.visitor && save.nectar) {
         const id = save.nectar.visitor;
@@ -1297,6 +1586,8 @@ async function boot(): Promise<void> {
     },
     prepareReward: (reward) => {
       if (reward === 'boon') boonOffer = run.boons.offer(run.rng, run.room, run.act, run.donor);
+      // Le cran du pacte de l'Autel ne vaut que pour cette offre-ci.
+      run.boons.bonus = 0;
       if (reward === 'skill' && player.pokemon) void rollSkillOffer(player.pokemon, run.rng).then((o) => (skillOffer = o));
     },
     openReward: (reward, consume) => {
@@ -1349,7 +1640,7 @@ async function boot(): Promise<void> {
       wild = wild.filter((e) => e.deathT >= 0);
     },
     specialDone: (special, success) => {
-      if (special !== 'merchant') questProgress({ kind: 'special', special, success });
+      if (special === 'challenge' || special === 'trap') questProgress({ kind: 'special', special, success });
     },
     // Ligne de front : la vague qui arrive fait trembler le sol (coupé avec les secousses, comme les autres).
     rumble: () => combat.addShake(0.25),
@@ -1501,6 +1792,7 @@ async function boot(): Promise<void> {
   /** Un membre capturé (sbire des grottes, dresseurs du Village) : il quitte l'équipe jusqu'à la défaite du ravisseur. */
   function captureMember(a: Actor, by: string): void {
     const name = a.pokemon?.name ?? '?';
+    if (!net.inRun) nuzCaptured.add(a);
     // En ligne : capturé, on est simplement K.O. ; on se relève à 1 PV si la salle est libérée
     // (retour de test : sinon un joueur se retrouvait sans Pokémon).
     if (net.inRun && a.pokemon) {
@@ -1529,6 +1821,7 @@ async function boot(): Promise<void> {
   /** Le ravisseur battu rend ses prises : elles ressortent de leur Ball autour de lui. */
   function releaseMembers(captives: readonly Actor[], x: number, y: number): void {
     captives.forEach((c, k) => {
+      nuzCaptured.delete(c);
       c.trapped = false;
       const ang = (k / Math.max(1, captives.length)) * Math.PI * 2;
       c.x = c.prevX = x + Math.cos(ang) * 0.8;
@@ -1606,7 +1899,7 @@ async function boot(): Promise<void> {
     // Les Pokémon de la boutique ne se laissent pas pousser : l'équipe les contourne.
     for (const a of team) {
       if (a.deathT >= 0) continue;
-      for (const n of [...shop.npcs, ...merchant.npcs, ...camp.npcs, ...cave.npcs]) {
+      for (const n of [...shop.npcs, ...merchant.npcs, ...spring.npcs, ...altar.npcs, ...camp.npcs, ...cave.npcs]) {
         const dx = a.x - n.x;
         const dy = a.y - n.y;
         const d = Math.hypot(dx, dy);
@@ -1868,7 +2161,7 @@ async function boot(): Promise<void> {
     // Aller à une salle : 1ʳᵉ salle de combat, boutique ou boss de l'acte (PV et dons conservés).
     // Depuis le Repaire, une run part d'abord.
     if (mode === 'camp') newRun();
-    const special = kind === 'challenge' || kind === 'trap' || kind === 'merchant' ? kind : null;
+    const special = kind === 'challenge' || kind === 'trap' || kind === 'merchant' || kind === 'spring' || kind === 'altar' ? kind : null;
     run.room = act * ROOMS_PER_ACT + (special ? 1 : kind === 'combat' ? 0 : kind === 'shop' ? COMBATS_PER_ACT : ROOMS_PER_ACT - 1);
     run.special = special;
     endT = -1;
@@ -1920,6 +2213,8 @@ async function boot(): Promise<void> {
     ...[...(trainer ? [trainer] : []), ...(mode === 'run' && outside() ? director.trainers : [])].map((t) => ({ y: t.y * TILE, draw: t.draw.bind(t) })),
     ...shop.extras(time),
     ...merchant.extras(time),
+    ...spring.extras(time),
+    ...altar.extras(time),
     ...cave.extras(),
     ...(outside() ? [...berries.extras(), ...chests.extras(), ...hazards.extras(time), ...director.captureExtras()] : []),
   ];
@@ -2167,7 +2462,9 @@ async function boot(): Promise<void> {
         }
       : null;
   };
-  const placeName = () => (cave.active ? cave.title : run.isShop() ? 'Boutique' : `${run.placeName}${weatherNow() !== 'clear' ? ` · ${WEATHERS[weatherNow()].name}` : ''}`);
+  // La malédiction d'un pacte (Autel maudit) reste écrite sous le lieu jusqu'à la fin de l'acte.
+  const curseTag = () => (run.cursed() ? ` · ☠ ${CURSES[run.curse!].name}` : '');
+  const placeName = () => (cave.active ? cave.title : run.isShop() ? `Boutique${curseTag()}` : `${run.placeName}${weatherNow() !== 'clear' ? ` · ${WEATHERS[weatherNow()].name}` : ''}${curseTag()}`);
 
   /** Hôte : l'instantané du terrain, à tous les invités. */
   const sendSnap = () => {
@@ -2185,7 +2482,7 @@ async function boot(): Promise<void> {
       }),
       ...wild.map((a) => snapActor(a, netIds.of(a), false)),
       // Les figurants : le vendeur et les mercenaires de la boutique, Miaouss, les prisonniers de grotte.
-      ...[...shop.npcs, ...merchant.npcs, ...cave.npcs].map((a) => snapActor(a, netIds.of(a), false, true)),
+      ...[...shop.npcs, ...merchant.npcs, ...spring.npcs, ...altar.npcs, ...cave.npcs].map((a) => snapActor(a, netIds.of(a), false, true)),
     ];
     net.broadcast({
       t: 'snap',
@@ -2222,6 +2519,18 @@ async function boot(): Promise<void> {
     (fx as unknown as Record<string, (...args: unknown[]) => void>)[k] = (...args: unknown[]) => {
       if (net.role === 'host' && net.inRun && mode === 'run') fxQueue.push([k, args]);
       orig(...args);
+    };
+  }
+  // Les effets d'attaque suivent leurs acteurs par des fonctions : on envoie les points du lancer.
+  {
+    const orig = fx.moveCast.bind(fx);
+    fx.moveCast = (api, type, special, from, to, arrive, power) => {
+      if (net.role === 'host' && net.inRun && mode === 'run') {
+        const f = from();
+        const t = to();
+        fxQueue.push(['moveCastAt', [api, type, special, +f.x.toFixed(2), +f.y.toFixed(2), +t.x.toFixed(2), +t.y.toFixed(2), arrive, power]]);
+      }
+      orig(api, type, special, from, to, arrive, power);
     };
   }
   for (const k of ['message', 'toast', 'announce'] as const) {
@@ -2299,6 +2608,8 @@ async function boot(): Promise<void> {
     statSheet.close?.();
     shop.clear();
     merchant.clear();
+    spring.clear();
+    altar.clear();
     director.clear();
     cave.clear();
     berries.clear();
@@ -2647,6 +2958,10 @@ async function boot(): Promise<void> {
     shop.update(dt, sample, player, world);
     if (outside()) merchant.update(dt, sample, player);
     else merchant.hide();
+    if (outside()) spring.update(dt, sample, player, Math.random);
+    else spring.hide();
+    if (outside()) altar.update(dt, sample, player, Math.random);
+    else altar.hide();
     camp.update(dt, dialogue.open ? { ...sample, interact: false } : sample, player, world);
     if (trainer?.gone) trainer = null;
     // K.O. : retirés après leur fondu.
@@ -2674,10 +2989,21 @@ async function boot(): Promise<void> {
           setTimeout(() => runSummary.open && audio.playMusic('halloffame'), 2300);
         } else audio.playMusic('defeat');
         netEnd();
+        // Nuzlocke : les tombés et les capturés s'en vont avant le bilan (annoncés au retour).
+        const nuzLost = nuzlockeToll();
+        // Records de la sauvegarde : salles, K.O., victoire la plus rapide.
+        const rooms = runWon ? run.room + 1 : run.room;
+        const rec = save.records;
+        const beaten: ('rooms' | 'kos' | 'fastestWin')[] = [];
+        if (rooms > rec.rooms) (rec.rooms = rooms), beaten.push('rooms');
+        if (stats.kos > rec.kos) (rec.kos = stats.kos), beaten.push('kos');
+        if (runWon && (rec.fastestWin === null || stats.time < rec.fastestWin)) (rec.fastestWin = stats.time), beaten.push('fastestWin');
+        if (beaten.length) writeSave(save);
         runSummary.show(
           {
+            records: { ...rec, beaten },
             victory: runWon,
-            rooms: runWon ? run.room + 1 : run.room,
+            rooms,
             act: run.act,
             biome: BIOMES[run.biome].name,
             color: BIOME_COLOR[run.biome],
@@ -2691,6 +3017,7 @@ async function boot(): Promise<void> {
             opts.seed += 1;
             saveOptions(opts);
             enterCamp();
+            if (nuzLost.length) runHud.notify({ title: 'Nuzlocke', text: `${nuzLost.join(', ')} ${nuzLost.length > 1 ? 'ont quitté' : 'a quitté'} la rébellion pour de bon.`, icon: '☠', color: '#e84040' });
           },
         );
       }
@@ -2729,7 +3056,7 @@ async function boot(): Promise<void> {
     const extras = [...runExtras(), ...camp.extras(time)];
     // Au Repaire, en ligne : les autres joueurs qui s'y promènent.
     const others = mode !== 'camp' ? [] : net.role === 'host' ? visitors : net.role === 'client' && hostCamp ? field.list() : [];
-    renderer.draw(world, player, [...team, ...others, ...wild, ...shop.npcs, ...merchant.npcs, ...camp.npcs, ...cave.npcs], particles, footprints, fieldFx, combat, director, extras, opts, alpha, time, { weather: weatherNow(), particles: skyParticles });
+    renderer.draw(world, player, [...team, ...others, ...wild, ...shop.npcs, ...merchant.npcs, ...spring.npcs, ...altar.npcs, ...camp.npcs, ...cave.npcs], particles, footprints, fieldFx, combat, director, extras, opts, alpha, time, { weather: weatherNow(), particles: skyParticles });
     dialogue.update(frameDt);
     document.body.classList.toggle('talking', dialogue.open);
     document.body.classList.toggle('modal', paused());
@@ -2741,7 +3068,10 @@ async function boot(): Promise<void> {
     director.placeLabels(proj);
     shop.placeLabels(proj);
     merchant.placeLabels(proj);
+    spring.placeLabels(proj);
+    altar.placeLabels(proj);
     camp.placeLabels(proj);
+    hud.setMega(megaReady() ? 'ready' : megaFrom.has(player) ? 'on' : null);
     hud.update(frameDt, player, combat, wild, proj, time, team);
     // L'équipe à gauche, au Repaire aussi (retour de test) : les cartes de ceux qui partiront, tenues à jour.
     if (mode === 'camp') refreshCampTeam();
@@ -2782,6 +3112,7 @@ async function boot(): Promise<void> {
         },
         director,
         shop,
+        altar,
         camp,
         /** Jeu en ligne : la scène reçue (invité), le décor de la salle (hôte), la session. */
         netDebug: () => ({ scene: hostScene, extras: runExtras().length, net, field }),
@@ -2800,13 +3131,20 @@ async function boot(): Promise<void> {
         startDeparture,
         /** Les écrans, pour les ouvrir à la main (vérifier la DA sans jouer une salle entière). */
         ui: { hud, runHud, rewardScreen, evolutionScreen, dialogue, bossPreview, speaker },
-        /** Saute à une salle de la run (0 à 27), PV et dons conservés. */
-        goto: (room: number) => {
+        /** Saute à une salle de la run (0 à 27), PV et dons conservés ; `special` : en faire une salle spéciale. */
+        goto: (room: number, special: Run['special'] = null) => {
           run.room = room;
-          run.special = null;
+          run.special = special;
           loadRoom(false);
         },
+        /** Méga-évolution du Pokémon joué (touche F), et si elle est possible. */
+        mega: () => {
+          const ready = megaReady();
+          megaEvolve();
+          return ready;
+        },
         /** Avance la simulation de n pas de 1/60 s, même onglet masqué (tests automatisés). */
+
         step: (n: number) => {
           for (let i = 0; i < n; i++) update(STEP);
         },

@@ -1,5 +1,6 @@
 import { sfx } from '../audio/audio';
 import { logo } from './logo';
+import { hasUnseenNotes } from '../data/patchnotes';
 import { autoFullscreen, toggleFullscreen, wantsFullscreenButton } from './fullscreen';
 
 // Le menu principal (demande du joueur : « ajouter un menu principal »), au lancement. Le
@@ -27,7 +28,7 @@ const el = (tag: string, cls: string, parent?: HTMLElement, text?: string) => {
   return e;
 };
 
-export type TitleTab = 'Réglages' | 'Commandes';
+export type TitleTab = 'Réglages' | 'Commandes' | 'Nouveautés';
 
 export interface TitleHooks {
   /** « Jouer » : l'écran est déjà fermé quand on l'appelle. */
@@ -104,6 +105,7 @@ export class TitleScreen {
         : []),
       { label: 'Réglages', hint: 'Musique, bruitages, secousses', run: () => this.open_('Réglages') },
       { label: 'Commandes', hint: 'Clavier et manette tactile', run: () => this.open_('Commandes') },
+      { label: 'Nouveautés', hint: hasUnseenNotes() ? 'Nouveau ! La mise à jour en détail' : 'Les notes de version', run: () => this.open_('Nouveautés') },
     ];
     this.render();
     this.root.hidden = false;

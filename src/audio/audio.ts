@@ -1,3 +1,4 @@
+import { dexOf } from '../data/forms';
 import { animFile, CRY_FALLBACK, cryPath, MUSIC, moveSoundFile, SOUNDS, servedPath, TYPE_SOUNDS, type MusicId, type SoundId } from './sounds';
 
 // Moteur audio (Sfx.gd du jeu Godot) : des bruitages qui se chevauchent sans
@@ -170,6 +171,8 @@ class AudioEngine {
    * et plus) : un son neutre, encore plus grave.
    */
   cry(speciesId: number, db = 0, rate = 1): void {
+    // Une Méga crie comme sa forme de base (pas de cri à elle dans Essentials).
+    speciesId = dexOf(speciesId);
     const ctx = this.ready();
     if (!ctx || this.throttled(ctx, 'cry', CRY_GAP)) return;
     void this.load(cryPath(speciesId), cryPath(speciesId)).then((buf) => {

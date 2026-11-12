@@ -2,7 +2,7 @@
 // (UpgradeShopScreen et ShopScreen « La Réserve »), les CT du tuteur
 // (MoveShopScreen.MOVE_LIST) et les objets tenus (ItemCatalog.ITEMS).
 
-export type UpgradeId = 'slots' | 'xp' | 'purse' | 'vigor' | 'dash' | 'revives' | 'magnet' | 'weight';
+export type UpgradeId = 'slots' | 'xp' | 'purse' | 'vigor' | 'dash' | 'revives' | 'magnet' | 'weight' | 'mega';
 
 export interface Upgrade {
   id: UpgradeId;
@@ -101,6 +101,18 @@ export const UPGRADES: readonly Upgrade[] = [
     icon: 'MACHOBRACE',
     currency: 'shards',
   },
+  {
+    // Ajout (retour de test du 11 novembre 2026) : les méga-évolutions (data/megas.ts). En run, F
+    // fait méga-évoluer le Pokémon joué s'il a une forme Méga, une fois par salle, jusqu'à la fin
+    // de la salle. Payé en Éclats : c'est la récompense des champions.
+    id: 'mega',
+    name: 'Méga-Anneau',
+    effect: () => 'Méga-évolution en run : touche F, une fois par salle',
+    max: 1,
+    price: () => 6,
+    icon: 'DAWNSTONE',
+    currency: 'shards',
+  },
 ];
 
 /** Éclats de Champion lâchés par un champion (CombatArena._reward_boss) : 1 + l'acte, 3 de plus pour le Dresseur final. */
@@ -131,6 +143,9 @@ export const TMS: readonly { api: string; price: number }[] = [
   { api: 'will-o-wisp', price: 130 },
   { api: 'sing', price: 130 },
   { api: 'toxic', price: 140 },
+  // Météo (ajout) : la salle passe sous la pluie ou le soleil, Eau ou Feu ×1,5.
+  { api: 'rain-dance', price: 150 },
+  { api: 'sunny-day', price: 150 },
   { api: 'recover', price: 180 },
   { api: 'swords-dance', price: 200 },
   { api: 'calm-mind', price: 200 },
@@ -265,16 +280,16 @@ export const BUILDINGS: readonly { id: BuildingId; name: string; desc: string; p
   { id: 'tavern', name: 'Buvette', desc: 'Des quêtes qui font venir de nouveaux Pokémon.', price: 150, art: 115 },
   { id: 'study', name: 'Étude d’Alakazam', desc: 'Alakazam vend améliorations et CS.', price: 100, art: 65 },
   { id: 'market', name: 'Marché du tuteur', desc: 'Attaques, objets tenus et Super Bonbons.', price: 150, art: 122 },
-  { id: 'dorm', name: 'Dortoir', desc: '+3 places au Repaire, +1 mission.', cost: { wood: 15, food: 5 }, art: 143 },
-  { id: 'training', name: 'Terrain d’entraînement', desc: 'Les libérés s’y entraînent et gagnent des niveaux.', cost: { wood: 20, stone: 15 }, art: 4 },
+  { id: 'dorm', name: 'Dortoir', desc: '+4 places au Repaire, +1 mission.', cost: { wood: 8, food: 3 }, art: 143 },
+  { id: 'training', name: 'Terrain d’entraînement', desc: 'Les libérés s’y entraînent et gagnent des niveaux.', cost: { wood: 12, stone: 8 }, art: 4 },
   { id: 'jetty', name: 'Ponton', desc: 'Un ponton sur le lac. Pour le décor.', cost: { wood: 30 }, art: 7 },
-  { id: 'clearing', name: 'Défrichage', desc: 'Ouvre une clairière à l’ouest.', cost: { food: 15 }, art: 532 },
-  { id: 'field', name: 'Champ de cultures', desc: 'Un potager : de la Nourriture à chaque salle, et les herbes de l’atelier.', cost: { wood: 10, stone: 5 }, art: 1, needs: 'clearing' },
-  { id: 'houses', name: 'Maisons', desc: '+4 places au Repaire.', cost: { wood: 30, stone: 20, food: 10 }, art: 25, needs: 'clearing' },
+  { id: 'clearing', name: 'Défrichage', desc: 'Ouvre une clairière à l’ouest.', cost: { food: 8 }, art: 532 },
+  { id: 'field', name: 'Champ de cultures', desc: 'Un potager : de la Nourriture à chaque salle, et les herbes de l’atelier.', cost: { wood: 6, stone: 3 }, art: 1, needs: 'clearing' },
+  { id: 'houses', name: 'Maisons', desc: '+6 places au Repaire.', cost: { wood: 18, stone: 8, food: 6 }, art: 25, needs: 'clearing' },
   { id: 'gardens', name: 'Jardins fleuris', desc: 'Des fleurs et des bancs. Pour le décor.', cost: { wood: 10, food: 10 }, art: 182 },
   { id: 'lamps', name: 'Lampadaires', desc: 'Des lampadaires le long des allées. Pour le décor.', cost: { stone: 20, wood: 5 }, art: 125, needs: 'study' },
-  { id: 'eastglade', name: 'Défrichage de l’est', desc: 'Ouvre une seconde clairière à l’est.', cost: { wood: 10, food: 20 }, art: 75, needs: 'houses' },
-  { id: 'hamlet', name: 'Bourg', desc: '+6 places au Repaire.', cost: { wood: 40, stone: 30, food: 15 }, art: 133, needs: 'eastglade' },
+  { id: 'eastglade', name: 'Défrichage de l’est', desc: 'Ouvre une seconde clairière à l’est.', cost: { wood: 8, food: 10 }, art: 75, needs: 'houses' },
+  { id: 'hamlet', name: 'Bourg', desc: '+8 places au Repaire.', cost: { wood: 25, stone: 15, food: 10 }, art: 133, needs: 'eastglade' },
   // Ajout (retour de test : « un nouvel aménagement, un atelier avec un Pokémon artisan ») :
   // il suit le champ, dont le potager fournit les herbes de ses recettes (meta/crafting.ts).
   { id: 'atelier', name: 'Atelier de l’artisan', desc: 'Fabrique des objets tenus et des nectars à Pokémon.', price: 220, art: 235, needs: 'field' },
@@ -285,9 +300,20 @@ export const BUILDINGS: readonly { id: BuildingId; name: string; desc: string; p
  * on achète de l'espace en construisant ») : combien de libérés il loge, en tout. Au-delà,
  * une recrue attend qu'on choisisse qui s'en va (main.ts, meetCandidate).
  */
-export const BASE_CAPACITY = 6;
-export const HOUSING: Partial<Record<BuildingId, number>> = { dorm: 3, houses: 4, hamlet: 6 };
-export const campCapacity = (built: readonly BuildingId[]): number => BASE_CAPACITY + built.reduce((n, b) => n + (HOUSING[b] ?? 0), 0);
+// Retour de test du 11 novembre 2026 (« plein de Pokémon attendent qu'on
+// les regroupe, la capacité est très vite limitée ») : 8 places au départ
+// au lieu de 6, des logements plus grands, et des Lits superposés à acheter
+// en Baies, autant de fois que BUNKS a de prix.
+export const BASE_CAPACITY = 8;
+export const HOUSING: Partial<Record<BuildingId, number>> = { dorm: 4, houses: 6, hamlet: 8 };
+/**
+ * Lits superposés, chez le bâtisseur : +BUNK_ROOM places par achat, en Baies
+ * seules (la monnaie qu'on a en quantité), sans chantier préalable ni décor.
+ */
+export const BUNK_ROOM = 2;
+export const BUNKS: readonly number[] = [60, 100, 150, 220, 300, 400];
+export const bunkPrice = (owned: number): number | null => BUNKS[owned] ?? null;
+export const campCapacity = (built: readonly BuildingId[], bunks = 0): number => BASE_CAPACITY + built.reduce((n, b) => n + (HOUSING[b] ?? 0), 0) + bunks * BUNK_ROOM;
 
 /**
  * Les chantiers que le bâtisseur propose ou a faits : ce qui attend un autre
@@ -299,6 +325,12 @@ export function buildingsShown(save: { built: readonly BuildingId[]; builtAt: Pa
   return BUILDINGS.filter((b) => save.built.includes(b.id) || !b.needs || ready(b.needs));
 }
 
+/** Ce que rapporte chaque salle libérée en run, et un champion (main.ts). */
+export const ROOM_RES: Record<'room' | 'boss', Cost> = {
+  room: { wood: 1, stone: 1 },
+  boss: { wood: 4, stone: 4, food: 4 },
+};
+
 /** Champ de cultures : Nourriture récoltée par salle franchie en run (main.ts). */
 export const FIELD_FOOD = 1;
 
@@ -307,14 +339,14 @@ export type CsId = 'surf' | 'cut' | 'strength' | 'rock-smash';
 /**
  * Capacités spéciales (GameManager.CS_CATALOG), à l'étude d'Alakazam. Surf :
  * sans elle, l'eau du Repaire est un mur, et l'île du lac reste hors
- * d'atteinte. Coupe et Éclate-Roc lèvent les obstacles qui gardent les
- * coffres de run (run/chests.ts). Force (pousser un rocher) viendra plus tard.
+ * d'atteinte. Coupe, Éclate-Roc et Force (pousser un gros rocher) lèvent les obstacles
+ * qui gardent les coffres de run (run/chests.ts).
  */
 export const CS_LIST: readonly { id: CsId; name: string; price: number; desc: string; ready: boolean; icon: string }[] = [
   { id: 'surf', name: 'Surf', price: 250, desc: 'Nager dans l’eau, au Repaire comme en run.', ready: true, icon: 'machine_WATER' },
   { id: 'cut', name: 'Coupe', price: 200, desc: 'Coupe les arbustes qui gardent des coffres.', ready: true, icon: 'machine_GRASS' },
   { id: 'rock-smash', name: 'Éclate-Roc', price: 180, desc: 'Brise les rochers qui gardent des coffres.', ready: true, icon: 'machine_FIGHTING' },
-  { id: 'strength', name: 'Force', price: 220, desc: 'Pousse les rochers qui bloquent des coffres.', ready: false, icon: 'machine_NORMAL' },
+  { id: 'strength', name: 'Force', price: 220, desc: 'Pousse les gros rochers qui barrent des coffres.', ready: true, icon: 'machine_NORMAL' },
 ];
 
 /**

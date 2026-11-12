@@ -110,16 +110,7 @@ export class BerryGrove {
    * réagit plus : le coup part dans le vide, ou bute sur sa case bloquée.
    */
   hit(x: number, y: number, reach: number): { x: number; y: number } | null {
-    let best: Tree | null = null;
-    let bd = reach;
-    for (const t of this.trees) {
-      if (t.hp <= 0) continue;
-      const d = Math.hypot(t.x + 0.5 - x, t.y + 0.6 - y);
-      if (d <= bd) {
-        bd = d;
-        best = t;
-      }
-    }
+    const best = this.nearest(x, y, reach);
     if (!best) return null;
     const p = { x: best.x + 0.5, y: best.y + 0.6 };
     best.shake = 0.3;
@@ -133,6 +124,30 @@ export class BerryGrove {
       for (let i = 0; i < n; i++) this.drop(best);
     }
     return p;
+  }
+
+  /**
+   * Le centre de l'arbre encore chargé le plus proche, sans le frapper : la
+   * visée des attaques spéciales (Combat.rangedAttack), qui sans cela
+   * partaient droit devant et manquaient l'arbre d'une case sur deux.
+   */
+  near(x: number, y: number, reach: number): { x: number; y: number } | null {
+    const t = this.nearest(x, y, reach);
+    return t ? { x: t.x + 0.5, y: t.y + 0.6 } : null;
+  }
+
+  private nearest(x: number, y: number, reach: number): Tree | null {
+    let best: Tree | null = null;
+    let bd = reach;
+    for (const t of this.trees) {
+      if (t.hp <= 0) continue;
+      const d = Math.hypot(t.x + 0.5 - x, t.y + 0.6 - y);
+      if (d <= bd) {
+        bd = d;
+        best = t;
+      }
+    }
+    return best;
   }
 
   /** Une baie qui saute du pied de l'arbre vers une case libre autour. */

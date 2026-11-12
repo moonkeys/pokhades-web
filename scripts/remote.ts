@@ -8,6 +8,7 @@
 // Ce module n'importe que Node : import-assets.ts le charge sans bundler.
 import fs from 'node:fs';
 import path from 'node:path';
+import { formById } from '../src/data/forms.ts';
 
 export const COLLAB = 'https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master';
 const POKEAPI = 'https://pokeapi.co/api/v2';
@@ -34,6 +35,7 @@ interface ApiPokemon {
   stats: { base_stat: number; stat: Named }[];
   moves: { move: Named; version_group_details: { level_learned_at: number; move_learn_method: Named }[] }[];
   sprites: { front_default: string | null };
+  species: { url: string };
 }
 interface ApiMove {
   type?: Named;
@@ -56,11 +58,11 @@ async function getJson<T>(url: string, init?: RequestInit): Promise<T | null> {
 
 /** Fiche d'espèce au format du dépôt Godot (PokemonAPI._build_data). */
 async function buildPokemon(id: number) {
-  const [p, species] = await Promise.all([
-    getJson<ApiPokemon>(`${POKEAPI}/pokemon/${id}`),
-    getJson<{ names: Localized[]; evolves_from_species: unknown }>(`${POKEAPI}/pokemon-species/${id}`),
-  ]);
+  // Une forme (Méga : 10034…) n'a pas de fiche d'espèce à son numéro : on suit le lien de la forme.
+  const p = await getJson<ApiPokemon>(`${POKEAPI}/pokemon/${id}`);
   if (!p) return null;
+  const species = await getJson<{ names: Localized[]; evolves_from_species: unknown }>(p.species?.url ?? `${POKEAPI}/pokemon-species/${id}`);
+  const mega = formById(id);
   const levelUp: { level: number; name: string }[] = [];
   for (const m of p.moves) {
     const lv = m.version_group_details.find((v) => v.move_learn_method.name === 'level-up');
@@ -70,13 +72,13 @@ async function buildPokemon(id: number) {
   return {
     id: p.id,
     name_en: p.name,
-    name_fr: species?.names.find((n) => n.language.name === 'fr')?.name ?? p.name,
+    name_fr: mega?.name ?? species?.names.find((n) => n.language.name === 'fr')?.name ?? p.name,
     types: p.types.map((t) => t.type.name),
     stats: Object.fromEntries(p.stats.map((s) => [s.stat.name, s.base_stat])),
     sprite_url: p.sprites.front_default ?? '',
     level_up_moves: levelUp.slice(0, 20),
     learnable_moves: p.moves.map((m) => m.move.name),
-    is_base_form: !species?.evolves_from_species,
+    is_base_form: !mega?.mega && !species?.evolves_from_species,
     height_m: p.height / 10,
     weight_kg: p.weight / 10,
   };
@@ -108,17 +110,19 @@ export async function fetchRemote(cache: string, rel: string): Promise<string | 
   const dst = path.join(cache, rel);
   if (fs.existsSync(dst)) return dst;
   let body: Buffer | null = null;
-  const pmd = rel.match(/^data\/pmd\/(\d{4})\/([\w-]+\.(?:png|xml))$/);
+  const pmd = rel.match(/^data\/pmd\/(\d{4,5})\/([\w-]+\.(?:png|xml))$/);
   const mon = rel.match(/^data\/pokeapi\/pokemon\/(\d+)\.json$/);
   const move = rel.match(/^data\/pokeapi\/move\/([\w-]+)\.json$/);
   if (pmd) {
     try {
-      const res = await fetch(`${COLLAB}/sprite/${pmd[1]}/${pmd[2]}`);
+      // Une Méga range ses planches dans un sous-dossier de son espèce (« 0006/0001 »).
+      const dir = formById(Number(pmd[1]))?.collab ?? pmd[1];
+      const res = await fetch(`${COLLAB}/sprite/${dir}/${pmd[2]}`);
       if (res.ok) body = Buffer.from(await res.arrayBuffer());
     } catch {
       // Hors ligne : rien à copier.
     }
-  } else if (mon && Number(mon[1]) <= LAST_DEX) {
+  } else if (mon && (Number(mon[1]) <= LAST_DEX || formById(Number(mon[1])))) {
     const d = await buildPokemon(Number(mon[1]));
     if (d) body = Buffer.from(JSON.stringify(d));
   } else if (move) {

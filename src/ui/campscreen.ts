@@ -3,7 +3,8 @@ import { sfx } from '../audio/audio';
 import { fetchJson } from '../assets/json';
 import { BASE_TEAM_LEVEL, Pokemon } from '../combat/pokemon';
 import { sheetOf } from '../data/bestiary';
-import { BUILDINGS, CANDY, CS_LIST, HELD_ITEMS, RESOURCES, RESOURCE_IDS, SHARDS, TMS, UPGRADES, applyHeld, buildingsShown, canAfford, heldBoosts, heldItem, heldText, teamSlots, type Cost, type HeldItem, type ResourceId, type Upgrade } from '../meta/catalog';
+import { dexOf } from '../data/forms';
+import { BUILDINGS, BUNKS, BUNK_ROOM, bunkPrice, CANDY, CS_LIST, HELD_ITEMS, RESOURCES, RESOURCE_IDS, SHARDS, TMS, UPGRADES, applyHeld, buildingsShown, canAfford, heldBoosts, heldItem, heldText, teamSlots, type Cost, type HeldItem, type ResourceId, type Upgrade } from '../meta/catalog';
 import { evolutionsOf } from '../data/evolutions';
 import { BIOME_IDS, CAMP_NPCS, FAUNA, LEGENDARY_SPECIES, MERC_POOLS, QUEST_SPECIES, STARTER_IDS, type BiomeId } from '../data/species';
 import { BIOME_MATERIAL, GARDEN, MATERIALS, NECTARS, NECTAR_ROOMS, RECIPES, canCraft, craft, harvest, materialName, pickVisitor, plots, recipeOutput, sow } from '../meta/crafting';
@@ -12,7 +13,7 @@ import { BIOMES } from '../world/biomes';
 import { MISSIONS, available, busy, collect, mission, missionSlots, open as missionOpen, recall, rewardText, send, type Mission, type MissionId } from '../meta/missions';
 import { NICK_MAX, capacity, isBaseForm, recruitThreshold, welcomeMon, level, monName, ownedSpecies, ownsSpecies, roster as rosterIds, speciesOf, startLevel, type Save } from '../meta/save';
 import { natureText, applyTraits } from '../meta/mons';
-import { MAX_ACTIVE, QUESTS, abandonQuest, acceptQuest, claimQuest, questFor, questState } from '../meta/quests';
+import { MAX_ACTIVE, QUESTS, abandonQuest, acceptQuest, claimContract, claimQuest, contractText, questFor, questState, refillContracts } from '../meta/quests';
 import { memberWeight, moveWeight, weightCap, type MemberWeight } from '../meta/weight';
 import { typeColor } from '../render/combatfx';
 import { STATIONS, stationId, type Station } from '../run/camp';
@@ -855,7 +856,8 @@ export class CampScreen {
     const save = ctx.save;
     const unlocked = new Set(ownedSpecies(save));
     const seen = new Set([...save.seen, ...unlocked, ...Object.keys(save.defeats).map(Number)]);
-    const all = [...new Set([...Object.values(FAUNA).flat(), ...STARTER_IDS, ...MERC_POOLS.champion, ...QUEST_SPECIES, ...seen])].filter(isBaseForm).sort((a, b) => a - b);
+    const all = [...new Set([...Object.values(FAUNA).flat(), ...STARTER_IDS, ...MERC_POOLS.champion, ...QUEST_SPECIES, ...seen])].filter(isBaseForm).sort((a, b) => dexOf(a) - dexOf(b) || a - b);
+    // (Une forme régionale se range juste après son espèce, au même numéro.)
     const shown = all.filter((id) =>
       this.dexFilter === 'unlocked' ? unlocked.has(id) : this.dexFilter === 'locked' ? seen.has(id) && !unlocked.has(id) : this.dexFilter === 'seen' ? seen.has(id) : true,
     );
@@ -885,7 +887,7 @@ export class CampScreen {
       const card = el('button', `cs-dex-card${own ? ' own' : ''}${id === this.dexId ? ' sel' : ''}`, grid);
       art(id, card, own ? '' : 'shadow');
       if (this.news.has(String(id))) newMark(card);
-      el('small', 'no', card, `n°${String(id).padStart(3, '0')}`);
+      el('small', 'no', card, `n°${String(dexOf(id)).padStart(3, '0')}`);
       el('b', '', card, names.get(id) ?? '???');
       el('small', 'state', card, waiting(id) ? '! Au Repaire' : own ? '★ Débloqué' : questFor(id) ? 'Quête' : !seen.has(id) ? '—' : gauge(id));
       card.addEventListener('click', () => {
@@ -906,7 +908,7 @@ export class CampScreen {
     const head = el('div', 'cs-head', card);
     el('b', '', head, data?.name ?? '???');
     for (const t of data?.types ?? []) typePill(t, head);
-    el('small', 'cs-info', card, `n°${String(id).padStart(3, '0')}${met ? ` · ${wins(id)} victoire${wins(id) > 1 ? 's' : ''}` : ''}`);
+    el('small', 'cs-info', card, `n°${String(dexOf(id)).padStart(3, '0')}${met ? ` · ${wins(id)} victoire${wins(id) > 1 ? 's' : ''}` : ''}`);
     // Où le trouver, une fois croisé : ses biomes, et les grottes qui le gardent.
     if (met) {
       const { wild, caves } = habitat(id);
@@ -1359,6 +1361,7 @@ export class CampScreen {
     const supply = built.includes('outpost') ? ' Pour le bois, la pierre et les vivres, fouille les coffres en run, ou demande à Démolosse.' : ' Pour le bois, la pierre et les vivres, fouille les coffres en run.';
     el('p', 'cs-quote', main, quote + supply);
     const grid = el('div', 'cs-grid', main);
+    this.bunkCard(grid, ctx);
     // Le champ et les maisons attendent la clairière ; le bourg, celle de
     // l'est. Écart voulu (retour de test) : ce qui attend un chantier ne se
     // montre pas, et n'apparaît qu'une run après qu'il est bâti — la suite se
@@ -1394,6 +1397,32 @@ export class CampScreen {
       }
     }
     if (waiting && !shown.some((b) => built.includes(b.id))) this.builderTeaser(grid);
+  }
+
+  /**
+   * Lits superposés : la façon simple d'agrandir le Repaire, en Baies seules
+   * et sans attendre de chantier (retour de test du 11 novembre 2026 : trop
+   * de recrues en attente, trop peu de places). Toujours en tête de liste.
+   */
+  private bunkCard(grid: HTMLElement, ctx: CampCtx): void {
+    const save = ctx.save;
+    const price = bunkPrice(save.bunks);
+    const card = el('div', `cs-card cs-build da-paper${price === null ? ' owned' : save.baies < price ? ' poor' : ''}`, grid);
+    art(39, card, 'cs-icon cs-build-art');
+    el('div', 'cs-head', card).append(el('b', '', undefined, 'Lits superposés'));
+    el('small', 'cs-info', card, `On serre les paillasses : +${BUNK_ROOM} places au Repaire. ${save.bunks} / ${BUNKS.length} · ${capacity(save)} places en tout.`);
+    if (price === null) {
+      el('div', 'da-tape cs-tag', card, 'Au complet');
+      return;
+    }
+    el('div', 'da-stamp cs-price', card, String(price));
+    card.addEventListener('click', () =>
+      this.buy(price, () => {
+        save.bunks++;
+        ctx.notify('Lits superposés', `+${BUNK_ROOM} places : le Repaire loge ${capacity(save)} libérés.`, stationId('builder', save.built));
+        ctx.teamChanged();
+      }),
+    );
   }
 
   /** Une carte « la suite après ta prochaine run », avant le déjà bâti. */
@@ -1472,6 +1501,41 @@ export class CampScreen {
         });
       }
     }
+    this.renderContracts(grid, ctx);
+  }
+
+  /**
+   * Contrats de Kangourex (meta/quests.ts) : trois petits objectifs qui
+   * comptent sans être acceptés ; réclamés, ils paient et un nouveau prend
+   * la place. Sous les quêtes, dans la même grille.
+   */
+  private renderContracts(grid: HTMLElement, ctx: CampCtx): void {
+    const save = ctx.save;
+    refillContracts(save);
+    el('p', 'cs-quote wide', grid, 'Contrats : de petits services, toujours renouvelés. Ils comptent dès qu’ils sont là.');
+    save.contracts.list.forEach((c, i) => {
+      const ready = c.n >= c.goal;
+      const card = el('div', `cs-card da-paper cs-mission cs-quest q-${ready ? 'ready' : 'active'}`, grid);
+      el('div', 'cs-icon cs-build-art cs-teaser', card, '✎');
+      if (ready) newMark(card);
+      el('div', 'cs-head', card).append(el('b', '', undefined, 'Contrat'));
+      el('small', 'cs-info', card, contractText(c));
+      const r = c.reward;
+      el('small', 'cs-next', card, `Récompense : ${[`${r.baies} Baies`, r.wood && `${r.wood} Bois`, r.stone && `${r.stone} Pierre`, r.food && `${r.food} Nourriture`, r.shards && `${r.shards} Éclat`].filter(Boolean).join(' · ')}`);
+      const bar = el('div', 'cs-dex-bar', card);
+      bar.style.setProperty('--w', `${Math.min(100, (c.n / c.goal) * 100)}%`);
+      el('small', '', bar, `${c.n} / ${c.goal}`);
+      if (!ready) return;
+      el('div', 'da-stamp cs-price', card, 'Réclamer');
+      card.addEventListener('click', () => {
+        const got = claimContract(save, i);
+        if (!got) return;
+        sfx('claim');
+        ctx.persist();
+        ctx.notify('Contrat réclamé', `${contractText(got)} — c’est payé.`, CAMP_NPCS.quests);
+        void this.render();
+      });
+    });
   }
 
   private async renderMissions(main: HTMLElement, ctx: CampCtx): Promise<void> {

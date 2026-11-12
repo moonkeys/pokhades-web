@@ -59,7 +59,7 @@ export class EvolutionScreen {
   }
 
   /** `onPick` reçoit la forme choisie, ou null pour « plus tard ». */
-  show(from: EvolvingMon, ids: readonly number[], onPick: (id: number | null) => void): void {
+  show(from: EvolvingMon, ids: readonly number[], onPick: (id: number | null) => void, words: { title?: string; sub?: string; go?: string } = {}): void {
     this.onPick = onPick;
     this.ids = ids;
     this.root.replaceChildren();
@@ -74,8 +74,8 @@ export class EvolutionScreen {
     art.alt = '';
     art.draggable = false;
     const txt = el('div', '', who);
-    el('b', '', txt, `${from.name} évolue !`);
-    el('small', '', txt, `Niveau ${from.level} · choisis sa nouvelle forme`);
+    el('b', '', txt, words.title ?? `${from.name} évolue !`);
+    el('small', '', txt, words.sub ?? `Niveau ${from.level} · choisis sa nouvelle forme`);
 
     const grid = el('div', 'starter-grid evo-grid', page);
     this.cards = ids.map((id, i) => {
@@ -97,7 +97,7 @@ export class EvolutionScreen {
     });
 
     const row = el('div', 'starter-actions', page);
-    el('button', 'starter-go', row, 'Évoluer !').addEventListener('click', () => this.pick(false));
+    el('button', 'starter-go', row, words.go ?? 'Évoluer !').addEventListener('click', () => this.pick(false));
     el('button', 'starter-go cancel', row, 'Plus tard').addEventListener('click', () => this.pick(true));
     this.select(0);
     this.root.hidden = false;

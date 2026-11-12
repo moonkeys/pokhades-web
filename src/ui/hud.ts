@@ -1,3 +1,4 @@
+import { WEATHERS } from '../world/weather';
 import type { Combat } from '../combat/combat';
 import { DONORS, ULT_MAX } from '../combat/boons';
 import { BUFF_LABEL, STATUS, type Pokemon, type Status } from '../combat/pokemon';
@@ -56,6 +57,8 @@ export function moveInfo(m: Move): string {
       return 'Abri';
     case 'cleanse':
       return 'Soigne le statut';
+    case 'weather':
+      return `Météo : ${WEATHERS[fx.weather].name}`;
   }
 }
 
@@ -105,6 +108,8 @@ export class Hud {
   private readonly ult: HTMLElement;
   private readonly ultFill: HTMLElement;
   private readonly ultLabel: HTMLElement;
+  /** Méga-évolution (main.ts) : prête (touche F) ou en cours. */
+  private readonly mega: HTMLElement;
   private buffKey = '';
   private readonly moves: HTMLElement;
   private readonly combo = el('div', 'hud-combo');
@@ -149,8 +154,19 @@ export class Hud {
     this.ult = el('div', 'hud-ult', card);
     this.ultFill = el('b', '', this.ult);
     this.ultLabel = el('span', '', this.ult);
+    this.mega = el('div', 'hud-mega', card);
+    this.mega.hidden = true;
     this.moves = el('div', 'hud-moves', this.root);
     parent.append(this.danger, this.tagLayer, this.teamList, this.root, this.combo, this.ko);
+  }
+
+  /** « ready » : la Méga de la salle est à prendre (F) ; « on » : le Pokémon joué est méga-évolué. */
+  setMega(state: 'ready' | 'on' | null): void {
+    this.mega.hidden = !state;
+    if (!state) return;
+    const text = state === 'ready' ? '◈ Méga-évolution — F' : '◈ Méga-évolué';
+    if (this.mega.textContent !== text) this.mega.textContent = text;
+    this.mega.classList.toggle('ready', state === 'ready');
   }
 
   /** Reconstruit la carte et les attaques quand le Pokémon joué change (HUD.set_active). */

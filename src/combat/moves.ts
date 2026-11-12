@@ -18,7 +18,9 @@ export type MoveEffect =
   | { kind: 'status'; status: Status }
   | { kind: 'heal'; pct: number }
   | { kind: 'protect'; dur: number }
-  | { kind: 'cleanse' };
+  | { kind: 'cleanse' }
+  /** Change le temps de la salle (Danse Pluie, Zénith…), jusqu'à ce qu'elle soit libérée. */
+  | { kind: 'weather'; weather: 'rain' | 'sun' | 'sand' | 'hail' };
 
 /** Durée des hausses et des baisses de stats (celle des CT de buff du jeu). */
 export const BUFF_TIME = 8;
@@ -70,6 +72,12 @@ const EFFECTS: Record<string, MoveEffect> = {
   rest: { kind: 'heal', pct: 1 },
   protect: { kind: 'protect', dur: 1.5 },
   refresh: { kind: 'cleanse' },
+  // Météo (ajout, A-FAIRE 1.8 : « des attaques qui la changent ») : le temps de la salle bascule.
+  'rain-dance': { kind: 'weather', weather: 'rain' },
+  'sunny-day': { kind: 'weather', weather: 'sun' },
+  sandstorm: { kind: 'weather', weather: 'sand' },
+  hail: { kind: 'weather', weather: 'hail' },
+  snowscape: { kind: 'weather', weather: 'hail' },
 };
 
 export interface Move {

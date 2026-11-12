@@ -382,7 +382,11 @@ export class RewardScreen {
     }
     upgrades.forEach((i, k) => {
       const m = mon.moves[i];
-      const c = this.moveCard(list, m, `Renforcer +${Math.round(UPGRADE_PCT * 100)} %`, `Déjà connue · frappe plus fort${cost}`, `${m.power} → ${Math.ceil(m.power * (1 + UPGRADE_PCT))}`, 'puissance');
+      const evo = offer.evolve?.[i];
+      // Une capacité qui évolue au renforcement : la carte montre ce qu'elle devient.
+      const c = evo
+        ? this.moveCard(list, evo, `Évolution : ${m.name} →`, `Devient ${evo.name} · ${category(evo)}${cost}`, `${m.power} → ${evo.power}`, 'puissance')
+        : this.moveCard(list, m, `Renforcer +${Math.round(UPGRADE_PCT * 100)} %`, `Déjà connue · frappe plus fort${cost}`, `${m.power} → ${Math.ceil(m.power * (1 + UPGRADE_PCT))}`, 'puissance');
       // Un peu à l'écart des attaques à apprendre.
       if (k === 0 && learnable.length) c.classList.add('upgrade');
       this.addChoice(c, () => {

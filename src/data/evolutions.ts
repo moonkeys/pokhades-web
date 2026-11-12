@@ -193,7 +193,54 @@ const EVOLUTIONS: Record<number, readonly [level: number, next: number]> = {
   236: [20, 237], // Debugant → Kapoera
   155: [14, 156], // Héricendre → Feurisson
   156: [36, 157], // → Typhlosion
+  // ── Formes régionales (data/forms.ts) ────────────────────────────
+  // Mêmes seuils que la forme ordinaire quand le jeu en a un ; sinon ceux des
+  // jeux. Les évolutions de Galar et de Hisui sans équivalent ordinaire
+  // (Perrserker, Corayeur, Tutankafer, Ixon, Farfurex, Terraiste) en sont
+  // les formes finales. Canarticho de Galar n'évolue pas : Palarticho n'a
+  // pas de planche.
+  10091: [20, 10092], // Rattata d'Alola → Rattatac d'Alola
+  10101: [22, 10102], // Sabelette d'Alola → Sablaireau d'Alola
+  10103: [20, 10104], // Goupix d'Alola → Feunard d'Alola
+  10105: [26, 10106], // Taupiqueur d'Alola → Triopikeur d'Alola
+  10107: [28, 10108], // Miaouss d'Alola → Persian d'Alola
+  10109: [25, 10110], // Racaillou d'Alola → Gravalanch d'Alola
+  10110: [40, 10111], // → Grolem d'Alola
+  10112: [38, 10113], // Tadmorv d'Alola → Grotadmorv d'Alola
+  10161: [28, 863], // Miaouss de Galar → Berserkatt
+  10162: [40, 10163], // Ponyta de Galar → Galopa de Galar
+  10164: [37, 10165], // Ramoloss de Galar → Flagadoss de Galar
+  10173: [38, 864], // Corayon de Galar → Corayôme
+  10174: [20, 10175], // Zigzaton de Galar → Linéon de Galar
+  10175: [35, 862], // → Ixon
+  10179: [34, 867], // Tutafeh de Galar → Tutétékri
+  10229: [20, 10230], // Caninos de Hisui → Arcanin de Hisui
+  10231: [30, 10232], // Voltorbe de Hisui → Électrode de Hisui
+  10234: [35, 904], // Qwilfish de Hisui → Qwilpik
+  10235: [40, 903], // Farfuret de Hisui → Farfurex
+  10238: [20, 10239], // Zorua de Hisui → Zoroark de Hisui
+  10241: [50, 10242], // Colimucus de Hisui → Muplodocus de Hisui
+  10253: [20, 980], // Axoloto de Paldéa → Terraiste
 };
+
+/**
+ * Évolutions régionales selon le biome (ajout, retour de test du 11 novembre
+ * 2026) : une évolution ordinaire faite en run dans ce biome donne la forme
+ * régionale à la place (forme suivante → biome → forme régionale). Pikachu
+ * qui évolue à la Plage devient Raichu d'Alola ; Feurisson en Automne,
+ * Typhlosion de Hisui. Hors run (Super Bonbon au Repaire) : la forme ordinaire.
+ */
+export const REGIONAL_EVOLUTIONS: Readonly<Record<number, Readonly<Record<string, number>>>> = {
+  26: { plage: 10100 }, // Raichu d'Alola
+  103: { plage: 10114 }, // Noadkoko d'Alola
+  105: { volcan: 10115 }, // Ossatueur d'Alola
+  110: { village: 10167 }, // Smogogo de Galar
+  157: { automne: 10233 }, // Typhlosion de Hisui
+  705: { glace: 10241 }, // Colimucus de Hisui
+};
+
+/** La forme que prend une évolution vers `next` faite dans `biome` (la régionale s'il y en a une). */
+export const regionalEvolution = (next: number, biome: string | null): number => (biome && REGIONAL_EVOLUTIONS[next]?.[biome]) || next;
 
 /**
  * Formes sans planche PMD, ni dans le dépôt Godot ni sur SpriteCollab : la
@@ -225,6 +272,8 @@ export function evolvedStart(id: number, level: number): number {
 export function laterForms(id: number): number[] {
   const out: number[] = [...(BRANCHES[id] ?? [])];
   for (let evo = EVOLUTIONS[id]; evo && !out.includes(evo[1]); evo = EVOLUTIONS[evo[1]]) if (!SKIPPED_FORMS.has(evo[1])) out.push(evo[1]);
+  // Les formes régionales qu'une évolution peut prendre selon le biome, et leurs suites.
+  for (const f of [...out]) for (const form of Object.values(REGIONAL_EVOLUTIONS[f] ?? {})) if (!out.includes(form)) out.push(form, ...laterForms(form).filter((x) => !out.includes(x)));
   return out;
 }
 
@@ -245,10 +294,15 @@ export function evolutionChoices(id: number, level: number): number[] {
   return forms && evo && level >= evo[0] ? [...forms] : [];
 }
 
+/** La forme dont `to` est l'évolution, dans EVOLUTIONS (pour les évolutions régionales). */
+const PREV_OF = (to: number): number => Number(Object.entries(EVOLUTIONS).find(([from, [, t]]) => t === to && Number(from) !== to)?.[0] ?? to);
+
 /** Forme précédente de chaque évolution (table inverse ; Rattata → Rattatac compte une fois). */
 const PREVIOUS = new Map<number, number>([
   ...Object.entries(EVOLUTIONS).flatMap(([from, [, to]]) => (to === Number(from) ? [] : [[to, Number(from)] as const])),
   ...Object.entries(BRANCHES).flatMap(([from, forms]) => forms.map((to) => [to, Number(from)] as const)),
+  // Raichu d'Alola vient de Pikachu, comme Raichu.
+  ...Object.entries(REGIONAL_EVOLUTIONS).flatMap(([to, byBiome]) => Object.values(byBiome).map((form) => [form, PREV_OF(Number(to))] as const)),
 ]);
 
 /** Forme précédente de `id`, ou null pour une forme de base (ou absente de la table). */

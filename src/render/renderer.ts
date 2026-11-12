@@ -274,6 +274,41 @@ export class Renderer {
    * vaguelettes qui s'en éloignent ; derrière lui, quand il avance, un sillage. (cx, cy) : le
    * milieu de la ligne d'eau, en pixels d'écran.
    */
+  /**
+   * Aura d'un Pokémon méga-évolué : un halo violet et rose au sol, et des
+   * flammèches d'énergie qui montent autour du corps (`body` : sa hauteur
+   * environ, en pixels du tampon).
+   */
+  private drawMegaAura(b: CanvasRenderingContext2D, x: number, footY: number, body: number, k: number, time: number): void {
+    const h = Math.max(body, 14 * k);
+    b.save();
+    b.globalCompositeOperation = 'lighter';
+    const pulse = 0.75 + 0.25 * Math.sin(time * 5);
+    const g = b.createRadialGradient(x, footY - h * 0.45, 0, x, footY - h * 0.45, h * 0.9);
+    g.addColorStop(0, `rgba(255,170,240,${0.5 * pulse})`);
+    g.addColorStop(0.6, `rgba(150,90,255,${0.3 * pulse})`);
+    g.addColorStop(1, 'rgba(120,80,255,0)');
+    b.fillStyle = g;
+    b.fillRect(x - h, footY - h * 1.4, h * 2, h * 1.6);
+    const cols = ['255,122,217', '140,110,255', '110,220,255', '255,220,120'];
+    for (let i = 0; i < 16; i++) {
+      const u = (time * 0.9 + i / 16) % 1;
+      const a = i * 2.39 + time * 1.5;
+      const px = x + Math.cos(a) * h * 0.45 * (1 - u * 0.3);
+      const py = footY - u * h * 1.2 + Math.sin(a) * h * 0.08;
+      b.fillStyle = `rgba(${cols[i % 4]},${0.8 * (1 - u)})`;
+      b.beginPath();
+      b.arc(px, py, Math.max(1, k * (2.4 - 1.2 * u)), 0, Math.PI * 2);
+      b.fill();
+    }
+    b.strokeStyle = `rgba(255,150,235,${0.85 * pulse})`;
+    b.lineWidth = Math.max(1, 1.5 * k);
+    b.beginPath();
+    b.ellipse(x, footY, h * 0.5, h * 0.17, 0, 0, Math.PI * 2);
+    b.stroke();
+    b.restore();
+  }
+
   private drawWake(a: Actor, cx: number, cy: number, s: number, time: number, lava = false): void {
     const b = this.bctx;
     const k = this.k;
@@ -1052,6 +1087,17 @@ export class Renderer {
           dy = footY - (footY - dy) * gy;
           sqx *= gx;
           sqy *= gy;
+        }
+        // Méga-évolué : plus grand (s'il garde la planche de sa base), dans une aura
+        // aux couleurs du symbole Méga, qui tourne en pulsant sous et autour de lui.
+        if (a.mega) {
+          const footY = dy + (footRow + 1) * s;
+          const midX = dx + (fw / 2) * s;
+          dx = midX - (midX - dx) * a.mega;
+          dy = footY - (footY - dy) * a.mega;
+          sqx *= a.mega;
+          sqy *= a.mega;
+          this.drawMegaAura(b, midX, footY, (sheet.fh - sheet.footRow) * s, k, time);
         }
         // Enfoncement : la case descend et sa partie sous la ligne des pieds disparaît.
         const sink = a.deathT >= 0 && !a.downed ? Math.min(1, a.deathT / 0.4) * 0.45 * TILE * k : 0;

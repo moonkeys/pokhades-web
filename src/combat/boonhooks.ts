@@ -211,7 +211,8 @@ export class BoonHooks {
       }
     }
     const tmon = target.pokemon;
-    if (tmon && b.has('glace_execute') && tmon.hp / tmon.maxHp < b.v('glace_execute')) this.inflict(target, 'freeze');
+    // Ni Zéro Absolu ni Exécution sur un Pokémon de champion : ils bloquaient ou achevaient un boss à mi-vie.
+    if (tmon && target.role === 'wild' && b.has('glace_execute') && tmon.hp / tmon.maxHp < b.v('glace_execute')) this.inflict(target, 'freeze');
     if (ranged && b.has('glace_hail')) this.zone(target.x, target.y, 3.4, 5, 'slow', Math.min(0.85, b.v('glace_hail')), typeColor('ice'));
     if (b.has('sol_continent') && b.hits % 5 === 0) this.zone(target.x, target.y, 3, 4, 'damage', Math.max(1, Math.round(damage * b.v('sol_continent'))), typeColor('ground'));
     const heal = damage * (b.v('psy_transfer') + b.v('sacre_lifesteal'));
@@ -236,7 +237,7 @@ export class BoonHooks {
       this.host.fx.attackAnim('ice', target.x, target.y);
     }
     const tmon = target.pokemon;
-    if (tmon && !tmon.fainted && b.has('tenb_execute') && tmon.hp / tmon.maxHp < b.v('tenb_execute')) {
+    if (tmon && !tmon.fainted && target.role === 'wild' && b.has('tenb_execute') && tmon.hp / tmon.maxHp < b.v('tenb_execute')) {
       this.host.boonDamage(target, tmon.hp, typeColor('dark'), player.x, player.y);
     }
     if (b.has('sol_finisher')) {
@@ -313,11 +314,11 @@ export class BoonHooks {
     return Math.round(d);
   }
 
-  /** Prémonition : un coup évité grâce au dash est renvoyé à moitié au plus proche. */
+  /** Prémonition : un coup évité grâce au dash est renvoyé en entier au plus proche (la moitié avant le rééquilibrage). */
   onDodgedByDash(player: Actor, damage: number, enemies: readonly Actor[]): void {
     if (!this.boons?.has('psy_premonition')) return;
     const e = this.nearest(enemies, player.x, player.y, 6);
-    if (e) this.host.boonDamage(e, Math.max(1, Math.round(damage * 0.5)), typeColor('psychic'), player.x, player.y);
+    if (e) this.host.boonDamage(e, Math.max(1, Math.round(damage)), typeColor('psychic'), player.x, player.y);
   }
 
   /**
@@ -377,7 +378,7 @@ export class BoonHooks {
         mon.hp = Math.min(mon.maxHp, mon.hp + n);
       }
     }
-    if (b.has('sol_steady') && (mon.status === 'freeze' || mon.status === 'sleep')) mon.status = null;
+    if (b.has('sol_steady') && (mon.status === 'freeze' || mon.status === 'sleep' || mon.status === 'paralysis')) mon.status = null;
     if (b.has('elec_storm')) {
       b.stormT += dt;
       // Période : 8 s ÷ l'échelle de rareté (une meilleure rareté frappe plus souvent).
@@ -428,6 +429,8 @@ export class BoonHooks {
     if (b.has('temps_journey')) {
       this.host.resetCooldowns();
       player.dashCharges = Math.min(player.dashMax, player.dashCharges + 1);
+      // Rééquilibrage : il soigne aussi (cadences et dash pleins ne servaient presque à rien entre deux salles).
+      if (mon && !mon.fainted) mon.hp = Math.min(mon.maxHp, mon.hp + Math.round(mon.maxHp * b.v('temps_journey')));
     }
     if (newAct && b.has('astre_wish_granted')) {
       if (b.wishGranted(rng)) this.host.notify(`★ Vœu Exaucé : un don monte d'une rareté.`);

@@ -105,7 +105,7 @@ export const LORE: LoreChapter[] = [
       // boons.ts:163-174
       { title: 'Dons de stats et d’effets', text: 'Certains montent une stat (+20 % de PV, d’Attaque, de Vitesse…, des critiques, de la portée, une cadence plus vive). D’autres changent ta façon de te battre : coups qui rebondissent, dash qui laisse une traînée, armure de givre, racines quand on reste immobile, retour trois secondes en arrière…' },
       // boons.ts:177-179, 256-285
-      { title: 'Raretés', text: 'Commun, Rare (×1,5), Épique (×2,2), Prismatique (×3) : le même don, en plus fort. Les raretés montent au fil des salles, d’un cran si tu as fini la salle sans prendre un coup, et reprendre un don qu’on a déjà le fait monter d’un cran.' },
+      { title: 'Raretés', text: 'Commun, Rare (×1,4), Épique (×1,85), Prismatique (×2,4) : le même don, en plus fort. Les raretés montent au fil des salles, d’un cran si tu as fini la salle sans prendre un coup, et reprendre un don qu’on a déjà le fait monter d’un cran.' },
       { title: 'Dons duo', text: 'Garde un don de deux légendaires différents : leurs dons croisés, les duos, peuvent apparaître en première carte. Les plus puissants du jeu.' },
     ],
   },
