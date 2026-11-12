@@ -285,24 +285,24 @@ export class Renderer {
     b.globalCompositeOperation = 'lighter';
     const pulse = 0.75 + 0.25 * Math.sin(time * 5);
     const g = b.createRadialGradient(x, footY - h * 0.45, 0, x, footY - h * 0.45, h * 0.9);
-    g.addColorStop(0, `rgba(255,170,240,${0.28 * pulse})`);
-    g.addColorStop(0.6, `rgba(150,90,255,${0.16 * pulse})`);
+    g.addColorStop(0, `rgba(255,170,240,${0.5 * pulse})`);
+    g.addColorStop(0.6, `rgba(150,90,255,${0.3 * pulse})`);
     g.addColorStop(1, 'rgba(120,80,255,0)');
     b.fillStyle = g;
     b.fillRect(x - h, footY - h * 1.4, h * 2, h * 1.6);
     const cols = ['255,122,217', '140,110,255', '110,220,255', '255,220,120'];
-    for (let i = 0; i < 10; i++) {
-      const u = (time * 0.9 + i / 10) % 1;
+    for (let i = 0; i < 16; i++) {
+      const u = (time * 0.9 + i / 16) % 1;
       const a = i * 2.39 + time * 1.5;
       const px = x + Math.cos(a) * h * 0.45 * (1 - u * 0.3);
       const py = footY - u * h * 1.2 + Math.sin(a) * h * 0.08;
       b.fillStyle = `rgba(${cols[i % 4]},${0.8 * (1 - u)})`;
       b.beginPath();
-      b.arc(px, py, Math.max(1, k * (1.6 - u)), 0, Math.PI * 2);
+      b.arc(px, py, Math.max(1, k * (2.4 - 1.2 * u)), 0, Math.PI * 2);
       b.fill();
     }
-    b.strokeStyle = `rgba(255,150,235,${0.55 * pulse})`;
-    b.lineWidth = Math.max(1, k);
+    b.strokeStyle = `rgba(255,150,235,${0.85 * pulse})`;
+    b.lineWidth = Math.max(1, 1.5 * k);
     b.beginPath();
     b.ellipse(x, footY, h * 0.5, h * 0.17, 0, 0, Math.PI * 2);
     b.stroke();

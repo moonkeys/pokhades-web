@@ -57,6 +57,7 @@ import { Hazards } from './run/hazards';
 import { CaveDirector } from './run/cave';
 import { ChestSite } from './run/chests';
 import { Merchant } from './run/merchant';
+import { SPRING_HEAL, Spring } from './run/spring';
 import { evolveMove, rollSkillOffer, upgradeMove, type SkillOffer } from './run/rewards';
 import { COMBATS_PER_ACT, LEAGUE_MASTER, ROOMS_PER_ACT, Run } from './run/run';
 import { Hud } from './ui/hud';
@@ -328,6 +329,27 @@ async function boot(): Promise<void> {
     grantBoon: () => {
       run.donor = run.boons.pickDonor(run.rng) ?? undefined;
       director.grant('boon');
+    },
+  });
+  // Source (salle spéciale de soin, run/spring.ts) : Leveinard veille sur un bassin qui soigne l'équipe.
+  const spring = new Spring(document.body, fx, {
+    message: (text) => runHud.message(text),
+    heal: () => {
+      let up = 0;
+      for (const m of team) {
+        const mon = m.pokemon;
+        if (!mon) continue;
+        // Un membre K.O. se relève comme sous un Rappel, puis est soigné avec les autres.
+        if (mon.fainted || m.deathT >= 0) {
+          m.getUp();
+          mon.hp = 1;
+          up++;
+        }
+        mon.status = null;
+        mon.hp = Math.min(mon.maxHp, mon.hp + Math.round(mon.maxHp * SPRING_HEAL));
+        fx.attackAnim('fx_heal', m.x, m.y, undefined, true);
+      }
+      return up;
     },
   });
   /** Membres dont la forme suivante se charge : un second niveau gagné entre-temps ne relance rien. */
@@ -858,6 +880,8 @@ async function boot(): Promise<void> {
     merchant.clear();
     // Son propre tirage, tiré de la graine de la salle : parier ou non ne change pas les portes suivantes.
     if (run.special === 'merchant') merchant.start(world, run, new Rng(run.mapSeed ^ 0x4d656f77));
+    spring.clear();
+    if (run.special === 'spring') spring.start(world);
     combat.hooks.onRoomEnter(player, run, !first && run.room % 7 === 0, run.rng);
     // Test de la grotte (panneau) : chaque salle de combat part de sa grotte ; la salle attend dehors, figée.
     if (opts.biome === 'grotte' && !run.isShop() && !run.isBoss()) enterCave();
@@ -1022,6 +1046,7 @@ async function boot(): Promise<void> {
     wild = [];
     shop.clear();
     merchant.clear();
+    spring.clear();
     director.clear();
     cave.clear();
     berries.clear();
@@ -1521,7 +1546,7 @@ async function boot(): Promise<void> {
       wild = wild.filter((e) => e.deathT >= 0);
     },
     specialDone: (special, success) => {
-      if (special !== 'merchant') questProgress({ kind: 'special', special, success });
+      if (special === 'challenge' || special === 'trap') questProgress({ kind: 'special', special, success });
     },
     // Ligne de front : la vague qui arrive fait trembler le sol (coupé avec les secousses, comme les autres).
     rumble: () => combat.addShake(0.25),
@@ -1778,7 +1803,7 @@ async function boot(): Promise<void> {
     // Les Pokémon de la boutique ne se laissent pas pousser : l'équipe les contourne.
     for (const a of team) {
       if (a.deathT >= 0) continue;
-      for (const n of [...shop.npcs, ...merchant.npcs, ...camp.npcs, ...cave.npcs]) {
+      for (const n of [...shop.npcs, ...merchant.npcs, ...spring.npcs, ...camp.npcs, ...cave.npcs]) {
         const dx = a.x - n.x;
         const dy = a.y - n.y;
         const d = Math.hypot(dx, dy);
@@ -2040,7 +2065,7 @@ async function boot(): Promise<void> {
     // Aller à une salle : 1ʳᵉ salle de combat, boutique ou boss de l'acte (PV et dons conservés).
     // Depuis le Repaire, une run part d'abord.
     if (mode === 'camp') newRun();
-    const special = kind === 'challenge' || kind === 'trap' || kind === 'merchant' ? kind : null;
+    const special = kind === 'challenge' || kind === 'trap' || kind === 'merchant' || kind === 'spring' ? kind : null;
     run.room = act * ROOMS_PER_ACT + (special ? 1 : kind === 'combat' ? 0 : kind === 'shop' ? COMBATS_PER_ACT : ROOMS_PER_ACT - 1);
     run.special = special;
     endT = -1;
@@ -2092,6 +2117,7 @@ async function boot(): Promise<void> {
     ...[...(trainer ? [trainer] : []), ...(mode === 'run' && outside() ? director.trainers : [])].map((t) => ({ y: t.y * TILE, draw: t.draw.bind(t) })),
     ...shop.extras(time),
     ...merchant.extras(time),
+    ...spring.extras(time),
     ...cave.extras(),
     ...(outside() ? [...berries.extras(), ...chests.extras(), ...hazards.extras(time), ...director.captureExtras()] : []),
   ];
@@ -2357,7 +2383,7 @@ async function boot(): Promise<void> {
       }),
       ...wild.map((a) => snapActor(a, netIds.of(a), false)),
       // Les figurants : le vendeur et les mercenaires de la boutique, Miaouss, les prisonniers de grotte.
-      ...[...shop.npcs, ...merchant.npcs, ...cave.npcs].map((a) => snapActor(a, netIds.of(a), false, true)),
+      ...[...shop.npcs, ...merchant.npcs, ...spring.npcs, ...cave.npcs].map((a) => snapActor(a, netIds.of(a), false, true)),
     ];
     net.broadcast({
       t: 'snap',
@@ -2483,6 +2509,7 @@ async function boot(): Promise<void> {
     statSheet.close?.();
     shop.clear();
     merchant.clear();
+    spring.clear();
     director.clear();
     cave.clear();
     berries.clear();
@@ -2831,6 +2858,8 @@ async function boot(): Promise<void> {
     shop.update(dt, sample, player, world);
     if (outside()) merchant.update(dt, sample, player);
     else merchant.hide();
+    if (outside()) spring.update(dt, sample, player, Math.random);
+    else spring.hide();
     camp.update(dt, dialogue.open ? { ...sample, interact: false } : sample, player, world);
     if (trainer?.gone) trainer = null;
     // K.O. : retirés après leur fondu.
@@ -2922,7 +2951,7 @@ async function boot(): Promise<void> {
     const extras = [...runExtras(), ...camp.extras(time)];
     // Au Repaire, en ligne : les autres joueurs qui s'y promènent.
     const others = mode !== 'camp' ? [] : net.role === 'host' ? visitors : net.role === 'client' && hostCamp ? field.list() : [];
-    renderer.draw(world, player, [...team, ...others, ...wild, ...shop.npcs, ...merchant.npcs, ...camp.npcs, ...cave.npcs], particles, footprints, fieldFx, combat, director, extras, opts, alpha, time, { weather: weatherNow(), particles: skyParticles });
+    renderer.draw(world, player, [...team, ...others, ...wild, ...shop.npcs, ...merchant.npcs, ...spring.npcs, ...camp.npcs, ...cave.npcs], particles, footprints, fieldFx, combat, director, extras, opts, alpha, time, { weather: weatherNow(), particles: skyParticles });
     dialogue.update(frameDt);
     document.body.classList.toggle('talking', dialogue.open);
     document.body.classList.toggle('modal', paused());
@@ -2934,6 +2963,7 @@ async function boot(): Promise<void> {
     director.placeLabels(proj);
     shop.placeLabels(proj);
     merchant.placeLabels(proj);
+    spring.placeLabels(proj);
     camp.placeLabels(proj);
     hud.setMega(megaReady() ? 'ready' : megaFrom.has(player) ? 'on' : null);
     hud.update(frameDt, player, combat, wild, proj, time, team);
@@ -2994,10 +3024,10 @@ async function boot(): Promise<void> {
         startDeparture,
         /** Les écrans, pour les ouvrir à la main (vérifier la DA sans jouer une salle entière). */
         ui: { hud, runHud, rewardScreen, evolutionScreen, dialogue, bossPreview, speaker },
-        /** Saute à une salle de la run (0 à 27), PV et dons conservés. */
-        goto: (room: number) => {
+        /** Saute à une salle de la run (0 à 27), PV et dons conservés ; `special` : en faire une salle spéciale. */
+        goto: (room: number, special: Run['special'] = null) => {
           run.room = room;
-          run.special = null;
+          run.special = special;
           loadRoom(false);
         },
         /** Méga-évolution du Pokémon joué (touche F), et si elle est possible. */

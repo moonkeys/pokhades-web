@@ -298,7 +298,10 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
   (un tiers des PV de l'équipe, sans K.O., contre un don de légendaire).
 - Panneau (H) → « Salle spéciale » : Défi, Piège, Marchand (2ᵉ salle de
   l'acte choisi).
-- Reste : d'autres salles (soin, autel à dons maudits…), un Marchand qui
+- **Source** ✚ (`run/spring.ts`, ajout) : sans ennemis, un bassin veillé par
+  Leveinard ; [E] une fois : chaque membre regagne 60 % de ses PV et perd son
+  statut, un K.O. se relève. Proposée par les portes comme Défi et Piège.
+- Reste : d'autres salles (autel à dons maudits…), un Marchand qui
   vend aussi des objets.
 
 ### 1.10 Son (fait)

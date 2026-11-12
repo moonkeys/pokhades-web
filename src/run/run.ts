@@ -79,18 +79,20 @@ const REWARD_WEIGHTS: [Reward, number][] = [
  *   une embuscade plus forte, et elle ne se prend qu'une fois la salle libérée ;
  * - Marchand : Miaouss propose un pari sur les ₽ et un don contre des PV.
  */
-export type SpecialId = 'challenge' | 'trap' | 'merchant';
+export type SpecialId = 'challenge' | 'trap' | 'merchant' | 'spring';
 export const SPECIALS: Record<SpecialId, { name: string; glyph: string; color: string }> = {
   challenge: { name: 'Défi', glyph: '⏱', color: '#f2c14e' },
   trap: { name: 'Piège', glyph: '⚠', color: '#e8604c' },
   merchant: { name: 'Marchand ambulant', glyph: '¤', color: '#e0b25a' },
+  // Ajout (A-FAIRE 1.9) : une salle de soin, sans ennemis (run/spring.ts).
+  spring: { name: 'Source', glyph: '✚', color: '#6fd3e0' },
 };
 /**
  * Les salles spéciales que les portes proposent. Retour de test : « le
  * marchand, j'en veux pas du tout » — Miaouss (run/merchant.ts) n'est plus
  * tiré ; son code reste, pour le jour où il reviendrait sous une autre forme.
  */
-const OFFERED_SPECIALS: readonly SpecialId[] = ['challenge', 'trap'];
+const OFFERED_SPECIALS: readonly SpecialId[] = ['challenge', 'trap', 'spring'];
 /** Chance qu'une porte devienne une salle spéciale, et plafond par acte. */
 const SPECIAL_CHANCE = 0.35;
 const SPECIALS_PER_ACT = 2;
@@ -392,9 +394,9 @@ export class Run {
    * remplacent).
    */
   specialOffer(special: SpecialId, base: ExitOffer): ExitOffer {
-    const reward: Reward = special === 'challenge' ? 'boon' : special === 'merchant' ? 'loot' : base.reward;
+    const reward: Reward = special === 'challenge' ? 'boon' : special === 'merchant' || special === 'spring' ? 'loot' : base.reward;
     const donor = reward === 'boon' ? (base.donor ?? this.boons.pickDonor(this.rng) ?? undefined) : undefined;
-    const prize = special === 'merchant' ? '' : ` · ${donor ? donorLabel(donor) : REWARD_LABEL[reward]}`;
+    const prize = special === 'merchant' ? '' : special === 'spring' ? ' · soins' : ` · ${donor ? donorLabel(donor) : REWARD_LABEL[reward]}`;
     // Le Piège garde l'étiquette de la porte qu'il remplace : rien ne le trahit.
     if (special === 'trap') return { ...base, special };
     return { reward, donor, special, label: `${SPECIALS[special].name}${prize}` };

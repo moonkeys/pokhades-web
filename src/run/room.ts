@@ -211,6 +211,10 @@ export class RoomDirector {
   private toCave = false;
   /** Salle spéciale en cours, temps restant du Défi, Défi raté. */
   private special: SpecialId | null = null;
+  /** Salle sans ennemis, portes ouvertes d'emblée : le marchand, la Source. */
+  private get peaceful(): boolean {
+    return this.special === 'merchant' || this.special === 'spring';
+  }
   private clock = 0;
   private failed = false;
   /** Ligne de front : d'où vient la vague annoncée, la flèche qui la montre, temps restant. */
@@ -309,7 +313,7 @@ export class RoomDirector {
       this.level = plan.level + TRAP_LEVELS;
       for (let w = 0; w < TRAP_WAVES; w++) this.waves.push([]);
       for (let n = 0; n < count; n++) this.waves[n % TRAP_WAVES].push({ id: this.rng.pick(pool), level: this.level, role: 'wild' });
-    } else if (!run.isShop() && this.special !== 'merchant' && enemiesOn) {
+    } else if (!run.isShop() && !this.peaceful && enemiesOn) {
       // Répartition égale, le reste sur les premières vagues (CombatArena.gd:1636-1654).
       // Ligne de front : autant d'ennemis, en une vague de moins (deux au moins) —
       // des groupes plus fournis, qui chargent ensemble depuis l'autre bout.
@@ -356,7 +360,7 @@ export class RoomDirector {
     // Après une porte, la pause ne commence qu'une fois le fondu de retour terminé.
     this.t = (first ? 0 : FADE) + (run.isBoss() && this.total ? BOSS_DELAY : first ? FIRST_DELAY : NEXT_DELAY);
     if (run.isBoss() && this.total) this.host.bossIntro(this.doors[0]?.exit ?? null);
-    if (run.isShop() || this.special === 'merchant') {
+    if (run.isShop() || this.peaceful) {
       // Pas d'ennemis à la boutique ni chez le marchand : les portes sont ouvertes d'emblée.
       this.openDoors();
     } else if (this.special === 'trap' && this.total) {
@@ -471,7 +475,7 @@ export class RoomDirector {
           this.host.setTimer(null);
           this.host.roomCleared();
           this.host.toast(won ? 'Défi réussi !' : this.failed ? 'Défi raté…' : 'Salle libérée !', `+${gold} ₽`);
-          if (this.special && this.special !== 'merchant') this.host.specialDone(this.special, !this.failed);
+          if (this.special === 'challenge' || this.special === 'trap') this.host.specialDone(this.special, !this.failed);
           this.t = OPEN_DELAY;
           break;
         }
