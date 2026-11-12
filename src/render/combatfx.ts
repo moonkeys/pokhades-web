@@ -206,6 +206,17 @@ export class CombatFx {
     this.moves.play(styleOf(api, type, special), type, from, to, arrive, power, api);
   }
 
+  /**
+   * La même, entre deux points fixes : ce que l'hôte envoie aux invités en
+   * ligne (main.ts, file des effets), les fonctions de suivi ne passant pas
+   * le réseau. Les positions sont celles du lancer.
+   */
+  moveCastAt(api: string | undefined, type: string, special: boolean, fx0: number, fy0: number, tx: number, ty: number, arrive: number, power = 60): void {
+    const from = { x: fx0, y: fy0 };
+    const to = { x: tx, y: ty };
+    this.moves.play(styleOf(api, type, special), type, () => from, () => to, arrive, power, api);
+  }
+
   /** `text` remplace le montant (« ATT ↑ », « +12 »…). */
   number(kind: NumberKind, x: number, y: number, amount = 0, text?: string): void {
     const style = NUMBER_STYLE[kind];

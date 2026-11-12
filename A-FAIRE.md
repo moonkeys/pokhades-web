@@ -47,8 +47,8 @@ notifications refaites (étiquette d'encre, pastille colorée, « ×n » pour le
 doublons) ; exploits de Xatu réclamés au cliquetis des jetons (`claim`), plus
 la fanfare, et la fanfare du déblocage espacée de 8 s. En attente, dans
 l'ordre proposé au joueur (les animations par attaque et l'évolution des
-attaques au renforcement sont faites, voir README ; reste à les juger en jeu,
-et à les montrer à l'invité en ligne) :
+attaques au renforcement sont faites, voir README ; reste à les juger en jeu ;
+l'invité en ligne les reçoit, non testé à deux machines) :
 - sons des Poké Balls à revoir ;
 - dons rééquilibrés (12 novembre 2026, voir `RARITY_SCALE` de
   combat/boons.ts) : à juger en jeu ;

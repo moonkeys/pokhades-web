@@ -2396,6 +2396,18 @@ async function boot(): Promise<void> {
       orig(...args);
     };
   }
+  // Les effets d'attaque suivent leurs acteurs par des fonctions : on envoie les points du lancer.
+  {
+    const orig = fx.moveCast.bind(fx);
+    fx.moveCast = (api, type, special, from, to, arrive, power) => {
+      if (net.role === 'host' && net.inRun && mode === 'run') {
+        const f = from();
+        const t = to();
+        fxQueue.push(['moveCastAt', [api, type, special, +f.x.toFixed(2), +f.y.toFixed(2), +t.x.toFixed(2), +t.y.toFixed(2), arrive, power]]);
+      }
+      orig(api, type, special, from, to, arrive, power);
+    };
+  }
   for (const k of ['message', 'toast', 'announce'] as const) {
     const orig = runHud[k].bind(runHud) as (...args: unknown[]) => void;
     (runHud as unknown as Record<string, (...args: unknown[]) => void>)[k] = (...args: unknown[]) => {

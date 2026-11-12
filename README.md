@@ -557,7 +557,8 @@ tourbillon, sol qui se fend (Séisme), absorption qui revient au lanceur ; au
 contact, mâchoires qui se referment (Morsure, Crocs Feu), griffes, lame,
 croix, poing, pied, estoc, fouet (Fouet Lianes), ruée et coup de masse. Les
 sauvages jouent les mêmes ; un tir de sauvage arrive sur sa marque au moment
-où elle frappe. Pas encore chez l'invité en ligne (il ne reçoit que les marques).
+où elle frappe. En ligne, l'hôte envoie aux invités chaque effet avec les
+points du lancer (`moveCastAt`).
 Les sauvages touchés et les Pokémon de champion portent une barre de vie
 au-dessus de la tête.
 
