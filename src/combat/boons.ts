@@ -253,6 +253,8 @@ export class Boons {
   sinceHurt = 0;
   stormT = 0;
   stillT = 0;
+  /** Crans de rareté ajoutés à la prochaine offre (pacte de l'Autel maudit), remis à 0 après elle. */
+  bonus = 0;
 
   has(id: string): boolean {
     return this.owned.has(id);
@@ -293,7 +295,7 @@ export class Boons {
     let r = roll < 0.1 + 0.02 * room ? 2 : roll < 0.35 + 0.03 * room ? 1 : 0;
     if (this.roomHurts === 0) r++;
     if (this.has('tenb_debt')) r++;
-    return Math.min(3, r);
+    return Math.min(3, r + this.bonus);
   }
 
   /**

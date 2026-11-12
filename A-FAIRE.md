@@ -304,8 +304,10 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
 - **Source** ✚ (`run/spring.ts`, ajout) : sans ennemis, un bassin veillé par
   Leveinard ; [E] une fois : chaque membre regagne 60 % de ses PV et perd son
   statut, un K.O. se relève. Proposée par les portes comme Défi et Piège.
-- Reste : d'autres salles (autel à dons maudits…), un Marchand qui
-  vend aussi des objets.
+- **Autel maudit** ☠ (`run/altar.ts`, ajout) : un don d'un cran plus rare
+  contre une malédiction jusqu'à la fin de l'acte (+2 niveaux, ₽ divisés
+  par deux, ou pas de relève en fin de salle). Panneau → « Autel ».
+- Reste : d'autres salles, un Marchand qui vend aussi des objets.
 
 ### 1.10 Son (fait)
 - `src/audio/sounds.ts` (catalogue, repris de `Sfx.gd`) et `audio.ts`

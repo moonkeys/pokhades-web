@@ -59,8 +59,9 @@ import { CaveDirector } from './run/cave';
 import { ChestSite } from './run/chests';
 import { Merchant } from './run/merchant';
 import { SPRING_HEAL, Spring } from './run/spring';
+import { Altar } from './run/altar';
 import { evolveMove, rollSkillOffer, upgradeMove, type SkillOffer } from './run/rewards';
-import { COMBATS_PER_ACT, LEAGUE_MASTER, ROOMS_PER_ACT, Run } from './run/run';
+import { COMBATS_PER_ACT, CURSES, LEAGUE_MASTER, ROOMS_PER_ACT, Run } from './run/run';
 import { Hud } from './ui/hud';
 import { loadOptions, saveOptions, type Options } from './ui/options';
 import { Panel } from './ui/panel';
@@ -339,6 +340,17 @@ async function boot(): Promise<void> {
     team: () => team,
     grantBoon: () => {
       run.donor = run.boons.pickDonor(run.rng) ?? undefined;
+      director.grant('boon');
+    },
+  });
+  // Autel maudit (salle spéciale, run/altar.ts) : un pacte, un don d'un cran plus rare contre une malédiction.
+  const altar = new Altar(document.body, fx, {
+    pact: (curse) => {
+      run.curse = curse;
+      run.curseAct = run.act;
+      runHud.notify({ title: `Pacte scellé : ${CURSES[curse].name}`, text: `${CURSES[curse].desc} Jusqu’à la fin de l’acte.`, icon: '☠', color: '#b48ce8' });
+      run.donor = run.boons.pickDonor(run.rng) ?? undefined;
+      run.boons.bonus = 1;
       director.grant('boon');
     },
   });
@@ -928,6 +940,9 @@ async function boot(): Promise<void> {
     if (run.special === 'merchant') merchant.start(world, run, new Rng(run.mapSeed ^ 0x4d656f77));
     spring.clear();
     if (run.special === 'spring') spring.start(world);
+    altar.clear();
+    // Tirage à part, de la graine de la salle, comme le marchand.
+    if (run.special === 'altar') altar.start(world, () => new Rng(run.mapSeed ^ 0x416c7472).next());
     combat.hooks.onRoomEnter(player, run, !first && run.room % 7 === 0, run.rng);
     // Test de la grotte (panneau) : chaque salle de combat part de sa grotte ; la salle attend dehors, figée.
     if (opts.biome === 'grotte' && !run.isShop() && !run.isBoss()) enterCave();
@@ -1121,6 +1136,7 @@ async function boot(): Promise<void> {
     shop.clear();
     merchant.clear();
     spring.clear();
+    altar.clear();
     director.clear();
     cave.clear();
     berries.clear();
@@ -1510,6 +1526,8 @@ async function boot(): Promise<void> {
       // repart). Les mercenaires, eux, ne reviennent jamais.
       for (const m of team) {
         if (m.deathT < 0 || !m.pokemon || m.runAlly) continue;
+        // Malédiction « Sans repos » (Autel maudit) : ils restent à terre jusqu'à la fin de l'acte.
+        if (run.cursed('rest')) continue;
         m.getUp();
         m.pokemon.status = null;
         m.pokemon.hp = 1;
@@ -1568,6 +1586,8 @@ async function boot(): Promise<void> {
     },
     prepareReward: (reward) => {
       if (reward === 'boon') boonOffer = run.boons.offer(run.rng, run.room, run.act, run.donor);
+      // Le cran du pacte de l'Autel ne vaut que pour cette offre-ci.
+      run.boons.bonus = 0;
       if (reward === 'skill' && player.pokemon) void rollSkillOffer(player.pokemon, run.rng).then((o) => (skillOffer = o));
     },
     openReward: (reward, consume) => {
@@ -1879,7 +1899,7 @@ async function boot(): Promise<void> {
     // Les Pokémon de la boutique ne se laissent pas pousser : l'équipe les contourne.
     for (const a of team) {
       if (a.deathT >= 0) continue;
-      for (const n of [...shop.npcs, ...merchant.npcs, ...spring.npcs, ...camp.npcs, ...cave.npcs]) {
+      for (const n of [...shop.npcs, ...merchant.npcs, ...spring.npcs, ...altar.npcs, ...camp.npcs, ...cave.npcs]) {
         const dx = a.x - n.x;
         const dy = a.y - n.y;
         const d = Math.hypot(dx, dy);
@@ -2141,7 +2161,7 @@ async function boot(): Promise<void> {
     // Aller à une salle : 1ʳᵉ salle de combat, boutique ou boss de l'acte (PV et dons conservés).
     // Depuis le Repaire, une run part d'abord.
     if (mode === 'camp') newRun();
-    const special = kind === 'challenge' || kind === 'trap' || kind === 'merchant' || kind === 'spring' ? kind : null;
+    const special = kind === 'challenge' || kind === 'trap' || kind === 'merchant' || kind === 'spring' || kind === 'altar' ? kind : null;
     run.room = act * ROOMS_PER_ACT + (special ? 1 : kind === 'combat' ? 0 : kind === 'shop' ? COMBATS_PER_ACT : ROOMS_PER_ACT - 1);
     run.special = special;
     endT = -1;
@@ -2194,6 +2214,7 @@ async function boot(): Promise<void> {
     ...shop.extras(time),
     ...merchant.extras(time),
     ...spring.extras(time),
+    ...altar.extras(time),
     ...cave.extras(),
     ...(outside() ? [...berries.extras(), ...chests.extras(), ...hazards.extras(time), ...director.captureExtras()] : []),
   ];
@@ -2441,7 +2462,9 @@ async function boot(): Promise<void> {
         }
       : null;
   };
-  const placeName = () => (cave.active ? cave.title : run.isShop() ? 'Boutique' : `${run.placeName}${weatherNow() !== 'clear' ? ` · ${WEATHERS[weatherNow()].name}` : ''}`);
+  // La malédiction d'un pacte (Autel maudit) reste écrite sous le lieu jusqu'à la fin de l'acte.
+  const curseTag = () => (run.cursed() ? ` · ☠ ${CURSES[run.curse!].name}` : '');
+  const placeName = () => (cave.active ? cave.title : run.isShop() ? `Boutique${curseTag()}` : `${run.placeName}${weatherNow() !== 'clear' ? ` · ${WEATHERS[weatherNow()].name}` : ''}${curseTag()}`);
 
   /** Hôte : l'instantané du terrain, à tous les invités. */
   const sendSnap = () => {
@@ -2459,7 +2482,7 @@ async function boot(): Promise<void> {
       }),
       ...wild.map((a) => snapActor(a, netIds.of(a), false)),
       // Les figurants : le vendeur et les mercenaires de la boutique, Miaouss, les prisonniers de grotte.
-      ...[...shop.npcs, ...merchant.npcs, ...spring.npcs, ...cave.npcs].map((a) => snapActor(a, netIds.of(a), false, true)),
+      ...[...shop.npcs, ...merchant.npcs, ...spring.npcs, ...altar.npcs, ...cave.npcs].map((a) => snapActor(a, netIds.of(a), false, true)),
     ];
     net.broadcast({
       t: 'snap',
@@ -2586,6 +2609,7 @@ async function boot(): Promise<void> {
     shop.clear();
     merchant.clear();
     spring.clear();
+    altar.clear();
     director.clear();
     cave.clear();
     berries.clear();
@@ -2936,6 +2960,8 @@ async function boot(): Promise<void> {
     else merchant.hide();
     if (outside()) spring.update(dt, sample, player, Math.random);
     else spring.hide();
+    if (outside()) altar.update(dt, sample, player, Math.random);
+    else altar.hide();
     camp.update(dt, dialogue.open ? { ...sample, interact: false } : sample, player, world);
     if (trainer?.gone) trainer = null;
     // K.O. : retirés après leur fondu.
@@ -3030,7 +3056,7 @@ async function boot(): Promise<void> {
     const extras = [...runExtras(), ...camp.extras(time)];
     // Au Repaire, en ligne : les autres joueurs qui s'y promènent.
     const others = mode !== 'camp' ? [] : net.role === 'host' ? visitors : net.role === 'client' && hostCamp ? field.list() : [];
-    renderer.draw(world, player, [...team, ...others, ...wild, ...shop.npcs, ...merchant.npcs, ...spring.npcs, ...camp.npcs, ...cave.npcs], particles, footprints, fieldFx, combat, director, extras, opts, alpha, time, { weather: weatherNow(), particles: skyParticles });
+    renderer.draw(world, player, [...team, ...others, ...wild, ...shop.npcs, ...merchant.npcs, ...spring.npcs, ...altar.npcs, ...camp.npcs, ...cave.npcs], particles, footprints, fieldFx, combat, director, extras, opts, alpha, time, { weather: weatherNow(), particles: skyParticles });
     dialogue.update(frameDt);
     document.body.classList.toggle('talking', dialogue.open);
     document.body.classList.toggle('modal', paused());
@@ -3043,6 +3069,7 @@ async function boot(): Promise<void> {
     shop.placeLabels(proj);
     merchant.placeLabels(proj);
     spring.placeLabels(proj);
+    altar.placeLabels(proj);
     camp.placeLabels(proj);
     hud.setMega(megaReady() ? 'ready' : megaFrom.has(player) ? 'on' : null);
     hud.update(frameDt, player, combat, wild, proj, time, team);
@@ -3085,6 +3112,7 @@ async function boot(): Promise<void> {
         },
         director,
         shop,
+        altar,
         camp,
         /** Jeu en ligne : la scène reçue (invité), le décor de la salle (hôte), la session. */
         netDebug: () => ({ scene: hostScene, extras: runExtras().length, net, field }),

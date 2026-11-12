@@ -79,20 +79,36 @@ const REWARD_WEIGHTS: [Reward, number][] = [
  *   une embuscade plus forte, et elle ne se prend qu'une fois la salle libérée ;
  * - Marchand : Miaouss propose un pari sur les ₽ et un don contre des PV.
  */
-export type SpecialId = 'challenge' | 'trap' | 'merchant' | 'spring';
+export type SpecialId = 'challenge' | 'trap' | 'merchant' | 'spring' | 'altar';
 export const SPECIALS: Record<SpecialId, { name: string; glyph: string; color: string }> = {
   challenge: { name: 'Défi', glyph: '⏱', color: '#f2c14e' },
   trap: { name: 'Piège', glyph: '⚠', color: '#e8604c' },
   merchant: { name: 'Marchand ambulant', glyph: '¤', color: '#e0b25a' },
   // Ajout (A-FAIRE 1.9) : une salle de soin, sans ennemis (run/spring.ts).
   spring: { name: 'Source', glyph: '✚', color: '#6fd3e0' },
+  // Ajout (A-FAIRE 1.9 : « autel à dons maudits ») : un pacte, un don plus rare contre une malédiction (run/altar.ts).
+  altar: { name: 'Autel maudit', glyph: '☠', color: '#b48ce8' },
 };
+
+/**
+ * Malédictions de l'Autel maudit : elles pèsent jusqu'à la fin de l'acte où
+ * le pacte est conclu (le champion compris), puis s'effacent.
+ */
+export type CurseId = 'levels' | 'purse' | 'rest';
+export const CURSES: Record<CurseId, { name: string; desc: string }> = {
+  levels: { name: 'Sauvages enragés', desc: 'Les sauvages et le champion ont 2 niveaux de plus.' },
+  purse: { name: 'Bourse percée', desc: 'Les salles libérées rapportent moitié moins de ₽.' },
+  rest: { name: 'Sans repos', desc: 'Les membres K.O. ne se relèvent plus en fin de salle.' },
+};
+export const CURSE_IDS = Object.keys(CURSES) as CurseId[];
+/** Niveaux ajoutés par « Sauvages enragés ». */
+const CURSE_LEVELS = 2;
 /**
  * Les salles spéciales que les portes proposent. Retour de test : « le
  * marchand, j'en veux pas du tout » — Miaouss (run/merchant.ts) n'est plus
  * tiré ; son code reste, pour le jour où il reviendrait sous une autre forme.
  */
-const OFFERED_SPECIALS: readonly SpecialId[] = ['challenge', 'trap', 'spring'];
+const OFFERED_SPECIALS: readonly SpecialId[] = ['challenge', 'trap', 'spring', 'altar'];
 /** Chance qu'une porte devienne une salle spéciale, et plafond par acte. */
 const SPECIAL_CHANCE = 0.35;
 const SPECIALS_PER_ACT = 2;
@@ -326,7 +342,16 @@ export class Run {
 
   /** CombatArena.room_reward : ₽ gagnés en libérant la salle. */
   get roomGold(): number {
-    return 35 + this.room * 6;
+    const gold = 35 + this.room * 6;
+    return this.cursed('purse') ? Math.round(gold / 2) : gold;
+  }
+
+  /** La malédiction d'un pacte à l'Autel, et l'acte qu'elle frappe (elle s'efface au suivant). */
+  curse: CurseId | null = null;
+  curseAct = -1;
+  /** Une malédiction pèse-t-elle sur l'acte en cours (celle-ci, ou n'importe laquelle) ? */
+  cursed(id?: CurseId): boolean {
+    return this.curse !== null && this.curseAct === this.act && (!id || this.curse === id);
   }
 
   /**
@@ -394,9 +419,9 @@ export class Run {
    * remplacent).
    */
   specialOffer(special: SpecialId, base: ExitOffer): ExitOffer {
-    const reward: Reward = special === 'challenge' ? 'boon' : special === 'merchant' || special === 'spring' ? 'loot' : base.reward;
+    const reward: Reward = special === 'challenge' ? 'boon' : special === 'merchant' || special === 'spring' || special === 'altar' ? 'loot' : base.reward;
     const donor = reward === 'boon' ? (base.donor ?? this.boons.pickDonor(this.rng) ?? undefined) : undefined;
-    const prize = special === 'merchant' ? '' : special === 'spring' ? ' · soins' : ` · ${donor ? donorLabel(donor) : REWARD_LABEL[reward]}`;
+    const prize = special === 'merchant' ? '' : special === 'spring' ? ' · soins' : special === 'altar' ? ' · pacte' : ` · ${donor ? donorLabel(donor) : REWARD_LABEL[reward]}`;
     // Le Piège garde l'étiquette de la porte qu'il remplace : rien ne le trahit.
     if (special === 'trap') return { ...base, special };
     return { reward, donor, special, label: `${SPECIALS[special].name}${prize}` };
@@ -463,7 +488,8 @@ export class Run {
    */
   private levelAt(room: number): number {
     const act = Math.min(this.acts - 1, Math.floor(room / ROOMS_PER_ACT));
-    return 10 + Math.floor(room * 1.2) + act * 3 + (act === this.victoryAct ? 6 : 0);
+    const curse = this.curse === 'levels' && this.curseAct === act ? CURSE_LEVELS : 0;
+    return 10 + Math.floor(room * 1.2) + act * 3 + (act === this.victoryAct ? 6 : 0) + curse;
   }
 
   /**

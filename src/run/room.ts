@@ -232,7 +232,7 @@ export class RoomDirector {
   private special: SpecialId | null = null;
   /** Salle sans ennemis, portes ouvertes d'emblée : le marchand, la Source. */
   private get peaceful(): boolean {
-    return this.special === 'merchant' || this.special === 'spring';
+    return this.special === 'merchant' || this.special === 'spring' || this.special === 'altar';
   }
   private clock = 0;
   private failed = false;

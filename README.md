@@ -160,7 +160,14 @@ sa récompense comme une autre ; la récompense attend au centre d'une salle
 vide, et en approchant, trois vagues serrées à +3 niveaux surgissent (₽ ×2).
 Le **Marchand ambulant** (`src/run/merchant.ts`, Miaouss, son Pari et son
 Échange) n'est plus tiré (retour de test : « le marchand, j'en veux pas ») ;
-son code reste.
+son code reste. **Source** ✚ (`run/spring.ts`) : un bassin qui soigne l'équipe.
+**Autel maudit** ☠ (`run/altar.ts`) : sans ennemis, Feuforêve veille sur une
+dalle aux flammes violettes ; [E], une fois, signe un pacte : un don d'un
+cran plus rare (`Boons.bonus`), contre une malédiction tirée à l'arrivée et
+lisible sur la fiche, qui pèse jusqu'à la fin de l'acte (`Run.curse`, écrite
+sous le lieu en haut à gauche) : **Sauvages enragés** (+2 niveaux, champion
+compris), **Bourse percée** (₽ des salles divisés par deux) ou **Sans repos**
+(les K.O. ne se relèvent plus en fin de salle). On peut passer son chemin.
 
 Météo (ajout, `src/world/weather.ts`) : chaque salle de combat tire son ciel
 selon le biome — souvent clair, parfois Pluie, Soleil ardent, Tempête de
