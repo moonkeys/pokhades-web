@@ -740,6 +740,16 @@ async function boot(): Promise<void> {
     return a;
   };
 
+  // Danse Pluie, Zénith, Tempête de Sable, Grêle : le temps de la salle change jusqu'à ce qu'elle
+  // soit libérée (l'éclaircie de fin de salle le remet au clair). Pas en grotte, à la boutique ni
+  // au Repaire, où le ciel ne compte pas.
+  combat.weatherMove = (w) => {
+    if (mode !== 'run' || cave.active || run.isShop() || roomWeather === w) return;
+    roomWeather = w;
+    setWeather(weatherNow());
+    runHud.notify({ title: WEATHERS[w].name, text: WEATHERS[w].hint, icon: WEATHERS[w].icon });
+  };
+
   /**
    * L'as d'un champion méga-évolue en entamant ses deux dernières barres
    * (ajout, comme les champions des jeux récents), s'il a une forme Méga :

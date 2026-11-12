@@ -143,6 +143,9 @@ export const TMS: readonly { api: string; price: number }[] = [
   { api: 'will-o-wisp', price: 130 },
   { api: 'sing', price: 130 },
   { api: 'toxic', price: 140 },
+  // Météo (ajout) : la salle passe sous la pluie ou le soleil, Eau ou Feu ×1,5.
+  { api: 'rain-dance', price: 150 },
+  { api: 'sunny-day', price: 150 },
   { api: 'recover', price: 180 },
   { api: 'swords-dance', price: 200 },
   { api: 'calm-mind', price: 200 },

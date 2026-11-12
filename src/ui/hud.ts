@@ -1,3 +1,4 @@
+import { WEATHERS } from '../world/weather';
 import type { Combat } from '../combat/combat';
 import { DONORS, ULT_MAX } from '../combat/boons';
 import { BUFF_LABEL, STATUS, type Pokemon, type Status } from '../combat/pokemon';
@@ -56,6 +57,8 @@ export function moveInfo(m: Move): string {
       return 'Abri';
     case 'cleanse':
       return 'Soigne le statut';
+    case 'weather':
+      return `Météo : ${WEATHERS[fx.weather].name}`;
   }
 }
 

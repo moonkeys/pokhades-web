@@ -168,6 +168,8 @@ export class Combat {
   levelUp: (member: Actor) => void = () => {};
   /** Un ennemi tombe, quel que soit l'auteur du coup : le décompte des victoires (déblocage, main.ts). */
   defeated: (e: Actor) => void = () => {};
+  /** Une capacité de météo a été lancée (main.ts change le temps de la salle). */
+  weatherMove: (weather: 'rain' | 'sun' | 'sand' | 'hail', by: Actor) => void = () => {};
   /** Un Pokémon de champion vient de perdre une barre de PV (main.ts : la Méga de l'as). */
   phase: (e: Actor) => void = () => {};
   /** Le Pokémon mené vient d'encaisser un coup (quête « Sans une égratignure », main.ts). */
@@ -785,6 +787,10 @@ export class Combat {
       case 'cleanse':
         mon.status = null;
         this.fx.attackAnim('fx_heal', player.x, player.y);
+        break;
+      case 'weather':
+        this.fx.attackAnim(move.type, player.x, player.y, move.api);
+        this.weatherMove(effect.weather, player);
         break;
     }
     const speedScale = Math.min(1.3, Math.max(0.6, 1 - (mon.speed - 60) / 300));

@@ -280,7 +280,9 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
   brouillard. Notification en entrant dans une salle dont le ciel change ;
   l'étiquette de zone dit « Biome · Pluie ».
 - Panneau (H) → « Météo » : la forcer partout.
-- Reste : des attaques qui la changent (Danse Pluie, Zénith…), des talents.
+- Danse Pluie, Zénith, Tempête de Sable et Grêle changent le temps de la
+  salle jusqu'à l'éclaircie (`weather` dans `EFFECTS`, `Combat.weatherMove`) ;
+  Danse Pluie et Zénith chez le tuteur (150). Reste : des talents.
 
 ### 1.9 Salles spéciales (fait)
 - Une porte sur plusieurs peut mener à une salle spéciale (`Run.offers`,
