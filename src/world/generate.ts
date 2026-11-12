@@ -167,7 +167,7 @@ export interface WorldMap {
    * Coupe ou Éclate-Roc), ou rien (îlot du Lac, coffre à découvert).
    * run/chests.ts l'ouvre et lève l'obstacle.
    */
-  chest?: { x: number; y: number; guard: 'cut' | 'rock-smash' | null } | null;
+  chest?: { x: number; y: number; guard: 'cut' | 'rock-smash' | 'strength' | null } | null;
   /** Ligne de front (layouts.ts) : les deux bouts du couloir, où surgissent les vagues. */
   front: { near: { x: number; y: number }; far: { x: number; y: number } } | null;
   /** Forme de la salle (layouts.ts) ; null en boutique et au Repaire. */
@@ -1471,7 +1471,8 @@ export function generate(
             reachable[i] = 0;
           }
         }
-        chest = { x, y, guard: biome.guard };
+        // Dans les biomes rocheux, un coffre sur trois est barré d'un gros rocher à pousser (CS Force).
+        chest = { x, y, guard: biome.guard === 'rock-smash' && new Rng(seed * 7 + x * 131 + y).chance(1 / 3) ? 'strength' : biome.guard };
       } else {
         // Repli : à découvert, sur une case dont les huit voisines restent libres.
         const spots: Pt[] = [];

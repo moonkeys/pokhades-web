@@ -173,7 +173,7 @@ for (const [, berry] of BIOMES_SRC.matchAll(/^\s*berry: '(\w+)',/gm)) {
   renamed.push([`${ESSENTIALS}/Items/${berry}.png`, `assets/essentials/items/${berry}.png`]);
 }
 // Coffres de run (src/run/chests.ts) : les obstacles levés par les CS, et les icônes des ressources qu'on y trouve.
-for (const f of ['Object tree 1.png', 'Object rock.png']) renamed.push([`${ESSENTIALS}/Characters/${f}`, `assets/essentials/objects/${f}`]);
+for (const f of ['Object tree 1.png', 'Object rock.png', 'Object boulder.png']) renamed.push([`${ESSENTIALS}/Characters/${f}`, `assets/essentials/objects/${f}`]);
 for (const r of Object.values(RESOURCES)) if (r.icon) renamed.push([`${ESSENTIALS}/Items/${r.icon}.png`, `assets/essentials/items/${r.icon}.png`]);
 // La fontaine du village (bassin d'Outside.png, jet animé de l'autotile Fountain1) et l'arène
 // d'intérieur du champion du Village (Gyms interior.png). Planches entières : src/assets/atlas.ts

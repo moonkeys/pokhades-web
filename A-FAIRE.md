@@ -189,7 +189,9 @@ chiffres au fil des tests (puissances `pow`, délais, portées).
   (`Save.resources`) paient, avec les Baies, les aménagements du bâtisseur
   (`BUILDINGS[].cost`) ; l'Étude reste en Baies seules, puisqu'elle vend les
   CS qui ouvrent les coffres.
-- Reste : Force (gros rocher à pousser, `ready: false`), d'autres sources de
+- **Force** (fait) : dans les biomes rocheux, un coffre gardé sur trois l'est
+  par un gros rocher (`Object boulder.png`) que la CS Force pousse de côté
+  (220 à l'Étude). Reste : d'autres sources de
   ressources (expéditions ?).
 - Jeu Godot : `scripts/world/Chest.gd`, `GameManager.CS_CATALOG`.
 

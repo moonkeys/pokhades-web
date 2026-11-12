@@ -339,14 +339,14 @@ export type CsId = 'surf' | 'cut' | 'strength' | 'rock-smash';
 /**
  * Capacités spéciales (GameManager.CS_CATALOG), à l'étude d'Alakazam. Surf :
  * sans elle, l'eau du Repaire est un mur, et l'île du lac reste hors
- * d'atteinte. Coupe et Éclate-Roc lèvent les obstacles qui gardent les
- * coffres de run (run/chests.ts). Force (pousser un rocher) viendra plus tard.
+ * d'atteinte. Coupe, Éclate-Roc et Force (pousser un gros rocher) lèvent les obstacles
+ * qui gardent les coffres de run (run/chests.ts).
  */
 export const CS_LIST: readonly { id: CsId; name: string; price: number; desc: string; ready: boolean; icon: string }[] = [
   { id: 'surf', name: 'Surf', price: 250, desc: 'Nager dans l’eau, au Repaire comme en run.', ready: true, icon: 'machine_WATER' },
   { id: 'cut', name: 'Coupe', price: 200, desc: 'Coupe les arbustes qui gardent des coffres.', ready: true, icon: 'machine_GRASS' },
   { id: 'rock-smash', name: 'Éclate-Roc', price: 180, desc: 'Brise les rochers qui gardent des coffres.', ready: true, icon: 'machine_FIGHTING' },
-  { id: 'strength', name: 'Force', price: 220, desc: 'Pousse les rochers qui bloquent des coffres.', ready: false, icon: 'machine_NORMAL' },
+  { id: 'strength', name: 'Force', price: 220, desc: 'Pousse les gros rochers qui barrent des coffres.', ready: true, icon: 'machine_NORMAL' },
 ];
 
 /**

@@ -35,6 +35,8 @@ import type { Run } from './run';
 const REACH = 1.4;
 /** CombatArena._CS_BREAK_FRAME_TIME */
 const FRAME_TIME = 0.12;
+/** Le gros rocher de Force roule de côté en ce temps-là. */
+const PUSH_TIME = 0.5;
 const CELL = 32;
 const SCALE = 0.5;
 
@@ -67,9 +69,11 @@ export interface ChestHost {
   loot(loot: Loot): void;
 }
 
-const OBSTACLE: Record<'cut' | 'rock-smash', { file: string; verb: string; what: string }> = {
+const OBSTACLE: Record<'cut' | 'rock-smash' | 'strength', { file: string; verb: string; what: string }> = {
   cut: { file: 'Object tree 1.png', verb: 'Couper l’arbuste', what: 'Un arbuste barre l’alcôve' },
   'rock-smash': { file: 'Object rock.png', verb: 'Briser le rocher', what: 'Un rocher fissuré barre l’alcôve' },
+  // Ajout (A-FAIRE 1.5) : le gros rocher de Force, qui roule de côté au lieu d'éclater.
+  strength: { file: 'Object boulder.png', verb: 'Pousser le rocher', what: 'Un gros rocher barre l’alcôve' },
 };
 
 export class ChestSite {
@@ -78,8 +82,10 @@ export class ChestSite {
   /** Ressource principale du coffre (garde du biome). */
   private main: 'wood' | 'stone' = 'wood';
   /** Obstacle : null s'il n'y en a pas (ou plus) ; `t` ≥ 0 pendant qu'il éclate. */
-  private obstacle: { kind: 'cut' | 'rock-smash'; t: number } | null = null;
+  private obstacle: { kind: 'cut' | 'rock-smash' | 'strength'; t: number } | null = null;
   private opened = false;
+  /** Le gros rocher de Force a été poussé (il reste dessiné, à côté). */
+  private pushed = false;
   private near: 'obstacle' | 'chest' | null = null;
   private readonly sheets = new Map<string, HTMLImageElement>();
   private readonly prompt: HTMLDivElement;
@@ -111,6 +117,7 @@ export class ChestSite {
   clear(): void {
     this.world = this.chest = this.obstacle = null;
     this.opened = false;
+    this.pushed = false;
     this.near = null;
     this.renderPrompt(null);
   }
@@ -129,9 +136,17 @@ export class ChestSite {
       const before = ob.t;
       ob.t += dt;
       // Le nuage part quand il éclate (CombatArena._play_cs_effect).
-      if (before < FRAME_TIME * 2 && ob.t >= FRAME_TIME * 2) this.fx.poof(c.x + 0.5, c.y + 1.6);
-      // Dernière image (les débris) tenue le temps du nuage, puis la case est libre.
-      if (ob.t >= FRAME_TIME * 4 + 0.25) this.obstacle = null;
+      if (ob.kind === 'strength') {
+        // Le gros rocher roule de côté (PUSH_TIME), puis reste là, poussé : il n'est plus un obstacle.
+        if (ob.t >= PUSH_TIME) {
+          this.pushed = true;
+          this.obstacle = null;
+        }
+      } else {
+        if (before < FRAME_TIME * 2 && ob.t >= FRAME_TIME * 2) this.fx.poof(c.x + 0.5, c.y + 1.6);
+        // Dernière image (les débris) tenue le temps du nuage, puis la case est libre.
+        if (ob.t >= FRAME_TIME * 4 + 0.25) this.obstacle = null;
+      }
     }
     // L'obstacle s'aborde depuis la case au sud de la sienne ; le coffre, depuis la sienne une fois levée.
     const front = { x: c.x + 0.5, y: c.y + (this.obstacle ? 2.5 : 1.5) };
@@ -144,11 +159,11 @@ export class ChestSite {
     else if (this.near === 'chest') this.open(run);
   }
 
-  private breakObstacle(ob: { kind: 'cut' | 'rock-smash'; t: number }): void {
+  private breakObstacle(ob: { kind: 'cut' | 'rock-smash' | 'strength'; t: number }): void {
     const { x, y } = this.chest!;
     const W = this.world!;
     ob.t = 0;
-    sfx(ob.kind === 'cut' ? 'cut' : 'rockSmash');
+    sfx(ob.kind === 'cut' ? 'cut' : ob.kind === 'strength' ? 'quake' : 'rockSmash');
     this.fx.impact(x + 0.5, y + 1.6, ob.kind === 'cut' ? '#7cc24a' : '#b8a888');
     // La case se libère tout de suite : on n'attend pas la fin de l'animation pour avancer.
     const i = (y + 1) * W.w + x;
@@ -171,6 +186,23 @@ export class ChestSite {
   extras(): { y: number; draw(b: CanvasRenderingContext2D, camX: number, camY: number, k: number): void }[] {
     const c = this.chest;
     const ob = this.obstacle;
+    // Le gros rocher de Force : il glisse d'une case et quart vers l'est, puis reste là.
+    const boulder = c && (ob?.kind === 'strength' || this.pushed) && this.sheets.get(OBSTACLE.strength.file);
+    if (c && boulder) {
+      const u = this.pushed ? 1 : ob!.t < 0 ? 0 : Math.min(1, ob!.t / PUSH_TIME);
+      const slide = (1 - (1 - u) ** 2) * 1.25;
+      return [
+        {
+          y: (c.y + 2) * TILE,
+          draw: (b, camX, camY, k) => {
+            const s = CELL * SCALE * k;
+            const cx = (c.x + 0.5 + slide) * TILE;
+            const foot = (c.y + 2) * TILE;
+            b.drawImage(boulder, 0, 0, CELL, CELL, Math.round((cx - camX) * k - s / 2), Math.round((foot - camY) * k - s + 1 * k), Math.round(s), Math.round(s));
+          },
+        },
+      ];
+    }
     const sheet = ob && this.sheets.get(OBSTACLE[ob.kind].file);
     if (!c || !ob || !sheet) return [];
     return [
