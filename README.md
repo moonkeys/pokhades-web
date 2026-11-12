@@ -476,8 +476,11 @@ paire qui bavarde face à face. Chacun a un
 caractère (commère, ronchon, militant, froussard, gourmand, rêveur, sage,
 farceur, src/data/chatter.ts) et ses répliques ; rarement, l'un d'eux fait
 un cadeau (quelques ₽, une Potion, une Baie Oran pour l'équipe), un par
-visite au plus. On les contourne, ils ne se laissent pas pousser. Pas de lots de
-Baies ni de rachat : ils supposent le camp.
+visite au plus. On les contourne, ils ne se laissent pas pousser. Sur l'étal,
+un **lot de Baies** par visite (7, 17 ou 40 Baies pour 100, 220 ou 480 ₽,
+`BERRY_PACKS`, les quantités du jeu divisées par trois) : convertir sa bourse
+en monnaie du Repaire, à un taux exprès ingrat. Pas encore de rachat (il
+faudrait un inventaire en run).
 
 **Solde des mercenaires** (`CombatArena._collect_merc_retainers`) : à
 l'entrée de chaque boutique suivante, un mercenaire encore debout réclame la

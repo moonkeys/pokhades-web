@@ -610,7 +610,8 @@ Si d'autres se voient en jeu, noter leur emplacement.
   un obstacle coupé restent dessinés intacts chez l'invité (décor « cuit »
   dans la carte) ; pas de reconnexion en cours de run ; à tester entre deux
   machines (NAT strict : il faudrait un serveur TURN).
-- **Revente** à la boutique de run (il faut d'abord un inventaire en run).
+- **Revente** à la boutique de run (il faut d'abord un inventaire en run). Les
+  lots de Baies de `ShopStock.gd` sont faits (un par étal).
 - **Surf en run** : au Repaire, on ne nage qu'avec Surf ; en run, on nage
   toujours (certaines cartes risqueraient de bloquer leurs sorties
   autrement). Le graphe de biomes (1.2) ne laisse entrer à l'Océan qu'avec

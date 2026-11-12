@@ -190,6 +190,14 @@ async function boot(): Promise<void> {
     {
       message: (text) => runHud.message(text),
       team: () => team,
+      earnBaies: (n) => {
+        // Achetées avec la bourse de l'hôte : pas partagées avec les invités (contrairement à `earn`).
+        save.baies += n;
+        runBaies += n;
+        stats.baies += n;
+        writeSave(save);
+        runHud.notify({ title: 'Baies', text: 'Pour le Repaire', item: 'SITRUSBERRY', qty: `+${n}`, color: 'var(--yel)' });
+      },
       recruit: (id, level, x, y, price) => {
         // Mercenaire : un allié de run, jamais ranimé (TeamMember.run_ally), qui part de là où il se tenait.
         const m = newMember(id, x, y, level);
