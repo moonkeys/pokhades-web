@@ -616,8 +616,9 @@ des réglages et au panneau (H) ; **M** coupe tout.
 Écart voulu : le jeu Godot (`Sfx.gd`) bruitait le combat avec des sons
 génériques Kenney. Ici tout vient d'Essentials, comme dans les jeux :
 - **attaques** : chaque animation d'attaque joue le son de sa capacité
-  (`SE/Anim` : Tranche, Force Poigne, Lance-Flammes, Séisme…), sinon un son
-  de son type ; les zones, tirs, dons et l'ultime compris ;
+  (`SE/Anim` : Tranche, Force Poigne, Lance-Flammes, Séisme…), sinon celui
+  de sa famille d'animation (`STYLE_SOUNDS` : un poing claque, une morsure
+  croque, un rayon a le son ample de son type), sinon un son de son type ; les zones, tirs, dons et l'ultime compris ;
 - **coups** : le « pac » des jeux selon l'efficacité (normal, super
   efficace ou critique, pas très efficace), plus grave quand l'équipe
   encaisse ;

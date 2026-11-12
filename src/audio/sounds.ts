@@ -19,6 +19,8 @@
 // échantillon ; `gap` : délai mini entre deux lectures (les dégâts d'Essentials
 // durent plus d'une seconde, une combo à 0,04 s les empilerait en bouillie).
 
+import { listedStyle, type MoveStyle } from '../data/movestyles.ts';
+
 /** Dossier audio d'Essentials dans le dépôt Godot. */
 export const ESSENTIALS_AUDIO = 'Pokemon Essentials v21.1 2023-07-30/Audio';
 
@@ -239,10 +241,59 @@ const NAMED_MOVE_FILES = [
 const NAMED_MOVES = new Map(NAMED_MOVE_FILES.map((f) => [f.toLowerCase().replace(/ /g, '-'), f]));
 NAMED_MOVES.set('weather-ball', 'Weatherball');
 
-/** Son d'attaque (nom de fichier de SE/Anim/, sans extension) : la capacité, sinon son type, sinon Normal. */
+/**
+ * Son d'une famille d'animation (data/movestyles.ts) : un coup de poing claque,
+ * une morsure croque, un séisme gronde, quel que soit le type. Les familles
+ * élémentaires (rayon, sphère, salve, jet, onde) gardent le son de leur type,
+ * sauf un rayon, plus appuyé. A-FAIRE 1.10 : « étendre MOVE_SOUNDS aux
+ * capacités qui tombent encore sur le son de leur type ».
+ */
+const STYLE_SOUNDS: Partial<Record<MoveStyle, readonly string[]>> = {
+  punch: ['Mega Punch', 'Comet Punch', 'punch5'],
+  kick: ['Blow4', 'Blow5'],
+  bite: ['Super Fang'],
+  claw: ['Fury Swipes', 'Slash10'],
+  slash: ['Slash', 'Slash3', 'Slash6'],
+  cross: ['Slash8', 'Slash9'],
+  stab: ['Sword2', 'Slash11'],
+  whip: ['Slam', 'Wring Out'],
+  charge: ['Take Down', 'Blow6'],
+  smash: ['Crash', 'Collapse1'],
+  quake: ['Earth4', 'Earth5'],
+  blast: ['Explosion3', 'Explosion6'],
+  vortex: ['Whirlwind', 'Wind5'],
+  mind: ['Psych Up', 'Teleport'],
+  drain: ['Absorb2', 'Wring Out'],
+};
+/** Rayons : le son le plus ample du type. */
+const BEAM_SOUNDS: Record<string, string> = {
+  fire: 'Fire5',
+  water: 'Water3',
+  electric: 'Thunder4',
+  ice: 'Ice5',
+  grass: 'Absorb2',
+  psychic: 'Saint7',
+  fairy: 'Saint6',
+  dragon: 'Explosion4',
+  dark: 'Darkness6',
+  ghost: 'Darkness2',
+  normal: 'Flash2',
+  steel: 'Flash2',
+};
+/** Chute du ciel (météores, foudre) : la foudre pour l'Électrik, une déflagration sinon. */
+const SKY_SOUNDS: Record<string, string> = { electric: 'Thunder9', ice: 'Ice8', water: 'Water5' };
+
+/** Son d'attaque (nom de fichier de SE/Anim/, sans extension) : la capacité, sinon sa famille, sinon son type, sinon Normal. */
 export function moveSoundFile(type: string, move?: string): string {
   const own = move && (MOVE_SOUNDS[move] ?? NAMED_MOVES.get(move));
   if (own) return own;
+  const style = move ? listedStyle(move) : undefined;
+  if (style) {
+    const pool = STYLE_SOUNDS[style];
+    if (pool) return pool[Math.floor(Math.random() * pool.length)];
+    if (style === 'beam' && BEAM_SOUNDS[type]) return BEAM_SOUNDS[type];
+    if (style === 'sky') return SKY_SOUNDS[type] ?? 'Explosion2';
+  }
   const pool = TYPE_SOUNDS[type] ?? TYPE_SOUNDS.normal;
   return pool[Math.floor(Math.random() * pool.length)];
 }
@@ -251,7 +302,7 @@ export function moveSoundFile(type: string, move?: string): string {
 export const animFile = (name: string): string => anim(name)[0];
 
 /** Tous les sons d'attaque possibles, pour l'import. */
-export const ANIM_FILES: readonly string[] = [...new Set([...Object.values(TYPE_SOUNDS).flat(), ...Object.values(MOVE_SOUNDS), ...NAMED_MOVES.values(), 'Sound2'])].map(animFile);
+export const ANIM_FILES: readonly string[] = [...new Set([...Object.values(TYPE_SOUNDS).flat(), ...Object.values(MOVE_SOUNDS), ...NAMED_MOVES.values(), ...Object.values(STYLE_SOUNDS).flat(), ...Object.values(BEAM_SOUNDS), ...Object.values(SKY_SOUNDS), 'Explosion2', 'Sound2'])].map(animFile);
 
 // ── Cris ─────────────────────────────────────────────────────────────────
 

@@ -322,10 +322,11 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
   d'une seconde).
 - Reste :
   - Safari ne lit peut-être pas l'Ogg (convertir en m4a si besoin) ;
-  - une musique par biome ;
   - des cris pour les générations 6 et plus (absents d'Essentials) ;
-  - étendre `MOVE_SOUNDS` aux capacités qui tombent encore sur le son de
-    leur type ;
+  - (fait) une musique par biome (`BIOME_TRACKS`) ; les capacités rangées
+    dans une famille d'animation (`data/movestyles.ts`) prennent le son de
+    leur famille (`STYLE_SOUNDS` : poing, morsure, griffe, séisme…, et un
+    son de rayon par type) ; seules les autres tombent encore sur leur type ;
   - régler les volumes à l'oreille en jeu.
 
 ### 1.11 Bilan de fin de run (fait)

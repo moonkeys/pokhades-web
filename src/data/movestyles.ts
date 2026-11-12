@@ -107,6 +107,9 @@ const PHYSICAL_DEFAULT: Record<string, MoveStyle> = {
  * ses cailloux — le corps à corps porte jusqu'à 4 ou 5 cases, l'effet part
  * alors du lanceur, sans délai.
  */
+/** La famille d'une capacité quand elle est rangée à la main dans les listes (sinon undefined). */
+export const listedStyle = (api: string): MoveStyle | undefined => STYLE_OF.get(api);
+
 export function styleOf(api: string | undefined, type: string, special: boolean): MoveStyle {
   const listed = api ? STYLE_OF.get(api) : undefined;
   if (listed) return listed;
