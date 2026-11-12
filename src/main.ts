@@ -11,7 +11,7 @@ import { MUSIC, type MusicId } from './audio/sounds';
 import { buildAtlas } from './assets/atlas';
 import { PLAYER_ACTIONS, WILD_ACTIONS, loadImage, loadInfo, loadSheet } from './assets/pmd';
 import { sheetIdOf } from './data/forms';
-import { MEGA_FORMS, megaById } from './data/megas';
+import { megaById, megaFormsOf, type MegaForm } from './data/megas';
 import { FINAL_BOSS_DEFEAT, FINAL_BOSS_INTRO, MASTER_DEFEAT, type Champion } from './data/champions';
 import { Trainer } from './entities/trainer';
 import { Shop } from './run/shop';
@@ -408,7 +408,7 @@ async function boot(): Promise<void> {
       !player.evolve &&
       !player.trapped &&
       !evolving.has(player) &&
-      !!MEGA_FORMS[mon.id] &&
+      megaFormsOf(mon.id).length > 0 &&
       wild.some((e) => e.pokemon && !e.pokemon.fainted && e.deathT < 0)
     );
   };
@@ -416,7 +416,26 @@ async function boot(): Promise<void> {
     if (!megaReady()) return;
     const m = player;
     const mon = m.pokemon!;
-    const form = MEGA_FORMS[mon.id];
+    const forms = megaFormsOf(mon.id);
+    // Deux formes (Méga-Dracaufeu X ou Y…) : le joueur choisit, jeu en pause ; « Plus tard » garde la Méga de la salle.
+    if (forms.length > 1) {
+      megaUsed = true;
+      evolutionScreen.show(
+        { id: mon.id, name: mon.name, level: mon.level },
+        forms.map((f) => f.id),
+        (picked) => {
+          input.flush();
+          megaUsed = false;
+          const form = forms.find((f) => f.id === picked);
+          if (form && m === player && m.pokemon === mon) megaInto(m, mon, form);
+        },
+        { title: `${mon.name} méga-évolue !`, sub: 'Choisis sa forme Méga', go: 'Méga-évoluer !' },
+      );
+      return;
+    }
+    megaInto(m, mon, forms[0]);
+  };
+  const megaInto = (m: Actor, mon: Pokemon, form: MegaForm) => {
     megaUsed = true;
     evolving.add(m);
     void Promise.all([loadSheet(sheetIdOf(form.id), PLAYER_ACTIONS), Pokemon.load(form.id, mon.level, false), loadInfo(form.id)]).then(([sheet, mega, info]) => {
@@ -719,6 +738,34 @@ async function boot(): Promise<void> {
     // Le Pokédex note l'espèce dès qu'on la croise.
     if (markSeen(save, id)) writeSave(save);
     return a;
+  };
+
+  /**
+   * L'as d'un champion méga-évolue en entamant ses deux dernières barres
+   * (ajout, comme les champions des jeux récents), s'il a une forme Méga :
+   * types et stats de la Méga, bonus de boss, attaques et barres gardés,
+   * nom annoncé au-dessus de lui. Le changement de forme est instantané : la
+   * barre qui se remplit et l'éclat doré font déjà la mise en scène.
+   */
+  combat.phase = (e) => {
+    const mon = e.pokemon;
+    const forms = mon && e.role === 'boss' && e.barsLeft === 2 && !e.mega ? megaFormsOf(mon.id) : [];
+    const form = forms[Math.floor(Math.random() * forms.length)];
+    if (!mon || !form) return;
+    e.mega = form.collab ? 1 : 1.2;
+    void Promise.all([loadSheet(sheetIdOf(form.id), PLAYER_ACTIONS), Pokemon.load(form.id, mon.level, false), loadInfo(form.id)]).then(([sheet, mega, info]) => {
+      if (!sheet || e.pokemon !== mon || mon.fainted || e.deathT >= 0) return;
+      mega.inherit(mon);
+      e.speciesId = form.id;
+      e.sheet = sheet;
+      e.info = info;
+      e.pokemon = mega;
+      e.flash = { color: '#ffffff', t: 0.35, dur: 0.35, alpha: 1 };
+      fx.attackAnim('fx_boost', e.x, e.y);
+      combat.callout(e, `Méga-évolution : ${form.name} !`);
+      combat.addShake(0.18);
+      sfx('ability');
+    });
   };
 
   /** Génère la salle courante de la run et y place le joueur (PV et statuts conservés). */

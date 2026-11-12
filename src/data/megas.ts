@@ -112,7 +112,26 @@ export const MEGA_FORMS: Readonly<Record<number, MegaForm>> = {
   998: { id: 10325, name: "Méga-Glaivodo", collab: null },
 };
 
-const BY_ID = new Map(Object.entries(MEGA_FORMS).map(([base, m]) => [m.id, { ...m, base: Number(base) }]));
+/**
+ * Deuxième forme Méga des espèces qui en ont deux (X / Y, ou Z) : le joueur
+ * choisit au moment de méga-évoluer (main.ts, écran d'évolution) ; l'as d'un
+ * champion en tire une au hasard.
+ */
+export const MEGA_ALT_FORMS: Readonly<Record<number, MegaForm>> = {
+  6: { id: 10035, name: "Méga-Dracaufeu Y", collab: null },
+  26: { id: 10305, name: "Méga-Raichu Y", collab: null },
+  150: { id: 10044, name: "Méga-Mewtwo Y", collab: "0150/0002" },
+  359: { id: 10307, name: "Méga-Absol Z", collab: null },
+  445: { id: 10309, name: "Méga-Carchacrok Z", collab: null },
+  448: { id: 10310, name: "Méga-Lucario Z", collab: null },
+};
+
+/** Les formes Méga d'une espèce (aucune, une, ou deux). */
+export const megaFormsOf = (base: number): MegaForm[] => [MEGA_FORMS[base], MEGA_ALT_FORMS[base]].filter((m): m is MegaForm => !!m);
+
+const BY_ID = new Map(
+  [...Object.entries(MEGA_FORMS), ...Object.entries(MEGA_ALT_FORMS)].map(([base, m]) => [m.id, { ...m, base: Number(base) }]),
+);
 
 /** La forme Méga d'un numéro de forme, avec son espèce de base, ou undefined. */
 export const megaById = (id: number): (MegaForm & { base: number }) | undefined => BY_ID.get(id);

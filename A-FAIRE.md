@@ -53,8 +53,8 @@ et à les montrer à l'invité en ligne) :
 - dons rééquilibrés (12 novembre 2026, voir `RARITY_SCALE` de
   combat/boons.ts) : à juger en jeu ;
 - méga-évolutions et formes régionales faites (voir README) : à juger en
-  jeu (aura, taille, fréquence des formes régionales) ; reste le choix
-  X / Y, une Méga pour les champions, Canarticho de Galar sans évolution
+  jeu (aura, taille, fréquence des formes régionales) ; choix X / Y et
+  Méga de l'as des champions faits ; reste : Canarticho de Galar sans évolution
   (pas de planche de Palarticho) ;
 
 ---

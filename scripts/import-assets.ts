@@ -26,7 +26,7 @@ import { CANDY, HELD_ITEMS, RESOURCES, SHARDS, TMS, UPGRADES } from '../src/meta
 import bestiary from '../src/data/bestiary.json' with { type: 'json' };
 import { ANIM_FILES, CRIES_DIR, essentialsName, MUSIC, SOUNDS, cryPath, servedPath } from '../src/audio/sounds.ts';
 import { cacheDir, fetchRemote } from './remote.ts';
-import { MEGA_FORMS } from '../src/data/megas.ts';
+import { megaFormsOf } from '../src/data/megas.ts';
 import { formById } from '../src/data/forms.ts';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -92,7 +92,7 @@ const species = [...new Set([...allSpecies(), ...championSpecies(), ...gruntSpec
 // Méga-évolutions (src/data/megas.ts) : la forme Méga de chaque espèce du jeu qui en a une.
 // Sa fiche et son illustration toujours ; ses planches de combat quand SpriteCollab les a
 // (sinon le jeu reprend celles de la base).
-const megas = species.flatMap((id) => (MEGA_FORMS[id] ? [MEGA_FORMS[id]] : []));
+const megas = species.flatMap((id) => megaFormsOf(id));
 for (const m of megas) {
   files.push(`data/pokeapi/pokemon/${m.id}.json`);
   if (m.collab) evolved.add(m.id);

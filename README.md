@@ -536,8 +536,11 @@ Méga-Dracaufeu X…), garde attaques, niveau et part de PV, et reprend sa forme
 quand la salle est libérée, à la salle suivante ou au retour au Repaire. Une
 aura violette et rose l'entoure ; quand SpriteCollab n'a pas ses planches
 (Florizarre, Tortank…), elle garde celles de sa base, grandies de 20 %. Le HUD
-dit « Méga-évolution — F » quand elle est prête. Une forme par espèce (X avant
-Y) ; 38 Méga importées pour les espèces du jeu, dont 15 avec leurs planches.
+dit « Méga-évolution — F » quand elle est prête. Une espèce à deux formes
+(Dracaufeu, Mewtwo, Raichu X / Y ; Absol, Carchacrok, Lucario et leur forme Z)
+fait choisir, jeu en pause, à l'écran d'évolution (`MEGA_ALT_FORMS`). L'as
+d'un champion méga-évolue aussi, s'il en a une forme, en entamant ses deux
+dernières barres (`combat.phase`) : bonus de boss gardés, nom annoncé.
 
 Combat (porté de `TeamMember.gd`, `EnemyAI.gd` et `CombatVFX.gd`) : niveau 10,
 capacités par défaut du jeu, portée et recharge propres à chaque attaque,

@@ -1,5 +1,5 @@
 // Extension explicite : scripts/import-assets.ts (Node) charge ce fichier via remote.ts.
-import { MEGA_FORMS } from './megas.ts';
+import { megaById } from './megas.ts';
 
 // Formes régionales (retour de test du 11 novembre 2026 : « est-ce qu'on peut
 // avoir les formes alternatives des Pokémon, avec toutes les évolutions qui
@@ -78,8 +78,8 @@ export const REGIONAL_FORMS: Readonly<Record<number, RegionalForm>> = {
 export function formById(id: number): { base: number; name: string; collab: string | null; mega: boolean } | undefined {
   const r = REGIONAL_FORMS[id];
   if (r) return { ...r, mega: false };
-  for (const [base, m] of Object.entries(MEGA_FORMS)) if (m.id === id) return { base: Number(base), name: m.name, collab: m.collab, mega: true };
-  return undefined;
+  const m = megaById(id);
+  return m ? { base: m.base, name: m.name, collab: m.collab, mega: true } : undefined;
 }
 
 /** Numéro de Pokédex d'une espèce ou d'une forme (cris, courbe d'XP). */

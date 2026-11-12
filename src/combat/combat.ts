@@ -168,6 +168,8 @@ export class Combat {
   levelUp: (member: Actor) => void = () => {};
   /** Un ennemi tombe, quel que soit l'auteur du coup : le décompte des victoires (déblocage, main.ts). */
   defeated: (e: Actor) => void = () => {};
+  /** Un Pokémon de champion vient de perdre une barre de PV (main.ts : la Méga de l'as). */
+  phase: (e: Actor) => void = () => {};
   /** Le Pokémon mené vient d'encaisser un coup (quête « Sans une égratignure », main.ts). */
   hurt: () => void = () => {};
   /** Bilan de run (meta/runstats.ts) : PV ôtés à un ennemi par `by` (null : on ne sait pas qui), et PV perdus par un membre. */
@@ -244,6 +246,7 @@ export class Combat {
       e.flash = { color: '#fff0b3', t: 0.2, dur: 0.2, alpha: 0.85 };
       this.fx.impact(e.x, e.y, '#ffe666');
       this.addShake(0.12);
+      this.phase(e);
       return false;
     }
     return true;
