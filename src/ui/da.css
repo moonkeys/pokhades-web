@@ -1939,6 +1939,45 @@
   color: var(--muted);
 }
 
+/* Commandes réassignables : deux colonnes de lignes choisissables, la touche
+   principale en noir, les autres plus pâles ; « … » attend la nouvelle. */
+.opt-binds {
+  display: grid;
+  grid-template-rows: repeat(8, auto);
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: calc(0.2 * var(--u)) calc(2 * var(--u));
+}
+.opt-keyline.bind {
+  padding: calc(0.25 * var(--u)) calc(0.6 * var(--u));
+  border-left: calc(0.35 * var(--u)) solid transparent;
+  cursor: pointer;
+}
+.opt-keyline.bind.sel {
+  border-left-color: var(--ink);
+  background: color-mix(in srgb, var(--yel) 30%, transparent);
+}
+.opt-capbox .opt-caps kbd.alt {
+  background: color-mix(in srgb, var(--ink) 55%, var(--paper));
+}
+.opt-caps kbd.wait {
+  min-width: calc(4 * var(--u));
+  color: var(--ink);
+  background: var(--yel);
+  animation: opt-wait 0.8s steps(2) infinite;
+}
+@keyframes opt-wait {
+  50% {
+    opacity: 0.4;
+  }
+}
+.opt-keys.fixed {
+  margin-top: calc(1 * var(--u));
+  padding-top: calc(0.8 * var(--u));
+  border-top: calc(0.15 * var(--u)) dashed color-mix(in srgb, var(--ink) 35%, transparent);
+  grid-template-columns: repeat(auto-fit, minmax(calc(16 * var(--u)), 1fr));
+}
+
 /* ── Boutique : étiquettes de prix, fiche d'article, bulles, mercenaires ── */
 /* Prix de l'étal : une petite ardoise cerclée de bois, le prix à la craie ; elle
    passe au jaune devant l'article qu'on regarde. */

@@ -336,8 +336,10 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
   victoire la plus rapide) au bilan, « Record ! » sur ceux battus. Une run
   abandonnée par le menu (Échap → Abandonner) a son bilan ; seuls les
   raccourcis de test (N, panneau) n'en montrent pas.
-- Menu des réglages : reste à pouvoir réassigner les touches, et une
-  entrée « Abandonner la run » / « Retour au Repaire ».
+- Menu des réglages : touches réassignables (Échap → Commandes,
+  `input/bindings.ts`, voir README) ; « Abandonner la run » est dans
+  l'onglet Run. Les écrans de choix (dialogues, récompenses) gardent
+  Entrée / E / Espace.
 
 ### 1.12 Formes des salles (fait)
 - `src/world/layouts.ts` décrit huit formes (Clairière, Arène, Couloir,

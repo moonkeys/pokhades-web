@@ -43,6 +43,7 @@ import { CAMP_NPCS, SWIMMERS } from './data/species';
 import { evolutionChoices, evolutionOf, regionalEvolution, evolutionsOf, evolvedStart } from './data/evolutions';
 import { Actor, dirFromVector } from './entities/actor';
 import { Input } from './input/input';
+import { actionOf } from './input/bindings';
 import { CombatFx, typeColor } from './render/combatfx';
 import { FieldFx } from './render/fieldfx';
 import { Footprints } from './render/footprints';
@@ -503,7 +504,7 @@ async function boot(): Promise<void> {
     megaFrom.clear();
   };
   addEventListener('keydown', (e) => {
-    if (e.code !== 'KeyF' || e.repeat || e.metaKey || e.ctrlKey || paused() || dialogue.open) return;
+    if (actionOf(e.code) !== 'mega' || e.repeat || e.metaKey || e.ctrlKey || paused() || dialogue.open) return;
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement) return;
     megaEvolve();
   });
@@ -725,7 +726,7 @@ async function boot(): Promise<void> {
     statSheet.show(entries, mode === 'run' ? run.boons : null, () => input.flush());
   };
   addEventListener('keydown', (e) => {
-    if (e.code !== 'KeyC' || e.repeat || e.metaKey || e.ctrlKey || paused() || dialogue.open) return;
+    if (actionOf(e.code) !== 'stats' || e.repeat || e.metaKey || e.ctrlKey || paused() || dialogue.open) return;
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement) return;
     void openStats();
   });

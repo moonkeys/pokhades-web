@@ -2,6 +2,7 @@ import { sfx } from '../audio/audio';
 import type { Options } from './options';
 import { hint } from './hints';
 import { isTouch } from '../input/touch';
+import { ACTIONS, customized, keyLabel, keysOf, rebind, RESERVED, resetBindings, type Action } from '../input/bindings';
 
 // Menu des réglages, ouvert par Échap au Repaire comme en run (le jeu se
 // fige). Le panneau de test (H) reste l'outil de DA ; ce menu-ci est celui du
@@ -49,17 +50,11 @@ const TOUCH_CONTROLS: [string[], string][] = [
   [['☰'], 'Ce menu'],
 ];
 
-/** Liste des commandes : [touches, action]. Les touches séparées par « / » sont des alternatives. */
-const CONTROLS: [string[], string][] = [
-  [['←↑→↓'], 'Se déplacer'],
-  [['Maj', 'Espace'], 'Dash (esquive : on traverse les coups)'],
-  [['1', '2', '3', '4'], 'Capacités'],
-  [['Q', 'Z', 'S', 'D'], 'Capacités (autre disposition)'],
-  [['R'], 'Ultime, jauge pleine'],
-  [['F'], 'Méga-évolution (Méga-Anneau, une fois par salle)'],
-  [['E'], 'Parler, ramasser, ouvrir, choisir une porte'],
-  [['Tab'], 'Changer de Pokémon'],
-  [['C'], 'Fiche de l’équipe'],
+/**
+ * Les commandes fixes, sous celles qu'on réassigne (bindings.ts) : le son, ce menu, les outils de
+ * test. [touches, action].
+ */
+const FIXED_CONTROLS: [string[], string][] = [
   [['M'], 'Couper le son'],
   [['Échap'], 'Ce menu'],
   // Les outils de test n'existent pas dans le jeu publié.
@@ -91,6 +86,8 @@ export class SettingsMenu {
   /** Une sortie proposée dans les réglages (quitter la run), avec sa confirmation en deux temps. */
   private leave: LeaveOffer | null = null;
   private confirming = false;
+  /** Action dont on attend la nouvelle touche (onglet Commandes), ou null. */
+  private waiting: Action | null = null;
 
   constructor(
     parent: HTMLElement,
@@ -105,6 +102,16 @@ export class SettingsMenu {
         if (this.root.hidden) return;
         e.stopImmediatePropagation();
         e.preventDefault();
+        if (this.waiting) {
+          if (e.repeat) return;
+          // Échap annule ; les touches réservées (menu, son) ne se prennent pas.
+          if (e.code !== 'Escape' && !RESERVED.has(e.code)) {
+            rebind(this.waiting, e.code);
+            sfx('confirm');
+          } else sfx('click', -8);
+          this.waiting = null;
+          return this.render();
+        }
         if (e.repeat && (e.code === 'Escape' || e.code === 'Enter')) return;
         switch (e.code) {
           case 'Escape':
@@ -158,6 +165,7 @@ export class SettingsMenu {
 
   close(): void {
     if (this.root.hidden) return;
+    this.waiting = null;
     sfx('menuClose');
     this.root.hidden = true;
     this.root.replaceChildren();
@@ -178,6 +186,7 @@ export class SettingsMenu {
 
   private move(dir: number): void {
     this.confirming = false;
+    this.waiting = null;
     const n = this.rows.length + 1;
     this.sel = (this.sel + dir + n) % n;
     sfx('click', -8);
@@ -298,6 +307,53 @@ export class SettingsMenu {
     };
   }
 
+  /** Une action et ses touches ; Entrée (ou clic) attend la nouvelle touche principale. */
+  private bindRow(a: Action, label: string): Row {
+    const wait = () => {
+      this.waiting = this.waiting === a ? null : a;
+      sfx('click', -6);
+    };
+    return {
+      label,
+      render: (box) => {
+        const caps = el('div', 'opt-caps', box);
+        if (this.waiting === a) el('kbd', 'wait', caps, '…');
+        else
+          keysOf(a).forEach((k, i) => {
+            if (i) el('span', 'or', caps, '/');
+            el('kbd', i ? 'alt' : '', caps, keyLabel(k));
+          });
+        box.addEventListener('click', () => {
+          this.sel = this.rows.findIndex((r) => r.label === label) + 1;
+          wait();
+          this.render();
+        });
+      },
+      adjust: () => {},
+      activate: wait,
+    };
+  }
+
+  private resetRow(): Row {
+    const reset = () => {
+      if (!customized()) return;
+      resetBindings();
+      sfx('confirm');
+    };
+    return {
+      label: 'Touches d’origine',
+      render: (box) => {
+        const b = el('button', `opt-switch${customized() ? ' on' : ''}`, box, 'RÉTABLIR');
+        b.addEventListener('click', () => {
+          reset();
+          this.render();
+        });
+      },
+      adjust: () => {},
+      activate: reset,
+    };
+  }
+
   private rowsOf(tab: Tab): Row[] {
     switch (tab) {
       case 'Réglages':
@@ -314,7 +370,8 @@ export class SettingsMenu {
       case 'Run':
         return this.leave ? [this.continueRow(), this.leaveRow(this.leave)] : [];
       case 'Commandes':
-        return [];
+        // Au doigt, les boutons de l'écran : rien à réassigner.
+        return isTouch() ? [] : [...ACTIONS.map((a) => this.bindRow(a.id, a.label)), this.resetRow()];
     }
   }
 
@@ -342,9 +399,10 @@ export class SettingsMenu {
       });
     }
 
-    const body = el('div', 'opt-body', sheet);
-    if (this.tab === 'Commandes') this.renderControls(body);
-    if (this.tab === 'Run') {
+    const body = el('div', `opt-body${this.tab === 'Commandes' && this.rows.length ? ' binds' : ''}`, sheet);
+    if (this.tab === 'Commandes' && !this.rows.length) this.renderControls(body);
+    if (this.tab === 'Commandes' && this.rows.length) this.renderBinds(body, tabs);
+    else if (this.tab === 'Run') {
       // Deux gros boutons, l'un sous l'autre : continuer, ou abandonner (avec confirmation).
       const big = el('div', 'opt-bigs', body);
       this.rows.forEach((r, i) => {
@@ -373,7 +431,7 @@ export class SettingsMenu {
       r.render(el('div', 'opt-ctrl', line));
     });
 
-    el('p', 'keys', sheet, hint(this.tab === 'Commandes' ? '←→ onglet · Échap : reprendre' : this.tab === 'Run' ? '↑↓ choisir · Entrée valider · Échap : reprendre' : '↑↓ choisir · ←→ régler · Échap : reprendre', 'Touche pour régler · touche en dehors : reprendre'));
+    el('p', 'keys', sheet, hint(this.tab === 'Commandes' ? (this.waiting ? 'Appuie sur la nouvelle touche · Échap : annuler' : '↑↓ choisir · Entrée : changer la touche · Échap : reprendre') : this.tab === 'Run' ? '↑↓ choisir · Entrée valider · Échap : reprendre' : '↑↓ choisir · ←→ régler · Échap : reprendre', 'Touche pour régler · touche en dehors : reprendre'));
     for (const [side, rot] of [
       ['left: 6%', -12],
       ['right: 6%', 9],
@@ -384,9 +442,34 @@ export class SettingsMenu {
     if (this.root.classList.contains('play')) wrap.style.animation = 'none';
   }
 
+  /** Les actions réassignables, sur deux colonnes, puis les commandes fixes. */
+  private renderBinds(body: HTMLElement, tabs: HTMLElement): void {
+    const list = el('div', 'opt-binds', body);
+    this.rows.forEach((r, i) => {
+      const line = el('div', `opt-keyline bind${this.sel === i + 1 ? ' sel' : ''}${this.waiting && this.sel === i + 1 ? ' wait' : ''}`, list);
+      line.addEventListener('pointerenter', () => {
+        if (this.sel === i + 1 || this.waiting) return;
+        this.sel = i + 1;
+        for (const o of list.querySelectorAll('.opt-keyline')) o.classList.toggle('sel', o === line);
+        tabs.classList.remove('focus');
+      });
+      const box = el('div', 'opt-capbox', line);
+      r.render(box);
+      el('span', '', line, r.label);
+    });
+    const fixed = el('div', 'opt-keys fixed', body);
+    for (const [keys, action] of FIXED_CONTROLS) {
+      const line = el('div', 'opt-keyline', fixed);
+      const caps = el('div', 'opt-caps', line);
+      keys.forEach((k) => el('kbd', '', caps, k));
+      el('span', '', line, action);
+    }
+    requestAnimationFrame(() => list.querySelector('.sel')?.scrollIntoView({ block: 'nearest' }));
+  }
+
   private renderControls(body: HTMLElement): void {
     const list = el('div', 'opt-keys', body);
-    for (const [keys, action] of isTouch() ? TOUCH_CONTROLS : CONTROLS) {
+    for (const [keys, action] of TOUCH_CONTROLS) {
       const line = el('div', 'opt-keyline', list);
       const caps = el('div', 'opt-caps', line);
       keys.forEach((k, i) => {

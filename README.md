@@ -641,6 +641,16 @@ plus qu'au panneau de test (H).
 ↑↓ choisit, ←→ règle, Échap reprend ; tout se clique aussi. Les réglages
 sont gardés avec ceux du panneau de test, qui se met à jour derrière.
 
+Les touches se **réassignent** dans l'onglet Commandes (`src/input/bindings.ts`) :
+Entrée (ou un clic) sur une action, puis la nouvelle touche ; Échap annule.
+On change la touche principale de l'action, ses autres touches restent tant
+qu'elles ne servent pas ailleurs ; prendre la touche principale d'une autre
+action les échange. Échap, M, Entrée (et H, N en test) ne se prennent pas.
+« Rétablir » remet les touches d'origine. Les noms affichés suivent la
+disposition du clavier quand le navigateur la donne (AZERTY sinon), et les
+invites « [E] » prennent la nouvelle touche d'interaction. Mémorisé à part,
+dans le navigateur (`pokhades-keys`). Au tactile, rien à réassigner.
+
 ## Jeu en ligne (Roucarnage)
 
 Portage web de `Net.gd`, en WebRTC pair-à-pair (PeerJS, `src/net/`) : seule la
