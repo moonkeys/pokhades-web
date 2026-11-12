@@ -38,7 +38,12 @@ function offer(save: Save, station: string): string[] {
 /** Ce qui attend un geste au poste (identifiants : rang de la mission, quête). */
 function pending(save: Save, station: string): string[] {
   if (station === 'missions') return save.missions.flatMap((m, i) => (m !== null && m.left <= 0 ? [String(i)] : []));
-  if (station === 'quests') return QUESTS.filter((q) => questState(save, q.id) === 'ready').map((q) => q.id);
+  if (station === 'quests')
+    return [
+      ...QUESTS.filter((q) => questState(save, q.id) === 'ready').map((q) => q.id),
+      // Un contrat rempli : marqué par son numéro de tirage, pour qu'un nouveau contrat rempli refasse un « ! ».
+      ...(save.contracts?.list ?? []).flatMap((c, i) => (c.n >= c.goal ? [`contract${save.contracts.seed}-${i}`] : [])),
+    ];
   if (station === 'garden') return save.garden.flatMap((p, i) => (p && p.left <= 0 ? [`plot${i}`] : []));
   // Le visiteur du nectar n'est là que quand il est arrivé : il attend qu'on lui parle.
   if (station === 'visitor') return save.nectar && save.nectar.left <= 0 ? ['here'] : [];

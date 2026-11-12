@@ -21,7 +21,7 @@ import { NetBadge } from './ui/netbadge';
 import { BAIES, FIELD_FOOD, RESOURCES, RESOURCE_IDS, ROOM_RES, SHARDS, UPGRADES, applyHeld, heldItem, teamSlots, type ResourceId } from './meta/catalog';
 import { addMon, capacity, exile, grantAlly, isFull, level, loadSave, markSeen, monName, ownedSpecies, ownsSpecies, recordDefeat, resetSave, roster, speciesOf, startLevel, welcomeMon, writeSave } from './meta/save';
 import { applyTraits, natureText } from './meta/mons';
-import { quest, questEvent, type QuestEvent } from './meta/quests';
+import { quest, questEvent, type QuestEvent, contractEvent, contractText } from './meta/quests';
 import { leagueOpen, readyFeats } from './meta/feats';
 import { busy, mission, rewardText, tick as tickMissions } from './meta/missions';
 import { MATERIALS, NECTARS, materialName, tickCraft } from './meta/crafting';
@@ -283,6 +283,7 @@ async function boot(): Promise<void> {
   const questProgress = (ev: QuestEvent) => {
     if (mode !== 'run') return;
     for (const id of questEvent(save, ev)) runHud.notify({ title: 'Quête accomplie', text: `${quest(id).name} — retourne voir Kangourex au Repaire.`, art: CAMP_NPCS.quests, color: 'var(--yel)' });
+    for (const c of contractEvent(save, ev)) runHud.notify({ title: 'Contrat rempli', text: `${contractText(c)} — réclame-le chez Kangourex.`, art: CAMP_NPCS.quests, color: 'var(--yel)' });
     writeSave(save);
   };
   /** Le meneur a-t-il encaissé un coup dans cette salle (quête « Sans une égratignure ») ? */

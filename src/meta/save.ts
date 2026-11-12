@@ -18,7 +18,7 @@ import { rollMon, type Mon } from './mons';
 import { campCapacity, RESOURCE_IDS, type BuildingId, type CsId, type ResourceId, type UpgradeId } from './catalog';
 import { GARDEN, MATERIALS, NECTARS, OLD_SEEDS } from './crafting';
 import { MISSIONS, type MissionId } from './missions';
-import { sanitizeQuests, type QuestId } from './quests';
+import { sanitizeContracts, sanitizeQuests, type Contract, type QuestId } from './quests';
 
 export interface Save {
   version: number;
@@ -51,6 +51,8 @@ export interface Save {
    * progression depuis qu'on les a acceptées, et celles déjà réclamées.
    */
   quests: { active: QuestId[]; progress: Partial<Record<QuestId, number>>; done: QuestId[] };
+  /** Contrats de Kangourex, renouvelés à chaque réclamation (meta/quests.ts) ; `seed` : compteur du tirage. */
+  contracts: { list: Contract[]; seed: number };
   /** Runs lancées depuis le Repaire. */
   runs: number;
   /** L'équipe (uid des individus) ; le premier mène, au camp comme en run. */
@@ -175,6 +177,7 @@ const DEFAULTS: Save = {
   nectar: null,
   missions: [],
   quests: { active: [], progress: {}, done: [] },
+  contracts: { list: [], seed: 0 },
   runs: 0,
   team: [1],
   loadouts: {},
@@ -251,6 +254,7 @@ export function migrate(save: Save): Save {
   save.missions = (save.missions ?? []).map((m) => (m && MISSIONS.some((x) => x.id === m.type) ? { ...m, left: Math.max(0, m.left) } : null));
   // Quêtes inconnues oubliées, trois actives au plus, progression bornée à l'objectif.
   save.quests = sanitizeQuests(save.quests);
+  save.contracts = sanitizeContracts(save.contracts);
   // add_champion_shards : jamais sous 0, toujours entier.
   save.shards = Math.max(0, Math.floor(Number(save.shards) || 0));
   // Ressources : une clé manquante ou nulle donnerait NaN au premier ajout.

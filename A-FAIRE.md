@@ -530,7 +530,10 @@ Si d'autres se voient en jeu, noter leur emplacement.
 - Événements (`questEvent`) branchés dans `main.ts` : K.O., Baies des
   arbres, salle libérée (drapeau `Combat.hurt`), salle spéciale, champion,
   acte, victoire. Notification « Quête accomplie » en run.
-- Reste : des quêtes qui se renouvellent, des récompenses en objets.
+- **Contrats** (ajout) : trois petits objectifs de run toujours renouvelés
+  (K.O. d'un type, K.O., Baies, salles sans coup, Défi, champion), payés en
+  Baies, ressources ou Éclat (`Save.contracts`, `contractEvent`, sous les
+  quêtes chez Kangourex). Reste : des récompenses en objets.
 
 ### 2.6 Poids d'équipe (fait)
 - `src/meta/weight.ts` : Pokémon 3 / 5 / 8 selon le stade de départ,

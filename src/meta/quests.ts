@@ -120,3 +120,134 @@ export function sanitizeQuests(raw: Partial<Save['quests']> | undefined): Save['
   }
   return { active, progress, done };
 }
+
+// ── Contrats de Kangourex (ajout : A-FAIRE 2.5, « des quêtes qui se renouvellent ») ──
+//
+// À côté des dix quêtes, qui ne se font qu'une fois, la doyenne tient
+// CONTRACT_SLOTS contrats : de petits objectifs de run (des K.O. d'un type,
+// des Baies, des salles sans coup, un Défi, un champion) qui comptent dès
+// qu'ils sont affichés, sans les accepter. Rempli, un contrat se réclame
+// contre des Baies, des ressources ou un Éclat, et un nouveau le remplace.
+// Tirage déterministe sur un compteur de la sauvegarde (`seed`), pour qu'un
+// rechargement ne rebatte pas les cartes.
+
+export type ContractKind = 'kill_type' | 'kill' | 'berry' | 'clean' | 'challenge' | 'champion';
+
+export interface Contract {
+  kind: ContractKind;
+  /** Type visé (K.O. d'un type). */
+  type?: string;
+  goal: number;
+  n: number;
+  reward: { baies: number; wood?: number; stone?: number; food?: number; shards?: number };
+}
+
+export const CONTRACT_SLOTS = 3;
+
+const CONTRACT_TYPES = ['fire', 'water', 'grass', 'electric', 'rock', 'ground', 'bug', 'flying', 'psychic', 'ice', 'poison', 'normal', 'dark', 'ghost', 'fighting'];
+const TYPE_FR: Record<string, string> = {
+  fire: 'Feu', water: 'Eau', grass: 'Plante', electric: 'Électrik', rock: 'Roche', ground: 'Sol', bug: 'Insecte', flying: 'Vol',
+  psychic: 'Psy', ice: 'Glace', poison: 'Poison', normal: 'Normal', dark: 'Ténèbres', ghost: 'Spectre', fighting: 'Combat',
+};
+
+/** Hachage entier → [0, 1[ (mulberry32 en une passe). */
+function unit(seed: number, salt: number): number {
+  let t = (seed * 0x9e3779b1 + salt * 0x85ebca6b) >>> 0;
+  t = Math.imul(t ^ (t >>> 15), t | 1);
+  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+
+/** Le contrat n° `seed`. */
+export function rollContract(seed: number): Contract {
+  const r = (salt: number, n: number) => Math.floor(unit(seed, salt) * n);
+  const pick = r(1, 10);
+  const res = r(2, 2) ? 'wood' : 'stone';
+  if (pick < 4) {
+    const type = CONTRACT_TYPES[r(3, CONTRACT_TYPES.length)];
+    return { kind: 'kill_type', type, goal: 8 + r(4, 8), n: 0, reward: { baies: 30 + r(5, 20), [res]: 4 + r(6, 4) } };
+  }
+  if (pick < 6) return { kind: 'kill', goal: 30 + 5 * r(4, 5), n: 0, reward: { baies: 40 + r(5, 20), food: 3 + r(6, 3) } };
+  if (pick < 7) return { kind: 'berry', goal: 15 + 5 * r(4, 3), n: 0, reward: { baies: 25, wood: 3 + r(6, 3), stone: 3 + r(7, 3) } };
+  if (pick < 8) return { kind: 'clean', goal: 2 + r(4, 2), n: 0, reward: { baies: 50 + r(5, 20) } };
+  if (pick < 9) return { kind: 'challenge', goal: 1, n: 0, reward: { baies: 40, [res]: 6 } };
+  return { kind: 'champion', goal: 1, n: 0, reward: { baies: 40, shards: 1 } };
+}
+
+/** Ce que demande le contrat, en clair. */
+export function contractText(c: Contract): string {
+  switch (c.kind) {
+    case 'kill_type':
+      return `Mets ${c.goal} sauvages de type ${TYPE_FR[c.type!] ?? c.type} K.O.`;
+    case 'kill':
+      return `Mets ${c.goal} sauvages K.O.`;
+    case 'berry':
+      return `Ramasse ${c.goal} Baies tombées des arbres.`;
+    case 'clean':
+      return `Libère ${c.goal} salles sans que ton meneur encaisse un coup.`;
+    case 'challenge':
+      return 'Réussis une salle Défi.';
+    case 'champion':
+      return 'Vaincs un champion d’arène.';
+  }
+}
+
+/** Complète la liste à CONTRACT_SLOTS contrats. */
+export function refillContracts(save: Save): void {
+  while (save.contracts.list.length < CONTRACT_SLOTS) save.contracts.list.push(rollContract(++save.contracts.seed));
+}
+
+function contractGain(c: Contract, ev: QuestEvent): number {
+  switch (c.kind) {
+    case 'kill_type':
+      return ev.kind === 'kill' && ev.types.includes(c.type!) ? 1 : 0;
+    case 'kill':
+      return ev.kind === 'kill' ? 1 : 0;
+    case 'berry':
+      return ev.kind === 'berry' ? ev.n : 0;
+    case 'clean':
+      return ev.kind === 'room' && !ev.hurt ? 1 : 0;
+    case 'challenge':
+      return ev.kind === 'special' && ev.special === 'challenge' && ev.success ? 1 : 0;
+    case 'champion':
+      return ev.kind === 'champion' ? 1 : 0;
+  }
+}
+
+/** Fait avancer les contrats ; rend ceux que l'événement vient de remplir. */
+export function contractEvent(save: Save, ev: QuestEvent): Contract[] {
+  const filled: Contract[] = [];
+  for (const c of save.contracts.list) {
+    if (c.n >= c.goal) continue;
+    const g = contractGain(c, ev);
+    if (g <= 0) continue;
+    c.n = Math.min(c.goal, c.n + g);
+    if (c.n >= c.goal) filled.push(c);
+  }
+  return filled;
+}
+
+/** Réclame le contrat `i` s'il est rempli : sa récompense est versée, un nouveau le remplace. */
+export function claimContract(save: Save, i: number): Contract | null {
+  const c = save.contracts.list[i];
+  if (!c || c.n < c.goal) return null;
+  save.baies += c.reward.baies;
+  save.resources.wood += c.reward.wood ?? 0;
+  save.resources.stone += c.reward.stone ?? 0;
+  save.resources.food += c.reward.food ?? 0;
+  save.shards += c.reward.shards ?? 0;
+  save.contracts.list[i] = rollContract(++save.contracts.seed);
+  return c;
+}
+
+/** Nettoie les contrats d'une sauvegarde, et complète la liste. */
+export function sanitizeContracts(raw: Partial<Save['contracts']> | undefined): Save['contracts'] {
+  const kinds: ContractKind[] = ['kill_type', 'kill', 'berry', 'clean', 'challenge', 'champion'];
+  const list = (Array.isArray(raw?.list) ? raw.list : [])
+    .filter((c): c is Contract => !!c && kinds.includes(c.kind) && Number(c.goal) > 0 && !!c.reward)
+    .slice(0, CONTRACT_SLOTS)
+    .map((c) => ({ ...c, n: Math.max(0, Math.min(c.goal, Math.floor(Number(c.n) || 0))) }));
+  const out = { list, seed: Math.max(0, Math.floor(Number(raw?.seed) || 0)) };
+  while (out.list.length < CONTRACT_SLOTS) out.list.push(rollContract(++out.seed));
+  return out;
+}

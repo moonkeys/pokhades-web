@@ -13,7 +13,7 @@ import { BIOMES } from '../world/biomes';
 import { MISSIONS, available, busy, collect, mission, missionSlots, open as missionOpen, recall, rewardText, send, type Mission, type MissionId } from '../meta/missions';
 import { NICK_MAX, capacity, isBaseForm, recruitThreshold, welcomeMon, level, monName, ownedSpecies, ownsSpecies, roster as rosterIds, speciesOf, startLevel, type Save } from '../meta/save';
 import { natureText, applyTraits } from '../meta/mons';
-import { MAX_ACTIVE, QUESTS, abandonQuest, acceptQuest, claimQuest, questFor, questState } from '../meta/quests';
+import { MAX_ACTIVE, QUESTS, abandonQuest, acceptQuest, claimContract, claimQuest, contractText, questFor, questState, refillContracts } from '../meta/quests';
 import { memberWeight, moveWeight, weightCap, type MemberWeight } from '../meta/weight';
 import { typeColor } from '../render/combatfx';
 import { STATIONS, stationId, type Station } from '../run/camp';
@@ -1501,6 +1501,41 @@ export class CampScreen {
         });
       }
     }
+    this.renderContracts(grid, ctx);
+  }
+
+  /**
+   * Contrats de Kangourex (meta/quests.ts) : trois petits objectifs qui
+   * comptent sans être acceptés ; réclamés, ils paient et un nouveau prend
+   * la place. Sous les quêtes, dans la même grille.
+   */
+  private renderContracts(grid: HTMLElement, ctx: CampCtx): void {
+    const save = ctx.save;
+    refillContracts(save);
+    el('p', 'cs-quote wide', grid, 'Contrats : de petits services, toujours renouvelés. Ils comptent dès qu’ils sont là.');
+    save.contracts.list.forEach((c, i) => {
+      const ready = c.n >= c.goal;
+      const card = el('div', `cs-card da-paper cs-mission cs-quest q-${ready ? 'ready' : 'active'}`, grid);
+      el('div', 'cs-icon cs-build-art cs-teaser', card, '✎');
+      if (ready) newMark(card);
+      el('div', 'cs-head', card).append(el('b', '', undefined, 'Contrat'));
+      el('small', 'cs-info', card, contractText(c));
+      const r = c.reward;
+      el('small', 'cs-next', card, `Récompense : ${[`${r.baies} Baies`, r.wood && `${r.wood} Bois`, r.stone && `${r.stone} Pierre`, r.food && `${r.food} Nourriture`, r.shards && `${r.shards} Éclat`].filter(Boolean).join(' · ')}`);
+      const bar = el('div', 'cs-dex-bar', card);
+      bar.style.setProperty('--w', `${Math.min(100, (c.n / c.goal) * 100)}%`);
+      el('small', '', bar, `${c.n} / ${c.goal}`);
+      if (!ready) return;
+      el('div', 'da-stamp cs-price', card, 'Réclamer');
+      card.addEventListener('click', () => {
+        const got = claimContract(save, i);
+        if (!got) return;
+        sfx('claim');
+        ctx.persist();
+        ctx.notify('Contrat réclamé', `${contractText(got)} — c’est payé.`, CAMP_NPCS.quests);
+        void this.render();
+      });
+    });
   }
 
   private async renderMissions(main: HTMLElement, ctx: CampCtx): Promise<void> {
