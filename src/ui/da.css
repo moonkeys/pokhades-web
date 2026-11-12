@@ -1978,6 +1978,45 @@
   grid-template-columns: repeat(auto-fit, minmax(calc(16 * var(--u)), 1fr));
 }
 
+/* Nouveautés : les notes de version dans un cadre qui défile, titres à l'encre. */
+.opt-notes {
+  max-height: calc(34 * var(--u));
+  overflow-y: auto;
+  padding-right: var(--u);
+  font-size: calc(1.2 * var(--u));
+  line-height: 1.4;
+}
+.opt-note + .opt-note {
+  margin-top: calc(1.6 * var(--u));
+  padding-top: calc(1.2 * var(--u));
+  border-top: calc(0.15 * var(--u)) dashed color-mix(in srgb, var(--ink) 35%, transparent);
+}
+.opt-note-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--u);
+  font: normal calc(1.7 * var(--u)) var(--head);
+  letter-spacing: 0.02em;
+}
+.opt-note h4 {
+  margin: calc(1 * var(--u)) 0 calc(0.3 * var(--u));
+  font: normal calc(1.4 * var(--u)) var(--head);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.opt-note ul {
+  margin: 0;
+  padding-left: calc(1.6 * var(--u));
+}
+.opt-note li + li {
+  margin-top: calc(0.25 * var(--u));
+}
+.opt-note li::marker {
+  color: var(--red, #e84040);
+}
+
 /* ── Boutique : étiquettes de prix, fiche d'article, bulles, mercenaires ── */
 /* Prix de l'étal : une petite ardoise cerclée de bois, le prix à la craie ; elle
    passe au jaune devant l'article qu'on regarde. */

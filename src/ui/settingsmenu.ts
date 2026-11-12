@@ -2,6 +2,7 @@ import { sfx } from '../audio/audio';
 import type { Options } from './options';
 import { hint } from './hints';
 import { isTouch } from '../input/touch';
+import { markNotesSeen, PATCH_NOTES } from '../data/patchnotes';
 import { ACTIONS, customized, keyLabel, keysOf, rebind, RESERVED, resetBindings, type Action } from '../input/bindings';
 
 // Menu des réglages, ouvert par Échap au Repaire comme en run (le jeu se
@@ -34,7 +35,7 @@ interface Row {
 // Écart voulu (retour de test : « Zoom… plein d'onglets que tu peux supprimer ») : un seul
 // onglet de réglages, le son et les secousses ; le zoom, les particules, les halos et la
 // vignette ne se règlent plus que dans le panneau de test (H).
-const TABS = ['Run', 'Réglages', 'Commandes'] as const;
+const TABS = ['Run', 'Réglages', 'Commandes', 'Nouveautés'] as const;
 type Tab = (typeof TABS)[number];
 
 /** Les commandes au doigt (retour de test : pas de clavier sur téléphone) : les boutons de l'écran. */
@@ -102,6 +103,13 @@ export class SettingsMenu {
         if (this.root.hidden) return;
         e.stopImmediatePropagation();
         e.preventDefault();
+        // Nouveautés : ↑↓ font défiler les notes (pas de ligne à choisir).
+        if (this.tab === 'Nouveautés' && (e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'PageUp' || e.code === 'PageDown')) {
+          const notes = this.root.querySelector<HTMLElement>('.opt-notes');
+          const step = e.code.startsWith('Page') ? (notes?.clientHeight ?? 200) * 0.9 : 60;
+          notes?.scrollBy({ top: (e.code === 'ArrowUp' || e.code === 'PageUp' ? -1 : 1) * step });
+          return;
+        }
         if (this.waiting) {
           if (e.repeat) return;
           // Échap annule ; les touches réservées (menu, son) ne se prennent pas.
@@ -369,6 +377,8 @@ export class SettingsMenu {
         ];
       case 'Run':
         return this.leave ? [this.continueRow(), this.leaveRow(this.leave)] : [];
+      case 'Nouveautés':
+        return [];
       case 'Commandes':
         // Au doigt, les boutons de l'écran : rien à réassigner.
         return isTouch() ? [] : [...ACTIONS.map((a) => this.bindRow(a.id, a.label)), this.resetRow()];
@@ -386,7 +396,7 @@ export class SettingsMenu {
     const sheet = el('div', 'poster opt-sheet', wrap);
     const head = el('div', 'opt-head', sheet);
     el('span', 'banner da-tape', head, 'PAUSE');
-    el('h3', '', head, this.tab === 'Run' ? 'LA RUN' : 'RÉGLAGES');
+    el('h3', '', head, this.tab === 'Run' ? 'LA RUN' : this.tab === 'Nouveautés' ? 'NOUVEAUTÉS' : 'RÉGLAGES');
 
     const tabs = el('div', `opt-tabs${this.sel === 0 ? ' focus' : ''}`, sheet);
     for (const t of this.tabs()) {
@@ -400,6 +410,7 @@ export class SettingsMenu {
     }
 
     const body = el('div', `opt-body${this.tab === 'Commandes' && this.rows.length ? ' binds' : ''}`, sheet);
+    if (this.tab === 'Nouveautés') this.renderNotes(body);
     if (this.tab === 'Commandes' && !this.rows.length) this.renderControls(body);
     if (this.tab === 'Commandes' && this.rows.length) this.renderBinds(body, tabs);
     else if (this.tab === 'Run') {
@@ -431,7 +442,7 @@ export class SettingsMenu {
       r.render(el('div', 'opt-ctrl', line));
     });
 
-    el('p', 'keys', sheet, hint(this.tab === 'Commandes' ? (this.waiting ? 'Appuie sur la nouvelle touche · Échap : annuler' : '↑↓ choisir · Entrée : changer la touche · Échap : reprendre') : this.tab === 'Run' ? '↑↓ choisir · Entrée valider · Échap : reprendre' : '↑↓ choisir · ←→ régler · Échap : reprendre', 'Touche pour régler · touche en dehors : reprendre'));
+    el('p', 'keys', sheet, hint(this.tab === 'Nouveautés' ? '↑↓ défiler · ←→ onglet · Échap : reprendre' : this.tab === 'Commandes' ? (this.waiting ? 'Appuie sur la nouvelle touche · Échap : annuler' : '↑↓ choisir · Entrée : changer la touche · Échap : reprendre') : this.tab === 'Run' ? '↑↓ choisir · Entrée valider · Échap : reprendre' : '↑↓ choisir · ←→ régler · Échap : reprendre', 'Touche pour régler · touche en dehors : reprendre'));
     for (const [side, rot] of [
       ['left: 6%', -12],
       ['right: 6%', 9],
@@ -440,6 +451,23 @@ export class SettingsMenu {
       t.style.cssText = `${side}; rotate: ${rot}deg`;
     }
     if (this.root.classList.contains('play')) wrap.style.animation = 'none';
+  }
+
+  /** Les notes de version, la plus récente d'abord, dans un cadre qui défile. */
+  private renderNotes(body: HTMLElement): void {
+    markNotesSeen();
+    const box = el('div', 'opt-notes', body);
+    for (const n of PATCH_NOTES) {
+      const note = el('section', 'opt-note', box);
+      const head = el('div', 'opt-note-head', note);
+      el('span', 'da-stamp', head, n.date);
+      el('b', '', head, n.title);
+      for (const sec of n.sections) {
+        el('h4', '', note, sec.title);
+        const ul = el('ul', '', note);
+        for (const it of sec.items) el('li', '', ul, it);
+      }
+    }
   }
 
   /** Les actions réassignables, sur deux colonnes, puis les commandes fixes. */

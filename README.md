@@ -661,6 +661,10 @@ plus qu'au panneau de test (H).
 ↑↓ choisit, ←→ règle, Échap reprend ; tout se clique aussi. Les réglages
 sont gardés avec ceux du panneau de test, qui se met à jour derrière.
 
+Onglet **Nouveautés** (aussi au menu principal, marqué « Nouveau ! » tant
+que la dernière note n'a pas été lue) : les notes de version,
+`src/data/patchnotes.ts` — en ajouter une en tête à chaque mise en ligne.
+
 Les touches se **réassignent** dans l'onglet Commandes (`src/input/bindings.ts`) :
 Entrée (ou un clic) sur une action, puis la nouvelle touche ; Échap annule.
 On change la touche principale de l'action, ses autres touches restent tant
