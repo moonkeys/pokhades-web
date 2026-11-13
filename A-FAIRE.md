@@ -571,6 +571,9 @@ Si d'autres se voient en jeu, noter leur emplacement.
 - Écran « Leçons » (`CampScreen.renderLore`) : un onglet par chapitre, une
   fiche par notion (`src/data/lore.ts`) ; le chapitre Types se construit
   depuis `TYPE_CHART` (forces, faiblesses, immunités par type).
+- Mises à jour (13 novembre 2026) : Méga-évolution, attaques qui évoluent
+  et de météo, formes régionales, Nuzlocke, Source, Autel maudit, contrats,
+  recrues de champion, compagnons, boutique (solde, lots de Baies), places.
 - Reste : relire les textes en jeu ; tenir les fiches à jour quand un
   chiffre change (rien ne les relie au code) ; une fiche Météo plus
   illustrée, des icônes d'états.

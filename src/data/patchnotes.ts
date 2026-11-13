@@ -28,7 +28,7 @@ export const PATCH_NOTES: readonly PatchNote[] = [
       },
       {
         title: 'Repaire',
-        items: ['Certains contrats de Kangourex paient aussi un Super Bonbon ou un objet tenu.'],
+        items: ['Certains contrats de Kangourex paient aussi un Super Bonbon ou un objet tenu.', 'Les leçons de Bouldeneu racontent tout ce qui est nouveau : Méga-évolution, formes régionales, Source, Autel maudit, Nuzlocke…'],
       },
     ],
   },
