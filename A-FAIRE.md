@@ -264,9 +264,14 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
   première défaite.
 - Les débloqués peuplent le Repaire (les seize derniers, hors équipe).
 - Pour tester : panneau (H) → « Tout remettre à zéro » au Repaire.
-- Reste : le recrutement en fin de combat du jeu (`RecruitScreen.gd`) et le
-  déblocage par les boss de champion ne sont pas repris ; le panneau compose
-  toujours l'équipe sans tenir compte du déblocage (outil de test).
+- **Champions** (fait, 13 novembre 2026) : un champion vaincu cède un
+  Pokémon de son équipe, ramené à sa forme de base, son as d'abord, puis
+  en remontant les vagues ; un seul par victoire, jamais une espèce qu'on a
+  déjà ou qui attend (`grantChampion`, save.ts ; origine « Équipe de X »).
+  Reste à voir en jeu la notification (non déclenchée en test automatique).
+- Reste : le recrutement en fin de combat du jeu (`RecruitScreen.gd`) n'est
+  pas repris ; le panneau compose toujours l'équipe sans tenir compte du
+  déblocage (outil de test).
 
 ### 1.8 Météo (fait)
 - `src/world/weather.ts` : temps clair, Pluie, Soleil ardent, Tempête de
@@ -307,7 +312,14 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
 - **Autel maudit** ☠ (`run/altar.ts`, ajout) : un don d'un cran plus rare
   contre une malédiction jusqu'à la fin de l'acte (+2 niveaux, ₽ divisés
   par deux, ou pas de relève en fin de salle). Panneau → « Autel ».
-- Reste : d'autres salles, un Marchand qui vend aussi des objets.
+- Objets à la boutique (ajout) : le Marchand ambulant n'est plus tiré, c'est
+  donc l'étal de la boutique qui vend un objet tenu par visite, en ₽, versé à
+  la réserve du Repaire (voir README).
+- **Dojo** ✊ (`run/dojo.ts`, ajout, 13 novembre 2026) : sans ennemis, un
+  tatami et un mannequin de paille veillés par Machopeur ; [E] : l'écran
+  « Nouvelle attaque », gratuit, deux leçons par salle (`DOJO_LESSONS`).
+  Proposé par les portes ; panneau → « Dojo ».
+- Reste : d'autres salles.
 
 ### 1.10 Son (fait)
 - `src/audio/sounds.ts` (catalogue, repris de `Sfx.gd`) et `audio.ts`
@@ -346,7 +358,7 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
 
 ### 1.12 Formes des salles (fait)
 - `src/world/layouts.ts` décrit huit formes (Clairière, Arène, Couloir,
-  Ligne de front, Deux clairières, Carrefour, Boucle, Lacets). Chacune a plusieurs tailles, une
+  Ligne de front, Deux clairières, Carrefour, Boucle, Lacets, et Île et Terrasses, ajoutées ensuite). Chacune a plusieurs tailles, une
   silhouette faite d'ellipses et de capsules, et des chemins qui suivent son
   squelette.
 - Chaque biome tire dans sa liste pondérée (`POOLS`). `generate()` mesure
@@ -384,7 +396,12 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
   - vagues selon la taille (fait) : l'effectif suit la racine des cases
     libres rapportées à 800 (`AREA_REF`, room.ts), entre ×0,75 et ×1,3 ;
     à juger en jeu ;
-  - d'autres formes : une île au Lac, des terrasses au Rocailleux ;
+  - (fait) une île au Lac (`ile`, poids 3 sur 8) : vérifiée sur 240 cartes
+    (60 graines × 4 bords d'entrée), toutes les portes et l'arrivée reliées
+    à l'île à pied ; reste à juger en jeu la largeur des gués ;
+  - (fait) des terrasses au Rocailleux (`terrasses`, poids 3 sur 13) :
+    vérifiées sur 400 cartes (100 graines × 4 bords d'entrée), les trois
+    étages et au moins une porte atteints à pied ; montée vérifiée en jeu ;
   - Ligne de front : juger en jeu le préavis (1,3 s), la largeur du sentier
     de Forêt et la densité des champs de Prairie (sauvages cachés : trop
     durs ?).
@@ -543,7 +560,9 @@ Si d'autres se voient en jeu, noter leur emplacement.
 - **Contrats** (ajout) : trois petits objectifs de run toujours renouvelés
   (K.O. d'un type, K.O., Baies, salles sans coup, Défi, champion), payés en
   Baies, ressources ou Éclat (`Save.contracts`, `contractEvent`, sous les
-  quêtes chez Kangourex). Reste : des récompenses en objets.
+  quêtes chez Kangourex). Objets en prime (fait) : un contrat long sur quatre
+  (K.O., salles sans coup, champion) paie aussi un Super Bonbon ou un objet
+  tenu de l'étal, versé dans la réserve (`CANDY_ITEM`, `BONUS_HELD`).
 
 ### 2.6 Poids d'équipe (fait)
 - `src/meta/weight.ts` : Pokémon 3 / 5 / 8 selon le stade de départ,
@@ -564,6 +583,9 @@ Si d'autres se voient en jeu, noter leur emplacement.
 - Écran « Leçons » (`CampScreen.renderLore`) : un onglet par chapitre, une
   fiche par notion (`src/data/lore.ts`) ; le chapitre Types se construit
   depuis `TYPE_CHART` (forces, faiblesses, immunités par type).
+- Mises à jour (13 novembre 2026) : Méga-évolution, attaques qui évoluent
+  et de météo, formes régionales, Nuzlocke, Source, Autel maudit, contrats,
+  recrues de champion, compagnons, boutique (solde, lots de Baies), places.
 - Reste : relire les textes en jeu ; tenir les fiches à jour quand un
   chiffre change (rien ne les relie au code) ; une fiche Météo plus
   illustrée, des icônes d'états.

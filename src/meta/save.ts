@@ -400,6 +400,25 @@ export function grantAlly(save: Save, species: number): { id: number; waiting: b
   return { id, waiting: mon === null };
 }
 
+/**
+ * Un champion vaincu (A-FAIRE 1.7 : « le déblocage par les boss de champion ») : un Pokémon
+ * de son équipe, ramené à sa forme de base, rejoint la rébellion — son as d'abord, puis en
+ * remontant les vagues, le premier qu'on n'a ni au Repaire ni en attente. Repaire plein : il
+ * attend avec les recrues. Rend l'espèce, ou null si l'équipe n'a plus rien à offrir.
+ */
+export function grantChampion(save: Save, bases: readonly number[], champion: string): { id: number; waiting: boolean } | null {
+  if (!save.started) return null;
+  for (const species of [...bases].reverse()) {
+    let id = species;
+    for (let pre = preEvolutionOf(id); pre !== null; pre = preEvolutionOf(id)) id = pre;
+    if (ownsSpecies(save, id) || save.candidates.some((c) => c.species === id)) continue;
+    const mon = welcomeMon(save, id, `champion:${champion}`);
+    markSeen(save, id);
+    return { id, waiting: mon === null };
+  }
+  return null;
+}
+
 /** Combien de libérés le Repaire loge (catalog.ts, campCapacity). */
 export const capacity = (save: Save): number => campCapacity(save.built, save.bunks);
 export const isFull = (save: Save): boolean => roster(save).length >= capacity(save);

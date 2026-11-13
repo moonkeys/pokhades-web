@@ -140,13 +140,28 @@ une forme et une taille dans la liste de son biome. Il y a huit formes :
 - **Deux clairières** : deux clairières reliées par un goulet ;
 - **Carrefour** : une place et quatre bras vers les bords ;
 - **Boucle** : un anneau autour d'un cœur infranchissable ;
-- **Lacets** : un sentier en U.
+- **Lacets** : un sentier en U ;
+- **Île** (Lac seulement) : une rive qui fait le tour d'un grand lac, une
+  île au milieu reliée à la rive par deux gués étroits (au sud vers
+  l'entrée, au nord vers la sortie). On traverse par l'île ou l'on fait le
+  tour par la rive. La terre de l'île et des gués (`Shape.land`) est comptée
+  après le cœur, avec 3 cases de marge sur la lisière (`LAND_MARGIN`) : sans
+  elle, un gué praticable aurait dû être aussi large que l'île.
+- **Terrasses** (Rocailleux seulement) : trois étages en bandes à travers
+  la carte, qui montent vers le nord ; le chemin les gravit en zigzag, par un
+  escalier à chaque marche (simple, puis double). Les bandes (`Shape.terraces`,
+  étape 3b de `generate`) remplacent les plateaux semés au hasard ; elles
+  débordent de la zone jouable, sinon chaque bande se ferait une paroi contre
+  la lisière et boucherait les portes. Les escaliers sur le chemin passent
+  d'abord. Les escaliers ne vont que dans une paroi sud : la forme ne tourne
+  pas, une entrée à l'est ou à l'ouest arrive par le côté, dans la bande du
+  bas, et les marches s'écartent des portes de côté.
 
 Le cœur de la Boucle dépend du biome : un lac avec son îlot à coffre au Lac,
 de la lave au Volcan, un marécage au Marais, la montagne au Rocailleux, un
 bosquet ailleurs. Chaque biome a ses préférences : la Forêt prend surtout
 les clairières reliées et les lacets, le Rocailleux ses canyons, le Volcan
-ses arènes, le Lac sa clairière ou sa boucle. Le Village garde ses rues. La
+ses arènes, le Lac sa clairière, sa boucle ou son île, le Rocailleux ses terrasses. Le Village garde ses rues. La
 Plage et l'Océan gardent leur littoral, mais pas sa taille (une anse courte
 ou une longue grève). La forme se tire avec la graine de la salle ; le
 panneau peut l'imposer (« Forme des salles »). La boutique ne change pas.
@@ -168,6 +183,10 @@ lisible sur la fiche, qui pèse jusqu'à la fin de l'acte (`Run.curse`, écrite
 sous le lieu en haut à gauche) : **Sauvages enragés** (+2 niveaux, champion
 compris), **Bourse percée** (₽ des salles divisés par deux) ou **Sans repos**
 (les K.O. ne se relèvent plus en fin de salle). On peut passer son chemin.
+**Dojo** ✊ (`run/dojo.ts`) : sans ennemis, un tatami et un mannequin de
+paille, et Machopeur, maître des lieux ; [E] au tatami ouvre l'écran
+« Nouvelle attaque » sans prix (apprendre ou renforcer, pour le membre
+choisi), deux fois par salle ; fermer l'écran sans choisir ne compte pas.
 
 Météo (ajout, `src/world/weather.ts`) : chaque salle de combat tire son ciel
 selon le biome — souvent clair, parfois Pluie, Soleil ardent, Tempête de
@@ -352,7 +371,8 @@ Au premier lancement, on choisit son **starter** parmi les neuf du jeu
 Baggiguane, Riolu) : c'est le seul Pokémon débloqué. Les autres se gagnent
 en run — 10 victoires contre une espèce de base la première fois (une évolution ne se
 débloque pas : elle se gagne en faisant évoluer sa lignée), le prisonnier
-d'une grotte libéré — et rejoignent le Repaire (« ★ X
+d'une grotte libéré, un Pokémon de l'équipe d'un champion vaincu (son as
+d'abord, ramené à sa forme de base, `grantChampion`) — et rejoignent le Repaire (« ★ X
 rejoint la rébellion ! »). Le premier acte n'aligne que trois espèces de
 base dans ses deux premières salles, cinq ensuite, sans itinérants ni top
 dresseurs (`Run.fauna`, `Run.variety`) : de quoi en vaincre dix d'une même
@@ -486,8 +506,12 @@ un cadeau (quelques ₽, une Potion, une Baie Oran pour l'équipe), un par
 visite au plus. On les contourne, ils ne se laissent pas pousser. Sur l'étal,
 un **lot de Baies** par visite (7, 17 ou 40 Baies pour 100, 220 ou 480 ₽,
 `BERRY_PACKS`, les quantités du jeu divisées par trois) : convertir sa bourse
-en monnaie du Repaire, à un taux exprès ingrat. Pas encore de rachat (il
-faudrait un inventaire en run).
+en monnaie du Repaire, à un taux exprès ingrat. Et un **objet tenu** par
+visite (ajout) : un des moins chers du marché du Repaire (≤ 160 Baies), à
+4 ₽ la Baie de son prix (280 à 640 ₽), versé à la réserve du Repaire pour
+être tenu au retour (`HELD_FOR_SALE`, `ShopHost.giveItem` ; refusé chez
+l'invité, qui n'a pas de Repaire). Pas encore de rachat (il faudrait un
+inventaire en run).
 
 **Solde des mercenaires** (`CombatArena._collect_merc_retainers`) : à
 l'entrée de chaque boutique suivante, un mercenaire encore debout réclame la

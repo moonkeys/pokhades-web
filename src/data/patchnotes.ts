@@ -18,6 +18,26 @@ export interface PatchNote {
 
 export const PATCH_NOTES: readonly PatchNote[] = [
   {
+    id: '2026-11-13',
+    date: '13 novembre 2026',
+    title: 'Recrues de champion et contrats mieux payés',
+    sections: [
+      {
+        title: 'Run',
+        items: [
+          'Un champion vaincu cède un Pokémon de son équipe (son as d’abord, sous sa forme de base) : il rejoint le Repaire, ou attend s’il est plein.',
+          'Nouvelles formes de salle : au Lac, une île reliée à la rive par deux gués ; au Rocailleux, des terrasses qu’on gravit par des escaliers.',
+          'Nouvelle salle : le Dojo ✊, où Machopeur t’apprend ou te renforce deux attaques, gratuitement.',
+          'Boutique : un objet tenu par visite (Bandeau Muscle, Vive Griffe…), payé en ₽ et rangé dans la réserve du Repaire.',
+        ],
+      },
+      {
+        title: 'Repaire',
+        items: ['Certains contrats de Kangourex paient aussi un Super Bonbon ou un objet tenu.', 'Les leçons de Bouldeneu racontent tout ce qui est nouveau : Méga-évolution, formes régionales, Source, Autel maudit, Nuzlocke…'],
+      },
+    ],
+  },
+  {
     id: '2026-11-12',
     date: '12 novembre 2026',
     title: 'Méga-évolutions, formes régionales et salles maudites',

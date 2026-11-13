@@ -230,9 +230,9 @@ export class RoomDirector {
   private toCave = false;
   /** Salle spéciale en cours, temps restant du Défi, Défi raté. */
   private special: SpecialId | null = null;
-  /** Salle sans ennemis, portes ouvertes d'emblée : le marchand, la Source. */
+  /** Salle sans ennemis, portes ouvertes d'emblée : le marchand, la Source, l'Autel, le Dojo. */
   private get peaceful(): boolean {
-    return this.special === 'merchant' || this.special === 'spring' || this.special === 'altar';
+    return this.special === 'merchant' || this.special === 'spring' || this.special === 'altar' || this.special === 'dojo';
   }
   private clock = 0;
   private failed = false;

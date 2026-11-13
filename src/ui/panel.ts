@@ -20,7 +20,7 @@ export const PUBLIC_BUILD = import.meta.env.PROD;
 type Key = keyof Options;
 type OnChange = (changed: Key) => void;
 /** Où aller, ou quoi faire au Repaire : 'baies' (+1000 Baies, +100 de chaque ressource, +20 Éclats) et 'reset' (progression neuve) servent aux tests. */
-export type RoomKind = 'combat' | 'shop' | 'boss' | 'challenge' | 'trap' | 'merchant' | 'spring' | 'altar' | 'camp' | 'baies' | 'reset';
+export type RoomKind = 'combat' | 'shop' | 'boss' | 'challenge' | 'trap' | 'merchant' | 'spring' | 'altar' | 'dojo' | 'camp' | 'baies' | 'reset';
 type OnGo = (act: number, kind: RoomKind) => void;
 /** Plafond d'une équipe en run (CombatArena.MAX_RUN_TEAM). */
 const MAX_TEAM = 6;
@@ -195,7 +195,7 @@ export class Panel {
         field('Graine', el('div', { className: 'row' }, [this.seedInput, reroll])),
         field('Équipe', teamBox, 'Tab : changer de Pokémon en jeu. Le premier part devant.'),
         field('Aller à une salle', el('div', { className: 'row' }, [actSelect, go('combat', 'Combat'), go('shop', 'Boutique'), go('boss', 'Boss')]), 'Dans le biome de la run choisi au-dessus.'),
-        field('Salle spéciale', el('div', { className: 'row' }, [go('challenge', 'Défi'), go('trap', 'Piège'), go('spring', 'Source'), go('altar', 'Autel')]), 'La 2ᵉ salle de l’acte choisi, comme si l’on avait pris sa porte.'),
+        field('Salle spéciale', el('div', { className: 'row' }, [go('challenge', 'Défi'), go('trap', 'Piège'), go('spring', 'Source'), go('altar', 'Autel'), go('dojo', 'Dojo')]), 'La 2ᵉ salle de l’acte choisi, comme si l’on avait pris sa porte.'),
         repaire,
       ]),
       el('section', {}, [
