@@ -21,7 +21,7 @@ import type { Biome } from './biomes';
 // leurs bouts deviennent les portes (findExits). Les routes, elles, suivent
 // le squelette de la forme pour ne pas tailler de tranchée dans la forêt.
 
-export type LayoutId = 'clairiere' | 'arene' | 'couloir' | 'front' | 'haltere' | 'carrefour' | 'boucle' | 'lacets';
+export type LayoutId = 'clairiere' | 'arene' | 'couloir' | 'front' | 'haltere' | 'carrefour' | 'boucle' | 'lacets' | 'ile';
 
 export const LAYOUT_NAMES: Record<LayoutId, string> = {
   clairiere: 'Clairière',
@@ -32,11 +32,13 @@ export const LAYOUT_NAMES: Record<LayoutId, string> = {
   carrefour: 'Carrefour',
   boucle: 'Boucle',
   lacets: 'Lacets',
+  ile: 'Île',
 };
 
 type Pt = { x: number; y: number };
 
-type Prim = { kind: 'rect' } | { kind: 'ellipse'; x: number; y: number; rx: number; ry: number } | { kind: 'capsule'; a: Pt; b: Pt; r: number };
+type Solid = { kind: 'ellipse'; x: number; y: number; rx: number; ry: number } | { kind: 'capsule'; a: Pt; b: Pt; r: number };
+type Prim = { kind: 'rect' } | Solid;
 
 /**
  * Ce qui remplit le cœur d'une boucle : la forêt (hors zone), l'eau ou la
@@ -53,6 +55,11 @@ export interface Shape {
   prims: Prim[];
   /** Trou au milieu de la zone (boucle), et ce qui le remplit. */
   core: { x: number; y: number; rx: number; ry: number; fill: CoreFill } | null;
+  /**
+   * Terre rendue au milieu du cœur, par-dessus l'eau : l'île et ses gués
+   * (forme Île). Comptée après le cœur, contrairement à `prims`.
+   */
+  land?: Solid[];
   /** Point d'arrivée, sur un bord de la carte. */
   entry: Pt;
   /** Carrefour des chemins. */
@@ -81,20 +88,29 @@ export function shapeDepth(s: Shape, x: number, y: number): number {
   // Jamais plus profond que la distance au bord : la forme ne touche pas le cadre.
   const edge = Math.min(x, y, s.w - 1 - x, s.h - 1 - y);
   let d = -Infinity;
-  for (const p of s.prims) {
-    if (p.kind === 'rect') d = Math.max(d, edge);
-    else if (p.kind === 'ellipse') d = Math.max(d, (1 - Math.hypot((px - p.x) / p.rx, (py - p.y) / p.ry)) * Math.min(p.rx, p.ry));
-    else d = Math.max(d, p.r - segDist(px, py, p.a, p.b));
-  }
+  for (const p of s.prims) d = Math.max(d, p.kind === 'rect' ? edge : primDepth(p, px, py));
   d = Math.min(d, edge);
   const c = s.core;
   if (c) d = Math.min(d, coreDepth(c, x, y));
+  for (const p of s.land ?? []) d = Math.max(d, Math.min(edge, primDepth(p, px, py) + LAND_MARGIN));
   return d;
 }
 
 /** Distance (cases) au cœur d'une boucle, positive dehors. */
 export function coreDepth(c: { x: number; y: number; rx: number; ry: number }, x: number, y: number): number {
   return (Math.hypot((x + 0.5 - c.x) / c.rx, (y + 0.5 - c.y) / c.ry) - 1) * Math.min(c.rx, c.ry);
+}
+
+/**
+ * Marge de la terre rendue au lac (`land`) : la lisière (1,8 à 4,4 cases) ne
+ * la ronge presque pas, sinon un gué devrait être aussi large que l'île pour
+ * rester praticable, et l'île ne se lirait plus.
+ */
+const LAND_MARGIN = 3;
+
+/** Profondeur d'un point dans une ellipse ou une capsule (cases), négative dehors. */
+function primDepth(p: Solid, px: number, py: number): number {
+  return p.kind === 'ellipse' ? (1 - Math.hypot((px - p.x) / p.rx, (py - p.y) / p.ry)) * Math.min(p.rx, p.ry) : p.r - segDist(px, py, p.a, p.b);
 }
 
 function segDist(px: number, py: number, a: Pt, b: Pt): number {
@@ -104,8 +120,8 @@ function segDist(px: number, py: number, a: Pt, b: Pt): number {
   return Math.hypot(px - a.x - dx * t, py - a.y - dy * t);
 }
 
-const ellipse = (x: number, y: number, rx: number, ry: number): Prim => ({ kind: 'ellipse', x, y, rx, ry });
-const capsule = (a: Pt, b: Pt, r: number): Prim => ({ kind: 'capsule', a, b, r });
+const ellipse = (x: number, y: number, rx: number, ry: number): Solid => ({ kind: 'ellipse', x, y, rx, ry });
+const capsule = (a: Pt, b: Pt, r: number): Solid => ({ kind: 'capsule', a, b, r });
 /** Une chaîne de capsules (le corps d'un couloir, d'un lacet). */
 const chain = (pts: Pt[], r: number): Prim[] => pts.slice(1).map((p, i) => capsule(pts[i], p, r));
 
@@ -259,6 +275,33 @@ const LAYOUTS: Record<LayoutId, LayoutDef> = {
       return { prims: [ellipse(c.x, c.y, w / 2 - 1, h / 2 - 1)], core, entry, hub: N, routes, wobble: 2 };
     },
   },
+  // Île (A-FAIRE 1.12 : « une île au Lac ») : une rive qui fait le tour d'un
+  // grand lac, et au milieu une île, reliée à la rive par deux gués, un au
+  // sud vers l'entrée, un au nord vers la sortie. Le carrefour est sur l'île :
+  // on la traverse, ou l'on fait le tour par la rive (les portes de côté y
+  // donnent). Au Lac, on nage aussi d'une rive à l'autre.
+  ile: {
+    sizes: [[54, 40], [58, 42]],
+    build: (w, h, rng, fill) => {
+      const c = { x: w / 2 + rng.range(-1.5, 1.5), y: h / 2 };
+      const core = { ...c, rx: w * 0.31, ry: h * 0.3, fill };
+      const isle = { x: c.x, y: c.y, rx: w * 0.13 + rng.range(-1, 1), ry: h * 0.14 };
+      // Le tour de la rive : des points sur une ellipse entre le lac et la lisière (en ligne
+      // droite de S à O, le chemin couperait le lac).
+      const rim = (deg: number): Pt => ({ x: c.x + Math.sin((deg * Math.PI) / 180) * w * 0.405, y: c.y + Math.cos((deg * Math.PI) / 180) * h * 0.4 });
+      const S = rim(0);
+      const N = rim(180);
+      const Wp = rim(270);
+      const E = rim(90);
+      const entry = { x: S.x + rng.range(-2, 2), y: h - 0.5 };
+      // Les gués : étroits (2 à 7 cases, selon la lisière), l'île reste une île.
+      const ford = 2.5;
+      const land = [ellipse(isle.x, isle.y, isle.rx, isle.ry), capsule(S, c, ford), capsule(c, N, ford)];
+      const routes = [[entry, S, c, N, { x: N.x + rng.range(-4, 4), y: 0.5 }], [S, rim(315), Wp, rim(225), N], [S, rim(45), E, rim(135), N]];
+      if (rng.chance(0.6)) routes.push(rng.chance(0.5) ? [Wp, { x: 0.5, y: c.y + rng.range(-3, 3) }] : [E, { x: w - 0.5, y: c.y + rng.range(-3, 3) }]);
+      return { prims: [ellipse(c.x, c.y, w / 2 - 1, h / 2 - 1)], core, land, entry, hub: c, routes, wobble: 1.5 };
+    },
+  },
   // Un sentier en U : une bande en bas, un virage, une bande en haut qui
   // revient, la forêt entre les deux.
   lacets: {
@@ -292,7 +335,7 @@ const POOLS: Record<BiomeId, readonly [LayoutId, number][]> = {
   prairie: [['clairiere', 3], ['arene', 2], ['haltere', 2], ['carrefour', 2], ['boucle', 1], ['front', 3]],
   foret: [['haltere', 3], ['lacets', 2], ['couloir', 2], ['boucle', 2], ['clairiere', 1], ['front', 3]],
   automne: [['clairiere', 2], ['haltere', 2], ['lacets', 2], ['boucle', 2], ['arene', 1], ['front', 1]],
-  lac: [['clairiere', 3], ['boucle', 3]],
+  lac: [['clairiere', 3], ['boucle', 2], ['ile', 3]],
   marais: [['haltere', 2], ['boucle', 2], ['lacets', 2], ['clairiere', 2], ['front', 1]],
   volcan: [['arene', 3], ['boucle', 2], ['couloir', 2], ['carrefour', 1], ['front', 2]],
   rocailleux: [['couloir', 2], ['carrefour', 2], ['arene', 2], ['haltere', 2], ['front', 2]],
@@ -359,6 +402,7 @@ function turnCw(s: Shape): Shape {
     h: s.w,
     prims,
     core: s.core && { ...s.core, ...t(s.core), rx: s.core.ry, ry: s.core.rx },
+    land: s.land?.map((p): Solid => (p.kind === 'ellipse' ? { kind: 'ellipse', ...t(p), rx: p.ry, ry: p.rx } : { kind: 'capsule', a: t(p.a), b: t(p.b), r: p.r })),
     entry: t(s.entry),
     hub: t(s.hub),
     routes: s.routes.map((r) => r.map(t)),

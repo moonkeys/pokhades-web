@@ -140,13 +140,19 @@ une forme et une taille dans la liste de son biome. Il y a huit formes :
 - **Deux clairières** : deux clairières reliées par un goulet ;
 - **Carrefour** : une place et quatre bras vers les bords ;
 - **Boucle** : un anneau autour d'un cœur infranchissable ;
-- **Lacets** : un sentier en U.
+- **Lacets** : un sentier en U ;
+- **Île** (Lac seulement) : une rive qui fait le tour d'un grand lac, une
+  île au milieu reliée à la rive par deux gués étroits (au sud vers
+  l'entrée, au nord vers la sortie). On traverse par l'île ou l'on fait le
+  tour par la rive. La terre de l'île et des gués (`Shape.land`) est comptée
+  après le cœur, avec 3 cases de marge sur la lisière (`LAND_MARGIN`) : sans
+  elle, un gué praticable aurait dû être aussi large que l'île.
 
 Le cœur de la Boucle dépend du biome : un lac avec son îlot à coffre au Lac,
 de la lave au Volcan, un marécage au Marais, la montagne au Rocailleux, un
 bosquet ailleurs. Chaque biome a ses préférences : la Forêt prend surtout
 les clairières reliées et les lacets, le Rocailleux ses canyons, le Volcan
-ses arènes, le Lac sa clairière ou sa boucle. Le Village garde ses rues. La
+ses arènes, le Lac sa clairière, sa boucle ou son île. Le Village garde ses rues. La
 Plage et l'Océan gardent leur littoral, mais pas sa taille (une anse courte
 ou une longue grève). La forme se tire avec la graine de la salle ; le
 panneau peut l'imposer (« Forme des salles »). La boutique ne change pas.
