@@ -3125,6 +3125,7 @@ async function boot(): Promise<void> {
     spring.placeLabels(proj);
     altar.placeLabels(proj);
     dojo.placeLabels(proj);
+    cave.placeLabels(proj);
     camp.placeLabels(proj);
     hud.setMega(megaReady() ? 'ready' : megaFrom.has(player) ? 'on' : null);
     hud.update(frameDt, player, combat, wild, proj, time, team);
@@ -3168,6 +3169,7 @@ async function boot(): Promise<void> {
         director,
         shop,
         altar,
+        cave,
         camp,
         /** Jeu en ligne : la scène reçue (invité), le décor de la salle (hôte), la session. */
         netDebug: () => ({ scene: hostScene, extras: runExtras().length, net, field }),

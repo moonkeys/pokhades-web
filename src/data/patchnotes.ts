@@ -18,6 +18,17 @@ export interface PatchNote {
 
 export const PATCH_NOTES: readonly PatchNote[] = [
   {
+    id: '2026-11-13-b',
+    date: '13 novembre 2026',
+    title: 'Des sbires mauvais perdants',
+    sections: [
+      {
+        title: 'Run',
+        items: ['Les sbires des grottes lâchent une réplique en s’enfuyant, vaincus (une autre s’ils rendent tes Pokémon).'],
+      },
+    ],
+  },
+  {
     id: '2026-11-13',
     date: '13 novembre 2026',
     title: 'Recrues de champion et contrats mieux payés',

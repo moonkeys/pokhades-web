@@ -217,7 +217,8 @@ remplissent une jauge, qui se vide d'autant plus vite qu'il reste peu de PV.
 Pleine, la Ball éclate ; vide, elle se referme : notification « Capturé ! »,
 le Pokémon quitte l'équipe (le suivant debout prend la main ; le dernier
 capturé, c'est la défaite). Toute son équipe à terre, le sbire s'enfuit par
-la bouche et rend ses prises ; si l'on fuit avant, elles sont perdues pour la
+la bouche, une réplique de défaite dans une bulle au-dessus de lui
+(`GRUNT_DEFEATS`, une autre s'il rend des Pokémon), et rend ses prises ; si l'on fuit avant, elles sont perdues pour la
 run. Vaincu : des ₽ et l'équipe soignée ; son Pokémon fort repart avec lui
 (il ne se recrute pas). Le prisonnier, enfermé dans une
 cellule creusée au fond du cachot (il en secoue la grille, la palissade à

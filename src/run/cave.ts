@@ -1,12 +1,12 @@
 import { sfx } from '../audio/audio';
 import { loadInfo, loadSheet } from '../assets/pmd';
 import { Rng } from '../core/rng';
-import { BIOME_GRUNTS, GRUNT_INTROS, GRUNT_THEMES, type GruntTheme } from '../data/grunts';
+import { BIOME_GRUNTS, GRUNT_DEFEATS, GRUNT_DEFEATS_RELEASE, GRUNT_INTROS, GRUNT_THEMES, type GruntTheme } from '../data/grunts';
 import { SWIMMERS } from '../data/species';
 import { Actor } from '../entities/actor';
 import { Trainer } from '../entities/trainer';
 import type { InputSample } from '../input/input';
-import type { CombatFx } from '../render/combatfx';
+import type { CombatFx, Projector } from '../render/combatfx';
 import type { Speaker } from '../ui/dialogue';
 import type { CaveLayout } from '../world/cave';
 import type { WorldMap } from '../world/generate';
@@ -144,6 +144,9 @@ export class CaveDirector {
   /** Course de la grille : -1 fermée, puis de 0 à 1 pendant qu'elle se relève. */
   private lift = -1;
   private readonly prompt: HTMLElement;
+  /** Sa réplique de défaite, dans une bulle qui le suit dans sa fuite, et le temps qu'elle reste. */
+  private readonly bubble: HTMLElement;
+  private bubbleT = 0;
 
   constructor(
     parent: HTMLElement,
@@ -155,7 +158,12 @@ export class CaveDirector {
     this.prompt = document.createElement('div');
     this.prompt.className = 'shop-prompt da-paper';
     this.prompt.hidden = true;
-    parent.append(this.prompt);
+    const layer = document.createElement('div');
+    layer.className = 'room-labels';
+    this.bubble = document.createElement('div');
+    this.bubble.className = 'room-label shop-bubble';
+    layer.append(this.bubble);
+    parent.append(this.prompt, layer);
     this.capture = new CaptureThreat(parent, fx, {
       captured: (a) => {
         this.captives.push(a);
@@ -221,6 +229,8 @@ export class CaveDirector {
     this.near = null;
     this.asking = false;
     this.prompt.hidden = true;
+    this.bubbleT = 0;
+    this.bubble.classList.remove('open');
     this.fade = 0;
   }
 
@@ -256,6 +266,8 @@ export class CaveDirector {
     }
     if (this.phase !== 'fadeOut') this.fade = Math.max(0, this.fade - dt / FADE);
     this.grunt?.update(dt, world, Math.random);
+    this.bubbleT -= dt;
+    this.bubble.classList.toggle('open', this.bubbleT > 0 && !!this.grunt);
     if (this.grunt?.gone) this.grunt = null;
     this.capture.update(dt, input, player);
 
@@ -286,6 +298,9 @@ export class CaveDirector {
         if (this.grunt) {
           this.grunt.fleeTo(L.exit.x + 0.5, L.exit.y + 0.5);
           this.host.message(`Le ${this.look.title} s’enfuit !`);
+          const lines = this.captives.length ? GRUNT_DEFEATS_RELEASE : GRUNT_DEFEATS;
+          this.bubble.textContent = lines[Math.floor(Math.random() * lines.length)];
+          this.bubbleT = 3.5;
           sfx('flee');
           if (this.captives.length) this.host.release(this.captives, this.grunt.x, this.grunt.y);
         }
@@ -527,4 +542,13 @@ export class CaveDirector {
     this.prompt.hidden = !hint;
     if (hint) this.prompt.replaceChildren(Object.assign(document.createElement('div'), { className: 'shop-hint', textContent: hint }));
   }
+
+  /** La bulle au-dessus de la tête du sbire (planche de 2 cases de haut). */
+  placeLabels(proj: Projector): void {
+    const g = this.grunt;
+    if (!g || this.bubbleT <= 0) return;
+    const pos = proj.toCss(g.x, g.y - 2.1);
+    this.bubble.style.transform = `translate(${pos.x}px, ${pos.y}px) translate(-50%, -100%)`;
+  }
+
 }

@@ -59,6 +59,20 @@ export const GRUNT_INTROS: readonly string[] = [
   'Une rébellion de Pokémon ? Laisse-moi rire. Une Ball bien lancée, et c’est fini.',
 ];
 
+/** Répliques de défaite (A-FAIRE 1.6), lancées en s'enfuyant, dans une bulle au-dessus de lui. */
+export const GRUNT_DEFEATS: readonly string[] = [
+  'Impossible… battu par un rebelle ! La Ligue va m’entendre…',
+  'Gnn… Tu as gagné cette fois. Mais on se reverra !',
+  'Mes Pokémon… tous K.O. ? Je me tire d’ici !',
+  'Ce n’était pas dans le contrat, ça ! Adieu !',
+  'Garde ta grotte, rebelle. J’ai d’autres trous à surveiller !',
+];
+/** Quand il rend des Pokémon capturés : la réplique qui va avec. */
+export const GRUNT_DEFEATS_RELEASE: readonly string[] = [
+  'Tiens, reprends-les, tes Pokémon ! Ils ne valaient pas la prime…',
+  'Mes Balls se vident toutes seules ?! Je m’en vais !',
+];
+
 /** Les espèces envoyées par les sbires, pour import-assets. */
 export const gruntSpecies = (): number[] => [...new Set(Object.values(GRUNT_THEMES).flatMap((t) => t.guardians))];
 /** Les planches de sbires, pour import-assets. */
