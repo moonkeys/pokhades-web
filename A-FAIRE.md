@@ -354,7 +354,7 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
 
 ### 1.12 Formes des salles (fait)
 - `src/world/layouts.ts` décrit huit formes (Clairière, Arène, Couloir,
-  Ligne de front, Deux clairières, Carrefour, Boucle, Lacets, et Île, ajoutée ensuite). Chacune a plusieurs tailles, une
+  Ligne de front, Deux clairières, Carrefour, Boucle, Lacets, et Île et Terrasses, ajoutées ensuite). Chacune a plusieurs tailles, une
   silhouette faite d'ellipses et de capsules, et des chemins qui suivent son
   squelette.
 - Chaque biome tire dans sa liste pondérée (`POOLS`). `generate()` mesure
@@ -395,7 +395,9 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
   - (fait) une île au Lac (`ile`, poids 3 sur 8) : vérifiée sur 240 cartes
     (60 graines × 4 bords d'entrée), toutes les portes et l'arrivée reliées
     à l'île à pied ; reste à juger en jeu la largeur des gués ;
-  - d'autres formes : des terrasses au Rocailleux ;
+  - (fait) des terrasses au Rocailleux (`terrasses`, poids 3 sur 13) :
+    vérifiées sur 400 cartes (100 graines × 4 bords d'entrée), les trois
+    étages et au moins une porte atteints à pied ; montée vérifiée en jeu ;
   - Ligne de front : juger en jeu le préavis (1,3 s), la largeur du sentier
     de Forêt et la densité des champs de Prairie (sauvages cachés : trop
     durs ?).

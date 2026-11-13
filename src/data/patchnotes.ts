@@ -26,7 +26,7 @@ export const PATCH_NOTES: readonly PatchNote[] = [
         title: 'Run',
         items: [
           'Un champion vaincu cède un Pokémon de son équipe (son as d’abord, sous sa forme de base) : il rejoint le Repaire, ou attend s’il est plein.',
-          'Nouvelle forme de salle au Lac : une île au milieu du lac, reliée à la rive par deux gués.',
+          'Nouvelles formes de salle : au Lac, une île reliée à la rive par deux gués ; au Rocailleux, des terrasses qu’on gravit par des escaliers.',
           'Boutique : un objet tenu par visite (Bandeau Muscle, Vive Griffe…), payé en ₽ et rangé dans la réserve du Repaire.',
         ],
       },

@@ -153,7 +153,7 @@ export const LORE: LoreChapter[] = [
     intro: 'Toutes les clairières ne se ressemblent pas. Certaines cachent un piège, d’autres un trésor, et quelques-unes les deux.',
     cards: [
       // world/layouts.ts
-      { title: 'Formes des salles', text: 'Clairières, arènes rondes, couloirs, deux clairières reliées par un goulet, carrefours, boucles autour d’un lac ou d’un bosquet, sentiers en lacets, et au Lac une île reliée à la rive par deux gués : chaque biome a ses préférées, en plusieurs tailles.' },
+      { title: 'Formes des salles', text: 'Clairières, arènes rondes, couloirs, deux clairières reliées par un goulet, carrefours, boucles autour d’un lac ou d’un bosquet, sentiers en lacets, au Lac une île reliée à la rive par deux gués, au Rocailleux des terrasses : chaque biome a ses préférées, en plusieurs tailles.' },
       // layouts.ts (front), room.ts (announce)
       { title: 'Ligne de front', color: '#f259bf', text: 'Un long couloir : chaque vague surgit au bout le plus éloigné de toi et charge en masse. Le sol gronde et une flèche magenta montre d’où elle vient un peu avant. Moins de vagues, mais plus fournies. En Forêt, c’est un sentier étroit entre les arbres ; en Prairie, un chemin au milieu des champs d’herbe haute.' },
       // run.ts:79-87, 291-298, room.ts

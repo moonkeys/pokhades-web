@@ -21,7 +21,7 @@ import type { Biome } from './biomes';
 // leurs bouts deviennent les portes (findExits). Les routes, elles, suivent
 // le squelette de la forme pour ne pas tailler de tranchée dans la forêt.
 
-export type LayoutId = 'clairiere' | 'arene' | 'couloir' | 'front' | 'haltere' | 'carrefour' | 'boucle' | 'lacets' | 'ile';
+export type LayoutId = 'clairiere' | 'arene' | 'couloir' | 'front' | 'haltere' | 'carrefour' | 'boucle' | 'lacets' | 'ile' | 'terrasses';
 
 export const LAYOUT_NAMES: Record<LayoutId, string> = {
   clairiere: 'Clairière',
@@ -33,6 +33,7 @@ export const LAYOUT_NAMES: Record<LayoutId, string> = {
   boucle: 'Boucle',
   lacets: 'Lacets',
   ile: 'Île',
+  terrasses: 'Terrasses',
 };
 
 type Pt = { x: number; y: number };
@@ -79,6 +80,13 @@ export interface Shape {
    * et de son bas-côté (generate.ts, étape 6). La Ligne de front en Prairie.
    */
   fields?: boolean;
+  /**
+   * Terrasses : au lieu de plateaux semés au hasard, la falaise monte par
+   * bandes vers le nord (generate.ts, étape 3b), un escalier sur le chemin à
+   * chaque marche. Toujours vers le nord, même la forme tournée : les
+   * escaliers ne se posent que dans une paroi sud.
+   */
+  terraces?: boolean;
 }
 
 /** Profondeur (cases) d'une case dans la forme, hors lisière ; ≤ 0 : dehors. */
@@ -302,6 +310,23 @@ const LAYOUTS: Record<LayoutId, LayoutDef> = {
       return { prims: [ellipse(c.x, c.y, w / 2 - 1, h / 2 - 1)], core, land, entry, hub: c, routes, wobble: 1.5 };
     },
   },
+  // Terrasses (A-FAIRE 1.12 : « des terrasses au Rocailleux ») : trois
+  // étages, du bas de la carte au haut, que le chemin gravit par des
+  // escaliers. Les bandes elles-mêmes sont tracées par generate().
+  terrasses: {
+    sizes: [[46, 42], [44, 44], [50, 42]],
+    build: (w, h, rng) => {
+      const zig = rng.chance(0.5) ? 1 : -1;
+      const low = { x: w / 2 - zig * w * 0.16, y: h * 0.8 };
+      const mid = { x: w / 2 + zig * w * 0.14, y: h * 0.5 };
+      const top = { x: w / 2 - zig * w * 0.1, y: h * 0.2 };
+      const entry = { x: low.x + rng.range(-2, 2), y: h - 0.5 };
+      const routes = [[entry, low, mid, top, { x: top.x + rng.range(-4, 4), y: 0.5 }]];
+      // Une porte de côté, à l'étage du milieu.
+      if (rng.chance(0.6)) routes.push([mid, { x: zig > 0 ? w - 0.5 : 0.5, y: mid.y + rng.range(-2, 2) }]);
+      return { prims: [ellipse(w / 2, h / 2, w * 0.56, h * 0.56)], core: null, entry, hub: mid, routes, wobble: 2, terraces: true };
+    },
+  },
   // Un sentier en U : une bande en bas, un virage, une bande en haut qui
   // revient, la forêt entre les deux.
   lacets: {
@@ -338,7 +363,7 @@ const POOLS: Record<BiomeId, readonly [LayoutId, number][]> = {
   lac: [['clairiere', 3], ['boucle', 2], ['ile', 3]],
   marais: [['haltere', 2], ['boucle', 2], ['lacets', 2], ['clairiere', 2], ['front', 1]],
   volcan: [['arene', 3], ['boucle', 2], ['couloir', 2], ['carrefour', 1], ['front', 2]],
-  rocailleux: [['couloir', 2], ['carrefour', 2], ['arene', 2], ['haltere', 2], ['front', 2]],
+  rocailleux: [['couloir', 2], ['carrefour', 2], ['arene', 2], ['haltere', 2], ['front', 2], ['terrasses', 3]],
   village: [['clairiere', 1]],
   plage: [['clairiere', 1]],
   ocean: [['clairiere', 1]],
@@ -384,6 +409,13 @@ function edgeOf(s: { w: number; h: number; entry: Pt }): Edge {
  * falaises et arbres d'après la forme, les tuiles se choisissent ensuite.
  */
 export function orientShape(shape: Shape, side: Edge): Shape {
+  // Terrasses : les marches montent toujours vers le nord (escaliers dans une paroi sud). Entrée à
+  // l'est ou à l'ouest : la forme reste droite, l'entrée passe sur le côté, dans la bande du bas.
+  if (shape.terraces && (side === 'W' || side === 'E')) {
+    const entry = { x: side === 'W' ? 0.5 : shape.w - 0.5, y: shape.h * 0.84 };
+    const [first, ...rest] = orientShape(shape, 'S').routes;
+    return { ...shape, entry, routes: [[entry, ...first.slice(1)], ...rest] };
+  }
   const turns = (CW.indexOf(side) - CW.indexOf(edgeOf(shape)) + 4) % 4;
   let s = shape;
   for (let k = 0; k < turns; k++) s = turnCw(s);

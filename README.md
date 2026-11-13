@@ -147,12 +147,21 @@ une forme et une taille dans la liste de son biome. Il y a huit formes :
   tour par la rive. La terre de l'île et des gués (`Shape.land`) est comptée
   après le cœur, avec 3 cases de marge sur la lisière (`LAND_MARGIN`) : sans
   elle, un gué praticable aurait dû être aussi large que l'île.
+- **Terrasses** (Rocailleux seulement) : trois étages en bandes à travers
+  la carte, qui montent vers le nord ; le chemin les gravit en zigzag, par un
+  escalier à chaque marche (simple, puis double). Les bandes (`Shape.terraces`,
+  étape 3b de `generate`) remplacent les plateaux semés au hasard ; elles
+  débordent de la zone jouable, sinon chaque bande se ferait une paroi contre
+  la lisière et boucherait les portes. Les escaliers sur le chemin passent
+  d'abord. Les escaliers ne vont que dans une paroi sud : la forme ne tourne
+  pas, une entrée à l'est ou à l'ouest arrive par le côté, dans la bande du
+  bas, et les marches s'écartent des portes de côté.
 
 Le cœur de la Boucle dépend du biome : un lac avec son îlot à coffre au Lac,
 de la lave au Volcan, un marécage au Marais, la montagne au Rocailleux, un
 bosquet ailleurs. Chaque biome a ses préférences : la Forêt prend surtout
 les clairières reliées et les lacets, le Rocailleux ses canyons, le Volcan
-ses arènes, le Lac sa clairière, sa boucle ou son île. Le Village garde ses rues. La
+ses arènes, le Lac sa clairière, sa boucle ou son île, le Rocailleux ses terrasses. Le Village garde ses rues. La
 Plage et l'Océan gardent leur littoral, mais pas sa taille (une anse courte
 ou une longue grève). La forme se tire avec la graine de la salle ; le
 panneau peut l'imposer (« Forme des salles »). La boutique ne change pas.

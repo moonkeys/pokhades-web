@@ -769,7 +769,34 @@ export function generate(
   // 3b) Falaises intérieures : des plateaux rocheux qui cloisonnent la zone,
   // à l'écart des chemins, de l'eau et du départ.
   // (Pas de plateau dans la boutique : l'étal et la place doivent rester de plain-pied.)
-  if (biome.mesas && !store) {
+  const terraces = Boolean(shape?.terraces && biome.mesas && !store);
+  if (terraces) {
+    // Terrasses (layouts.ts) : deux marches à travers toute la carte, la
+    // première aux deux tiers, la seconde au tiers, au tracé doucement
+    // ondulé. Pas de comblement des poches : la bande du bas n'est pas une
+    // cuvette, et l'on peut arriver par le haut.
+    cliff = new Uint8Array(N);
+    cliff2 = new Uint8Array(N);
+    // Les portes des bords est et ouest (forme tournée) : une marche ne passe jamais à moins de
+    // 4 cases d'elles, sinon la paroi les bouche.
+    const sideDoors = shape!.routes.flat().filter((p) => p.x < 1 || p.x > W - 1);
+    const step = (x: number, at: number, salt: number) => {
+      let b = Math.round(H * at + (fbm(x * 0.07, 0.5, s + salt) - 0.5) * 6);
+      for (const d of sideDoors) if (Math.abs(x - d.x) < 10 && Math.abs(b - d.y) < 4) b = Math.round(d.y + (b >= d.y ? 4 : -4));
+      return b;
+    };
+    for (let x = 0; x < W; x++) {
+      const b1 = step(x, 0.64, 71);
+      const b2 = step(x, 0.31, 73);
+      for (let y = 0; y < H; y++) {
+        // Hors zone aussi : sinon chaque bande se ferait une paroi contre la
+        // lisière, et les portes des étages se boucheraient.
+        const i = idx(x, y);
+        if (y < b1) cliff[i] = 1;
+        if (y < b2) cliff2[i] = 1;
+      }
+    }
+  } else if (biome.mesas && !store) {
     cliff ??= new Uint8Array(N);
     const mesa = new Uint8Array(N);
     const nearWet = dilate(water, 2);
@@ -948,6 +975,11 @@ export function generate(
     for (let i = candidates.length - 1; i > 0; i--) {
       const j = rng.int(i + 1);
       [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+    }
+    // Terrasses : le chemin d'abord, pour qu'il gravisse chaque marche par un escalier.
+    if (terraces) {
+      const onPath = (c: [number, number, number]) => (path[idx(c[0], c[1])] && path[idx(c[0] + 1, c[1])] ? 0 : 1);
+      candidates.sort((a, b) => onPath(a) - onPath(b));
     }
     for (const [x, y, rows] of candidates) {
       // Espacement : pas deux escaliers à moins de 7 cases.
