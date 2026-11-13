@@ -79,7 +79,7 @@ const REWARD_WEIGHTS: [Reward, number][] = [
  *   une embuscade plus forte, et elle ne se prend qu'une fois la salle libérée ;
  * - Marchand : Miaouss propose un pari sur les ₽ et un don contre des PV.
  */
-export type SpecialId = 'challenge' | 'trap' | 'merchant' | 'spring' | 'altar';
+export type SpecialId = 'challenge' | 'trap' | 'merchant' | 'spring' | 'altar' | 'dojo';
 export const SPECIALS: Record<SpecialId, { name: string; glyph: string; color: string }> = {
   challenge: { name: 'Défi', glyph: '⏱', color: '#f2c14e' },
   trap: { name: 'Piège', glyph: '⚠', color: '#e8604c' },
@@ -88,6 +88,8 @@ export const SPECIALS: Record<SpecialId, { name: string; glyph: string; color: s
   spring: { name: 'Source', glyph: '✚', color: '#6fd3e0' },
   // Ajout (A-FAIRE 1.9 : « autel à dons maudits ») : un pacte, un don plus rare contre une malédiction (run/altar.ts).
   altar: { name: 'Autel maudit', glyph: '☠', color: '#b48ce8' },
+  // Ajout (A-FAIRE 1.9 : « d'autres salles ») : Machopeur y enseigne deux attaques, gratuitement (run/dojo.ts).
+  dojo: { name: 'Dojo', glyph: '✊', color: '#e08a4c' },
 };
 
 /**
@@ -108,7 +110,7 @@ const CURSE_LEVELS = 2;
  * marchand, j'en veux pas du tout » — Miaouss (run/merchant.ts) n'est plus
  * tiré ; son code reste, pour le jour où il reviendrait sous une autre forme.
  */
-const OFFERED_SPECIALS: readonly SpecialId[] = ['challenge', 'trap', 'spring', 'altar'];
+const OFFERED_SPECIALS: readonly SpecialId[] = ['challenge', 'trap', 'spring', 'altar', 'dojo'];
 /** Chance qu'une porte devienne une salle spéciale, et plafond par acte. */
 const SPECIAL_CHANCE = 0.35;
 const SPECIALS_PER_ACT = 2;
@@ -419,9 +421,9 @@ export class Run {
    * remplacent).
    */
   specialOffer(special: SpecialId, base: ExitOffer): ExitOffer {
-    const reward: Reward = special === 'challenge' ? 'boon' : special === 'merchant' || special === 'spring' || special === 'altar' ? 'loot' : base.reward;
+    const reward: Reward = special === 'challenge' ? 'boon' : special === 'merchant' || special === 'spring' || special === 'altar' || special === 'dojo' ? 'loot' : base.reward;
     const donor = reward === 'boon' ? (base.donor ?? this.boons.pickDonor(this.rng) ?? undefined) : undefined;
-    const prize = special === 'merchant' ? '' : special === 'spring' ? ' · soins' : special === 'altar' ? ' · pacte' : ` · ${donor ? donorLabel(donor) : REWARD_LABEL[reward]}`;
+    const prize = special === 'merchant' ? '' : special === 'spring' ? ' · soins' : special === 'altar' ? ' · pacte' : special === 'dojo' ? ' · leçons' : ` · ${donor ? donorLabel(donor) : REWARD_LABEL[reward]}`;
     // Le Piège garde l'étiquette de la porte qu'il remplace : rien ne le trahit.
     if (special === 'trap') return { ...base, special };
     return { reward, donor, special, label: `${SPECIALS[special].name}${prize}` };

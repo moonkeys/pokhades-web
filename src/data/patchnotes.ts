@@ -27,6 +27,7 @@ export const PATCH_NOTES: readonly PatchNote[] = [
         items: [
           'Un champion vaincu cède un Pokémon de son équipe (son as d’abord, sous sa forme de base) : il rejoint le Repaire, ou attend s’il est plein.',
           'Nouvelles formes de salle : au Lac, une île reliée à la rive par deux gués ; au Rocailleux, des terrasses qu’on gravit par des escaliers.',
+          'Nouvelle salle : le Dojo ✊, où Machopeur t’apprend ou te renforce deux attaques, gratuitement.',
           'Boutique : un objet tenu par visite (Bandeau Muscle, Vive Griffe…), payé en ₽ et rangé dans la réserve du Repaire.',
         ],
       },

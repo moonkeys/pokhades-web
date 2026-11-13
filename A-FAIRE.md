@@ -315,6 +315,10 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
 - Objets à la boutique (ajout) : le Marchand ambulant n'est plus tiré, c'est
   donc l'étal de la boutique qui vend un objet tenu par visite, en ₽, versé à
   la réserve du Repaire (voir README).
+- **Dojo** ✊ (`run/dojo.ts`, ajout, 13 novembre 2026) : sans ennemis, un
+  tatami et un mannequin de paille veillés par Machopeur ; [E] : l'écran
+  « Nouvelle attaque », gratuit, deux leçons par salle (`DOJO_LESSONS`).
+  Proposé par les portes ; panneau → « Dojo ».
 - Reste : d'autres salles.
 
 ### 1.10 Son (fait)

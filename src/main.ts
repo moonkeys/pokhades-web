@@ -60,6 +60,7 @@ import { ChestSite } from './run/chests';
 import { Merchant } from './run/merchant';
 import { SPRING_HEAL, Spring } from './run/spring';
 import { Altar } from './run/altar';
+import { Dojo } from './run/dojo';
 import { evolveMove, rollSkillOffer, upgradeMove, type SkillOffer } from './run/rewards';
 import { COMBATS_PER_ACT, CURSES, LEAGUE_MASTER, ROOMS_PER_ACT, Run } from './run/run';
 import { Hud } from './ui/hud';
@@ -360,6 +361,33 @@ async function boot(): Promise<void> {
       run.donor = run.boons.pickDonor(run.rng) ?? undefined;
       run.boons.bonus = 1;
       director.grant('boon');
+    },
+  });
+  // Dojo (salle spéciale, run/dojo.ts) : Machopeur offre deux leçons, l'écran « Nouvelle attaque » sans prix.
+  const dojo: Dojo = new Dojo(document.body, fx, {
+    lesson: (taken) => {
+      const mons = teamMons();
+      const close = () => {
+        dojo.done();
+        input.flush();
+      };
+      if (!mons.length) return close();
+      rewardScreen.showSkill(
+        mons,
+        Math.max(0, mons.indexOf(player.pokemon!)),
+        skillOffers(null),
+        (mon, move, replace) => {
+          learnMove(mon, move, replace);
+          taken();
+          close();
+        },
+        (mon, slot) => {
+          strengthen(mon, slot);
+          taken();
+          close();
+        },
+        close,
+      );
     },
   });
   // Source (salle spéciale de soin, run/spring.ts) : Leveinard veille sur un bassin qui soigne l'équipe.
@@ -951,6 +979,8 @@ async function boot(): Promise<void> {
     altar.clear();
     // Tirage à part, de la graine de la salle, comme le marchand.
     if (run.special === 'altar') altar.start(world, () => new Rng(run.mapSeed ^ 0x416c7472).next());
+    dojo.clear();
+    if (run.special === 'dojo') dojo.start(world);
     combat.hooks.onRoomEnter(player, run, !first && run.room % 7 === 0, run.rng);
     // Test de la grotte (panneau) : chaque salle de combat part de sa grotte ; la salle attend dehors, figée.
     if (opts.biome === 'grotte' && !run.isShop() && !run.isBoss()) enterCave();
@@ -1145,6 +1175,7 @@ async function boot(): Promise<void> {
     merchant.clear();
     spring.clear();
     altar.clear();
+    dojo.clear();
     director.clear();
     cave.clear();
     berries.clear();
@@ -1918,7 +1949,7 @@ async function boot(): Promise<void> {
     // Les Pokémon de la boutique ne se laissent pas pousser : l'équipe les contourne.
     for (const a of team) {
       if (a.deathT >= 0) continue;
-      for (const n of [...shop.npcs, ...merchant.npcs, ...spring.npcs, ...altar.npcs, ...camp.npcs, ...cave.npcs]) {
+      for (const n of [...shop.npcs, ...merchant.npcs, ...spring.npcs, ...altar.npcs, ...dojo.npcs, ...camp.npcs, ...cave.npcs]) {
         const dx = a.x - n.x;
         const dy = a.y - n.y;
         const d = Math.hypot(dx, dy);
@@ -2180,7 +2211,7 @@ async function boot(): Promise<void> {
     // Aller à une salle : 1ʳᵉ salle de combat, boutique ou boss de l'acte (PV et dons conservés).
     // Depuis le Repaire, une run part d'abord.
     if (mode === 'camp') newRun();
-    const special = kind === 'challenge' || kind === 'trap' || kind === 'merchant' || kind === 'spring' || kind === 'altar' ? kind : null;
+    const special = kind === 'challenge' || kind === 'trap' || kind === 'merchant' || kind === 'spring' || kind === 'altar' || kind === 'dojo' ? kind : null;
     run.room = act * ROOMS_PER_ACT + (special ? 1 : kind === 'combat' ? 0 : kind === 'shop' ? COMBATS_PER_ACT : ROOMS_PER_ACT - 1);
     run.special = special;
     endT = -1;
@@ -2234,6 +2265,7 @@ async function boot(): Promise<void> {
     ...merchant.extras(time),
     ...spring.extras(time),
     ...altar.extras(time),
+    ...dojo.extras(),
     ...cave.extras(),
     ...(outside() ? [...berries.extras(), ...chests.extras(), ...hazards.extras(time), ...director.captureExtras()] : []),
   ];
@@ -2501,7 +2533,7 @@ async function boot(): Promise<void> {
       }),
       ...wild.map((a) => snapActor(a, netIds.of(a), false)),
       // Les figurants : le vendeur et les mercenaires de la boutique, Miaouss, les prisonniers de grotte.
-      ...[...shop.npcs, ...merchant.npcs, ...spring.npcs, ...altar.npcs, ...cave.npcs].map((a) => snapActor(a, netIds.of(a), false, true)),
+      ...[...shop.npcs, ...merchant.npcs, ...spring.npcs, ...altar.npcs, ...dojo.npcs, ...cave.npcs].map((a) => snapActor(a, netIds.of(a), false, true)),
     ];
     net.broadcast({
       t: 'snap',
@@ -2629,6 +2661,7 @@ async function boot(): Promise<void> {
     merchant.clear();
     spring.clear();
     altar.clear();
+    dojo.clear();
     director.clear();
     cave.clear();
     berries.clear();
@@ -2981,6 +3014,8 @@ async function boot(): Promise<void> {
     else spring.hide();
     if (outside()) altar.update(dt, sample, player, Math.random);
     else altar.hide();
+    if (outside()) dojo.update(dt, sample, player, Math.random);
+    else dojo.hide();
     camp.update(dt, dialogue.open ? { ...sample, interact: false } : sample, player, world);
     if (trainer?.gone) trainer = null;
     // K.O. : retirés après leur fondu.
@@ -3075,7 +3110,7 @@ async function boot(): Promise<void> {
     const extras = [...runExtras(), ...camp.extras(time)];
     // Au Repaire, en ligne : les autres joueurs qui s'y promènent.
     const others = mode !== 'camp' ? [] : net.role === 'host' ? visitors : net.role === 'client' && hostCamp ? field.list() : [];
-    renderer.draw(world, player, [...team, ...others, ...wild, ...shop.npcs, ...merchant.npcs, ...spring.npcs, ...altar.npcs, ...camp.npcs, ...cave.npcs], particles, footprints, fieldFx, combat, director, extras, opts, alpha, time, { weather: weatherNow(), particles: skyParticles });
+    renderer.draw(world, player, [...team, ...others, ...wild, ...shop.npcs, ...merchant.npcs, ...spring.npcs, ...altar.npcs, ...dojo.npcs, ...camp.npcs, ...cave.npcs], particles, footprints, fieldFx, combat, director, extras, opts, alpha, time, { weather: weatherNow(), particles: skyParticles });
     dialogue.update(frameDt);
     document.body.classList.toggle('talking', dialogue.open);
     document.body.classList.toggle('modal', paused());
@@ -3089,6 +3124,7 @@ async function boot(): Promise<void> {
     merchant.placeLabels(proj);
     spring.placeLabels(proj);
     altar.placeLabels(proj);
+    dojo.placeLabels(proj);
     camp.placeLabels(proj);
     hud.setMega(megaReady() ? 'ready' : megaFrom.has(player) ? 'on' : null);
     hud.update(frameDt, player, combat, wild, proj, time, team);

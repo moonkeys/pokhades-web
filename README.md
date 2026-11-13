@@ -183,6 +183,10 @@ lisible sur la fiche, qui pèse jusqu'à la fin de l'acte (`Run.curse`, écrite
 sous le lieu en haut à gauche) : **Sauvages enragés** (+2 niveaux, champion
 compris), **Bourse percée** (₽ des salles divisés par deux) ou **Sans repos**
 (les K.O. ne se relèvent plus en fin de salle). On peut passer son chemin.
+**Dojo** ✊ (`run/dojo.ts`) : sans ennemis, un tatami et un mannequin de
+paille, et Machopeur, maître des lieux ; [E] au tatami ouvre l'écran
+« Nouvelle attaque » sans prix (apprendre ou renforcer, pour le membre
+choisi), deux fois par salle ; fermer l'écran sans choisir ne compte pas.
 
 Météo (ajout, `src/world/weather.ts`) : chaque salle de combat tire son ciel
 selon le biome — souvent clair, parfois Pluie, Soleil ardent, Tempête de
