@@ -264,9 +264,14 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
   première défaite.
 - Les débloqués peuplent le Repaire (les seize derniers, hors équipe).
 - Pour tester : panneau (H) → « Tout remettre à zéro » au Repaire.
-- Reste : le recrutement en fin de combat du jeu (`RecruitScreen.gd`) et le
-  déblocage par les boss de champion ne sont pas repris ; le panneau compose
-  toujours l'équipe sans tenir compte du déblocage (outil de test).
+- **Champions** (fait, 13 novembre 2026) : un champion vaincu cède un
+  Pokémon de son équipe, ramené à sa forme de base, son as d'abord, puis
+  en remontant les vagues ; un seul par victoire, jamais une espèce qu'on a
+  déjà ou qui attend (`grantChampion`, save.ts ; origine « Équipe de X »).
+  Reste à voir en jeu la notification (non déclenchée en test automatique).
+- Reste : le recrutement en fin de combat du jeu (`RecruitScreen.gd`) n'est
+  pas repris ; le panneau compose toujours l'équipe sans tenir compte du
+  déblocage (outil de test).
 
 ### 1.8 Météo (fait)
 - `src/world/weather.ts` : temps clair, Pluie, Soleil ardent, Tempête de

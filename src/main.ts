@@ -19,7 +19,7 @@ import { Camp, CAMP_SEED, campPockets, STATIONS, stationId, type Station } from 
 import { CampScreen, movePool, teamWeight, type CampCtx } from './ui/campscreen';
 import { NetBadge } from './ui/netbadge';
 import { BAIES, FIELD_FOOD, RESOURCES, RESOURCE_IDS, ROOM_RES, SHARDS, UPGRADES, applyHeld, heldItem, teamSlots, type ResourceId } from './meta/catalog';
-import { addMon, capacity, exile, grantAlly, isFull, level, loadSave, markSeen, monName, ownedSpecies, ownsSpecies, recordDefeat, resetSave, roster, speciesOf, startLevel, welcomeMon, writeSave } from './meta/save';
+import { addMon, capacity, exile, grantAlly, grantChampion, isFull, level, loadSave, markSeen, monName, ownedSpecies, ownsSpecies, recordDefeat, resetSave, roster, speciesOf, startLevel, welcomeMon, writeSave } from './meta/save';
 import { applyTraits, natureText } from './meta/mons';
 import { quest, questEvent, type QuestEvent, contractEvent, contractText } from './meta/quests';
 import { leagueOpen, readyFeats } from './meta/feats';
@@ -1576,6 +1576,17 @@ async function boot(): Promise<void> {
         // Jusqu'au changement de salle (CombatArena.gd:1796).
         audio.playMusic('victory');
         runHud.notify({ title: 'Champion vaincu', text: `${run.champion.name} est tombé.`, art: run.champion.team.at(-1)?.[0], color: 'var(--yel)' });
+        // Un Pokémon de son équipe rejoint la rébellion (son as d'abord), s'il en reste un qu'on n'a pas.
+        if (net.role !== 'client') {
+          const got = grantChampion(save, run.champion.team.map(([final]) => final), run.champion.name);
+          if (got) {
+            writeSave(save);
+            sfx('pkmnGet', -4);
+            void loadInfo(got.id).then((i) =>
+              runHud.notify({ title: 'Recrue de champion', text: got.waiting ? `${i.name} quitte ${run.champion.name} : il t’attend au Repaire.` : `★ ${i.name} quitte ${run.champion.name} et rejoint la rébellion !`, art: got.id, color: 'var(--yel)' }),
+            );
+          }
+        }
         runHud.notifyAll([
           { title: 'Baies', text: 'Pour le Repaire', item: 'ORANBERRY', qty: `+${n}`, color: 'var(--yel)' },
           { title: `Éclat${k > 1 ? 's' : ''} de Champion`, text: 'Pour le Repaire', item: SHARDS.icon, qty: `+${k}`, color: 'var(--yel)' },

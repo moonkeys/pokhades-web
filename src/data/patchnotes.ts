@@ -18,6 +18,17 @@ export interface PatchNote {
 
 export const PATCH_NOTES: readonly PatchNote[] = [
   {
+    id: '2026-11-13',
+    date: '13 novembre 2026',
+    title: 'Les champions recrutent pour toi',
+    sections: [
+      {
+        title: 'Run',
+        items: ['Un champion vaincu cède un Pokémon de son équipe (son as d’abord, sous sa forme de base) : il rejoint le Repaire, ou attend s’il est plein.'],
+      },
+    ],
+  },
+  {
     id: '2026-11-12',
     date: '12 novembre 2026',
     title: 'Méga-évolutions, formes régionales et salles maudites',

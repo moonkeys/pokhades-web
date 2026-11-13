@@ -168,6 +168,7 @@ function originShort(save: Save, uid: number): string {
   if (o === 'nectar') return 'Attiré par un nectar';
   if (o === 'ally') return 'Rencontré en ligne';
   if (o === 'test') return '';
+  if (o.startsWith('champion:')) return `Équipe de ${o.slice(9)}`;
   const cave = o.startsWith('cave:');
   const b = cave ? o.slice(5) : o;
   const biome = b in BIOMES ? BIOMES[b as BiomeId].name : '';

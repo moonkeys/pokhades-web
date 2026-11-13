@@ -352,7 +352,8 @@ Au premier lancement, on choisit son **starter** parmi les neuf du jeu
 Baggiguane, Riolu) : c'est le seul Pokémon débloqué. Les autres se gagnent
 en run — 10 victoires contre une espèce de base la première fois (une évolution ne se
 débloque pas : elle se gagne en faisant évoluer sa lignée), le prisonnier
-d'une grotte libéré — et rejoignent le Repaire (« ★ X
+d'une grotte libéré, un Pokémon de l'équipe d'un champion vaincu (son as
+d'abord, ramené à sa forme de base, `grantChampion`) — et rejoignent le Repaire (« ★ X
 rejoint la rébellion ! »). Le premier acte n'aligne que trois espèces de
 base dans ses deux premières salles, cinq ensuite, sans itinérants ni top
 dresseurs (`Run.fauna`, `Run.variety`) : de quoi en vaincre dix d'une même
