@@ -312,7 +312,10 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
 - **Autel maudit** ☠ (`run/altar.ts`, ajout) : un don d'un cran plus rare
   contre une malédiction jusqu'à la fin de l'acte (+2 niveaux, ₽ divisés
   par deux, ou pas de relève en fin de salle). Panneau → « Autel ».
-- Reste : d'autres salles, un Marchand qui vend aussi des objets.
+- Objets à la boutique (ajout) : le Marchand ambulant n'est plus tiré, c'est
+  donc l'étal de la boutique qui vend un objet tenu par visite, en ₽, versé à
+  la réserve du Repaire (voir README).
+- Reste : d'autres salles.
 
 ### 1.10 Son (fait)
 - `src/audio/sounds.ts` (catalogue, repris de `Sfx.gd`) et `audio.ts`

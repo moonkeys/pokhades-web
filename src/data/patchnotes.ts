@@ -24,7 +24,10 @@ export const PATCH_NOTES: readonly PatchNote[] = [
     sections: [
       {
         title: 'Run',
-        items: ['Un champion vaincu cède un Pokémon de son équipe (son as d’abord, sous sa forme de base) : il rejoint le Repaire, ou attend s’il est plein.'],
+        items: [
+          'Un champion vaincu cède un Pokémon de son équipe (son as d’abord, sous sa forme de base) : il rejoint le Repaire, ou attend s’il est plein.',
+          'Boutique : un objet tenu par visite (Bandeau Muscle, Vive Griffe…), payé en ₽ et rangé dans la réserve du Repaire.',
+        ],
       },
       {
         title: 'Repaire',

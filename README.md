@@ -487,8 +487,12 @@ un cadeau (quelques ₽, une Potion, une Baie Oran pour l'équipe), un par
 visite au plus. On les contourne, ils ne se laissent pas pousser. Sur l'étal,
 un **lot de Baies** par visite (7, 17 ou 40 Baies pour 100, 220 ou 480 ₽,
 `BERRY_PACKS`, les quantités du jeu divisées par trois) : convertir sa bourse
-en monnaie du Repaire, à un taux exprès ingrat. Pas encore de rachat (il
-faudrait un inventaire en run).
+en monnaie du Repaire, à un taux exprès ingrat. Et un **objet tenu** par
+visite (ajout) : un des moins chers du marché du Repaire (≤ 160 Baies), à
+4 ₽ la Baie de son prix (280 à 640 ₽), versé à la réserve du Repaire pour
+être tenu au retour (`HELD_FOR_SALE`, `ShopHost.giveItem` ; refusé chez
+l'invité, qui n'a pas de Repaire). Pas encore de rachat (il faudrait un
+inventaire en run).
 
 **Solde des mercenaires** (`CombatArena._collect_merc_retainers`) : à
 l'entrée de chaque boutique suivante, un mercenaire encore debout réclame la

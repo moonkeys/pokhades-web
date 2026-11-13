@@ -12,6 +12,7 @@ import { TILE, TOWN_DECOR } from '../world/tiles';
 import { BIOMES } from '../world/biomes';
 import { linesOf } from '../data/bestiary';
 import { fillLine, GIFT_LINES, MERCENARY, PERSONAS, SLEEPY } from '../data/chatter';
+import { HELD_ITEMS, heldText } from '../meta/catalog';
 import { Placer } from './placement';
 import type { Run } from './run';
 
@@ -38,6 +39,11 @@ import type { Run } from './run';
 // divisées par trois) : ce qu'on achète quand la run est déjà gagnée ou
 // déjà perdue, jamais plus rentable que de quoi survivre.
 //
+// Objet tenu (ajout, A-FAIRE 1.9 : « un Marchand qui vend aussi des objets ») :
+// un par étal, tiré parmi les moins chers du marché du Repaire (≤ 160 Baies),
+// à 4 ₽ la Baie de son prix. Il rejoint la réserve du Repaire, à faire tenir
+// au retour : l'autre façon de changer des ₽ en butin qui dure.
+//
 // Solde (CombatArena._collect_merc_retainers) : à la boutique suivante, chaque
 // mercenaire encore debout réclame MERC_RETAINER de son prix ; faute de quoi
 // il s'en va (main.ts, avant que la place ne se remplisse : la place libérée
@@ -56,6 +62,10 @@ const REVIVES = {
 } as const;
 type HealId = keyof typeof HEALS;
 /** ShopStock.BERRY_PACKS, quantités divisées par trois comme toutes les Baies (lot 3). */
+/** ₽ par Baie du prix de l'objet au marché du Repaire, et les objets que l'étal peut proposer. */
+const HELD_RATE = 4;
+const HELD_FOR_SALE = HELD_ITEMS.filter((h) => !h.crafted && h.price <= 160);
+
 const BERRY_PACKS = [
   { amount: 7, price: 100 },
   { amount: 17, price: 220 },
@@ -83,7 +93,9 @@ const RANKS = [
 ] as const;
 
 interface Item {
-  kind: 'heal' | 'revive' | 'move' | 'reroll' | 'berries';
+  kind: 'heal' | 'revive' | 'move' | 'reroll' | 'berries' | 'held';
+  /** Objet tenu : son identifiant (meta/catalog.ts). */
+  held?: string;
   id: string;
   name: string;
   desc: string;
@@ -127,6 +139,8 @@ export interface ShopHost {
   team(): readonly Actor[];
   /** Un lot de Baies acheté : versées au Repaire. */
   earnBaies(n: number): void;
+  /** Un objet tenu acheté : versé à la réserve du Repaire ; false s'il n'y a pas de Repaire (invité). */
+  giveItem(api: string): boolean;
   /** Un mercenaire rejoint l'équipe, là où il se tient. */
   recruit(id: number, level: number, x: number, y: number, price: number): void;
 }
@@ -159,6 +173,8 @@ export class Shop {
   private ctUsed = false;
   /** Le lot de Baies de l'étal est pris (un par visite, même après une recharge). */
   private berriesBought = false;
+  /** L'objet tenu de l'étal est pris (un par visite). */
+  private heldBought = false;
   private hub = { x: 0, y: 0 };
   poster = { x: 0, y: 0 };
   private near: Item | null = null;
@@ -182,7 +198,7 @@ export class Shop {
     this.prompt.className = 'shop-prompt da-paper';
     this.prompt.hidden = true;
     parent.append(this.layer, this.prompt);
-    for (const f of ['POTION', 'SUPERPOTION', 'HYPERPOTION', 'MAXPOTION', 'REVIVE', 'MAXREVIVE', 'machine_NORMAL', 'COINCASE', 'SITRUSBERRY']) {
+    for (const f of ['POTION', 'SUPERPOTION', 'HYPERPOTION', 'MAXPOTION', 'REVIVE', 'MAXREVIVE', 'machine_NORMAL', 'COINCASE', 'SITRUSBERRY', ...HELD_FOR_SALE.map((h) => h.icon)]) {
       void loadImage(`/game/assets/essentials/items/${f}.png`)
         .then((img) => this.icons.set(f, img))
         .catch(() => {});
@@ -214,6 +230,7 @@ export class Shop {
     this.rerolls = 0;
     this.ctUsed = false;
     this.berriesBought = false;
+    this.heldBought = false;
     this.hub = { x: Math.floor(world.hub.x) + 0.5, y: Math.floor(world.hub.y) + 0.9 };
     const place = (this.place = new Placer(world));
     const hx = Math.floor(this.hub.x);
@@ -352,6 +369,10 @@ export class Shop {
       const pack = BERRY_PACKS[rng.int(BERRY_PACKS.length)];
       specs.push({ kind: 'berries', id: 'berries', name: `${pack.amount} Baies`, desc: 'Des Baies pour le Repaire : elles survivent à la run, contrairement aux Pokédollars.', icon: 'SITRUSBERRY', price: pack.price, heal: pack.amount });
     }
+    if (!this.heldBought) {
+      const h = HELD_FOR_SALE[rng.int(HELD_FOR_SALE.length)];
+      specs.push({ kind: 'held', id: 'held', held: h.api, name: h.name, desc: `Objet tenu : ${heldText(h)}. Il t’attendra dans la réserve du Repaire.`, icon: h.icon, price: Math.round((h.price * HELD_RATE) / 10) * 10, heal: 0 });
+    }
     specs.push({
       kind: 'reroll',
       id: 'reroll',
@@ -387,6 +408,7 @@ export class Shop {
       if (!d) refuse = 'Personne n’est K.O.';
     } else if (it.kind === 'move') note = 'Une capacité par visite';
     else if (it.kind === 'berries') note = 'Un lot par visite';
+    else if (it.kind === 'held') note = 'Un objet par visite · pour le Repaire';
     else if (it.kind === 'reroll') note = `La suivante coûtera ${rerollPrice(this.rerolls + 1)} ₽`;
     if (!refuse && money < it.price) refuse = `Pas assez de Pokédollars (${it.price} ₽ requis).`;
     return { note, refuse };
@@ -565,9 +587,17 @@ export class Shop {
       });
       return;
     }
+    if (it.kind === 'held' && !this.host.giveItem(it.held!)) {
+      sfx('buzzer');
+      this.host.message('Seul l’hôte a un Repaire où le ranger.');
+      return;
+    }
     run.money -= it.price;
     sfx('buy');
-    if (it.kind === 'heal') {
+    if (it.kind === 'held') {
+      this.heldBought = true;
+      it.sold = 0.01;
+    } else if (it.kind === 'heal') {
       mon.hp = it.heal < 0 ? mon.maxHp : Math.min(mon.maxHp, mon.hp + it.heal);
       it.sold = 0.01;
       this.host.message(`${mon.name} — ${mon.hp}/${mon.maxHp} PV`);
