@@ -1,4 +1,5 @@
 import { QUEST_REWARDS } from '../data/species';
+import { HELD_ITEMS } from './catalog';
 import type { WeatherId } from '../world/weather';
 import type { Save } from './save';
 
@@ -139,8 +140,18 @@ export interface Contract {
   type?: string;
   goal: number;
   n: number;
-  reward: { baies: number; wood?: number; stone?: number; food?: number; shards?: number };
+  reward: { baies: number; wood?: number; stone?: number; food?: number; shards?: number; item?: string };
 }
+
+/**
+ * Objets en prime (A-FAIRE 2.5 : « des récompenses en objets ») : un contrat sur quatre parmi les
+ * plus longs paie aussi un Super Bonbon ou un objet tenu de l'étal de Miaouss (pas ceux de
+ * l'atelier ni les plus chers), versé dans la réserve (`Save.items`).
+ */
+const BONUS_HELD = HELD_ITEMS.filter((h) => !h.crafted && h.price <= 150).map((h) => h.api);
+export const CANDY_ITEM = 'rare-candy';
+/** Le nom d'un objet de récompense. */
+export const itemName = (api: string): string => (api === CANDY_ITEM ? 'Super Bonbon' : (HELD_ITEMS.find((h) => h.api === api)?.name ?? api));
 
 export const CONTRACT_SLOTS = 3;
 
@@ -167,11 +178,13 @@ export function rollContract(seed: number): Contract {
     const type = CONTRACT_TYPES[r(3, CONTRACT_TYPES.length)];
     return { kind: 'kill_type', type, goal: 8 + r(4, 8), n: 0, reward: { baies: 30 + r(5, 20), [res]: 4 + r(6, 4) } };
   }
-  if (pick < 6) return { kind: 'kill', goal: 30 + 5 * r(4, 5), n: 0, reward: { baies: 40 + r(5, 20), food: 3 + r(6, 3) } };
+  // Le bonus d'objet : un contrat long (K.O., salles sans coup, champion) sur quatre.
+  const bonus = r(8, 4) === 0 ? { item: r(9, 3) === 0 ? CANDY_ITEM : BONUS_HELD[r(10, BONUS_HELD.length)] } : {};
+  if (pick < 6) return { kind: 'kill', goal: 30 + 5 * r(4, 5), n: 0, reward: { baies: 40 + r(5, 20), food: 3 + r(6, 3), ...bonus } };
   if (pick < 7) return { kind: 'berry', goal: 15 + 5 * r(4, 3), n: 0, reward: { baies: 25, wood: 3 + r(6, 3), stone: 3 + r(7, 3) } };
-  if (pick < 8) return { kind: 'clean', goal: 2 + r(4, 2), n: 0, reward: { baies: 50 + r(5, 20) } };
+  if (pick < 8) return { kind: 'clean', goal: 2 + r(4, 2), n: 0, reward: { baies: 50 + r(5, 20), ...bonus } };
   if (pick < 9) return { kind: 'challenge', goal: 1, n: 0, reward: { baies: 40, [res]: 6 } };
-  return { kind: 'champion', goal: 1, n: 0, reward: { baies: 40, shards: 1 } };
+  return { kind: 'champion', goal: 1, n: 0, reward: { baies: 40, shards: 1, ...bonus } };
 }
 
 /** Ce que demande le contrat, en clair. */
@@ -236,6 +249,7 @@ export function claimContract(save: Save, i: number): Contract | null {
   save.resources.stone += c.reward.stone ?? 0;
   save.resources.food += c.reward.food ?? 0;
   save.shards += c.reward.shards ?? 0;
+  if (c.reward.item) save.items[c.reward.item] = (save.items[c.reward.item] ?? 0) + 1;
   save.contracts.list[i] = rollContract(++save.contracts.seed);
   return c;
 }

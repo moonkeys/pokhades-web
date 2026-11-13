@@ -548,7 +548,9 @@ Si d'autres se voient en jeu, noter leur emplacement.
 - **Contrats** (ajout) : trois petits objectifs de run toujours renouvelés
   (K.O. d'un type, K.O., Baies, salles sans coup, Défi, champion), payés en
   Baies, ressources ou Éclat (`Save.contracts`, `contractEvent`, sous les
-  quêtes chez Kangourex). Reste : des récompenses en objets.
+  quêtes chez Kangourex). Objets en prime (fait) : un contrat long sur quatre
+  (K.O., salles sans coup, champion) paie aussi un Super Bonbon ou un objet
+  tenu de l'étal, versé dans la réserve (`CANDY_ITEM`, `BONUS_HELD`).
 
 ### 2.6 Poids d'équipe (fait)
 - `src/meta/weight.ts` : Pokémon 3 / 5 / 8 selon le stade de départ,

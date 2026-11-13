@@ -13,7 +13,7 @@ import { BIOMES } from '../world/biomes';
 import { MISSIONS, available, busy, collect, mission, missionSlots, open as missionOpen, recall, rewardText, send, type Mission, type MissionId } from '../meta/missions';
 import { NICK_MAX, capacity, isBaseForm, recruitThreshold, welcomeMon, level, monName, ownedSpecies, ownsSpecies, roster as rosterIds, speciesOf, startLevel, type Save } from '../meta/save';
 import { natureText, applyTraits } from '../meta/mons';
-import { MAX_ACTIVE, QUESTS, abandonQuest, acceptQuest, claimContract, claimQuest, contractText, questFor, questState, refillContracts } from '../meta/quests';
+import { MAX_ACTIVE, QUESTS, abandonQuest, acceptQuest, claimContract, claimQuest, contractText, itemName, questFor, questState, refillContracts } from '../meta/quests';
 import { memberWeight, moveWeight, weightCap, type MemberWeight } from '../meta/weight';
 import { typeColor } from '../render/combatfx';
 import { STATIONS, stationId, type Station } from '../run/camp';
@@ -1522,7 +1522,7 @@ export class CampScreen {
       el('div', 'cs-head', card).append(el('b', '', undefined, 'Contrat'));
       el('small', 'cs-info', card, contractText(c));
       const r = c.reward;
-      el('small', 'cs-next', card, `Récompense : ${[`${r.baies} Baies`, r.wood && `${r.wood} Bois`, r.stone && `${r.stone} Pierre`, r.food && `${r.food} Nourriture`, r.shards && `${r.shards} Éclat`].filter(Boolean).join(' · ')}`);
+      el('small', 'cs-next', card, `Récompense : ${[`${r.baies} Baies`, r.wood && `${r.wood} Bois`, r.stone && `${r.stone} Pierre`, r.food && `${r.food} Nourriture`, r.shards && `${r.shards} Éclat`, r.item && itemName(r.item)].filter(Boolean).join(' · ')}`);
       const bar = el('div', 'cs-dex-bar', card);
       bar.style.setProperty('--w', `${Math.min(100, (c.n / c.goal) * 100)}%`);
       el('small', '', bar, `${c.n} / ${c.goal}`);
@@ -1533,7 +1533,7 @@ export class CampScreen {
         if (!got) return;
         sfx('claim');
         ctx.persist();
-        ctx.notify('Contrat réclamé', `${contractText(got)} — c’est payé.`, CAMP_NPCS.quests);
+        ctx.notify('Contrat réclamé', `${contractText(got)} — c’est payé.${got.reward.item ? ` ${itemName(got.reward.item)} rangé dans la réserve.` : ''}`, CAMP_NPCS.quests);
         void this.render();
       });
     });

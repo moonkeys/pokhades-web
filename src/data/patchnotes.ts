@@ -20,11 +20,15 @@ export const PATCH_NOTES: readonly PatchNote[] = [
   {
     id: '2026-11-13',
     date: '13 novembre 2026',
-    title: 'Les champions recrutent pour toi',
+    title: 'Recrues de champion et contrats mieux payés',
     sections: [
       {
         title: 'Run',
         items: ['Un champion vaincu cède un Pokémon de son équipe (son as d’abord, sous sa forme de base) : il rejoint le Repaire, ou attend s’il est plein.'],
+      },
+      {
+        title: 'Repaire',
+        items: ['Certains contrats de Kangourex paient aussi un Super Bonbon ou un objet tenu.'],
       },
     ],
   },
