@@ -18,6 +18,17 @@ export interface PatchNote {
 
 export const PATCH_NOTES: readonly PatchNote[] = [
   {
+    id: '2026-11-14',
+    date: '14 novembre 2026',
+    title: 'La vie au bourg',
+    sections: [
+      {
+        title: 'Repaire',
+        items: ['Au bourg, des libérés portent l’eau du puits à leur maison, et une lavandière frotte le linge sous sa corde à linge.'],
+      },
+    ],
+  },
+  {
     id: '2026-11-13-b',
     date: '13 novembre 2026',
     title: 'Des sbires mauvais perdants',

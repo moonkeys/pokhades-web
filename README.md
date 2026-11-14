@@ -310,7 +310,10 @@ Bétochef à 6.
   autour d'une place pavée de chevrons, son puits au milieu ; on y entre par
   deux piliers de pierre, puis une rue de briques qui ondule jusqu'à la place
   (seuil gris, puis briques beiges : le chemin de terre ne bute plus sur le
-  pavé) ; douze libérés de plus au camp (ils flânent sur la place).
+  pavé) ; douze libérés de plus au camp (ils flânent sur la place). Deux
+  d'entre eux portent l'eau du puits à leur maison, un seau plein à l'aller
+  (chemin calculé case par case autour du puits et du banc), et une
+  lavandière frotte le linge dans son baquet sous une corde à linge.
 
 Ce qui attend un autre chantier n'apparaît chez le bâtisseur qu'une run après
 que celui-ci est bâti (`buildingsShown`, `Save.builtAt`) ; le bâti passe en bas

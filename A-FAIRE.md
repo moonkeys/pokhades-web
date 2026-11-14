@@ -481,8 +481,12 @@ Si d'autres se voient en jeu, noter leur emplacement.
   aménagement (`DWELLERS_PER` : Maisons 10, Hameau 12, Jardins 2,
   Lampadaires 2) ; les flâneurs se partagent la place et les clairières.
 - Réplique du bâtisseur selon l'avancée (ouest, puis est, puis hameau).
-- Reste : une activité aux libérés du bourg (puits, lessive…). (Lampadaires et
-  hameau revus après le test : voir 2.3 ter.)
+- Activité au bourg (fait, 14 novembre 2026) : deux porteurs d'eau vont du
+  puits à leur maison et reviennent (`Talker.errand`, `gridPath`), le seau
+  plein à l'aller ; une lavandière frotte le linge dans un baquet, sous une
+  corde à linge où sèchent draps et foulards (dessinés : `drawTub`,
+  `drawClothesline`). (Lampadaires et hameau revus après le test : voir
+  2.3 ter.)
 
 ### 2.3 ter Retours de test du Repaire (fait)
 - Rondins du feu : tous les libérés y dorment (avant : assis, endormis ou
