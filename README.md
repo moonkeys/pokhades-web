@@ -187,6 +187,10 @@ compris), **Bourse percée** (₽ des salles divisés par deux) ou **Sans repos*
 paille, et Machopeur, maître des lieux ; [E] au tatami ouvre l'écran
 « Nouvelle attaque » sans prix (apprendre ou renforcer, pour le membre
 choisi), deux fois par salle ; fermer l'écran sans choisir ne compte pas.
+**Pension** ❀ (`run/pension.ts`) : sans ennemis, un enclos garni de foin
+gardé par Écrémeuh ; [E] à l'enclos, une fois : chaque membre gagne un
+niveau (`PENSION_LEVELS`), le plus faible deux (annonce et évolution comme
+en combat).
 
 Météo (ajout, `src/world/weather.ts`) : chaque salle de combat tire son ciel
 selon le biome — souvent clair, parfois Pluie, Soleil ardent, Tempête de

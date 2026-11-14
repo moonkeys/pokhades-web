@@ -324,6 +324,10 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
   tatami et un mannequin de paille veillés par Machopeur ; [E] : l'écran
   « Nouvelle attaque », gratuit, deux leçons par salle (`DOJO_LESSONS`).
   Proposé par les portes ; panneau → « Dojo ».
+- **Pension** ❀ (`run/pension.ts`, ajout, 14 novembre 2026) : sans ennemis,
+  un enclos de foin gardé par Écrémeuh ; [E] une fois : chaque membre gagne
+  un niveau, le plus faible deux (`PENSION_LEVELS`). Proposée par les
+  portes ; panneau → « Pension ».
 - Reste : d'autres salles.
 
 ### 1.10 Son (fait)
