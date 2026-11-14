@@ -170,7 +170,7 @@ export const LORE: LoreChapter[] = [
       // run/cave.ts
       { title: 'Les grottes', text: 'Surtout en Rocailleux, au Volcan et en Montagne glacée, une bouche de grotte s’ouvre une fois la salle vidée. Dedans, un sbire de la Ligue : il parle, puis envoie son Pokémon fort et son escorte. Bats-les pour des ₽ et un soin complet de l’équipe (son Pokémon, lui, ne se recrute pas). Au fond, un coffre et un prisonnier à libérer, qui rejoindra le Repaire. Fuir, c’est perdre la grotte. Vaincu, le sbire file vers la sortie en lâchant une dernière réplique.' },
       // run/capture.ts
-      { title: 'Les Poké Balls du sbire', text: 'Il lance des Balls sur le Pokémon que tu joues : un anneau rouge marque le point de chute, sors-en ou dashe. Touché, débats-toi avec ← et → en alternance pour remplir la jauge, qui se vide d’autant plus vite qu’il te reste peu de PV. Capturé, il quitte l’équipe : bats le sbire pour le récupérer. Si tu fuis, il est perdu pour la run.' },
+      { title: 'Les Poké Balls du sbire', text: 'Il lance des Balls sur le Pokémon que tu joues : un anneau rouge marque le point de chute, sors-en ou dashe. Et ne compte pas le coincer : souvent, après un lancer, il court se poster ailleurs. Touché, débats-toi avec ← et → en alternance pour remplir la jauge, qui se vide d’autant plus vite qu’il te reste peu de PV. Capturé, il quitte l’équipe : bats le sbire pour le récupérer. Si tu fuis, il est perdu pour la run.' },
     ],
   },
   {

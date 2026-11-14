@@ -22,6 +22,8 @@ const SCALE = 0.5;
 const WANDER_RADIUS = 3.5;
 const WANDER_SPEED = 2.2;
 const FLEE_SPEED = 6.5;
+/** Course d'un sbire qui change de place après un lancer. */
+const RUSH_SPEED = 5;
 /**
  * Dresseur de salle au combat (`direct`) : il se tient à tant de cases derrière ses
  * Pokémon, à l'opposé du joueur ; il recule s'il l'approche de plus près que KEEP_OUT.
@@ -43,8 +45,10 @@ export class Trainer {
   private fleeing = false;
   gone = false;
   image: HTMLImageElement | null = null;
-  private readonly anchorX: number;
-  private readonly anchorY: number;
+  private anchorX: number;
+  private anchorY: number;
+  /** Il court changer de place (sbire des grottes, après un lancer) : plus vite qu'au pas. */
+  private rushing = false;
   /** Arrêté (s) : il vise, puis reprend ses cent pas. */
   private holdT = 0;
 
@@ -84,6 +88,18 @@ export class Trainer {
     this.fleeing = true;
     this.holdT = 0;
     this.target = { x, y };
+  }
+
+  /**
+   * Il court se poster ailleurs (après un lancer, sbire des grottes) : ses cent pas
+   * reprennent autour de sa nouvelle place. Le temps de viser (`aim`) passe d'abord.
+   */
+  dashTo(x: number, y: number): void {
+    if (this.fleeing) return;
+    this.anchorX = x;
+    this.anchorY = y;
+    this.target = { x, y };
+    this.rushing = true;
   }
 
   /** Il s'arrête `t` s, tourné vers (x, y) : le temps de viser et de lancer. */
@@ -127,13 +143,14 @@ export class Trainer {
     const dx = this.target.x - this.x;
     const dy = this.target.y - this.y;
     const d = Math.hypot(dx, dy);
-    const step = (this.fleeing ? FLEE_SPEED : WANDER_SPEED) * dt;
+    const step = (this.fleeing ? FLEE_SPEED : this.rushing ? RUSH_SPEED : WANDER_SPEED) * dt;
     this.moving = true;
     this.row = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 1 : 2) : dy < 0 ? 3 : 0;
     if (d <= Math.max(0.15, step)) {
       this.x = this.target.x;
       this.y = this.target.y;
       this.target = null;
+      this.rushing = false;
       if (this.fleeing) this.gone = true;
       return;
     }

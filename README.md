@@ -212,7 +212,8 @@ parle (son portrait, une réplique), puis envoie d'un jet de Poké Ball son
 Pokémon fort, le gardien (trois barres de PV), et une escorte de sauvages
 du biome. Pendant le combat, il lance des **Poké Balls** sur le Pokémon joué
 (`src/run/capture.ts`) : un anneau rouge marque le point de chute, on en sort
-ou on dashe. Touché, on est aspiré dans la Ball ; ← et → en alternance
+ou on dashe. Après un lancer, six fois sur dix, il court se poster ailleurs
+dans l'arène, loin du joueur : on ne le coince pas. Touché, on est aspiré dans la Ball ; ← et → en alternance
 remplissent une jauge, qui se vide d'autant plus vite qu'il reste peu de PV.
 Pleine, la Ball éclate ; vide, elle se referme : notification « Capturé ! »,
 le Pokémon quitte l'équipe (le suivant debout prend la main ; le dernier

@@ -242,7 +242,10 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
 - **Mode Nuzlocke** (fait : Échap → Réglages, `Options.nuzlocke`, `nuzlockeToll`
   de main.ts) : en fin de run, un Pokémon encore K.O. ou resté capturé est
   relâché pour de bon (jamais le dernier de l'équipe). Reste : d'autres sbires (Team Aqua, Magma…) si le
-  dépôt en a les planches ; un sbire qui change de place en lançant.
+  dépôt en a les planches (Essentials n'a que la Team Rocket).
+  Changer de place en lançant (fait, 14 novembre 2026) : après un lancer, six
+  fois sur dix, le sbire court se poster ailleurs dans l'arène, le plus loin
+  possible du joueur (`CaveDirector.relocate`, `Trainer.dashTo`).
   Répliques de défaite (fait, 13 novembre 2026) : en s'enfuyant, le sbire
   lance une réplique dans une bulle qui le suit (`GRUNT_DEFEATS`, ou
   `GRUNT_DEFEATS_RELEASE` quand il rend des Pokémon capturés).

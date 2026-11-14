@@ -53,6 +53,8 @@ const WAKE_RADIUS = 7;
 const THROW_EVERY = 4.2;
 const THROW_PER_ACT = 0.35;
 const THROW_MIN = 3;
+/** Chance qu'il change de place après un lancer (A-FAIRE 1.6 : « un sbire qui change de place en lançant »). */
+const RELOCATE_CHANCE = 0.6;
 /** Première Ball, après l'envoi de son équipe (s). */
 const FIRST_THROW = 2.4;
 /** Il s'arrête et vise ce temps-là avant de lancer (s). */
@@ -374,7 +376,11 @@ export class CaveDirector {
     const ready = player.deathT < 0 && !player.trapped && !this.capture.busy;
     if (this.aimT >= 0) {
       this.aimT -= dt;
-      if (this.aimT < 0 && ready) this.capture.throwAt(g.x, g.y - 0.6, player.x, player.y);
+      if (this.aimT < 0 && ready) {
+        this.capture.throwAt(g.x, g.y - 0.6, player.x, player.y);
+        // Puis, souvent, il court se poster ailleurs dans l'arène, loin du joueur : on ne le coince pas.
+        if (Math.random() < RELOCATE_CHANCE) this.relocate(g, player);
+      }
       return;
     }
     this.throwT -= dt;
@@ -385,6 +391,30 @@ export class CaveDirector {
   }
 
   private run: Run | null = null;
+
+  /** Une nouvelle place dans l'arène, sur une case libre, à distance de lui et le plus loin possible du joueur. */
+  private relocate(g: Trainer, player: Actor): void {
+    const L = this.layout;
+    if (!L) return;
+    const world = L.world;
+    const A = L.arena;
+    let best: { x: number; y: number } | null = null;
+    let far = -1;
+    for (let k = 0; k < 10; k++) {
+      const a = Math.random() * Math.PI * 2;
+      const r = 0.35 + Math.random() * 0.5;
+      const x = A.x + Math.cos(a) * A.rx * r;
+      const y = A.y + Math.sin(a) * A.ry * r;
+      const i = Math.floor(y - 0.1) * world.w + Math.floor(x);
+      if (world.blocked[i] || world.water[i] || Math.hypot(x - g.x, y - g.y) < 3) continue;
+      const d = Math.hypot(x - player.x, y - player.y);
+      if (d > far) {
+        far = d;
+        best = { x, y };
+      }
+    }
+    if (best) g.dashTo(best.x, best.y);
+  }
 
   /** Fin du dialogue : il envoie son Pokémon fort entre lui et nous, et l'escorte dans l'arène, d'un jet de Ball chacun. */
   private send(world: WorldMap, run: Run, player: Actor): void {

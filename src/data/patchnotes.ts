@@ -20,8 +20,12 @@ export const PATCH_NOTES: readonly PatchNote[] = [
   {
     id: '2026-11-14',
     date: '14 novembre 2026',
-    title: 'La vie au bourg',
+    title: 'La vie au bourg et des sbires plus mobiles',
     sections: [
+      {
+        title: 'Run',
+        items: ['Les sbires des grottes changent souvent de place après un lancer de Poké Ball : on ne les coince plus.'],
+      },
       {
         title: 'Repaire',
         items: ['Au bourg, des libérés portent l’eau du puits à leur maison, et une lavandière frotte le linge sous sa corde à linge.'],
