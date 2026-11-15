@@ -18,7 +18,7 @@ import { MERC_RETAINER, Shop } from './run/shop';
 import { Camp, CAMP_SEED, campPockets, STATIONS, stationId, type Station } from './run/camp';
 import { CampScreen, movePool, teamWeight, type CampCtx } from './ui/campscreen';
 import { NetBadge } from './ui/netbadge';
-import { BAIES, FIELD_FOOD, RESOURCES, RESOURCE_IDS, ROOM_RES, SHARDS, UPGRADES, applyHeld, heldItem, teamSlots, type ResourceId } from './meta/catalog';
+import { BAIES, FIELD_FOOD, QUARRY_STONE, RESOURCES, RESOURCE_IDS, ROOM_RES, SHARDS, UPGRADES, applyHeld, heldItem, teamSlots, type ResourceId } from './meta/catalog';
 import { addMon, capacity, exile, grantAlly, grantChampion, isFull, level, loadSave, markSeen, monName, ownedSpecies, ownsSpecies, recordDefeat, resetSave, roster, speciesOf, startLevel, welcomeMon, writeSave } from './meta/save';
 import { applyTraits, natureText } from './meta/mons';
 import { quest, questEvent, type QuestEvent, contractEvent, contractText } from './meta/quests';
@@ -1606,6 +1606,8 @@ async function boot(): Promise<void> {
       const back = tickMissions(save);
       // Le champ de la clairière rapporte un peu de Nourriture à chaque salle (sans annonce : c'est le fond du camp).
       if (save.built.includes('field')) save.resources.food += FIELD_FOOD;
+      // La carrière, de même, un peu de Pierre.
+      if (save.built.includes('quarry')) save.resources.stone += QUARRY_STONE;
       // Chaque salle libérée rapporte un peu de bois et de pierre, un champion
       // davantage, vivres compris (retour de test du 11 novembre 2026 : sans
       // coffre ni biome rocheux, pas moyen de gagner de la pierre). Sans

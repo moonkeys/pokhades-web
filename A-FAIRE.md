@@ -472,9 +472,13 @@ Si d'autres se voient en jeu, noter leur emplacement.
   deux paillasses, 26 libérés au camp au lieu de 16, trois visiteurs de plus)
   s'y bâtissent ensuite. Écart voulu : le camp grandit sur la forêt, pas de
   zone séparée.
-- Reste : d'autres aménagements dans la clairière (le terrain est encore
-  libre au nord-est), des visiteurs propres à chaque zone, des récoltes plus
-  variées.
+- **Carrière** (ajout, 15 novembre 2026) : la clairière de l'ouest est
+  pleine (maisons, champ, tournesols) ; la carrière prend une poche à elle au
+  nord-est, derrière le relais (`POSTS.quarry`, `quarryWay`), après le
+  terrain d'entraînement. Deux libérés y frappent leur rocher (le mannequin
+  du terrain, `dummy.rock`, éclats dessinés) ; +1 Pierre par salle
+  (`QUARRY_STONE`). Vérifiée atteignable à pied depuis le feu.
+- Reste : des visiteurs propres à chaque zone, des récoltes plus variées.
 
 ### 2.3 bis Agrandir le camp (fait)
 - Quatre aménagements de plus (`BUILDINGS`) : **Jardins fleuris** (massifs,

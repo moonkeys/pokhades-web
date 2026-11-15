@@ -18,6 +18,17 @@ export interface PatchNote {
 
 export const PATCH_NOTES: readonly PatchNote[] = [
   {
+    id: '2026-11-15',
+    date: '15 novembre 2026',
+    title: 'La Carrière',
+    sections: [
+      {
+        title: 'Repaire',
+        items: ['Nouvel aménagement, après le terrain d’entraînement : la Carrière, au nord-est. Deux libérés y taillent la pierre : +1 Pierre par salle nettoyée.'],
+      },
+    ],
+  },
+  {
     id: '2026-11-14',
     date: '14 novembre 2026',
     title: 'La Pension, la vie au bourg et des sbires plus mobiles',

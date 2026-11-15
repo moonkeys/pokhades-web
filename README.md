@@ -318,7 +318,12 @@ Bétochef à 6.
   pavé) ; douze libérés de plus au camp (ils flânent sur la place). Deux
   d'entre eux portent l'eau du puits à leur maison, un seau plein à l'aller
   (chemin calculé case par case autour du puits et du banc), et une
-  lavandière frotte le linge dans son baquet sous une corde à linge.
+  lavandière frotte le linge dans son baquet sous une corde à linge ;
+- **Carrière** (Bois 14, Nourriture 6 ; après le Terrain d'entraînement) :
+  une poche gagnée sur la forêt au nord-est, derrière le relais (`POSTS.quarry`,
+  et une trouée qui la relie) ; du gravier, de gros blocs, un tas de pierres,
+  et deux libérés qui frappent chacun leur rocher, dont jaillissent des
+  éclats ; +1 Pierre par salle nettoyée en run (`QUARRY_STONE`).
 
 Ce qui attend un autre chantier n'apparaît chez le bâtisseur qu'une run après
 que celui-ci est bâti (`buildingsShown`, `Save.builtAt`) ; le bâti passe en bas

@@ -248,7 +248,7 @@ export type Cost = Partial<Record<ResourceId, number>>;
 /** Le stock couvre tout le coût (GameManager.can_afford_resources). */
 export const canAfford = (stock: Record<ResourceId, number>, cost: Cost = {}): boolean => RESOURCE_IDS.every((r) => stock[r] >= (cost[r] ?? 0));
 
-export type BuildingId = 'outpost' | 'tavern' | 'study' | 'market' | 'dorm' | 'training' | 'jetty' | 'clearing' | 'field' | 'houses' | 'gardens' | 'lamps' | 'eastglade' | 'hamlet' | 'atelier';
+export type BuildingId = 'outpost' | 'tavern' | 'study' | 'market' | 'dorm' | 'training' | 'jetty' | 'clearing' | 'field' | 'houses' | 'gardens' | 'lamps' | 'eastglade' | 'hamlet' | 'atelier' | 'quarry';
 
 /**
  * Aménagements du Repaire, bâtis par le bâtisseur (Charpenti, puis ses
@@ -293,6 +293,9 @@ export const BUILDINGS: readonly { id: BuildingId; name: string; desc: string; p
   // Ajout (retour de test : « un nouvel aménagement, un atelier avec un Pokémon artisan ») :
   // il suit le champ, dont le potager fournit les herbes de ses recettes (meta/crafting.ts).
   { id: 'atelier', name: 'Atelier de l’artisan', desc: 'Fabrique des objets tenus et des nectars à Pokémon.', price: 220, art: 235, needs: 'field' },
+  // Ajout (A-FAIRE 2.3 : « d'autres aménagements » ; Godot projetait une Carrière du sanctuaire) :
+  // une poche au nord-est, derrière le relais, où deux libérés taillent la pierre.
+  { id: 'quarry', name: 'Carrière', desc: 'Des libérés y taillent la pierre : de la Pierre à chaque salle nettoyée.', cost: { wood: 14, food: 6 }, art: 74, needs: 'training' },
 ];
 
 /**
@@ -333,6 +336,8 @@ export const ROOM_RES: Record<'room' | 'boss', Cost> = {
 
 /** Champ de cultures : Nourriture récoltée par salle franchie en run (main.ts). */
 export const FIELD_FOOD = 1;
+/** Carrière : Pierre taillée par salle franchie en run (main.ts). */
+export const QUARRY_STONE = 1;
 
 export type CsId = 'surf' | 'cut' | 'strength' | 'rock-smash';
 

@@ -212,6 +212,7 @@ const LINES = {
   // Le bourg (A-FAIRE 2.3 bis : « une activité aux libérés du bourg ») : porteurs d'eau et lavandière.
   water: ['Un seau pour chaque maison, et on recommence.', 'L’eau du puits est glacée, même l’été.', 'Avant, je buvais dans les flaques des routes. Un puits, tu te rends compte ?'],
   washer: ['Frotte, rince, étends. Le linge sèche vite, ici.', 'Les foulards de la rébellion doivent être propres pour la prochaine run !', 'Pas une tache ne me résiste. Pas même la boue du Marais.'],
+  quarry: ['Un coup, deux coups… et la pierre cède. Elle finit toujours par céder.', 'Cette pierre-là deviendra un mur du bourg. Ou une marche. Ou un caillou.', 'Avant, je cassais des rochers pour un dresseur. Maintenant, c’est pour nous.'],
   trainer: ['Encore une série. Le champion, lui, ne se repose pas.', 'Ce mannequin a la tête de {champion}. Enfin, je l’imagine.', 'Frappe, esquive, recommence. C’est tout.'],
 };
 
@@ -296,6 +297,9 @@ const POSTS = {
   // Les passages de la place vers l'atelier du bâtisseur et l'Étude : à mi-chemin, sur leur allée.
   yardWay: [-4.5, 6.5],
   studyWay: [-9, 3.4],
+  // La carrière, au nord-est derrière le relais, et la trouée qui l'y relie.
+  quarry: [20, -11],
+  quarryWay: [14, -12],
 } as const satisfies Record<string, readonly [number, number]>;
 
 /**
@@ -324,6 +328,7 @@ export function campPockets(built: readonly BuildingId[], hub: { x: number; y: n
     ...(has('training') ? [p('training', 6.5, 4)] : []),
     ...(has('outpost') ? [p('scout', 5.5, 3.5)] : []),
     ...(has('tavern') ? [p('elder', 7, 4)] : []),
+    ...(has('quarry') ? [p('quarry', 6.5, 4.5), p('quarryWay', 4.5, 3)] : []),
   ];
 }
 
@@ -362,8 +367,8 @@ interface Talker {
   talk: number;
   bubble: HTMLElement;
   bubbleT: number;
-  /** S'entraîne sur ce mannequin. */
-  dummy?: { x: number; y: number; hitT: number; trainT: number };
+  /** S'entraîne sur ce mannequin (ou, `rock`, taille ce rocher à la carrière). */
+  dummy?: { x: number; y: number; hitT: number; trainT: number; rock?: boolean };
   /** Porteur d'eau : du puits (arrêt 0) à une maison et retour, le seau plein à l'aller. */
   errand?: { stops: Spot[]; i: number; wait: number; carry: boolean; path: Spot[] | null; stuckT: number };
   /** Lavandière : frotte le linge dans son baquet (`scrubT` : prochain geste). */
@@ -531,6 +536,7 @@ export class Camp {
     // pots, et son allée de sable passait sur la terre battue (retour de test). Il est à quatre
     // pas du chemin du nord : plus d'allée.
     const training = at0('training');
+    const quarry = at0('quarry');
     // Le relais de Roucarnage, à côté de Dracolosse, à l'est de l'arche : le courrier part
     // avec ceux qui partent (retour de test : il était perdu au sud-est, près du puits).
     const relay = { x: gx + 7.5, y: gy + 2.6 };
@@ -870,6 +876,19 @@ export class Camp {
       put(PROPS.stump[1], training.x - 4.3, training.y + 0.4);
       put(PROPS.log[0], training.x - 0.5, training.y - 0.4);
     }
+    if (has('quarry')) {
+      // La carrière : du gravier au sol, de gros blocs au fond, des éclats partout, et le tas de
+      // pierres taillées devant (les deux rochers qu'on taille se posent avec leurs tailleurs).
+      ground(quarry.x, quarry.y + 0.6, 4.8, 2.8, LANE.gravel, 405);
+      put(PROPS.boulder[1], quarry.x - 3.4, quarry.y - 1.4);
+      put(PROPS.paleRocks[0], quarry.x + 0.2, quarry.y - 2);
+      put(PROPS.boulder[0], quarry.x + 3.6, quarry.y - 1.2);
+      put(PROPS.paleStones[0], quarry.x - 0.4, quarry.y + 2.6, false);
+      put(PROPS.paleStones[1], quarry.x + 0.4, quarry.y + 2.7, false);
+      put(PROPS.paleStones[2], quarry.x, quarry.y + 2.2, false);
+      put(PROPS.rockSmall[1], quarry.x - 4.4, quarry.y + 1.8, false);
+      put(PROPS.paleStones[3], quarry.x + 4.2, quarry.y + 2, false);
+    }
     if (has('dorm')) {
       put(CAMP_PROPS.tepee, dorm.x - 3.5, dorm.y - 0.6);
       put(CAMP_PROPS.tepee, dorm.x + 3.5, dorm.y - 0.6);
@@ -1155,15 +1174,16 @@ export class Camp {
       training: has('training') ? 2 : 0,
       dorm: beds.length,
       field: has('field') ? 2 : 0,
+      quarry: has('quarry') ? 2 : 0,
       bench: has('gardens') ? benches.length : 0,
       lamp: Math.min(2, lamps.length),
       bar: barSeats.length,
       well: has('hamlet') ? 2 : 0,
       wash: has('hamlet') ? 1 : 0,
     };
-    const groups: Record<keyof typeof room, number[]> = { fire: [], training: [], dorm: [], field: [], bench: [], lamp: [], bar: [], well: [], wash: [] };
+    const groups: Record<keyof typeof room, number[]> = { fire: [], training: [], dorm: [], field: [], quarry: [], bench: [], lamp: [], bar: [], well: [], wash: [] };
     const strollers: number[] = [];
-    const order = (['fire', 'bar', 'well', 'wash', 'training', 'dorm', 'field', 'bench', 'lamp'] as const).filter((g) => room[g] > 0);
+    const order = (['fire', 'bar', 'well', 'wash', 'training', 'quarry', 'dorm', 'field', 'bench', 'lamp'] as const).filter((g) => room[g] > 0);
     let turn = 0;
     for (const id of walkers) {
       const g = order.map((_, k) => order[(turn + k) % order.length]).find((h) => groups[h].length < room[h]);
@@ -1210,6 +1230,14 @@ export class Camp {
       place.block(Math.floor(dummy.x), Math.floor(dummy.y));
       const t = this.talk(id, { x: dummy.x + side * 1.5, y: dummy.y }, side > 0 ? 6 : 2, ['Idle'], LINES.trainer, true);
       t.dummy = dummy;
+    });
+    groups.quarry.forEach((id, i) => {
+      // Chacun son rocher, de part et d'autre du tas, et il le frappe depuis l'extérieur, comme un mannequin.
+      const side = i ? 1 : -1;
+      const rock = { x: quarry.x + side * 2, y: quarry.y + 0.9, hitT: 0, trainT: rng.range(0.4, 1.6), rock: true };
+      put(PROPS.rockSmall[0], rock.x, rock.y);
+      const t = this.talk(id, { x: rock.x + side * 1.4, y: rock.y }, side > 0 ? 6 : 2, ['Idle'], LINES.quarry, true);
+      t.dummy = rock;
     });
     groups.field.forEach((id, i) => {
       // Aux champs : ils vont et viennent entre les rangs.
@@ -1497,7 +1525,8 @@ export class Camp {
     for (const st of this.stalls) out.push({ y: st.y * TILE + 1, draw: (b, camX, camY, k) => this.drawStall(b, camX, camY, k, st, time) });
     for (const f of this.talkers) {
       const m = f.dummy;
-      if (m) out.push({ y: m.y * TILE, draw: (b, camX, camY, k) => drawDummy(b, Math.round((m.x * TILE - camX) * k), Math.round((m.y * TILE - camY) * k), k, m.hitT) });
+      if (m && m.rock) out.push({ y: m.y * TILE + 2, draw: (b, camX, camY, k) => drawChips(b, (m.x * TILE - camX) * k, (m.y * TILE - camY) * k, k, m.hitT) });
+      else if (m) out.push({ y: m.y * TILE, draw: (b, camX, camY, k) => drawDummy(b, Math.round((m.x * TILE - camX) * k), Math.round((m.y * TILE - camY) * k), k, m.hitT) });
       // Le seau du porteur d'eau, plein, à côté de lui (devant s'il va vers le sud).
       const e = f.errand;
       if (e?.carry) {
@@ -1816,4 +1845,16 @@ function gridPath(world: WorldMap, from: Spot, to: Spot): Spot[] {
   const out: Spot[] = [{ ...to }];
   for (let c = prev.get(end)!; c !== start && c >= 0; c = prev.get(c)!) out.unshift({ x: (c % W) + 0.5, y: Math.floor(c / W) + 0.9 });
   return out;
+}
+
+/** Les éclats d'un rocher qu'on vient de frapper (`hitT` de 0,35 à 0) : ils jaillissent et retombent. */
+function drawChips(b: CanvasRenderingContext2D, x: number, y: number, k: number, hitT: number): void {
+  if (hitT <= 0) return;
+  const u = 1 - hitT / 0.35;
+  b.fillStyle = `rgba(190,184,172,${1 - u})`;
+  for (let i = 0; i < 5; i++) {
+    const a = -Math.PI * (0.15 + i * 0.175);
+    const r = (3 + i) * k * (0.4 + u);
+    b.fillRect(Math.round(x + Math.cos(a) * r * 1.4), Math.round(y - 6 * k + Math.sin(a) * r * 1.2 + u * u * 6 * k), Math.max(1, k), Math.max(1, k));
+  }
 }
