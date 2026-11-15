@@ -62,6 +62,7 @@ import { SPRING_HEAL, Spring } from './run/spring';
 import { Altar } from './run/altar';
 import { Dojo } from './run/dojo';
 import { PENSION_LEVELS, Pension } from './run/pension';
+import { WEATHER_ABILITIES } from './data/abilities';
 import { evolveMove, rollSkillOffer, upgradeMove, type SkillOffer } from './run/rewards';
 import { COMBATS_PER_ACT, CURSES, LEAGUE_MASTER, ROOMS_PER_ACT, Run } from './run/run';
 import { Hud } from './ui/hud';
@@ -889,6 +890,29 @@ async function boot(): Promise<void> {
     setWeather(weatherNow());
     runHud.notify({ title: WEATHERS[w].name, text: WEATHERS[w].hint, icon: WEATHERS[w].icon });
   };
+  /**
+   * Talents météo (data/abilities.ts) : un Pokémon qui a Crachin, Sécheresse, Sable Volant ou
+   * Alerte Neige change le temps de la salle en y entrant, du côté de l'équipe comme des
+   * sauvages et des champions. Une fois par Pokémon et par salle ; le dernier arrivé l'emporte.
+   */
+  const talentsSeen = new Set<Actor>();
+  const weatherTalents = () => {
+    if (mode !== 'run' || cave.active || run.isShop() || net.role === 'client') return;
+    // (L'arène du Village est d'intérieur : pas de temps à changer.)
+    if (run.isBoss() && run.biome === 'village') return;
+    for (const a of [...team, ...wild]) {
+      if (talentsSeen.has(a) || a.deathT >= 0 || !a.pokemon || a.pokemon.fainted) continue;
+      talentsSeen.add(a);
+      const t = WEATHER_ABILITIES[a.baseId] ?? WEATHER_ABILITIES[a.speciesId];
+      if (!t || roomWeather === t.weather) continue;
+      roomWeather = t.weather;
+      setWeather(weatherNow());
+      sfx('ability');
+      fx.number('buff', a.x, a.y, 0, t.name);
+      const w = WEATHERS[t.weather];
+      runHud.notify({ title: `Talent : ${t.name}`, text: `${a.pokemon.name} : ${w.name.toLowerCase()} (${w.hint})`, icon: w.icon, art: a.speciesId });
+    }
+  };
 
   /**
    * L'as d'un champion méga-évolue en entamant ses deux dernières barres
@@ -931,6 +955,7 @@ async function boot(): Promise<void> {
     outdoor = null;
     megaRevert();
     megaUsed = false;
+    talentsSeen.clear();
     cave.clear();
     berries.build(world, BIOMES[run.biome].berry);
     hazards.build(world, run.mapSeed, run.isBoss());
@@ -3048,6 +3073,7 @@ async function boot(): Promise<void> {
     else altar.hide();
     if (outside()) dojo.update(dt, sample, player, Math.random);
     else dojo.hide();
+    if (outside()) weatherTalents();
     if (outside()) pension.update(dt, sample, player, Math.random);
     else pension.hide();
     camp.update(dt, dialogue.open ? { ...sample, interact: false } : sample, player, world);

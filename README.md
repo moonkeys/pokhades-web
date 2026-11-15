@@ -199,7 +199,14 @@ jeux, la Pluie renforce l'Eau (×1,5) et affaiblit le Feu (×0,5), le Soleil
 l'inverse ; le Sable et la Grêle usent de 3 % des PV max toutes les 3 s ceux
 qui n'y résistent pas (Roche, Sol, Acier ; Glace), sans jamais mettre K.O. ;
 le Brouillard voile la vue. Particules, teinte et notification à l'entrée ;
-le panneau peut la forcer.
+le panneau peut la forcer. Talents météo (ajout, `src/data/abilities.ts`) :
+Tarpaud, Bekipan, Kyogre (Crachin), Feunard, Chartor, Groudon (Sécheresse),
+Tyranocif, Hippopotas, Hippodocus, Gigalithe (Sable Volant), Blizzi et
+Blizzaroi (Alerte Neige) changent le temps de la salle en y entrant, qu'ils
+soient de l'équipe, sauvages ou au champion ; une fois par Pokémon et par
+salle, le dernier arrivé l'emporte (pas à la boutique, en grotte ni dans
+l'arène du Village). La table est tenue à la main : les données PokéAPI
+copiées n'ont pas les talents.
 
 Grottes (portée de `_spawn_cave_portals` et `CaveArena.gd`) : passé les deux
 premières salles de la run, une bouche peut s'ouvrir au pied d'une falaise —

@@ -20,8 +20,12 @@ export const PATCH_NOTES: readonly PatchNote[] = [
   {
     id: '2026-11-15',
     date: '15 novembre 2026',
-    title: 'La Carrière',
+    title: 'La Carrière et les talents météo',
     sections: [
+      {
+        title: 'Combat',
+        items: ['Talents météo : Tarpaud, Chartor, Tyranocif, Blizzaroi… changent le temps de la salle en y entrant (Crachin, Sécheresse, Sable Volant, Alerte Neige), dans ton équipe comme en face.'],
+      },
       {
         title: 'Repaire',
         items: ['Nouvel aménagement, après le terrain d’entraînement : la Carrière, au nord-est. Deux libérés y taillent la pierre : +1 Pierre par salle nettoyée.'],

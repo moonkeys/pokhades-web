@@ -295,7 +295,13 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
 - Panneau (H) → « Météo » : la forcer partout.
 - Danse Pluie, Zénith, Tempête de Sable et Grêle changent le temps de la
   salle jusqu'à l'éclaircie (`weather` dans `EFFECTS`, `Combat.weatherMove`) ;
-  Danse Pluie et Zénith chez le tuteur (150). Reste : des talents.
+  Danse Pluie et Zénith chez le tuteur (150).
+- Talents météo (ajout, 15 novembre 2026, `src/data/abilities.ts`) :
+  Crachin, Sécheresse, Sable Volant, Alerte Neige, sur 12 espèces (table à
+  la main, PokéAPI copiée sans talents) ; en entrant dans la salle (équipe,
+  sauvages, champion), une fois par Pokémon et par salle, le dernier arrivé
+  l'emporte (`weatherTalents`, main.ts). Écart voulu : talents cachés
+  comptés (Feunard, Gigalithe). Reste : d'autres talents (hors météo).
 
 ### 1.9 Salles spéciales (fait)
 - Une porte sur plusieurs peut mener à une salle spéciale (`Run.offers`,
