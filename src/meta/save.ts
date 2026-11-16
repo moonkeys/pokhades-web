@@ -402,13 +402,15 @@ export function grantAlly(save: Save, species: number): { id: number; waiting: b
 
 /**
  * Un champion vaincu (A-FAIRE 1.7 : « le déblocage par les boss de champion ») : un Pokémon
- * de son équipe, ramené à sa forme de base, rejoint la rébellion — son as d'abord, puis en
- * remontant les vagues, le premier qu'on n'a ni au Repaire ni en attente. Repaire plein : il
+ * de son équipe, ramené à sa forme de base, rejoint la rébellion — le plus faible d'abord (sa
+ * première vague), puis, victoire après victoire, en montant jusqu'à son as : le premier qu'on
+ * n'a ni au Repaire ni en attente (retour de test du 16 novembre 2026 : « plus on le bat, plus
+ * on se rapproche du Pokémon le plus fort »). Repaire plein : il
  * attend avec les recrues. Rend l'espèce, ou null si l'équipe n'a plus rien à offrir.
  */
 export function grantChampion(save: Save, bases: readonly number[], champion: string): { id: number; waiting: boolean } | null {
   if (!save.started) return null;
-  for (const species of [...bases].reverse()) {
+  for (const species of bases) {
     let id = species;
     for (let pre = preEvolutionOf(id); pre !== null; pre = preEvolutionOf(id)) id = pre;
     if (ownsSpecies(save, id) || save.candidates.some((c) => c.species === id)) continue;
