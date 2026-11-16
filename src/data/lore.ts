@@ -39,7 +39,7 @@ export const LORE: LoreChapter[] = [
     intro: 'Un combat se gagne avec les pieds autant qu’avec les crocs. Bouge, frappe, esquive : dans cet ordre, et sans t’arrêter.',
     cards: [
       // input/input.ts, ui/settingsmenu.ts
-      { title: 'Les commandes', text: 'Flèches : se déplacer. Maj ou Espace : dash. 1 à 4 (ou Q, Z, S, D) : les quatre attaques. R : l’ultime. F : la Méga-évolution. E : parler, ouvrir, ramasser, prendre une porte. Tab : changer de Pokémon. C : la fiche de l’équipe. Échap : les réglages (touches réassignables dans Commandes). À la manette : B dash, X/Y/LB/RB attaques, A interagir, RT ultime.' },
+      { title: 'Les commandes', text: 'Flèches : bouger. Espace : dash. 1 à 4 : attaques, R : ultime, F : Méga-évolution. E : parler, ouvrir, prendre une porte. Tab : changer de Pokémon. C : la fiche de l’équipe. Échap : les réglages, où l’on change les touches.' },
       // combat/attackstate.ts, combat.ts:31
       { title: 'Quatre attaques, quatre recharges', text: 'Chaque emplacement a sa propre recharge, et toutes tournent en même temps : enchaîne-les plutôt que d’en marteler une. Un court verrou (0,34 s) sépare deux attaques. Plus ton Pokémon est rapide, plus ses recharges raccourcissent.' },
       // combat.ts:33-43
@@ -55,11 +55,11 @@ export const LORE: LoreChapter[] = [
       // pokemon.ts:8-11, 115-117
       { title: 'Les niveaux', text: 'Monter de niveau donne des PV et frappe plus fort, mais l’Attaque, la Défense ou la Vitesse sont celles de l’espèce : ce sont les objets, les dons et les capacités de statut qui les font grimper. L’XP va à chaque membre qui a frappé l’ennemi.' },
       // main.ts:405-436, companion.ts
-      { title: 'L’équipe et les compagnons', text: 'Tab passe au membre suivant ; le combo repart de zéro, mais chacun garde ses recharges. Ceux que tu ne joues pas se battent seuls à tes côtés : ils protègent d’abord celui que tu joues, achèvent les ennemis affaiblis, choisissent l’attaque la plus efficace contre leur cible, sortent des zones annoncées au sol, gardent leurs distances avec une attaque à distance et se replient sous 30 % de PV. Ils ne s’éloignent jamais à plus de 9 cases de toi.' },
+      { title: 'L’équipe et les compagnons', text: 'Tab passe au membre suivant. Ceux que tu ne joues pas se battent seuls à tes côtés : ils te protègent, visent les ennemis affaiblis et esquivent les attaques annoncées au sol.' },
       // main.ts (megaEvolve), data/megas.ts, catalog.ts (mega)
       { title: 'La Méga-évolution', color: '#e85aa8', text: 'Avec le Méga-Anneau (6 Éclats de Champion, chez Alakazam), F fait méga-évoluer le Pokémon que tu joues, s’il a une forme Méga : une fois par salle, jusqu’à la fin de la salle. Il prend les stats et les types de sa forme Méga, grandit et s’entoure d’une aura. Dracaufeu, Mewtwo et quelques autres choisissent entre X et Y.' },
       // main.ts:80-86, 1138-1183
-      { title: 'K.O. et relève', text: 'Ton Pokémon tombe : le suivant prend la relève presque aussitôt. La Ceinture de Rappels est une réserve commune : chaque K.O. en consomme un, et le Pokémon se relève à moitié de ses PV. Toute l’équipe K.O., la run s’arrête, et tu rentres avec quelques Baies par salle franchie. Attention : on ne se soigne pas tout seul entre deux salles.' },
+      { title: 'K.O. et relève', text: 'Ton Pokémon tombe : le suivant prend la relève. Un Rappel le relève à moitié de ses PV. Toute l’équipe K.O. : la run s’arrête. Entre deux salles, on ne se soigne pas tout seul.' },
     ],
   },
   {
@@ -96,7 +96,7 @@ export const LORE: LoreChapter[] = [
       // combat/combat.ts (weatherMove)
       { title: 'Les attaques de météo', text: 'Danse Pluie, Zénith, Tempête de Sable et Grêle changent le temps de la salle jusqu’à son éclaircie (voir le chapitre États). Danse Pluie et Zénith se vendent chez M. Mime.' },
       // data/abilities.ts
-      { title: 'Les talents météo', text: 'Certains Pokémon changent le temps rien qu’en arrivant : Tarpaud et Kyogre font pleuvoir (Crachin), Chartor et Groudon allument le soleil (Sécheresse), Tyranocif et Hippodocus lèvent le sable (Sable Volant), Blizzaroi fait tomber la grêle (Alerte Neige). Dans ton équipe comme en face : le dernier arrivé l’emporte.' },
+      { title: 'Les talents météo', text: 'Certains Pokémon changent le temps rien qu’en arrivant : Tarpaud et Kyogre font pleuvoir (Crachin), Chartor et Groudon allument le soleil (Sécheresse), Tyranocif et Hippodocus lèvent le sable (Sable Volant), Blizzaroi fait tomber la grêle (Alerte Neige). Dans ton équipe comme en face : le dernier arrivé l’emporte. La fiche du Pokémon (C, ou Porygon au Repaire) dit s’il a un talent.' },
       { title: 'Intimidation', text: 'Arcanin, Léviator, Luxray, Crocorible, et même Baggiguane font peur : tout adversaire qui s’en approche perd un quart de son Attaque pendant dix secondes, une fois par salle. Méfie-toi des Grahyèna : ça marche aussi contre toi.' },
       // catalog.ts:111-135, meta/weight.ts
       { title: 'CT du tuteur', text: 'M. Mime vend des CT au Repaire, une fois pour toutes : l’attaque s’équipe ensuite à la hutte de Porygon. Gare au poids : une attaque de plus de 40 de puissance pèse dans l’équipe.' },
@@ -110,7 +110,7 @@ export const LORE: LoreChapter[] = [
     intro: 'Les légendaires ne se montrent pas, mais ils regardent. Ceux qui leur plaisent repartent avec un peu de leur pouvoir… pour une run seulement.',
     cards: [
       // boons.ts:294-313
-      { title: 'Choisir un don', text: 'Une porte « don » mène à un légendaire, qui propose trois dons ; on en garde un. Ils durent jusqu’à la fin de la run. Dix légendaires, chacun son style : la foudre d’Électhor, le feu de Sulfura, la glace d’Artikodin, l’esprit de Mew, l’ombre de Darkrai, la terre de Groudon, le temps de Célébi, la flamme sacrée de Ho-Oh, le ciel de Rayquaza, la chance de Jirachi.' },
+      { title: 'Choisir un don', text: 'Une porte « don » mène à un légendaire : il propose trois dons, tu en gardes un jusqu’à la fin de la run. Chaque légendaire a son style : foudre, feu, glace, ombre, chance…' },
       // boons.ts:163-174
       { title: 'Dons de stats et d’effets', text: 'Certains montent une stat (+25 % de PV, d’Attaque, de Vitesse…, des critiques, de la portée, une cadence plus vive). D’autres changent ta façon de te battre : coups qui rebondissent, dash qui laisse une traînée, armure de givre, racines quand on reste immobile, retour trois secondes en arrière…' },
       // boons.ts:177-179, 256-285
@@ -124,20 +124,20 @@ export const LORE: LoreChapter[] = [
     intro: 'Quatre actes, quatre champions, et des sauvages entre eux. Personne n’a dit que la route serait courte.',
     cards: [
       // run/run.ts:18-20, 36-47
-      { title: 'Actes et salles', text: 'Un acte : sept salles de combat (ou spéciales), une boutique, puis le champion. On part de la Prairie, au sud de la carte du monde (le panneau près de l’arche), et l’on monte vers le nord : chaque champion battu ouvre les biomes voisins, une porte du côté où chacun se trouve (Plage à l’ouest, Village au nord, Forêt à l’est, puis Océan, Marais, Lac, Automne, et enfin Volcan, Rocailleux ou Montagne glacée). L’Océan ne s’atteint que depuis la Plage, avec la CS Surf. Sortir d’une salle par l’est fait entrer dans la suivante par l’ouest.' },
+      { title: 'Actes et salles', text: 'Un acte : sept salles de combat ou spéciales, une boutique, puis le champion. On part de la Prairie, au sud de la carte du monde, et chaque champion battu ouvre les biomes voisins.' },
       // world/worldmap.ts, meta/feats.ts
       { title: 'La Route Victoire', text: 'Bats les dix champions des biomes, une fois chacun : au bout de la carte s’ouvre la Route Victoire, un cinquième acte plus dur encore. Le Conseil garde alors le dernier étage, et le Maître de la Ligue attend au bout.' },
       { title: 'Le carnet', text: 'Xatu, près de l’arche, tient la liste de tous les exploits — chaque champion à battre, chaque biome à atteindre, les victoires, la taille de la rébellion. Un exploit fait se réclame au Repaire, dans le carnet : des Baies et des Éclats de Champion.' },
       // run.ts:52-68, 251-256
       { title: 'Les portes', text: 'Une salle vidée ouvre jusqu’à trois portes ; chacune annonce sa récompense : un don, une attaque, ou un butin de ₽. La récompense laissée au centre est perdue si on part sans la prendre.' },
       // run.ts:333-360, room.ts
-      { title: 'Les vagues', text: 'Les sauvages arrivent par vagues, annoncées par un anneau magenta au sol : ne reste pas dessus. Plus on avance, plus elles sont nombreuses et fortes, et plus ton équipe est grande, plus ils sont nombreux. Une petite salle en reçoit moins, une grande clairière davantage. Au premier acte, seuls quelques Pokémon du coin : de quoi en vaincre dix d’une même espèce, et la recruter.' },
+      { title: 'Les vagues', text: 'Les sauvages arrivent par vagues, annoncées par un anneau magenta au sol : ne reste pas dessus. Plus tu avances et plus ton équipe est grande, plus ils sont nombreux.' },
       // run.ts:242-244
       { title: 'Les ₽', text: 'Chaque salle vidée rapporte des ₽ (de plus en plus), à dépenser en boutique. Ils ne servent que pendant la run : au Repaire, on compte en Baies.' },
       // run/shop.ts
-      { title: 'La boutique', text: 'Avant chaque champion : des potions (de plus en plus fortes avec les actes), des Rappels si quelqu’un est K.O., une CT par visite, et des mercenaires à embaucher (Éclaireur, Vétéran, Champion Sauvage) pour compléter l’équipe — mais un mercenaire K.O. ne se ranime pas, et à la boutique suivante il réclame la moitié de son prix, ou s’en va. Un lot de Baies par visite convertit tes ₽ en Baies pour le Repaire, à un taux peu avantageux, et un objet tenu par visite file dans la réserve du Repaire, à faire tenir au retour.' },
+      { title: 'La boutique', text: 'Avant chaque champion : des potions, une CT, un objet tenu (rangé au Repaire), un lot de Baies et des mercenaires. Un mercenaire réclame sa solde à la boutique suivante.' },
       // run/berries.ts, run/chests.ts
-      { title: 'Baies et coffres', text: 'Frappe les arbres à baies : au deuxième coup, ils en lâchent quelques-unes, qui pourrissent en 25 s. Deux salles sur trois cachent un coffre (E pour l’ouvrir) : Baies, Bois, Pierre, Nourriture. Les plus riches sont derrière un arbuste (CS Coupe), un rocher fissuré (CS Éclate-Roc) ou un gros rocher à pousser (CS Force). Chaque salle libérée rapporte aussi 1 Bois et 1 Pierre, un champion bien plus.' },
+      { title: 'Baies et coffres', text: 'Frappe deux fois un arbre à baies pour en faire tomber. Beaucoup de salles cachent un coffre (E) : Baies, Bois, Pierre, Nourriture. Les plus riches demandent une CS : Coupe, Éclate-Roc ou Force.' },
       // data/forms.ts, data/evolutions.ts (REGIONAL_EVOLUTIONS)
       { title: 'Les formes régionales', text: 'Certains sauvages portent la forme d’une autre région : Rattata d’Alola, Miaouss de Galar, Caninos de Hisui… avec leurs propres types. Et certains Pokémon évoluent autrement selon le biome : Pikachu devient Raichu d’Alola à la Plage, Noeunoeuf Noadkoko d’Alola, Osselait Ossatueur d’Alola au Volcan.' },
       // main.ts (nuzlockeToll), ui/options.ts
@@ -165,17 +165,17 @@ export const LORE: LoreChapter[] = [
       // run/spring.ts
       { title: 'La Source', color: '#6fd3e0', text: 'Pas d’ennemis : Leveinard veille sur un bassin. Bois-y une fois (E) : chaque membre regagne 60 % de ses PV, perd son statut, et les K.O. se relèvent.' },
       // run/altar.ts, run/run.ts (CURSES)
-      { title: 'L’Autel maudit', color: '#b48ce8', text: 'Feuforêve garde une dalle aux flammes violettes. Signe le pacte (E) : un don d’un légendaire, d’un cran plus rare. En échange, jusqu’à la fin de l’acte, une malédiction lisible avant de signer : Sauvages enragés (+2 niveaux, champion compris), Bourse percée (₽ des salles divisés par deux) ou Sans repos (les K.O. ne se relèvent plus en fin de salle). Libre à toi de passer ton chemin.' },
+      { title: 'L’Autel maudit', color: '#b48ce8', text: 'Feuforêve garde une dalle aux flammes violettes. Signe le pacte (E) : un don plus rare, contre une malédiction jusqu’à la fin de l’acte, lisible avant de signer.' },
       // run/dojo.ts
       { title: 'Le Dojo', color: '#e08a4c', text: 'Machopeur tient un tatami et un mannequin de paille. Monte sur le tatami (E) : une leçon gratuite, apprendre une attaque forte ou en renforcer une, pour le Pokémon de ton choix. Deux leçons par dojo ; refermer le parchemin sans rien prendre ne compte pas.' },
       // run/pension.ts
-      { title: 'La Pension', color: '#e8a8c8', text: 'Écrémeuh garde un enclos plein de foin frais. Laisse l’équipe s’y entraîner une fois (E) : chaque membre gagne un niveau, et le plus faible deux. De quoi rattraper le dernier venu.' },
+      { title: 'La Pension', color: '#e8a8c8', text: 'Écrémeuh garde un enclos de foin : l’équipe s’y entraîne une fois (E), un niveau chacun, deux pour le plus faible. Parle à Écrémeuh pour échanger un membre contre un Pokémon du Repaire.' },
       // entities/actor.ts (terrainMult), run/hazards.ts, run/room.ts (Village), world/generate.ts (hide)
-      { title: 'Le terrain', text: 'Chaque biome a ses pièges. Les hautes herbes de la Prairie cachent les sauvages : on voit la touffe bouger quand l’un d’eux y remue. La boue du Marais ralentit (pas les Vol ni les Spectre ; un dash la traverse). Au Volcan, avec Surf, on peut traverser la lave, mais elle brûle. Aux Rocailleux, des tourbillons de sable errent et éjectent qui s’y prend (Roche, Sol et Acier y résistent). Au Village, les dresseurs lancent des Poké Balls sur ton Pokémon quand l’équipe compte au moins deux membres : bats leur équipe pour récupérer ta prise. En Montagne, la glace fait glisser.' },
+      { title: 'Le terrain', text: 'Chaque biome a son piège : hautes herbes qui cachent les sauvages, boue qui ralentit, lave qui brûle, tourbillons de sable, glace qui fait glisser, dresseurs qui lancent des Poké Balls au Village.' },
       // run/cave.ts
-      { title: 'Les grottes', text: 'Surtout en Rocailleux, au Volcan et en Montagne glacée, une bouche de grotte s’ouvre une fois la salle vidée. Dedans, un sbire de la Ligue : il parle, puis envoie son Pokémon fort et son escorte. Bats-les pour des ₽ et un soin complet de l’équipe (son Pokémon, lui, ne se recrute pas). Au fond, un coffre et un prisonnier à libérer, qui rejoindra le Repaire. Fuir, c’est perdre la grotte. Vaincu, le sbire file vers la sortie en lâchant une dernière réplique.' },
+      { title: 'Les grottes', text: 'Une bouche de grotte s’ouvre parfois une fois la salle vidée, surtout en montagne et au volcan. Dedans, un sbire et son escorte : bats-les, puis libère le prisonnier au fond.' },
       // run/capture.ts
-      { title: 'Les Poké Balls du sbire', text: 'Il lance des Balls sur le Pokémon que tu joues : un anneau rouge marque le point de chute, sors-en ou dashe. Et ne compte pas le coincer : souvent, après un lancer, il court se poster ailleurs. Touché, débats-toi avec ← et → en alternance pour remplir la jauge, qui se vide d’autant plus vite qu’il te reste peu de PV. Capturé, il quitte l’équipe : bats le sbire pour le récupérer. Si tu fuis, il est perdu pour la run.' },
+      { title: 'Les Poké Balls du sbire', text: 'Le sbire lance des Balls : un anneau rouge marque la chute, sors-en. Touché, alterne ← et → pour te débattre. Capturé, ton Pokémon quitte l’équipe : bats le sbire pour le récupérer.' },
     ],
   },
   {
@@ -188,7 +188,7 @@ export const LORE: LoreChapter[] = [
       // enemy.ts:318-343
       { title: 'Ils visent ta faiblesse', text: 'Un sauvage choisit sa cible selon l’efficacité de son type : un Pokémon Feu dans une équipe attirera tous les sauvages Eau de la salle.' },
       // enemy.ts:56-81, main.ts
-      { title: 'Les champions', text: 'Plus forts et plus résistants, avec plusieurs barres de PV : chaque barre brisée se remplit à nouveau. Ils ne reculent pas sous les coups et lancent de grandes attaques de zone (cercle, cône ou ligne selon leur type), annoncées au sol. Plus ton équipe est grande, plus ils ont de PV et de Pokémon (autant que ton équipe, moins un, plus l’acte). Battu, un champion te cède un Pokémon de son équipe, son as d’abord, sous sa forme de base.' },
+      { title: 'Les champions', text: 'Plusieurs barres de PV et de grandes attaques annoncées au sol. Battu, un champion te cède un Pokémon de son équipe : le plus faible d’abord, puis, victoire après victoire, jusqu’à son as.' },
       { title: 'L’as', text: 'Le dernier Pokémon du champion, et le plus coriace : cinq barres, des zones plus fréquentes, et parfois la pluie sur ses dernières barres. S’il a une forme Méga, il méga-évolue en perdant une barre.' },
       // combat/signatures.ts
       { title: 'Les signatures', text: 'Chaque champion a son attaque fétiche, qui ouvre le bal : la cage de rochers de Pierre, les vagues d’Ondine, la croix électrique de Major Bob, la spirale de fleurs d’Erika, les flaques de Koga, les salves de Morgane, l’anneau de feu d’Auguste, le séisme de Giovanni, les roulades de Blanche. Apprends-les.' },
@@ -200,8 +200,8 @@ export const LORE: LoreChapter[] = [
     intro: 'Ce camp, c’est ce qui reste quand une run tourne mal. Fais-le grandir, et la prochaine tournera mieux.',
     cards: [
       // meta/save.ts, catalog.ts
-      { title: 'Baies, ressources, Éclats', text: 'Les Baies paient presque tout au Repaire. Le Bois, la Pierre et la Nourriture (coffres, missions, champ) paient les constructions de Charpenti ; ses chantiers qui font venir un gardien (Poste d’expédition, Buvette, Étude, Marché, Atelier) se paient en Baies. Les Éclats de Champion, gagnés sur les champions, paient le Bracelet de charge.' },
-      { title: 'Les postes', text: 'Dracolosse : le départ. Porygon : l’équipe, les attaques, les objets tenus, le Pokédex. Charpenti : les aménagements. Démolosse : les missions (une fois le Poste d’expédition bâti). Kangourex : les quêtes (une fois la Buvette bâtie). M. Mime : les CT, et Miaouss : les objets tenus et les Super Bonbons (une fois le Marché bâti). Alakazam : les améliorations et les CS (une fois l’Étude bâtie). Héliatronc : le potager (une fois le Champ bâti). Queulorior : l’atelier (une fois l’Atelier bâti). Et moi, pour les questions.' },
+      { title: 'Baies, ressources, Éclats', text: 'Les Baies paient presque tout au Repaire. Bois, Pierre et Nourriture paient les chantiers de Charpenti. Les Éclats de Champion paient le Bracelet de charge.' },
+      { title: 'Les postes', text: 'Dracolosse : le départ. Porygon : l’équipe et le Pokédex. Charpenti : les chantiers. Les autres gardiens arrivent avec leurs bâtiments : missions, quêtes, CT, objets, améliorations, potager, atelier.' },
       // meta/weight.ts
       { title: 'Le poids d’équipe', text: 'Une équipe ne part pas trop lourde : 24 au départ. Un Pokémon pèse 3, 5 ou 8 selon son stade d’évolution (10 pour un légendaire), un objet tenu 2, une attaque de 0 à 3 selon sa puissance. Le Bracelet de charge monte le plafond.' },
       // catalog.ts:21-102
@@ -211,13 +211,13 @@ export const LORE: LoreChapter[] = [
       // catalog.ts:172-177, data/evolutions.ts
       { title: 'Évolution et Super Bonbon', text: 'On évolue en pleine run, au bon niveau, avec tous ses PV rendus. Un Super Bonbon donne +5 niveaux de départ (20 au plus) : assez haut, le Pokémon part déjà évolué.' },
       // meta/save.ts:166-194
-      { title: 'Recruter des Pokémon', text: 'Chaque Pokémon que tu bats en run sort d’une Poké Ball : tu le libères. Bats dix fois une espèce, et l’un d’eux viendra t’attendre près du feu (un « ! » au-dessus de lui) : parle-lui, donne-lui un nom. La deuxième fois, il en faut vingt, puis entre vingt et quarante. Chacun a sa nature et ses talents : deux Rattata ne se valent pas. Le Repaire loge 8 libérés au départ — le Dortoir (+4), les Maisons (+6), le Bourg (+8) et les Lits superposés de Charpenti (+2 chacun) en logent plus ; plein, il faudra choisir qui s’en va. Les grottes, les champions vaincus, les nectars de l’atelier et les quêtes de Kangourex font venir des Pokémon rares.' },
+      { title: 'Recruter des Pokémon', text: 'Bats dix fois une espèce : l’un d’eux t’attendra près du feu, parle-lui. Les suivants en demandent plus. Le Repaire a des places limitées : bâtis pour en loger davantage.' },
       // meta/quests.ts (contrats)
       { title: 'Quêtes et contrats', text: 'Kangourex propose des quêtes au long cours, chacune promettant un Pokémon introuvable ailleurs, et trois contrats toujours renouvelés : de petits objectifs de run payés en Baies, en ressources ou en Éclat, parfois avec un Super Bonbon ou un objet tenu en prime.' },
       // catalog.ts:216-228, meta/missions.ts
-      { title: 'Aménagements et missions', text: 'Charpenti bâtit le Poste d’expédition (Démolosse), la Buvette (Kangourex), l’Étude, le Marché, le Dortoir, le Terrain d’entraînement, le Ponton, des Jardins et des Lampadaires, puis défriche à l’ouest pour un champ et des maisons, et à l’est pour un bourg pavé, où l’on porte l’eau du puits et où sèche la lessive. Après le terrain d’entraînement, une carrière au nord-est : on y taille la pierre, un peu à chaque salle de ta run. Ses nouveaux plans n’arrivent qu’au fil des runs. Chaque chantier fait de la place à des libérés : ce sont les seuls à vivre au Repaire. Démolosse envoie des libérés en mission : ils quittent l’équipe et reviennent, après quelques salles de ta run, avec du Bois, de la Pierre, de la Nourriture, des Baies ou de l’entraînement.' },
+      { title: 'Aménagements et missions', text: 'Charpenti bâtit, au fil des runs : bâtiments des gardiens, dortoir, terrain d’entraînement, champ, maisons, bourg, carrière… Chaque chantier fait de la place aux libérés. Démolosse envoie des libérés en mission chercher des ressources.' },
       // meta/crafting.ts
-      { title: 'Potager et matériaux', text: 'Chaque coffre de run rapporte le matériau de son biome — Jolie Plume en prairie, Petit Champi en forêt, Charbon au volcan, Écaille Cœur au lac, Glace Éternelle en montagne… Au Potager, on dit à Héliatronc quoi planter, sans graines : chaque parcelle pousse à chaque salle franchie — semis, pousses, boutons — et, en fleur, se récolte en herbes et en racines.' },
+      { title: 'Potager et matériaux', text: 'Chaque coffre rapporte le matériau de son biome. Au Potager, Héliatronc plante ce que tu veux : ça pousse à chaque salle franchie, et se récolte en herbes et en racines.' },
       { title: 'L’atelier et les nectars', text: 'Queulorior mêle matériaux et herbes en objets tenus qu’on ne trouve nulle part ailleurs (souvent deux stats à la fois), et en nectars. Posé sur la coupelle devant l’atelier, un nectar attire en 5 salles un Pokémon pas encore libéré, d’un type qu’il aime : parle-lui, il reste.' },
     ],
   },
