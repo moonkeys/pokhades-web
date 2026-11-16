@@ -135,7 +135,7 @@ export const LORE: LoreChapter[] = [
       // run.ts:242-244
       { title: 'Les ₽', text: 'Chaque salle vidée rapporte des ₽ (de plus en plus), à dépenser en boutique. Ils ne servent que pendant la run : au Repaire, on compte en Baies.' },
       // run/shop.ts
-      { title: 'La boutique', text: 'Avant chaque champion : des potions, une CT, un objet tenu (rangé au Repaire), un lot de Baies et des mercenaires. Un mercenaire réclame sa solde à la boutique suivante.' },
+      { title: 'La boutique', text: 'Avant chaque champion : des potions, une CT, un lot de Baies, un lot de ressources pour le Repaire et des mercenaires. Un mercenaire réclame sa solde à la boutique suivante.' },
       // run/berries.ts, run/chests.ts
       { title: 'Baies et coffres', text: 'Frappe deux fois un arbre à baies pour en faire tomber. Beaucoup de salles cachent un coffre (E) : Baies, Bois, Pierre, Nourriture. Les plus riches demandent une CS : Coupe, Éclate-Roc ou Force.' },
       // data/forms.ts, data/evolutions.ts (REGIONAL_EVOLUTIONS)
@@ -160,16 +160,16 @@ export const LORE: LoreChapter[] = [
       // layouts.ts (front), room.ts (announce)
       { title: 'Ligne de front', color: '#f259bf', text: 'Un long couloir : chaque vague surgit au bout le plus éloigné de toi et charge en masse. Le sol gronde et une flèche magenta montre d’où elle vient un peu avant. Moins de vagues, mais plus fournies. En Forêt, c’est un sentier étroit entre les arbres ; en Prairie, un chemin au milieu des champs d’herbe haute.' },
       // run.ts:79-87, 291-298, room.ts
-      { title: 'Le Défi', text: 'Une salle chronométrée : 30 s, plus 10 s par vague. Vide-la à temps et le gain est triplé ; trop lent, les sauvages s’enfuient avec la récompense.' },
+      { title: 'Le Défi', text: 'Bats tous les sauvages avant la fin du chrono : il annonce combien, et compte les vaincus. Réussi, le gain est triplé et un don t’attend ; trop lent, ils s’enfuient avec la récompense.' },
       { title: 'Le Piège', text: 'Aucune porte ne l’annonce. Une récompense trop belle au milieu d’une salle vide… Approche, et l’embuscade se referme : trois vagues, plus nombreuses et plus fortes. Survis, et le gain est doublé.' },
       // run/spring.ts
-      { title: 'La Source', color: '#6fd3e0', text: 'Pas d’ennemis : Leveinard veille sur un bassin. Bois-y une fois (E) : chaque membre regagne 60 % de ses PV, perd son statut, et les K.O. se relèvent.' },
+      { title: 'La Source', color: '#6fd3e0', text: 'Pas d’ennemis : Leveinard veille sur un étang, au crépuscule. Bois-y une fois (E) : chaque membre regagne 60 % de ses PV, perd son statut, et les K.O. se relèvent.' },
       // run/altar.ts, run/run.ts (CURSES)
-      { title: 'L’Autel maudit', color: '#b48ce8', text: 'Feuforêve garde une dalle aux flammes violettes. Signe le pacte (E) : un don plus rare, contre une malédiction jusqu’à la fin de l’acte, lisible avant de signer.' },
+      { title: 'L’Autel maudit', color: '#b48ce8', text: 'De nuit, Feuforêve garde un cercle magique entre deux torches. Signe le pacte (E) : un don plus rare, contre une malédiction jusqu’à la fin de l’acte, lisible avant de signer.' },
       // run/dojo.ts
-      { title: 'Le Dojo', color: '#e08a4c', text: 'Machopeur tient un tatami et un mannequin de paille. Monte sur le tatami (E) : une leçon gratuite, apprendre une attaque forte ou en renforcer une, pour le Pokémon de ton choix. Deux leçons par dojo ; refermer le parchemin sans rien prendre ne compte pas.' },
+      { title: 'Le Dojo', color: '#e08a4c', text: 'Machopeur tient un dojo au toit rouge. Monte sur son tatami (E) : une leçon gratuite, apprendre une attaque forte ou en renforcer une, pour le Pokémon de ton choix. Deux leçons par dojo ; refermer le parchemin sans rien prendre ne compte pas.' },
       // run/pension.ts
-      { title: 'La Pension', color: '#e8a8c8', text: 'Écrémeuh garde un enclos de foin : l’équipe s’y entraîne une fois (E), un niveau chacun, deux pour le plus faible. Parle à Écrémeuh pour échanger un membre contre un Pokémon du Repaire.' },
+      { title: 'La Pension', color: '#e8a8c8', text: 'Écrémeuh garde un grand enclos : entre, et l’équipe s’y entraîne une fois (E), un niveau chacun, deux pour le plus faible. Parle à Écrémeuh pour échanger un membre contre un Pokémon du Repaire.' },
       // entities/actor.ts (terrainMult), run/hazards.ts, run/room.ts (Village), world/generate.ts (hide)
       { title: 'Le terrain', text: 'Chaque biome a son piège : hautes herbes qui cachent les sauvages, boue qui ralentit, lave qui brûle, tourbillons de sable, glace qui fait glisser, dresseurs qui lancent des Poké Balls au Village.' },
       // run/cave.ts

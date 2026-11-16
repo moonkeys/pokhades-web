@@ -348,6 +348,14 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
   (`DOJO_MAT`, `ALTAR_CIRCLE`, `WorldMap.decals`), fontaine d'Essentials,
   foin, clôture, rocher et torches du tileset ; place dégagée
   (`Placer.clearArea`).
+- Salles calmes (16 novembre 2026, deuxième retour) : forme Sanctuaire
+  (`layouts.ts`, place libre au milieu, chemin qui en fait le tour),
+  ambiance par salle (`SPECIAL_AMBIANCE`, `WorldMap.ambiance`), ni météo ni
+  pièges ; décors agrandis (salle de dojo, dallage et gargouilles d'Autel,
+  étang de Source, enclos de Pension à entrée) ; PNJ animés et tournés vers
+  le joueur. Défi : objectif annoncé et compte des vaincus au chrono.
+  Boutique : un lot de ressources à la place de l'objet tenu. Reste : juger
+  en jeu les ambiances ; le Village et le littoral gardent leur forme.
 - 9 salles par biome (16 novembre 2026, retour de test : « entre 8 et 10 ») :
   7 combats ou salles spéciales, la boutique, le champion
   (`COMBATS_PER_ACT`, `ROOMS_PER_ACT`) ; niveaux à la même pente par acte.

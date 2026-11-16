@@ -20,7 +20,7 @@ export const PATCH_NOTES: readonly PatchNote[] = [
   {
     id: '2026-11-16-b',
     date: '16 novembre 2026',
-    title: 'Retours de test : biomes plus longs, échanges et vrais décors',
+    title: 'Retours de test : biomes plus longs, salles calmes refaites, échanges',
     sections: [
       {
         title: 'Run',
@@ -28,12 +28,15 @@ export const PATCH_NOTES: readonly PatchNote[] = [
           'Chaque biome compte 9 salles (7 combats ou salles spéciales, la boutique, le champion), et jusqu’à 3 salles spéciales.',
           'Un champion vaincu cède d’abord son Pokémon le plus faible ; plus tu le bats, plus tu te rapproches de son as.',
           'Pension : parle à Écrémeuh pour échanger un membre de l’équipe contre un Pokémon du Repaire.',
-          'Dojo, Pension, Source, Autel : leurs décors viennent du tileset et d’Essentials (tatami, enclos, fontaine, cercle magique).',
+          'Source, Autel, Dojo, Pension : une petite salle ronde à elles, chacune son ambiance (nuit, crépuscule, couchant, matin), sans météo ; de grands décors du tileset et d’Essentials (étang, autel aux gargouilles, dojo au toit rouge, grand enclos où l’on entre).',
+          'Leurs gardiens et les Pokémon de la boutique bougent et se tournent vers toi.',
+          'Défi : l’objectif s’annonce (« 12 sauvages en 70 s ») et le chrono compte les vaincus.',
+          'Boutique : un lot de Bois, de Pierre ou de Nourriture à la place de l’objet tenu.',
         ],
       },
       {
         title: 'Combat',
-        items: ['Intimidation se voit : le Pokémon fait son geste, avec l’animation de Rugissement.', 'Le talent d’un Pokémon est écrit sur sa fiche (C), à l’équipe et au Pokédex.'],
+        items: ['Intimidation se voit : le Pokémon fait son geste, avec l’animation de Rugissement.', 'Le talent d’un Pokémon est écrit sur sa fiche (C), à l’équipe et au Pokédex.', 'Les attaques Combat (Balayage…) n’affichent plus de boules de feu à l’impact.'],
       },
       {
         title: 'Confort',
