@@ -43,7 +43,7 @@ export const PATCH_NOTES: readonly PatchNote[] = [
       },
       {
         title: 'Confort',
-        items: ['Le ruban des notifications ne cache plus leur titre.', 'Les leçons de Bouldeneu sont plus courtes.'],
+        items: ['Le ruban des notifications ne cache plus leur titre.', 'Les leçons de Bouldeneu sont plus courtes.', 'Repaire : les tipis du Dortoir ne cachent plus le plan du monde.'],
       },
     ],
   },
