@@ -204,12 +204,11 @@ async function boot(): Promise<void> {
         writeSave(save);
         runHud.notify({ title: 'Baies', text: 'Pour le Repaire', item: 'SITRUSBERRY', qty: `+${n}`, color: 'var(--yel)' });
       },
-      giveItem: (api) => {
+      giveRes: (res, n) => {
         if (net.role === 'client' || !save.started) return false;
-        save.items[api] = (save.items[api] ?? 0) + 1;
+        save.resources[res] += n;
         writeSave(save);
-        const it = heldItem(api);
-        runHud.notify({ title: it?.name ?? api, text: 'Dans la réserve du Repaire', item: it?.icon, qty: '+1', color: 'var(--yel)' });
+        runHud.notify({ title: RESOURCES[res].name, text: 'Pour le Repaire', res, qty: `+${n}`, color: 'var(--yel)' });
         return true;
       },
       recruit: (id, level, x, y, price) => {

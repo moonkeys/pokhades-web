@@ -12,7 +12,6 @@ import { TILE, TOWN_DECOR } from '../world/tiles';
 import { BIOMES } from '../world/biomes';
 import { linesOf } from '../data/bestiary';
 import { fillLine, GIFT_LINES, MERCENARY, PERSONAS, SLEEPY } from '../data/chatter';
-import { HELD_ITEMS, heldText } from '../meta/catalog';
 import { Placer } from './placement';
 import type { Run } from './run';
 
@@ -62,9 +61,16 @@ const REVIVES = {
 } as const;
 type HealId = keyof typeof HEALS;
 /** ShopStock.BERRY_PACKS, quantités divisées par trois comme toutes les Baies (lot 3). */
-/** ₽ par Baie du prix de l'objet au marché du Repaire, et les objets que l'étal peut proposer. */
-const HELD_RATE = 4;
-const HELD_FOR_SALE = HELD_ITEMS.filter((h) => !h.crafted && h.price <= 160);
+/**
+ * Lots de ressources pour le Repaire (retour de test du 16 novembre 2026 : plus d'objets tenus à
+ * l'étal, « acheter des pierres, d'autres ressources, ça me va »). Un lot par visite, tiré parmi
+ * les trois ; l'icône du Bois est le Bâton d'Essentials.
+ */
+const RES_PACKS = [
+  { res: 'wood', name: 'Bois', amount: 6, price: 150, icon: 'STICK' },
+  { res: 'stone', name: 'Pierre', amount: 5, price: 170, icon: 'HARDSTONE' },
+  { res: 'food', name: 'Nourriture', amount: 5, price: 150, icon: 'HONEY' },
+] as const;
 
 const BERRY_PACKS = [
   { amount: 7, price: 100 },
@@ -93,9 +99,9 @@ const RANKS = [
 ] as const;
 
 interface Item {
-  kind: 'heal' | 'revive' | 'move' | 'reroll' | 'berries' | 'held';
-  /** Objet tenu : son identifiant (meta/catalog.ts). */
-  held?: string;
+  kind: 'heal' | 'revive' | 'move' | 'reroll' | 'berries' | 'res';
+  /** Lot de ressources : laquelle. */
+  res?: 'wood' | 'stone' | 'food';
   id: string;
   name: string;
   desc: string;
@@ -139,8 +145,8 @@ export interface ShopHost {
   team(): readonly Actor[];
   /** Un lot de Baies acheté : versées au Repaire. */
   earnBaies(n: number): void;
-  /** Un objet tenu acheté : versé à la réserve du Repaire ; false s'il n'y a pas de Repaire (invité). */
-  giveItem(api: string): boolean;
+  /** Un lot de ressources acheté : versé au Repaire ; false s'il n'y a pas de Repaire (invité). */
+  giveRes(res: 'wood' | 'stone' | 'food', n: number): boolean;
   /** Un mercenaire rejoint l'équipe, là où il se tient. */
   recruit(id: number, level: number, x: number, y: number, price: number): void;
 }
@@ -174,7 +180,7 @@ export class Shop {
   /** Le lot de Baies de l'étal est pris (un par visite, même après une recharge). */
   private berriesBought = false;
   /** L'objet tenu de l'étal est pris (un par visite). */
-  private heldBought = false;
+  private resBought = false;
   private hub = { x: 0, y: 0 };
   poster = { x: 0, y: 0 };
   private near: Item | null = null;
@@ -198,7 +204,7 @@ export class Shop {
     this.prompt.className = 'shop-prompt da-paper';
     this.prompt.hidden = true;
     parent.append(this.layer, this.prompt);
-    for (const f of ['POTION', 'SUPERPOTION', 'HYPERPOTION', 'MAXPOTION', 'REVIVE', 'MAXREVIVE', 'machine_NORMAL', 'COINCASE', 'SITRUSBERRY', ...HELD_FOR_SALE.map((h) => h.icon)]) {
+    for (const f of ['POTION', 'SUPERPOTION', 'HYPERPOTION', 'MAXPOTION', 'REVIVE', 'MAXREVIVE', 'machine_NORMAL', 'COINCASE', 'SITRUSBERRY', ...RES_PACKS.map((r) => r.icon)]) {
       void loadImage(`/game/assets/essentials/items/${f}.png`)
         .then((img) => this.icons.set(f, img))
         .catch(() => {});
@@ -230,7 +236,7 @@ export class Shop {
     this.rerolls = 0;
     this.ctUsed = false;
     this.berriesBought = false;
-    this.heldBought = false;
+    this.resBought = false;
     this.hub = { x: Math.floor(world.hub.x) + 0.5, y: Math.floor(world.hub.y) + 0.9 };
     const place = (this.place = new Placer(world));
     const hx = Math.floor(this.hub.x);
@@ -369,9 +375,9 @@ export class Shop {
       const pack = BERRY_PACKS[rng.int(BERRY_PACKS.length)];
       specs.push({ kind: 'berries', id: 'berries', name: `${pack.amount} Baies`, desc: 'Des Baies pour le Repaire : elles survivent à la run, contrairement aux Pokédollars.', icon: 'SITRUSBERRY', price: pack.price, heal: pack.amount });
     }
-    if (!this.heldBought) {
-      const h = HELD_FOR_SALE[rng.int(HELD_FOR_SALE.length)];
-      specs.push({ kind: 'held', id: 'held', held: h.api, name: h.name, desc: `Objet tenu : ${heldText(h)}. Il t’attendra dans la réserve du Repaire.`, icon: h.icon, price: Math.round((h.price * HELD_RATE) / 10) * 10, heal: 0 });
+    if (!this.resBought) {
+      const r = RES_PACKS[rng.int(RES_PACKS.length)];
+      specs.push({ kind: 'res', id: 'res', res: r.res, name: `${r.amount} ${r.name}`, desc: `Pour les chantiers du Repaire : ${r.amount} ${r.name}, qui survivent à la run.`, icon: r.icon, price: r.price, heal: r.amount });
     }
     specs.push({
       kind: 'reroll',
@@ -408,7 +414,7 @@ export class Shop {
       if (!d) refuse = 'Personne n’est K.O.';
     } else if (it.kind === 'move') note = 'Une capacité par visite';
     else if (it.kind === 'berries') note = 'Un lot par visite';
-    else if (it.kind === 'held') note = 'Un objet par visite · pour le Repaire';
+    else if (it.kind === 'res') note = 'Un lot par visite · pour le Repaire';
     else if (it.kind === 'reroll') note = `La suivante coûtera ${rerollPrice(this.rerolls + 1)} ₽`;
     if (!refuse && money < it.price) refuse = `Pas assez de Pokédollars (${it.price} ₽ requis).`;
     return { note, refuse };
@@ -587,15 +593,15 @@ export class Shop {
       });
       return;
     }
-    if (it.kind === 'held' && !this.host.giveItem(it.held!)) {
+    if (it.kind === 'res' && !this.host.giveRes(it.res!, it.heal)) {
       sfx('buzzer');
       this.host.message('Seul l’hôte a un Repaire où le ranger.');
       return;
     }
     run.money -= it.price;
     sfx('buy');
-    if (it.kind === 'held') {
-      this.heldBought = true;
+    if (it.kind === 'res') {
+      this.resBought = true;
       it.sold = 0.01;
     } else if (it.kind === 'heal') {
       mon.hp = it.heal < 0 ? mon.maxHp : Math.min(mon.maxHp, mon.hp + it.heal);
