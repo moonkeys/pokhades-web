@@ -4,7 +4,7 @@ import { Actor } from '../entities/actor';
 import type { InputSample } from '../input/input';
 import type { CombatFx, Projector } from '../render/combatfx';
 import type { WorldMap } from '../world/generate';
-import { CAMP_PROPS, FENCES, TILE } from '../world/tiles';
+import { CAMP_PROPS, FENCES, TILE, TOWN_DECOR } from '../world/tiles';
 import { Placer } from './placement';
 
 // Pension, salle spéciale (A-FAIRE 1.9 : « d'autres salles »). Pas d'ennemis,
@@ -24,7 +24,8 @@ import { Placer } from './placement';
 export const PENSION_NPC = 241;
 /** Niveaux gagnés par chaque membre ; le plus faible en gagne un de plus. */
 export const PENSION_LEVELS = 1;
-const REACH = 3.6;
+/** Les pensionnaires de l'enclos : Tauros, Ponyta. */
+const MATES = [128, 77] as const;
 const KEEPER_REACH = 1.8;
 const LINES = ['Meuh ! Laisse-les gambader dans l’enclos, ils en ressortiront plus forts.', 'Écrémeuh rumine, le regard sur le foin frais.'];
 
@@ -39,7 +40,8 @@ export interface PensionHost {
 export class Pension {
   active = false;
   readonly npcs: Actor[] = [];
-  private pen: { x: number; y: number } | null = null;
+  /** L'intérieur de l'enclos (cases, bornes comprises) : on s'entraîne dedans. */
+  private pen: { x0: number; x1: number; y0: number; y1: number } | null = null;
   private used = false;
   private near = false;
   /** À côté d'Écrémeuh, l'échange encore possible. */
@@ -92,29 +94,48 @@ export class Pension {
     this.swapped = false;
     this.busy = false;
     this.talked = false;
+    // Retour de test du 16 novembre 2026 (« une grosse pension… une ouverture, on rentre dans la
+    // pension, et c'est à l'intérieur qu'on peut l'utiliser ») : au milieu de la place du
+    // Sanctuaire, un grand enclos de 13 × 9 cases fermé par la clôture de bois des jardins, une
+    // ouverture de deux cases au sud ; dedans, la paillote du tileset, du foin (cuit avec le sol),
+    // des caisses, et deux pensionnaires.
     const place = new Placer(world);
-    const at = place.freeSpot(Math.floor(world.hub.x), Math.floor(world.hub.y));
-    this.pen = { x: at.x, y: at.y };
-    // L'enclos, 5 × 5 cases, tout du tileset : le foin des paillasses du Repaire (3 × 3) au
-    // milieu, cuit avec le sol, et la clôture de bois des jardins de village tout autour. On en
-    // fait le tour, on n'y marche pas.
-    const cx = Math.floor(at.x);
-    const cy = Math.floor(at.y);
-    place.clearArea(cx - 2, cy - 2, 5, 5);
-    const { col: hc, row: hr } = CAMP_PROPS.hay;
-    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) world.decals.push({ tile: [hc + dx + 1, hr + dy + 1], x: cx + dx, y: cy + dy });
+    const cx = Math.floor(world.hub.x);
+    const cy = Math.floor(world.hub.y);
+    const HW = 6;
+    const HH = 4;
+    place.clearArea(cx - HW - 1, cy - HH - 1, 2 * HW + 3, 2 * HH + 3);
+    this.pen = { x0: cx - HW + 1, x1: cx + HW - 1, y0: cy - HH + 1, y1: cy + HH - 1 };
     const [fc, fr] = FENCES.wood.origin;
-    for (let dy = -2; dy <= 2; dy++)
-      for (let dx = -2; dx <= 2; dx++) {
-        const c = (cy + dy) * world.w + cx + dx;
-        if (world.blocked[c] === 0) world.blocked[c] = 1;
+    for (let dy = -HH; dy <= HH; dy++)
+      for (let dx = -HW; dx <= HW; dx++) {
+        const edge = Math.abs(dx) === HW || Math.abs(dy) === HH;
+        // L'ouverture, au milieu du côté sud.
+        if (!edge || (dy === HH && (dx === 0 || dx === 1))) continue;
         place.block(cx + dx, cy + dy);
-        if (Math.abs(dx) < 2 && Math.abs(dy) < 2) continue;
-        const col = dx === -2 ? 0 : dx === 2 ? 2 : 1;
-        const row = dy === -2 ? 0 : dy === 2 ? 2 : 1;
+        const col = dx === -HW ? 0 : dx === HW ? 2 : 1;
+        const row = dy === -HH ? 0 : dy === HH ? 2 : 1;
         world.objects.push({ sprite: { rect: [(fc + col) * TILE, (fr + row) * TILE, TILE, TILE], foot: TILE - 1, trunk: 1 }, x: (cx + dx) * TILE + TILE / 2, y: (cy + dy + 1) * TILE - 1, fades: false });
       }
-    const n = place.freeSpot(cx - 4, cy + 1);
+    const { col: hc, row: hr } = CAMP_PROPS.hay;
+    for (const [hx, hy] of [[cx + 1, cy - 3], [cx - 5, cy + 1]])
+      for (let dy = 0; dy < 3; dy++) for (let dx = 0; dx < 3; dx++) world.decals.push({ tile: [hc + dx, hr + dy], x: hx + dx, y: hy + dy });
+    place.prop(CAMP_PROPS.thatchHut, cx - 2.5, cy - 0.6);
+    place.prop(CAMP_PROPS.barrels[0], cx + 4.5, cy - 2);
+    place.prop(CAMP_PROPS.barrels[1], cx + 5.3, cy - 1.4);
+    place.prop(TOWN_DECOR.crates, cx + 5.4, cy + 3);
+    // Les pensionnaires : Tauros et Ponyta, au repos dans l'enclos.
+    for (const [id, x, y] of [[MATES[0], cx + 3.5, cy + 1.9], [MATES[1], cx - 3.5, cy + 0.2]] as const) {
+      const mate = new Actor(id, x, y);
+      mate.dir = 0;
+      void loadInfo(id).then((i) => (mate.info = i));
+      void loadSheet(id, ['Idle']).then((sh) => {
+        mate.sheet = sh;
+        mate.setPose(['Idle']);
+      });
+      this.npcs.push(mate);
+    }
+    const n = { x: cx - 1.5, y: cy + 2.9 };
     const actor = new Actor(PENSION_NPC, n.x, n.y);
     actor.dir = 0;
     void loadInfo(PENSION_NPC).then((i) => (actor.info = i));
@@ -130,7 +151,10 @@ export class Pension {
     if (!this.active || !this.pen) return;
     const k = this.keeper;
     this.nearKeeper = !this.swapped && !this.busy && Boolean(k) && Math.hypot(player.x - k!.x, player.y - k!.y) < KEEPER_REACH;
-    this.near = !this.nearKeeper && !this.used && !this.busy && Math.hypot(player.x - this.pen.x, player.y - this.pen.y) < REACH;
+    const px = Math.floor(player.x);
+    const py = Math.floor(player.y);
+    const inside = px >= this.pen.x0 && px <= this.pen.x1 && py >= this.pen.y0 && py <= this.pen.y1;
+    this.near = !this.nearKeeper && !this.used && !this.busy && inside;
     this.bubbleT -= dt;
     const m = this.keeper;
     if (m && this.stompT > 0) {
@@ -176,7 +200,7 @@ export class Pension {
     this.near = false;
     this.prompt.hidden = true;
     sfx('menuOpen');
-    this.fx.attackAnim('fx_boost', p.x, p.y);
+    this.fx.attackAnim('fx_boost', (p.x0 + p.x1 + 1) / 2, (p.y0 + p.y1 + 1) / 2);
     const m = this.keeper;
     if (m) {
       m.setPose(['Stomp', 'Idle']);

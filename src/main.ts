@@ -80,7 +80,7 @@ import { StarterScreen } from './ui/starterscreen';
 import { QuizScreen, STARTER_NATURE } from './ui/quizscreen';
 import { TitleScreen } from './ui/titlescreen';
 import { StatSheet, type SheetEntry } from './ui/statsheet';
-import { BIOME_COLOR, BIOME_ORDER, BIOMES, REPAIRE } from './world/biomes';
+import { BIOME_COLOR, BIOME_ORDER, BIOMES, REPAIRE, type Ambiance } from './world/biomes';
 import { generate, landReachable, type WorldMap } from './world/generate';
 import type { LayoutId } from './world/layouts';
 import { generateCave } from './world/cave';
@@ -1015,6 +1015,19 @@ async function boot(): Promise<void> {
     });
   };
 
+  /**
+   * L'ambiance des salles calmes (retour de test du 16 novembre 2026 : « une ambiance différente
+   * pour chaque salle, un truc plus sombre, la nuit… ») : l'Autel à la nuit tombée (ses torches
+   * éclairent), la Source au crépuscule et ses lucioles, le Dojo au soleil couchant, la Pension un
+   * matin doré.
+   */
+  const SPECIAL_AMBIANCE: Record<'spring' | 'altar' | 'dojo' | 'pension', Ambiance> = {
+    altar: { tint: '#5a3a7a', tintAlpha: 0.28, light: '#b48ce8', lightAlpha: 0.05, desat: 0.15, vignette: 0.55, particles: 'motes', night: 0.75 },
+    spring: { tint: '#7fb8d8', tintAlpha: 0.2, light: '#d8fbff', lightAlpha: 0.1, desat: 0, vignette: 0.35, particles: 'fireflies', night: 0.35 },
+    dojo: { tint: '#ff8a4a', tintAlpha: 0.34, light: '#ffc27a', lightAlpha: 0.16, desat: 0, vignette: 0.35, particles: 'leaves', night: 0.15 },
+    pension: { tint: '#fff1c8', tintAlpha: 0.04, light: '#fff6d0', lightAlpha: 0.14, desat: 0, vignette: 0.12, particles: 'pollen' },
+  };
+
   /** Génère la salle courante de la run et y place le joueur (PV et statuts conservés). */
   const loadRoom = (first: boolean) => {
     // Boutique et arène du champion : toujours les mêmes pour un biome donné (graine fixe), quelle que soit la run.
@@ -1022,7 +1035,9 @@ async function boot(): Promise<void> {
     const seed = run.isShop() ? 7001 + BIOME_ORDER.indexOf(run.biome) * 131 : arena ? 9001 + BIOME_ORDER.indexOf(run.biome) * 137 : run.mapSeed;
     // Une grotte s'ouvre parfois dans une falaise (Run.hasCave) ; jamais à la boutique.
     // On entre par le bord d'en face de la porte prise (Run.entrySide) : la boutique et l'arène gardent leur allée du sud.
-    const layout = opts.layout === 'auto' ? undefined : opts.layout;
+    // Les salles calmes ont leur petite salle ronde (layouts.ts, sanctuaire) ; le panneau peut forcer les autres.
+    const calmRoom = run.special === 'spring' || run.special === 'altar' || run.special === 'dojo' || run.special === 'pension';
+    const layout = calmRoom ? 'sanctuaire' : opts.layout === 'auto' ? undefined : opts.layout;
     roomKey = { kind: 'room', biome: run.biome, seed, store: run.isShop(), cave: run.hasCave(), layout, mouthUsed: false, entry: arena ? 'S' : run.entrySide, arena };
     world = roomWorld(roomKey);
     outdoor = null;
@@ -1112,8 +1127,11 @@ async function boot(): Promise<void> {
     if (run.special === 'dojo') dojo.start(world);
     pension.clear();
     if (run.special === 'pension') pension.start(world);
-    // Leurs décors de sol (tatami, foin, cercle, bassin) se posent après coup : le sol se recuit.
-    if (run.special === 'spring' || run.special === 'altar' || run.special === 'dojo' || run.special === 'pension') renderer.bake(world);
+    // Leur ambiance (à la place de celle du biome) et leurs décors de sol, posés après coup : le sol se recuit.
+    if (run.special === 'spring' || run.special === 'altar' || run.special === 'dojo' || run.special === 'pension') {
+      world.ambiance = SPECIAL_AMBIANCE[run.special];
+      renderer.bake(world);
+    }
     combat.hooks.onRoomEnter(player, run, !first && run.room % ROOMS_PER_ACT === 0, run.rng);
     // Test de la grotte (panneau) : chaque salle de combat part de sa grotte ; la salle attend dehors, figée.
     if (opts.biome === 'grotte' && !run.isShop() && !run.isBoss()) enterCave();
@@ -2984,7 +3002,7 @@ async function boot(): Promise<void> {
     footprints.update(dt, all, world);
     fieldFx.update(dt, all, world);
     if (opts.particles) {
-      particles.update(dt, indoorRoom() ? null : world.biome.ambiance.particles, { x: renderer.camX, y: renderer.camY, w: renderer.viewW, h: renderer.viewH });
+      particles.update(dt, indoorRoom() ? null : (world.ambiance ?? world.biome.ambiance).particles, { x: renderer.camX, y: renderer.camY, w: renderer.viewW, h: renderer.viewH });
       skyParticles.update(dt, WEATHERS[weatherNow()].particles, { x: renderer.camX, y: renderer.camY, w: renderer.viewW, h: renderer.viewH });
     }
   };
@@ -3226,7 +3244,7 @@ async function boot(): Promise<void> {
     footprints.update(dt, [...team, ...wild], world);
     fieldFx.update(dt, [...team, ...wild], world);
     if (opts.particles) {
-      particles.update(dt, indoorRoom() ? null : world.biome.ambiance.particles, { x: renderer.camX, y: renderer.camY, w: renderer.viewW, h: renderer.viewH });
+      particles.update(dt, indoorRoom() ? null : (world.ambiance ?? world.biome.ambiance).particles, { x: renderer.camX, y: renderer.camY, w: renderer.viewW, h: renderer.viewH });
       skyParticles.update(dt, WEATHERS[weatherNow()].particles, { x: renderer.camX, y: renderer.camY, w: renderer.viewW, h: renderer.viewH });
     }
   };

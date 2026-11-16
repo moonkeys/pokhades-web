@@ -3,7 +3,9 @@ import { loadInfo, loadSheet } from '../assets/pmd';
 import { Actor } from '../entities/actor';
 import type { InputSample } from '../input/input';
 import type { CombatFx, Projector } from '../render/combatfx';
-import type { WorldMap } from '../world/generate';
+import { blobTile, useGrid, type WorldMap } from '../world/generate';
+import { hash2 } from '../core/rng';
+import { BLOB, FLOWERS, LILIES, PROPS } from '../world/tiles';
 import { Placer } from './placement';
 
 // Source, salle spéciale de soin (A-FAIRE 1.9 : « d'autres salles (soin…) »).
@@ -13,13 +15,16 @@ import { Placer } from './placement';
 // statut, et un membre K.O. se relève (le relever passe par main.ts, qui sait
 // le faire pour les Rappels). Le bassin pâlit ensuite.
 //
-// Le bassin est la fontaine d'Essentials (retour de test du 16 novembre 2026 :
-// pas de décor dessiné à la main ; il était peint au pinceau).
+// L'étang est fait des tuiles de mare du tileset (retour de test du 16 novembre
+// 2026 : pas de décor dessiné à la main, et la fontaine ne convainquait pas).
 
 export const SPRING_NPC = 113;
 /** Part des PV max rendue à chaque membre. */
 export const SPRING_HEAL = 0.6;
-const REACH = 2.4;
+/** Portée du bord de l'étang (cases), et ses demi-axes. */
+const REACH = 1.6;
+const POND_RX = 4.5;
+const POND_RY = 3;
 const LINES = ['Lei ! Bois, l’eau de la source soigne tout.', 'Lei-lei ! Repose-toi un peu avant de repartir.'];
 
 export interface SpringHost {
@@ -31,7 +36,8 @@ export interface SpringHost {
 export class Spring {
   active = false;
   readonly npcs: Actor[] = [];
-  private pool: { x: number; y: number } | null = null;
+  /** L'étang : son milieu et ses demi-axes (cases). */
+  private pool: { x: number; y: number; rx: number; ry: number } | null = null;
   /** 0 : pleine ; 0 → 1 : l'eau pâlit après usage. */
   private used = 0;
   private near = false;
@@ -78,22 +84,52 @@ export class Spring {
     this.active = true;
     this.used = 0;
     this.talked = false;
+    // Retour de test du 16 novembre 2026 (« pas convaincu par la source », posée en plein
+    // chemin) : au milieu de la place du Sanctuaire, un étang aux bords du tileset (le jeu
+    // « mare », cuit avec le sol), des nénuphars, des fleurs et des pierres pâles autour.
     const place = new Placer(world);
-    const at = place.freeSpot(Math.floor(world.hub.x), Math.floor(world.hub.y));
-    this.pool = { x: at.x, y: at.y };
-    // Le bassin rond d'Essentials et son jet (le même que sur la place du Village, FOUNTAIN),
-    // 3 × 3 cases : on en fait le tour, on n'y marche pas.
-    const cx = Math.floor(at.x);
-    const cy = Math.floor(at.y);
-    place.clearArea(cx - 1, cy - 1, 3, 3);
-    world.fountains.push({ x: cx - 1, y: cy - 1 });
-    for (let dy = -1; dy <= 1; dy++)
-      for (let dx = -1; dx <= 1; dx++) {
-        const c = (cy + dy) * world.w + cx + dx;
-        if (world.blocked[c] === 0) world.blocked[c] = 1;
-        place.block(cx + dx, cy + dy);
-      }
-    const n = place.freeSpot(Math.floor(at.x) + 3, Math.floor(at.y) - 1);
+    const cx = Math.floor(world.hub.x);
+    const cy = Math.floor(world.hub.y);
+    place.clearArea(cx - 7, cy - 6, 15, 12);
+    const pool = { x: cx + 0.5, y: cy + 1, rx: POND_RX, ry: POND_RY };
+    this.pool = pool;
+    const mask = new Uint8Array(world.w * world.h);
+    // Un rectangle aux coins coupés : une ellipse tramée laissait des pointes d'une case, que le
+    // jeu de bordures ne sait pas arrondir.
+    const [ex0, ex1, ey0, ey1] = [cx - 4, cx + 4, cy - 2, cy + 3];
+    for (let y = ey0; y <= ey1; y++)
+      for (let x = ex0; x <= ex1; x++) if (!((x === ex0 || x === ex1) && (y === ey0 || y === ey1))) mask[y * world.w + x] = 1;
+    useGrid(world.w, world.h);
+    const blob = BLOB.pond;
+    const deep: { x: number; y: number }[] = [];
+    for (let i = 0; i < mask.length; i++) {
+      if (!mask[i]) continue;
+      const x = i % world.w;
+      const y = (i / world.w) | 0;
+      world.decals.push({ tile: blobTile(mask, x, y, blob), x, y });
+      place.block(x, y);
+      if (mask[i - 1] && mask[i + 1] && mask[i - world.w] && mask[i + world.w]) deep.push({ x, y });
+    }
+    // Trois nénuphars, au large.
+    for (let k = 0; k < Math.min(3, deep.length); k++) {
+      const d = deep[Math.floor(((k + 1) * deep.length) / 4) % deep.length];
+      world.decals.push({ tile: LILIES.pond[k % LILIES.pond.length], x: d.x, y: d.y });
+    }
+    // Une couronne de fleurs et quelques pierres pâles sur la berge.
+    for (let k = 0; k < 14; k++) {
+      const a = (k / 14) * Math.PI * 2 + 0.3;
+      const r = 1.35 + hash2(k, cx, 71) * 0.5;
+      const x = Math.floor(pool.x + Math.cos(a) * pool.rx * r);
+      const y = Math.floor(pool.y + Math.sin(a) * pool.ry * r);
+      const i = y * world.w + x;
+      if (world.blocked[i] || world.path[i] || world.water[i]) continue;
+      world.flat.push({ tile: FLOWERS[k % FLOWERS.length], x, y });
+    }
+    place.prop(PROPS.paleRocks[0], cx - 5, cy - 1.5);
+    place.prop(PROPS.paleStones[0], cx - 4.5, cy + 3.2, false);
+    place.prop(PROPS.paleStones[2], cx + 3.5, cy - 2.8, false);
+    place.prop(PROPS.paleStones[3], cx + 4.8, cy + 3.4, false);
+    const n = { x: cx + 6.5, y: cy + 0.9 };
     const actor = new Actor(SPRING_NPC, n.x, n.y);
     actor.dir = 0;
     void loadInfo(SPRING_NPC).then((i) => (actor.info = i));
@@ -108,7 +144,9 @@ export class Spring {
   update(dt: number, input: InputSample, player: Actor, rand: () => number): void {
     if (!this.active || !this.pool) return;
     if (this.used > 0) this.used = Math.min(1, this.used + dt / 1.2);
-    this.near = this.used === 0 && Math.hypot(player.x - this.pool.x, player.y - this.pool.y) < REACH;
+    // Au bord de l'étang : à moins d'une case et demie de sa rive.
+    const p = this.pool;
+    this.near = this.used === 0 && Math.hypot((player.x - p.x) / (p.rx + REACH), (player.y - p.y) / (p.ry + REACH)) < 1;
     this.bubbleT -= dt;
     const m = this.nurse;
     if (m && !this.talked && Math.hypot(player.x - m.x, player.y - m.y) < 5) {

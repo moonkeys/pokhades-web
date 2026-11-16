@@ -1128,7 +1128,7 @@ export class Renderer {
     if (opts.particles) particles.draw(b, camX, camY, k);
 
     // Étalonnage par biome + progression clair → sombre.
-    const amb = world.biome.ambiance;
+    const amb = world.ambiance ?? world.biome.ambiance;
     const d = opts.danger;
     const W = this.buf.width;
     const H = this.buf.height;

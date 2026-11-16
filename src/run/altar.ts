@@ -3,9 +3,8 @@ import { loadInfo, loadSheet } from '../assets/pmd';
 import { Actor } from '../entities/actor';
 import type { InputSample } from '../input/input';
 import type { CombatFx, Projector } from '../render/combatfx';
-import type { WorldMap } from '../world/generate';
-import { ALTAR_CIRCLE, CAMP_PROPS, TILE } from '../world/tiles';
-import type { WorldObject } from '../world/generate';
+import type { WorldMap, WorldObject } from '../world/generate';
+import { ALTAR_CIRCLE, ALTAR_FLOOR, ALTAR_PROPS, CAMP_PROPS, TILE } from '../world/tiles';
 import { Placer } from './placement';
 import { CURSES, CURSE_IDS, type CurseId } from './run';
 
@@ -87,26 +86,33 @@ export class Altar {
     this.used = 0;
     this.talked = false;
     this.curse = CURSE_IDS[Math.floor(rand() * CURSE_IDS.length)];
+    // Retour de test du 16 novembre 2026 (« il est tout petit, encore sur le chemin ») : au milieu
+    // de la place du Sanctuaire, un dallage de la Tour des morts (9 × 7 cases, cuit avec le sol),
+    // le cercle magique au centre, des gargouilles aux quatre coins, des urnes, et deux torches qui
+    // s'éteignent au pacte. On marche sur le dallage ; on signe dans le cercle.
     const place = new Placer(world);
-    const at = place.freeSpot(Math.floor(world.hub.x), Math.floor(world.hub.y));
-    this.stone = { x: at.x, y: at.y };
-    // Le cercle (3 × 3 cases, cuit avec le sol) : on peut marcher dessus. Une torche de chaque
-    // côté, qui barre sa case.
-    const cx = Math.floor(at.x);
-    const cy = Math.floor(at.y);
-    place.clearArea(cx - 2, cy - 2, 5, 4);
+    const cx = Math.floor(world.hub.x);
+    const cy = Math.floor(world.hub.y);
+    place.clearArea(cx - 6, cy - 6, 13, 12);
+    this.stone = { x: cx + 0.5, y: cy + 0.5 };
+    for (let dy = -3; dy <= 3; dy++)
+      for (let dx = -4; dx <= 4; dx++) {
+        const fx = (((dx + 4) % ALTAR_FLOOR.w) + ALTAR_FLOOR.w) % ALTAR_FLOOR.w;
+        const fy = (((dy + 3) % ALTAR_FLOOR.h) + ALTAR_FLOOR.h) % ALTAR_FLOOR.h;
+        world.decals.push({ tile: [ALTAR_FLOOR.tile[0] + fx, ALTAR_FLOOR.tile[1] + fy], x: cx + dx, y: cy + dy });
+      }
     for (let dy = 0; dy < ALTAR_CIRCLE.h; dy++)
       for (let dx = 0; dx < ALTAR_CIRCLE.w; dx++) world.decals.push({ tile: [ALTAR_CIRCLE.tile[0] + dx, ALTAR_CIRCLE.tile[1] + dy], x: cx - 1 + dx, y: cy - 1 + dy });
+    // Gargouilles : les hautes au fond, sur socle devant.
+    place.prop(ALTAR_PROPS.tall, cx - 3.5, cy - 2);
+    place.prop(ALTAR_PROPS.tall, cx + 4.5, cy - 2);
+    place.prop(ALTAR_PROPS.statues[0], cx - 3.5, cy + 4);
+    place.prop(ALTAR_PROPS.statues[1], cx + 4.5, cy + 4);
+    place.prop(ALTAR_PROPS.urns[1], cx - 2.5, cy - 2);
+    place.prop(ALTAR_PROPS.urns[0], cx + 3.5, cy - 2);
     this.world = world;
-    this.torches = [-2, 2].map((dx) => {
-      const o: WorldObject = { sprite: CAMP_PROPS.torch, x: (cx + dx) * TILE + TILE / 2, y: cy * TILE - 1, fades: false };
-      world.objects.push(o);
-      const c = (cy - 1) * world.w + cx + dx;
-      if (world.blocked[c] === 0) world.blocked[c] = 1;
-      place.block(cx + dx, cy - 1);
-      return o;
-    });
-    const n = place.freeSpot(Math.floor(at.x) - 4, Math.floor(at.y));
+    this.torches = [-1.5, 2.5].map((dx) => place.prop(CAMP_PROPS.torch, cx + dx, cy - 1.6));
+    const n = { x: cx + 0.5, y: cy - 1.6 };
     const actor = new Actor(ALTAR_NPC, n.x, n.y);
     actor.dir = 0;
     void loadInfo(ALTAR_NPC).then((i) => (actor.info = i));
