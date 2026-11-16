@@ -5261,3 +5261,41 @@ body.net-on .hud-team {
   color: var(--paper);
   background: var(--ink);
 }
+/* Récompenses d'un service (ui/talkscreen.ts) : icône d'Essentials, libellé, ce que fait l'objet. */
+.talk-rewards {
+  display: grid;
+  gap: calc(0.4 * var(--u));
+}
+.talk-reward {
+  display: flex;
+  gap: calc(0.6 * var(--u));
+  align-items: center;
+}
+.talk-reward img {
+  width: calc(2.6 * var(--u));
+  height: calc(2.6 * var(--u));
+  image-rendering: pixelated;
+}
+.talk-reward b {
+  display: block;
+  font-size: calc(1.1 * var(--u));
+}
+.talk-reward small {
+  font-size: calc(0.9 * var(--u));
+  color: var(--muted);
+}
+/* Services des habitants, dans la fiche de l'équipe (ui/statsheet.ts). */
+.stats-errands .errand {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: calc(0.8 * var(--u));
+}
+.stats-errands .errand-art {
+  width: calc(3.2 * var(--u));
+  height: calc(3.2 * var(--u));
+  object-fit: contain;
+}
+.stats-errands .errand.done b {
+  color: #2f8a3a;
+}

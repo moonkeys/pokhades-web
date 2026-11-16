@@ -234,7 +234,10 @@ pour, plus de décor, une ambiance différente pour chaque salle ») :
   un **service** (`meta/errands.ts`, `Save.errands`, trois au plus) : un
   contrat comme ceux de Kangourex (même tirage, primes en Baies ×1,3) ;
   rempli, il faut retrouver l'habitant dans une salle de son genre pour être
-  payé (il y revient 85 fois sur 100 tant qu'on lui doit une réponse) ;
+  payé (il y revient 85 fois sur 100 tant qu'on lui doit une réponse). La
+  proposition montre ce qu'il paie, icônes d'Essentials à l'appui, et ce que
+  fait l'objet (Super Bonbon, objet tenu) ; les services en cours se lisent
+  dans la fiche de l'équipe (C), en run comme au Repaire ;
 - à la Pension, un seul interlocuteur, Écrémeuh, et son **menu**
   (`ui/talkscreen.ts`) : entraîner l'équipe (autant de niveaux que de
   membres, plus un, plus un par acte, à **répartir** soi-même,

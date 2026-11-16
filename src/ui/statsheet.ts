@@ -75,7 +75,11 @@ export class StatSheet {
   }
 
   /** `boons` : ceux de la run en cours (absent au Repaire). */
-  show(entries: readonly SheetEntry[], boons: Boons | null, onClose: () => void): void {
+  /**
+   * `errands` : les services des habitants en cours (retour de test du 16 novembre 2026 :
+   * « pouvoir avoir un endroit pour voir les quêtes en cours »), sous les dons.
+   */
+  show(entries: readonly SheetEntry[], boons: Boons | null, onClose: () => void, errands: readonly ErrandLine[] = []): void {
     sfx('menuOpen');
     this.onClose = onClose;
     this.root.replaceChildren();
@@ -88,7 +92,26 @@ export class StatSheet {
     for (const e of entries) statCard(grid, e);
 
     if (boons) this.boonList(page, boons);
+    this.errandList(page, errands);
     this.root.hidden = false;
+  }
+
+  private errandList(parent: HTMLElement, errands: readonly ErrandLine[]): void {
+    const box = el('div', 'stats-boons stats-errands da-paper', parent);
+    el('div', 'lbl', box, `Services en cours · ${errands.length} / 3`);
+    if (!errands.length) {
+      el('small', 'none', box, 'Aucun : les habitants des salles calmes (Source, Autel, Dojo, Pension) en proposent parfois.');
+      return;
+    }
+    for (const e of errands) {
+      const row = el('div', `boon errand${e.done ? ' done' : ''}`, box);
+      const img = el('img', 'errand-art', row) as HTMLImageElement;
+      img.src = `/game/artwork/${e.species}.png`;
+      img.alt = '';
+      const body = el('div', '', row);
+      el('b', '', body, e.done ? `${e.name} : service rendu ! Retrouve-le ${e.where}.` : `${e.name} (${e.where}) : ${e.text}`);
+      el('small', '', body, `${e.done ? 'Payé' : `${e.n} / ${e.goal} · paie`} : ${e.reward}`);
+    }
   }
 
   private boonList(parent: HTMLElement, boons: Boons): void {
@@ -125,6 +148,18 @@ export class StatSheet {
 }
 
 /** La bande de papier d'un membre ; la fiche de recrutement (recruitscreen.ts) la reprend telle quelle. */
+/** Un service d'habitant, tel que la fiche le montre (main.ts le prépare). */
+export interface ErrandLine {
+  species: number;
+  name: string;
+  where: string;
+  text: string;
+  n: number;
+  goal: number;
+  done: boolean;
+  reward: string;
+}
+
 export function statCard(parent: HTMLElement, { mon, item, ko, ally }: SheetEntry): HTMLElement {
   const card = el('div', `stats-card da-paper${ko ? ' ko' : ''}`, parent);
   card.style.setProperty('--c', typeColor(mon.types[0]));

@@ -31,6 +31,7 @@ export const PATCH_NOTES: readonly PatchNote[] = [
           'Source, Autel, Dojo, Pension : une petite salle ronde à elles, chacune son ambiance (nuit, crépuscule, couchant, matin), sans météo ; de grands décors du tileset et d’Essentials (étang, autel aux gargouilles, dojo au toit rouge, grand enclos où l’on entre).',
           'Leurs gardiens et les Pokémon de la boutique bougent et se tournent vers toi.',
           'Des habitants s’y promènent (fées, apprentis, spectres, pensionnaires) : parle-leur ; certains te confient un service, à rendre puis à faire payer en les retrouvant.',
+          'Les services montrent leurs récompenses (icônes, effet des objets) ; ceux en cours sont dans la fiche de l’équipe (C).',
           'Pension : Écrémeuh propose son menu (entraîner ou échanger), et tu répartis toi-même les niveaux, plus nombreux à chaque acte ; d’autres s’achètent en ₽.',
           'Source : parle à Leveinard pour boire ; une Rosée Âme flotte au-dessus de l’étang.',
           'Défi : l’objectif s’annonce (« 12 sauvages en 70 s ») et le chrono compte les vaincus.',

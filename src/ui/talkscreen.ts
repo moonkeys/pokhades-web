@@ -51,8 +51,8 @@ export class TalkScreen {
     return !this.root.hidden;
   }
 
-  /** `onClose` : refermé sans choisir. */
-  show(species: number, name: string, text: string, options: TalkOption[], onClose?: () => void): void {
+  /** `onClose` : refermé sans choisir. `rewards` : ce qui est à gagner, icônes et descriptions. */
+  show(species: number, name: string, text: string, options: TalkOption[], onClose?: () => void, rewards?: readonly { icon: string; label: string; desc?: string }[]): void {
     this.options = options;
     this.onClose = onClose ?? null;
     this.root.replaceChildren();
@@ -63,6 +63,18 @@ export class TalkScreen {
     const body = el('div', 'talk-body', card);
     el('span', 'da-tape', body, name.toUpperCase());
     el('p', 'talk-text', body, `« ${text} »`);
+    if (rewards?.length) {
+      const list = el('div', 'talk-rewards', body);
+      for (const r of rewards) {
+        const row = el('div', 'talk-reward', list);
+        const ico = el('img', '', row) as HTMLImageElement;
+        ico.src = `/game/assets/essentials/items/${r.icon}.png`;
+        ico.alt = '';
+        const txt = el('div', '', row);
+        el('b', '', txt, r.label);
+        if (r.desc) el('small', '', txt, r.desc);
+      }
+    }
     const acts = el('div', 'recruit-acts talk-acts', body);
     options.forEach((o, i) => {
       const b = el('button', i === 0 ? 'recruit-yes' : 'recruit-no', acts, `${i + 1}. ${o.label}`) as HTMLButtonElement;

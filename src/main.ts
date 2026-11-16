@@ -63,7 +63,7 @@ import { Altar } from './run/altar';
 import { Dojo } from './run/dojo';
 import { PENSION_LEVELS, PENSION_NPC, Pension } from './run/pension';
 import { Residents } from './run/residents';
-import { MAX_ERRANDS, ROOM_AT, claimErrand, errandDone, errandEvent, errandOf, rewardOf, rollErrand } from './meta/errands';
+import { MAX_ERRANDS, ROOM_AT, claimErrand, errandDone, errandEvent, errandOf, rewardLines, rewardOf, rollErrand } from './meta/errands';
 import { INTIMIDATE, INTIMIDATE_MULT, INTIMIDATE_RANGE, INTIMIDATE_TIME, WEATHER_ABILITIES } from './data/abilities';
 import { evolveMove, rollSkillOffer, upgradeMove, type SkillOffer } from './run/rewards';
 import { COMBATS_PER_ACT, CURSES, LEAGUE_MASTER, ROOMS_PER_ACT, Run } from './run/run';
@@ -522,7 +522,7 @@ async function boot(): Promise<void> {
       if (!r.offers || !save.started || net.role === 'client' || save.errands.list.length >= MAX_ERRANDS) return residents.say(r, residents.chatter(r));
       r.offers = false;
       const offer = rollErrand(++save.errands.seed, r.id, r.room);
-      talkScreen.show(r.id, name, `J’ai un service à te demander : ${contractText(offer.contract).replace(/\.$/, '')}. Reviens me voir ${ROOM_AT[r.room]} une fois que c’est fait : je te donnerai ${rewardOf(offer.contract)}.`, [
+      talkScreen.show(r.id, name, `J’ai un service à te demander : ${contractText(offer.contract).replace(/\.$/, '')}. Reviens me voir ${ROOM_AT[r.room]} une fois que c’est fait. Voilà ce que je te donnerai :`, [
         {
           label: 'Accepter',
           pick: () => {
@@ -533,7 +533,7 @@ async function boot(): Promise<void> {
           },
         },
         { label: 'Pas maintenant', pick: () => residents.say(r, 'Tant pis… Une autre fois.') },
-      ]);
+      ], undefined, rewardLines(offer.contract));
     },
   });
   // Source (salle spéciale de soin, run/spring.ts) : Leveinard veille sur un bassin qui soigne l'équipe.
@@ -967,9 +967,22 @@ async function boot(): Promise<void> {
         }),
       );
     }
+    // Les services des habitants en cours (meta/errands.ts), avec le nom de qui les a confiés.
+    const errands = await Promise.all(
+      save.errands.list.map(async (e) => ({
+        species: e.npc,
+        name: (await loadInfo(e.npc)).name,
+        where: ROOM_AT[e.room],
+        text: contractText(e.contract),
+        n: e.contract.n,
+        goal: e.contract.goal,
+        done: errandDone(e),
+        reward: rewardOf(e.contract),
+      })),
+    );
     // Un écran a pu s'ouvrir pendant le chargement (Repaire) : on n'empile pas.
     if (paused() || dialogue.open) return;
-    statSheet.show(entries, mode === 'run' ? run.boons : null, () => input.flush());
+    statSheet.show(entries, mode === 'run' ? run.boons : null, () => input.flush(), errands);
   };
   addEventListener('keydown', (e) => {
     if (actionOf(e.code) !== 'stats' || e.repeat || e.metaKey || e.ctrlKey || paused() || dialogue.open) return;

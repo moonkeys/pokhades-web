@@ -889,8 +889,9 @@ export class Camp {
     }
     if (has('dorm')) {
       // Décalés vers l'ouest (retour de test du 16 novembre 2026, capture à l'appui : le tipi de
-      // droite passait par-dessus le panneau du plan du monde, posé à la même abscisse).
-      put(CAMP_PROPS.tepee, dorm.x - 7, dorm.y - 0.6);
+      // droite passait par-dessus le panneau du plan du monde, posé à la même abscisse ; le
+      // gauche, poussé trop loin, s'enfonçait dans les arbres).
+      put(CAMP_PROPS.tepee, dorm.x - 5, dorm.y - 0.6);
       put(CAMP_PROPS.tepee, dorm.x - 0.5, dorm.y - 0.6);
     }
     if (has('jetty')) {

@@ -167,7 +167,7 @@ export const LORE: LoreChapter[] = [
       // run/altar.ts, run/run.ts (CURSES)
       { title: 'L’Autel maudit', color: '#b48ce8', text: 'De nuit, Feuforêve garde un cercle magique entre deux torches. Signe le pacte (E) : un don plus rare, contre une malédiction jusqu’à la fin de l’acte, lisible avant de signer.' },
       // run/residents.ts, meta/errands.ts
-      { title: 'Les habitants', text: 'Des Pokémon vivent dans les salles calmes : parle-leur (E). Certains te demandent un service ; une fois rendu, retrouve-les dans une salle du même genre pour être payé. Ils y reviennent souvent.' },
+      { title: 'Les habitants', text: 'Des Pokémon vivent dans les salles calmes : parle-leur (E). Certains te demandent un service ; une fois rendu, retrouve-les dans une salle du même genre pour être payé. Ils y reviennent souvent. Tes services en cours sont dans la fiche de l’équipe (C).' },
       // run/dojo.ts
       { title: 'Le Dojo', color: '#e08a4c', text: 'Machopeur tient un dojo au toit rouge. Monte sur son tatami (E) : une leçon gratuite, apprendre une attaque forte ou en renforcer une, pour le Pokémon de ton choix. Deux leçons par dojo ; refermer le parchemin sans rien prendre ne compte pas.' },
       // run/pension.ts

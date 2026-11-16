@@ -1,4 +1,5 @@
-import { contractGain, itemName, rollContract, type Contract, type ContractKind, type QuestEvent } from './quests';
+import { CANDY, SHARDS, heldItem, heldText } from './catalog';
+import { CANDY_ITEM, contractGain, itemName, rollContract, type Contract, type ContractKind, type QuestEvent } from './quests';
 import type { Save } from './save';
 
 // Services des habitants des salles calmes (retour de test du 16 novembre
@@ -82,4 +83,30 @@ export function rewardOf(c: Contract): string {
   const r = c.reward;
   const parts = [`${r.baies} Baies`, ...(r.wood ? [`${r.wood} Bois`] : []), ...(r.stone ? [`${r.stone} Pierre`] : []), ...(r.food ? [`${r.food} Nourriture`] : []), ...(r.shards ? [`${r.shards} Éclat${r.shards > 1 ? 's' : ''}`] : []), ...(r.item ? [itemName(r.item)] : [])];
   return parts.length > 1 ? `${parts.slice(0, -1).join(', ')} et ${parts.at(-1)}` : parts[0];
+}
+
+/** Une récompense à montrer : l'icône d'objet d'Essentials, le libellé, et ce que fait l'objet. */
+export interface RewardLine {
+  icon: string;
+  label: string;
+  desc?: string;
+}
+
+/**
+ * Ce que paie un service, ligne par ligne, avec les icônes (retour de test du 16 novembre 2026 :
+ * « mettre les icônes des objets à gagner, et ce que l'objet fait »).
+ */
+export function rewardLines(c: Contract): RewardLine[] {
+  const r = c.reward;
+  const out: RewardLine[] = [{ icon: 'SITRUSBERRY', label: `${r.baies} Baies` }];
+  if (r.wood) out.push({ icon: 'STICK', label: `${r.wood} Bois` });
+  if (r.stone) out.push({ icon: 'HARDSTONE', label: `${r.stone} Pierre` });
+  if (r.food) out.push({ icon: 'HONEY', label: `${r.food} Nourriture` });
+  if (r.shards) out.push({ icon: SHARDS.icon, label: `${r.shards} Éclat${r.shards > 1 ? 's' : ''} de Champion` });
+  if (r.item === CANDY_ITEM) out.push({ icon: CANDY.icon, label: 'Super Bonbon', desc: `+${CANDY.step} niveaux de départ pour le Pokémon qui le mange (au Repaire).` });
+  else if (r.item) {
+    const h = heldItem(r.item);
+    out.push({ icon: h?.icon ?? 'POTION', label: itemName(r.item), desc: h ? `Objet tenu : ${heldText(h)}.` : undefined });
+  }
+  return out;
 }

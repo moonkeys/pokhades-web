@@ -125,6 +125,10 @@ export class Residents {
     let best = TALK_REACH;
     for (const r of this.list) {
       const a = r.actor;
+      // Le rendu interpole entre la position d'avant et l'actuelle : sans ceci, l'habitant
+      // sautillait entre son point de départ et sa place (retour de test : « ils buggent »).
+      a.prevX = a.x;
+      a.prevY = a.y;
       const d = Math.hypot(player.x - a.x, player.y - a.y);
       if (d < best) {
         best = d;

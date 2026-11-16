@@ -362,7 +362,7 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
   (`meta/errands.ts`), menu d'Écrémeuh (`ui/talkscreen.ts`) et niveaux à
   répartir (`ui/trainscreen.ts`), Source magique (statue, éclats, Heal5),
   esprits violets de l'Autel remis, décors garnis. Reste : montrer les
-  services en cours quelque part (fiche, journal).
+  services en cours quelque part (fait : fiche de l'équipe, C).
 - Quatrième passe (16 novembre 2026) : le « Tipeee » était le tipi du
   Dortoir sur le panneau du plan du monde (tipis décalés à l'ouest) ;
   invite « Parler » et « ! » des habitants comme au Repaire (la bulle
@@ -370,6 +370,10 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
   (plus de Heal5) ; Pension : niveaux selon l'acte, niveaux en ₽ ; Autel :
   plus d'esprits, dont une ronde autour du cercle ; plus de caisses
   (« pancartes ») au Dojo ni à la Pension.
+- Cinquième passe : habitants qui sautillaient (position d'avant jamais
+  mise à jour, le rendu interpolait depuis leur point de départ) ; tipi de
+  gauche ramené hors des arbres ; récompenses des services avec icônes et
+  description ; services en cours dans la fiche (C).
 - 9 salles par biome (16 novembre 2026, retour de test : « entre 8 et 10 ») :
   7 combats ou salles spéciales, la boutique, le champion
   (`COMBATS_PER_ACT`, `ROOMS_PER_ACT`) ; niveaux à la même pente par acte.
