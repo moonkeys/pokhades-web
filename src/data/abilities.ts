@@ -1,4 +1,5 @@
 import type { WeatherId } from '../world/weather';
+import { evolutionsOf } from './evolutions';
 
 // Talents météo (A-FAIRE 1.8 : « Reste : des talents »). Les données PokéAPI
 // copiées n'ont pas les talents : la table est tenue à la main, et ne garde
@@ -58,3 +59,38 @@ export const INTIMIDATE: ReadonlySet<number> = new Set([
   551, 552, 553, // Mascaïman, Escroco, Crocorible
   559, 560, // Baggiguane, Baggaïd (talent caché)
 ]);
+
+/** Ce que fait un talent, en une phrase (fiches de run et du Repaire). */
+const WEATHER_DESC: Record<WeatherAbility['weather'], string> = {
+  rain: 'fait pleuvoir sur la salle en y entrant',
+  sun: 'allume un soleil ardent sur la salle en y entrant',
+  sand: 'lève une tempête de sable sur la salle en y entrant',
+  hail: 'fait tomber la grêle sur la salle en y entrant',
+};
+
+export interface Talent {
+  name: string;
+  desc: string;
+}
+
+/** Le talent d'une espèce (n° national), ou null : seuls ceux que le jeu fait jouer sont connus. */
+export function talentOf(id: number): Talent | null {
+  const w = WEATHER_ABILITIES[id];
+  if (w) return { name: w.name, desc: WEATHER_DESC[w.weather] };
+  if (INTIMIDATE.has(id)) return { name: 'Intimidation', desc: 'baisse l’Attaque des adversaires qui s’approchent' };
+  return null;
+}
+
+/**
+ * Le talent d'une espèce ou, à défaut, celui que gagnera une de ses évolutions (Têtarte → Tarpaud :
+ * Crachin), avec le niveau où elle arrive : `level` est 0 pour l'espèce elle-même.
+ */
+export function talentInLine(id: number): (Talent & { level: number; species: number }) | null {
+  const own = talentOf(id);
+  if (own) return { ...own, level: 0, species: id };
+  for (const { level, next } of evolutionsOf(id)) {
+    const t = talentInLine(next);
+    if (t) return { ...t, level: Math.max(level, t.level), species: t.species };
+  }
+  return null;
+}

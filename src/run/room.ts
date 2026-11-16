@@ -166,7 +166,7 @@ export interface RoomHost {
   /** On s'engage dans la bouche d'une grotte, pendant que l'écran est noir (cf. CaveDirector). */
   enterCave(): void;
   /** Chrono du Défi, en secondes (null : on le masque). */
-  setTimer(seconds: number | null): void;
+  setTimer(seconds: number | null, goal?: string): void;
   /** Défi raté : les sauvages encore debout s'enfuient. */
   dismissEnemies(): void;
   /** Une salle spéciale se termine (réussie ou non). */
@@ -442,12 +442,19 @@ export class RoomDirector {
         break;
       }
       case 'intro':
-        if (this.t <= 0) this.startWave(world, player);
+        if (this.t <= 0) {
+          // Le Défi s'annonce (retour de test du 16 novembre 2026 : « le défi et le piège, c'est
+          // la même chose ») : l'objectif en grand, puis le compte à côté du chrono.
+          if (this.special === 'challenge' && this.wave === 0) this.host.toast(`Défi : ${this.total} sauvages en ${Math.round(this.clock)} s`, `₽ ×3 et un don`);
+          this.startWave(world, player);
+        }
         break;
       case 'waves': {
         if (this.special === 'challenge') {
           this.clock -= dt;
-          this.host.setTimer(Math.max(0, this.clock));
+          // Vaincus : tous, moins ceux debout, ceux qui arrivent et les vagues à venir.
+          const left = enemies.filter((e) => e.deathT < 0).length + this.pending.length + this.waves.slice(this.wave + 1).reduce((s, w) => s + w.length, 0);
+          this.host.setTimer(Math.max(0, this.clock), `${Math.max(0, this.total - left)} / ${this.total} sauvages`);
           if (this.clock <= 0) {
             // Temps écoulé : ceux qui restent s'enfuient, et la récompense avec eux.
             this.failed = true;

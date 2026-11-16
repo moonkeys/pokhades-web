@@ -248,12 +248,14 @@ export const ESSENTIALS_PAVEMENTS = '/game/assets/essentials/pavements.png';
 export const ESSENTIALS_SHEETS = {
   outside: '/game/assets/essentials/tilesets/Outside.png',
   gym: '/game/assets/essentials/tilesets/Gyms interior.png',
+  /** Le cercle magique de l'Autel maudit (run/altar.ts). */
+  grave: '/game/assets/essentials/tilesets/Graveyard tower interior.png',
   /** Autotile animé du jet de la fontaine : 5 images de 96 px de large côte à côte. */
   fountain: '/game/assets/essentials/autotiles/Fountain1.png',
 } as const;
 
 /** Blocs recopiés : coin haut-gauche dans la planche (cases de 32 px), taille en cases, destination dans l'atlas. */
-export const ESSENTIALS_BLOCKS: readonly { sheet: 'outside' | 'gym'; from: Tile; size: readonly [w: number, h: number]; to: Tile }[] = [
+export const ESSENTIALS_BLOCKS: readonly { sheet: 'outside' | 'gym' | 'grave'; from: Tile; size: readonly [w: number, h: number]; to: Tile }[] = [
   // Bassin rond de la fontaine (Outside.png, colonnes 5-7, rangées 140-142).
   { sheet: 'outside', from: t(5, 140), size: [3, 3], to: t(112, 0) },
   // Jeu d'arène « terrain jaune » (Gyms interior.png, colonnes 0-7, rangées 74-85) : murs de
@@ -261,7 +263,34 @@ export const ESSENTIALS_BLOCKS: readonly { sheet: 'outside' | 'gym'; from: Tile;
   { sheet: 'gym', from: t(0, 74), size: [8, 12], to: t(112, 3) },
   // Paillasson rouge de l'entrée d'arène (Gyms interior.png, colonnes 3-5, rangées 142-143).
   { sheet: 'gym', from: t(3, 142), size: [3, 2], to: t(120, 3) },
+  // Tatami du Dojo (Gyms interior.png, colonnes 5-7, rangées 139-140 : six nattes bordées de vert).
+  { sheet: 'gym', from: t(5, 139), size: [3, 2], to: t(123, 0) },
+  // Cercle magique de l'Autel maudit (Graveyard tower interior.png, colonnes 0-2, rangées 7-9).
+  { sheet: 'grave', from: t(0, 7), size: [3, 3], to: t(126, 0) },
+  // Dallage vert de la tour (colonnes 0-3, rangées 3-6), sous l'Autel.
+  { sheet: 'grave', from: t(0, 3), size: [4, 4], to: t(129, 0) },
+  // Gargouilles sur socle et urnes (colonnes 4-7, rangées 0-2), autour de l'Autel.
+  { sheet: 'grave', from: t(4, 0), size: [4, 3], to: t(133, 0) },
 ];
+
+/**
+ * Décors de sol des salles spéciales, pris dans Essentials (retour de test du 16 novembre
+ * 2026 : pas de décor dessiné à la main) : coin haut-gauche dans l'atlas, taille en cases.
+ */
+export const DOJO_MAT = { tile: t(123, 0), w: 3, h: 2 } as const;
+export const ALTAR_CIRCLE = { tile: t(126, 0), w: 3, h: 3 } as const;
+export const ALTAR_FLOOR = { tile: t(129, 0), w: 4, h: 4 } as const;
+/** Objets de l'Autel, dans les cases d'atlas des gargouilles (un sprite = une colonne). */
+export const ALTAR_PROPS = {
+  /** Gargouille sur haute colonne (3 cases). */
+  tall: sprite(133 * TILE, 0, TILE, 3 * TILE, 3 * TILE - 1, 1),
+  /** Gargouilles sur socle (2 cases). */
+  statues: [sprite(134 * TILE, TILE, TILE, 2 * TILE, 2 * TILE - 1, 1), sprite(135 * TILE, TILE, TILE, 2 * TILE, 2 * TILE - 1, 1)],
+  /** Urnes, dorée et violette. */
+  urns: [sprite(136 * TILE, TILE, TILE, TILE, TILE - 1, 1), sprite(136 * TILE, 2 * TILE, TILE, TILE, TILE - 1, 1)],
+};
+/** La salle d'entraînement au toit rouge du tileset, derrière le tatami du Dojo. */
+export const DOJO_HALL: SpriteDef = { rect: [208, 2111, 96, 80], foot: 79, trunk: 5, depth: 40 };
 
 /**
  * Fontaine de place (retour de test : la fontaine peinte au pixel était « trop

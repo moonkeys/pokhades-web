@@ -1,10 +1,9 @@
-import { sfx } from '../audio/audio';
 import { loadInfo, loadSheet } from '../assets/pmd';
 import { Actor } from '../entities/actor';
 import type { InputSample } from '../input/input';
 import type { CombatFx, Projector } from '../render/combatfx';
 import type { WorldMap } from '../world/generate';
-import { TILE } from '../world/tiles';
+import { CAMP_PROPS, FENCES, PROPS, TILE } from '../world/tiles';
 import { Placer } from './placement';
 
 // Pension, salle spéciale (A-FAIRE 1.9 : « d'autres salles »). Pas d'ennemis,
@@ -14,27 +13,42 @@ import { Placer } from './placement';
 // plus (le rattrapage des derniers venus). Les niveaux passent par main.ts,
 // qui sait annoncer et faire évoluer.
 //
-// Ni le tileset ni Essentials n'ont d'enclos : il est dessiné, comme le bassin.
+// L'échange (retour de test du 16 novembre 2026) : [E] à côté d'Écrémeuh, une
+// fois par Pension, renvoie un membre au Repaire et en fait venir un autre
+// parmi les libérés (écran ui/swapscreen.ts, mené par main.ts).
+//
+// L'enclos est fait du tileset (retour de test du 16 novembre 2026 : pas de décor
+// dessiné à la main) : le foin des paillasses du Repaire, la clôture des jardins.
 
 export const PENSION_NPC = 241;
 /** Niveaux gagnés par chaque membre ; le plus faible en gagne un de plus. */
 export const PENSION_LEVELS = 1;
-const REACH = 2.6;
+const KEEPER_REACH = 1.8;
 const LINES = ['Meuh ! Laisse-les gambader dans l’enclos, ils en ressortiront plus forts.', 'Écrémeuh rumine, le regard sur le foin frais.'];
 
 export interface PensionHost {
-  /** Entraîne l'équipe ; rend le nombre total de niveaux gagnés. */
-  train(): number;
+  /**
+   * Le menu d'Écrémeuh (main.ts) : `trained(n)` si l'équipe s'est entraînée (n niveaux
+   * répartis), `swapped(true)` après un échange, `swapped(false)` si personne n'était libre,
+   * `swapped(null)` ou `closed()` si l'on a refermé sans rien faire.
+   */
+  menu(state: { trained: boolean; swapped: boolean }, trained: (levels: number) => void, swapped: (ok: boolean | null) => void, closed: () => void): void;
   message(text: string): void;
 }
 
 export class Pension {
   active = false;
   readonly npcs: Actor[] = [];
-  private pen: { x: number; y: number } | null = null;
+  /** L'intérieur de l'enclos (cases, bornes comprises) : on s'entraîne dedans. */
+  private pen: { x0: number; x1: number; y0: number; y1: number } | null = null;
   private used = false;
-  private near = false;
+  /** À côté d'Écrémeuh, l'échange encore possible. */
+  private nearKeeper = false;
+  private swapped = false;
+  private busy = false;
   private keeper: Actor | null = null;
+  /** Les coins des pensionnaires (residents.ts) : centre et rayon de promenade. */
+  spots: { x: number; y: number; r: number }[] = [];
   private talked = false;
   private bubbleT = 0;
   private stompT = 0;
@@ -67,7 +81,7 @@ export class Pension {
   }
 
   hide(): void {
-    this.near = false;
+    this.nearKeeper = false;
     this.prompt.hidden = true;
     this.bubble.classList.remove('open');
   }
@@ -77,18 +91,52 @@ export class Pension {
     this.clear();
     this.active = true;
     this.used = false;
+    this.swapped = false;
+    this.busy = false;
     this.talked = false;
+    // Retour de test du 16 novembre 2026 (« une grosse pension… une ouverture, on rentre dans la
+    // pension, et c'est à l'intérieur qu'on peut l'utiliser ») : au milieu de la place du
+    // Sanctuaire, un grand enclos de 13 × 9 cases fermé par la clôture de bois des jardins, une
+    // ouverture de deux cases au sud ; dedans, la paillote du tileset, du foin (cuit avec le sol),
+    // des caisses, et deux pensionnaires.
     const place = new Placer(world);
-    const at = place.freeSpot(Math.floor(world.hub.x), Math.floor(world.hub.y));
-    this.pen = { x: at.x, y: at.y };
-    // L'enclos couvre trois cases sur trois : on en fait le tour, on n'y marche pas.
-    for (let dy = -1; dy <= 1; dy++)
-      for (let dx = -1; dx <= 1; dx++) {
-        const c = (Math.floor(at.y) + dy) * world.w + Math.floor(at.x) + dx;
-        if (world.blocked[c] === 0) world.blocked[c] = 1;
-        place.block(Math.floor(at.x) + dx, Math.floor(at.y) + dy);
+    const cx = Math.floor(world.hub.x);
+    const cy = Math.floor(world.hub.y);
+    const HW = 6;
+    const HH = 4;
+    place.clearArea(cx - HW - 1, cy - HH - 1, 2 * HW + 3, 2 * HH + 3);
+    this.pen = { x0: cx - HW + 1, x1: cx + HW - 1, y0: cy - HH + 1, y1: cy + HH - 1 };
+    const [fc, fr] = FENCES.wood.origin;
+    for (let dy = -HH; dy <= HH; dy++)
+      for (let dx = -HW; dx <= HW; dx++) {
+        const edge = Math.abs(dx) === HW || Math.abs(dy) === HH;
+        // L'ouverture, au milieu du côté sud.
+        if (!edge || (dy === HH && (dx === 0 || dx === 1))) continue;
+        place.block(cx + dx, cy + dy);
+        const col = dx === -HW ? 0 : dx === HW ? 2 : 1;
+        const row = dy === -HH ? 0 : dy === HH ? 2 : 1;
+        world.objects.push({ sprite: { rect: [(fc + col) * TILE, (fr + row) * TILE, TILE, TILE], foot: TILE - 1, trunk: 1 }, x: (cx + dx) * TILE + TILE / 2, y: (cy + dy + 1) * TILE - 1, fades: false });
       }
-    const n = place.freeSpot(Math.floor(at.x) - 3, Math.floor(at.y) + 1);
+    // Du foin (retour de test : « encore du foin et d'autres trucs ») : trois tas, cuits avec le sol.
+    const { col: hc, row: hr } = CAMP_PROPS.hay;
+    for (const [hx, hy] of [[cx + 1, cy - 3], [cx - 5, cy + 1], [cx + 2, cy + 1]])
+      for (let dy = 0; dy < 3; dy++) for (let dx = 0; dx < 3; dx++) world.decals.push({ tile: [hc + dx, hr + dy], x: hx + dx, y: hy + dy });
+    place.prop(CAMP_PROPS.thatchHut, cx - 2.5, cy - 0.6);
+    place.prop(CAMP_PROPS.barrels[0], cx + 4.5, cy - 2);
+    place.prop(CAMP_PROPS.barrels[1], cx + 5.3, cy - 1.4);
+    place.prop(CAMP_PROPS.barrels[0], cx + 5.4, cy + 3);
+    place.prop(PROPS.stump[0], cx - 5.4, cy - 2.6);
+    // Dehors, le long de la clôture : de quoi nourrir la pension.
+    place.prop(CAMP_PROPS.barrels[0], cx - 7.5, cy + 4.6);
+    place.prop(CAMP_PROPS.barrels[1], cx + 7.6, cy - 3.4);
+    place.prop(PROPS.log[0], cx + 8, cy + 2);
+    // Les pensionnaires (residents.ts) se promènent dans l'enclos.
+    this.spots = [
+      { x: cx + 3, y: cy + 0.4, r: 2 },
+      { x: cx - 4, y: cy + 2.4, r: 1.5 },
+      { x: cx + 1, y: cy - 1.8, r: 1.5 },
+    ];
+    const n = { x: cx - 1.5, y: cy + 2.9 };
     const actor = new Actor(PENSION_NPC, n.x, n.y);
     actor.dir = 0;
     void loadInfo(PENSION_NPC).then((i) => (actor.info = i));
@@ -102,7 +150,10 @@ export class Pension {
 
   update(dt: number, input: InputSample, player: Actor, rand: () => number): void {
     if (!this.active || !this.pen) return;
-    this.near = !this.used && Math.hypot(player.x - this.pen.x, player.y - this.pen.y) < REACH;
+    // Un seul interlocuteur (retour de test : on entraînait sans le vouloir en voulant échanger) :
+    // Écrémeuh, et son menu (main.ts) — entraîner, échanger, ou rien.
+    const k = this.keeper;
+    this.nearKeeper = !this.busy && (!this.used || !this.swapped) && Boolean(k) && Math.hypot(player.x - k!.x, player.y - k!.y) < KEEPER_REACH;
     this.bubbleT -= dt;
     const m = this.keeper;
     if (m && this.stompT > 0) {
@@ -115,7 +166,27 @@ export class Pension {
     }
     this.bubble.classList.toggle('open', this.bubbleT > 0);
     this.renderPrompt();
-    if (input.interact && this.near) this.train();
+    if (input.interact && this.nearKeeper) this.talkTo();
+  }
+
+  private talkTo(): void {
+    this.busy = true;
+    this.nearKeeper = false;
+    this.prompt.hidden = true;
+    this.host.menu(
+      { trained: this.used, swapped: this.swapped },
+      (levels) => {
+        this.busy = false;
+        this.trained(levels);
+      },
+      (ok) => {
+        this.busy = false;
+        this.swapped = this.swapped || ok !== null;
+        if (ok) this.say('Meuh ! Je l’ai renvoyé au Repaire. Prends bien soin du nouveau.');
+        else if (ok === false) this.say('Meuh… Personne au Repaire n’est libre pour un échange.');
+      },
+      () => (this.busy = false),
+    );
   }
 
   private say(text: string): void {
@@ -123,101 +194,36 @@ export class Pension {
     this.bubbleT = 3.5;
   }
 
-  private train(): void {
+  /** L'entraînement est fait : Écrémeuh piétine, l'enclos brille. */
+  private trained(levels: number): void {
     const p = this.pen!;
     this.used = true;
-    this.near = false;
-    this.prompt.hidden = true;
-    sfx('menuOpen');
-    this.fx.attackAnim('fx_boost', p.x, p.y);
+    this.fx.attackAnim('fx_boost', (p.x0 + p.x1 + 1) / 2, (p.y0 + p.y1 + 1) / 2);
     const m = this.keeper;
     if (m) {
       m.setPose(['Stomp', 'Idle']);
       this.stompT = 0.9;
     }
-    const n = this.host.train();
-    this.host.message(n ? `L’équipe s’entraîne à la pension : ${n} niveau${n > 1 ? 'x' : ''} gagné${n > 1 ? 's' : ''} !` : 'L’équipe s’entraîne à la pension.');
+    this.host.message(`L’équipe s’entraîne à la pension : ${levels} niveau${levels > 1 ? 'x' : ''} gagné${levels > 1 ? 's' : ''} !`);
     this.say('Meuh ! Revenez quand vous voulez.');
   }
 
   private renderPrompt(): void {
-    if (!this.near) {
+    if (!this.nearKeeper) {
       this.prompt.hidden = true;
       return;
     }
     if (!this.prompt.hidden) return;
     const el = (cls: string, text: string) => Object.assign(document.createElement('div'), { className: cls, textContent: text });
+    const offers = [...(this.used ? [] : ['entraîner l’équipe']), ...(this.swapped ? [] : ['échanger un membre contre un Pokémon du Repaire'])];
     this.prompt.replaceChildren(
       el('shop-name', 'Pension'),
       el('da-stamp shop-cost', 'Gratuit'),
-      el('shop-desc', `Chaque membre de l’équipe gagne ${PENSION_LEVELS} niveau, le plus faible ${PENSION_LEVELS + 1}.`),
-      el('shop-note', 'Une seule fois.'),
-      el('shop-buy', '✔ Entraîner l’équipe [E]'),
+      el('shop-desc', `Écrémeuh peut ${offers.join(', ou ')}.`),
+      el('shop-note', 'Chacun une fois par pension.'),
+      el('shop-buy', '✔ Parler à Écrémeuh [E]'),
     );
     this.prompt.hidden = false;
-  }
-
-  /** L'enclos : foin au sol, clôture de piquets et de deux lisses, plus tassé une fois servi. */
-  extras(time: number): { y: number; draw(b: CanvasRenderingContext2D, camX: number, camY: number, k: number): void }[] {
-    const p = this.pen;
-    if (!this.active || !p) return [];
-    const W = 1.8;
-    const H = 1.1;
-    const post = (b: CanvasRenderingContext2D, x: number, y: number, u: number) => {
-      b.fillStyle = '#5a3c20';
-      b.fillRect(x - 0.07 * u, y - 0.75 * u, 0.14 * u, 0.75 * u);
-      b.fillStyle = '#8a6036';
-      b.fillRect(x - 0.07 * u, y - 0.75 * u, 0.07 * u, 0.75 * u);
-    };
-    const rails = (b: CanvasRenderingContext2D, x0: number, x1: number, y: number, u: number) => {
-      b.fillStyle = '#7a5230';
-      b.fillRect(x0, y - 0.6 * u, x1 - x0, 0.09 * u);
-      b.fillRect(x0, y - 0.32 * u, x1 - x0, 0.09 * u);
-    };
-    // Le foin et la clôture du fond, sous ce qui se tient devant.
-    const back = {
-      y: (p.y - H) * TILE,
-      draw: (b: CanvasRenderingContext2D, camX: number, camY: number, k: number) => {
-        const u = TILE * k;
-        const cx = (p.x * TILE - camX) * k;
-        const cy = (p.y * TILE - camY) * k;
-        b.fillStyle = 'rgba(20,12,4,0.22)';
-        b.fillRect(cx - W * u + k, cy - H * u + 2 * k, 2 * W * u, 2 * H * u);
-        b.fillStyle = this.used ? '#b49a52' : '#d9bf5e';
-        b.fillRect(cx - W * u, cy - H * u, 2 * W * u, 2 * H * u);
-        // Brins de foin qui bougent un peu.
-        b.strokeStyle = this.used ? 'rgba(110,86,30,0.5)' : 'rgba(150,118,40,0.6)';
-        b.lineWidth = Math.max(1, k / 2);
-        for (let i = 0; i < 18; i++) {
-          const hx = cx + ((i * 37) % 100) / 100 * 2 * (W - 0.15) * u - (W - 0.15) * u;
-          const hy = cy + ((i * 53) % 100) / 100 * 2 * (H - 0.15) * u - (H - 0.15) * u;
-          const sway = Math.sin(time * 1.5 + i) * 0.05 * u;
-          b.beginPath();
-          b.moveTo(hx, hy);
-          b.lineTo(hx + 0.18 * u + sway, hy - 0.12 * u);
-          b.stroke();
-        }
-        const top = cy - H * u;
-        rails(b, cx - W * u, cx + W * u, top, u);
-        for (let i = 0; i <= 4; i++) post(b, cx - W * u + (i / 4) * 2 * W * u, top, u);
-        for (const sx of [-1, 1]) {
-          b.fillStyle = '#7a5230';
-          b.fillRect(cx + sx * W * u - 0.045 * u, top - 0.6 * u, 0.09 * u, 2 * H * u);
-        }
-      },
-    };
-    // La clôture de devant, par-dessus ce qui se tient dans l'enclos.
-    const front = {
-      y: (p.y + H) * TILE,
-      draw: (b: CanvasRenderingContext2D, camX: number, camY: number, k: number) => {
-        const u = TILE * k;
-        const cx = (p.x * TILE - camX) * k;
-        const bot = ((p.y + H) * TILE - camY) * k;
-        rails(b, cx - W * u, cx + W * u, bot, u);
-        for (let i = 0; i <= 4; i++) post(b, cx - W * u + (i / 4) * 2 * W * u, bot, u);
-      },
-    };
-    return [back, front];
   }
 
   placeLabels(proj: Projector): void {

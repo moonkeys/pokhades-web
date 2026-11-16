@@ -270,8 +270,9 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
 - Les débloqués peuplent le Repaire (les seize derniers, hors équipe).
 - Pour tester : panneau (H) → « Tout remettre à zéro » au Repaire.
 - **Champions** (fait, 13 novembre 2026) : un champion vaincu cède un
-  Pokémon de son équipe, ramené à sa forme de base, son as d'abord, puis
-  en remontant les vagues ; un seul par victoire, jamais une espèce qu'on a
+  Pokémon de son équipe, ramené à sa forme de base, le plus faible d'abord
+  (première vague), puis victoire après victoire jusqu'à son as (retour de
+  test du 16 novembre 2026, c'était l'inverse) ; un seul par victoire, jamais une espèce qu'on a
   déjà ou qui attend (`grantChampion`, save.ts ; origine « Équipe de X »).
   Reste à voir en jeu la notification (non déclenchée en test automatique).
 - Reste : le recrutement en fin de combat du jeu (`RecruitScreen.gd`) n'est
@@ -311,7 +312,7 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
 
 ### 1.9 Salles spéciales (fait)
 - Une porte sur plusieurs peut mener à une salle spéciale (`Run.offers`,
-  35 %, 2 par acte au plus, jamais deux pareilles de suite, jamais vers la
+  35 %, 3 par acte au plus (2 avant les actes de 9 salles), jamais deux pareilles de suite, jamais vers la
   boutique ou le boss, ni en ouvrant un acte) ; son étiquette dit laquelle.
 - **Défi** ⏱ : les vagues sous chrono (30 s + 10 s par vague, puce du HUD) ;
   réussi, ₽ ×3 et un don garanti ; raté, les sauvages s'enfuient et la
@@ -323,7 +324,7 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
   (un tiers des PV de l'équipe, sans K.O., contre un don de légendaire).
 - Panneau (H) → « Salle spéciale » : Défi, Piège, Marchand (2ᵉ salle de
   l'acte choisi).
-- **Source** ✚ (`run/spring.ts`, ajout) : sans ennemis, un bassin veillé par
+- **Source** ✚ (`run/spring.ts`, ajout) : sans ennemis, la fontaine d'Essentials veillée par
   Leveinard ; [E] une fois : chaque membre regagne 60 % de ses PV et perd son
   statut, un K.O. se relève. Proposée par les portes comme Défi et Piège.
 - **Autel maudit** ☠ (`run/altar.ts`, ajout) : un don d'un cran plus rare
@@ -333,13 +334,49 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
   donc l'étal de la boutique qui vend un objet tenu par visite, en ₽, versé à
   la réserve du Repaire (voir README).
 - **Dojo** ✊ (`run/dojo.ts`, ajout, 13 novembre 2026) : sans ennemis, un
-  tatami et un mannequin de paille veillés par Machopeur ; [E] : l'écran
+  tatami (Essentials) et un rocher (tileset) veillés par Machopeur ; [E] : l'écran
   « Nouvelle attaque », gratuit, deux leçons par salle (`DOJO_LESSONS`).
   Proposé par les portes ; panneau → « Dojo ».
 - **Pension** ❀ (`run/pension.ts`, ajout, 14 novembre 2026) : sans ennemis,
   un enclos de foin gardé par Écrémeuh ; [E] une fois : chaque membre gagne
   un niveau, le plus faible deux (`PENSION_LEVELS`). Proposée par les
-  portes ; panneau → « Pension ».
+  portes ; panneau → « Pension ». Échange (16 novembre 2026) : [E] à côté
+  d'Écrémeuh, un membre rentre au Repaire et un libéré prend sa place
+  (`ui/swapscreen.ts`).
+- Décors (16 novembre 2026, retour de test : pas de décor dessiné à la
+  main) : tatami des arènes et cercle de la Tour des morts d'Essentials
+  (`DOJO_MAT`, `ALTAR_CIRCLE`, `WorldMap.decals`), fontaine d'Essentials,
+  foin, clôture, rocher et torches du tileset ; place dégagée
+  (`Placer.clearArea`).
+- Salles calmes (16 novembre 2026, deuxième retour) : forme Sanctuaire
+  (`layouts.ts`, place libre au milieu, chemin qui en fait le tour),
+  ambiance par salle (`SPECIAL_AMBIANCE`, `WorldMap.ambiance`), ni météo ni
+  pièges ; décors agrandis (salle de dojo, dallage et gargouilles d'Autel,
+  étang de Source, enclos de Pension à entrée) ; PNJ animés et tournés vers
+  le joueur. Défi : objectif annoncé et compte des vaincus au chrono.
+  Boutique : un lot de ressources à la place de l'objet tenu. Reste : juger
+  en jeu les ambiances ; le Village et le littoral gardent leur forme.
+- Troisième passe (16 novembre 2026) : salle plus petite (34 × 28),
+  habitants qui se baladent et à qui l'on parle (`run/residents.ts`), leurs
+  services à rendre puis à faire payer en les retrouvant
+  (`meta/errands.ts`), menu d'Écrémeuh (`ui/talkscreen.ts`) et niveaux à
+  répartir (`ui/trainscreen.ts`), Source magique (statue, éclats, Heal5),
+  esprits violets de l'Autel remis, décors garnis. Reste : montrer les
+  services en cours quelque part (fait : fiche de l'équipe, C).
+- Quatrième passe (16 novembre 2026) : le « Tipeee » était le tipi du
+  Dortoir sur le panneau du plan du monde (tipis décalés à l'ouest) ;
+  invite « Parler » et « ! » des habitants comme au Repaire (la bulle
+  clignotait) ; Source activée par Leveinard, Rosée Âme flottante et halos
+  (plus de Heal5) ; Pension : niveaux selon l'acte, niveaux en ₽ ; Autel :
+  plus d'esprits, dont une ronde autour du cercle ; plus de caisses
+  (« pancartes ») au Dojo ni à la Pension.
+- Cinquième passe : habitants qui sautillaient (position d'avant jamais
+  mise à jour, le rendu interpolait depuis leur point de départ) ; tipi de
+  gauche ramené hors des arbres ; récompenses des services avec icônes et
+  description ; services en cours dans la fiche (C).
+- 9 salles par biome (16 novembre 2026, retour de test : « entre 8 et 10 ») :
+  7 combats ou salles spéciales, la boutique, le champion
+  (`COMBATS_PER_ACT`, `ROOMS_PER_ACT`) ; niveaux à la même pente par acte.
 - Reste : d'autres salles.
 
 ### 1.10 Son (fait)
@@ -506,9 +543,8 @@ Si d'autres se voient en jeu, noter leur emplacement.
 - Réplique du bâtisseur selon l'avancée (ouest, puis est, puis hameau).
 - Activité au bourg (fait, 14 novembre 2026) : deux porteurs d'eau vont du
   puits à leur maison et reviennent (`Talker.errand`, `gridPath`), le seau
-  plein à l'aller ; une lavandière frotte le linge dans un baquet, sous une
-  corde à linge où sèchent draps et foulards (dessinés : `drawTub`,
-  `drawClothesline`). (Lampadaires et hameau revus après le test : voir
+  plein à l'aller ; une lavandière frotte le linge à son tonneau (seau,
+  baquet et corde à linge, dessinés à la main, retirés le 16 novembre 2026). (Lampadaires et hameau revus après le test : voir
   2.3 ter.)
 
 ### 2.3 ter Retours de test du Repaire (fait)

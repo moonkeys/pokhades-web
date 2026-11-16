@@ -299,7 +299,7 @@ export function generateCave(seed: number): CaveLayout {
     inside: new Uint8Array(N).fill(1),
     path: zero(), patch: zero(), water: zero(), tall: zero(), hide: zero(),
     cliff: rock, cliff2: null, stairs: [], face: zero(),
-    blocked, solid, reachable, objects, flat: [], lilies: [],
+    blocked, solid, reachable, objects, flat: [], decals: [], lilies: [],
     spawn, entrySide: 'N', exits: [], hub: { x: arena.x, y: arena.y },
     paving: [], townStyle: null, townLayout: null, fountains: [], cave: null, front: null, layout: null, layoutName: null,
   };

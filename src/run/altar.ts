@@ -3,20 +3,22 @@ import { loadInfo, loadSheet } from '../assets/pmd';
 import { Actor } from '../entities/actor';
 import type { InputSample } from '../input/input';
 import type { CombatFx, Projector } from '../render/combatfx';
-import type { WorldMap } from '../world/generate';
-import { TILE } from '../world/tiles';
+import type { WorldMap, WorldObject } from '../world/generate';
+import { ALTAR_CIRCLE, ALTAR_FLOOR, ALTAR_PROPS, CAMP_PROPS, PROPS, TILE, TREES, type SpriteDef } from '../world/tiles';
 import { Placer } from './placement';
 import { CURSES, CURSE_IDS, type CurseId } from './run';
 
 // Autel maudit, salle spéciale (A-FAIRE 1.9 : « d'autres salles (autel à dons
 // maudits…) »). Pas d'ennemis, portes ouvertes, comme à la Source : au centre,
-// une dalle de pierre noire où brûlent des flammes violettes, veillée par
-// Feuforêve. La malédiction du pacte est tirée à l'arrivée et affichée sur la
+// un cercle magique entre deux torches, veillé par Feuforêve. La malédiction du pacte est tirée à l'arrivée et affichée sur la
 // fiche : on sait ce qu'on signe. [E] : le pacte, une fois — un don d'un cran
 // plus rare (main.ts : Boons.bonus), et la malédiction pèse jusqu'à la fin de
 // l'acte (Run.curse). On peut aussi passer son chemin.
 //
-// Ni le tileset ni Essentials n'ont d'autel : il est dessiné, comme le bassin.
+// Retour de test du 16 novembre 2026 (pas de décor dessiné à la main) : la
+// dalle peinte au pinceau devient le cercle magique de la Tour des morts
+// d'Essentials (ALTAR_CIRCLE), et ses flammes les torches du Repaire ; signer
+// le pacte les éteint (elles quittent la salle).
 
 export const ALTAR_NPC = 200;
 const REACH = 2.2;
@@ -31,6 +33,13 @@ export class Altar {
   active = false;
   readonly npcs: Actor[] = [];
   private stone: { x: number; y: number } | null = null;
+  private world: WorldMap | null = null;
+  /** Les deux torches : signer le pacte les éteint (elles quittent la salle). */
+  private torches: WorldObject[] = [];
+  /** Où montent les esprits violets (cases). */
+  private wisps: { x: number; y: number }[] = [];
+  /** Les coins des habitants (residents.ts) : centre et rayon de promenade. */
+  spots: { x: number; y: number; r: number }[] = [];
   private curse: CurseId = 'levels';
   /** 0 : intact ; 0 → 1 : les flammes s'éteignent après le pacte. */
   private used = 0;
@@ -61,6 +70,10 @@ export class Altar {
   clear(): void {
     this.active = false;
     this.stone = null;
+    this.world = null;
+    this.torches = [];
+    this.wisps = [];
+    this.spots = [];
     this.keeper = null;
     this.npcs.length = 0;
     this.hide();
@@ -79,16 +92,59 @@ export class Altar {
     this.used = 0;
     this.talked = false;
     this.curse = CURSE_IDS[Math.floor(rand() * CURSE_IDS.length)];
+    // Retour de test du 16 novembre 2026 (« il est tout petit, encore sur le chemin ») : au milieu
+    // de la place du Sanctuaire, un dallage de la Tour des morts (9 × 7 cases, cuit avec le sol),
+    // le cercle magique au centre, des gargouilles aux quatre coins, des urnes, et deux torches qui
+    // s'éteignent au pacte. On marche sur le dallage ; on signe dans le cercle.
     const place = new Placer(world);
-    const at = place.freeSpot(Math.floor(world.hub.x), Math.floor(world.hub.y));
-    this.stone = { x: at.x, y: at.y };
-    // La dalle couvre trois cases de large : on en fait le tour.
-    for (let dx = -1; dx <= 1; dx++) {
-      const c = Math.floor(at.y) * world.w + Math.floor(at.x) + dx;
-      if (world.blocked[c] === 0) world.blocked[c] = 1;
-      place.block(Math.floor(at.x) + dx, Math.floor(at.y));
-    }
-    const n = place.freeSpot(Math.floor(at.x) - 3, Math.floor(at.y) - 1);
+    const cx = Math.floor(world.hub.x);
+    const cy = Math.floor(world.hub.y);
+    place.clearArea(cx - 6, cy - 6, 13, 12);
+    this.stone = { x: cx + 0.5, y: cy + 0.5 };
+    for (let dy = -3; dy <= 3; dy++)
+      for (let dx = -4; dx <= 4; dx++) {
+        const fx = (((dx + 4) % ALTAR_FLOOR.w) + ALTAR_FLOOR.w) % ALTAR_FLOOR.w;
+        const fy = (((dy + 3) % ALTAR_FLOOR.h) + ALTAR_FLOOR.h) % ALTAR_FLOOR.h;
+        world.decals.push({ tile: [ALTAR_FLOOR.tile[0] + fx, ALTAR_FLOOR.tile[1] + fy], x: cx + dx, y: cy + dy });
+      }
+    for (let dy = 0; dy < ALTAR_CIRCLE.h; dy++)
+      for (let dx = 0; dx < ALTAR_CIRCLE.w; dx++) world.decals.push({ tile: [ALTAR_CIRCLE.tile[0] + dx, ALTAR_CIRCLE.tile[1] + dy], x: cx - 1 + dx, y: cy - 1 + dy });
+    // Gargouilles : les hautes au fond, sur socle devant.
+    place.prop(ALTAR_PROPS.tall, cx - 3.5, cy - 2);
+    place.prop(ALTAR_PROPS.tall, cx + 4.5, cy - 2);
+    place.prop(ALTAR_PROPS.statues[0], cx - 3.5, cy + 4);
+    place.prop(ALTAR_PROPS.statues[1], cx + 4.5, cy + 4);
+    place.prop(ALTAR_PROPS.urns[1], cx - 2.5, cy - 2);
+    place.prop(ALTAR_PROPS.urns[0], cx + 3.5, cy - 2);
+    this.world = world;
+    this.torches = [-1.5, 2.5].map((dx) => place.prop(CAMP_PROPS.torch, cx + dx, cy - 1.6));
+    // Autour du dallage (retour de test : « encore un peu plus de décor autour ») : arbres morts,
+    // gargouilles sur socle le long des bords, grands champignons et cailloux.
+    const around: [SpriteDef, number, number][] = [
+      [TREES.dead[0], cx - 6.5, cy - 2],
+      [TREES.dead[0], cx + 7.5, cy + 1],
+      [TREES.dead[0], cx - 6, cy + 5],
+      [ALTAR_PROPS.statues[0], cx - 5.5, cy + 1],
+      [ALTAR_PROPS.statues[1], cx + 6.5, cy - 2],
+      [PROPS.tallMushroom[0], cx + 6.5, cy + 4],
+      [PROPS.tallMushroom[0], cx - 5.5, cy - 4],
+      [ALTAR_PROPS.urns[1], cx + 5.5, cy + 5],
+      [PROPS.rockSmall[0], cx + 2.5, cy + 5.5],
+      [PROPS.rockSmall[1], cx - 2.5, cy - 5],
+    ];
+    for (const [sp, x, y] of around) place.prop(sp, x, y);
+    // Les esprits qui montent (dessinés : extras), au-dessus des gargouilles et des torches.
+    // (Retour de test : « encore plus de petites flammes violettes ».) Au-dessus des gargouilles, des
+    // torches, des urnes et des arbres morts ; d'autres tournent autour du cercle (extras).
+    this.wisps = [
+      [cx - 3.5, cy - 4], [cx + 4.5, cy - 4], [cx - 1.5, cy - 3.4], [cx + 2.5, cy - 3.4], [cx - 3.5, cy + 2.4], [cx + 4.5, cy + 2.4],
+      [cx - 2.5, cy - 2.6], [cx + 3.5, cy - 2.6], [cx - 6.5, cy - 4], [cx + 7.5, cy - 1], [cx - 6, cy + 3], [cx - 5.5, cy + 0.2], [cx + 6.5, cy - 3.2],
+    ].map(([x, y]) => ({ x, y }));
+    this.spots = [
+      { x: cx - 4, y: cy + 6, r: 2.5 },
+      { x: cx + 5, y: cy + 6.5, r: 2.5 },
+    ];
+    const n = { x: cx + 0.5, y: cy - 1.6 };
     const actor = new Actor(ALTAR_NPC, n.x, n.y);
     actor.dir = 0;
     void loadInfo(ALTAR_NPC).then((i) => (actor.info = i));
@@ -123,6 +179,13 @@ export class Altar {
     this.prompt.hidden = true;
     sfx('buzzer');
     this.fx.attackAnim('ghost', p.x, p.y);
+    for (const t of this.torches) {
+      this.fx.attackAnim('ghost', t.x / TILE, t.y / TILE - 1, undefined, true);
+      const list = this.world?.objects;
+      const i = list ? list.indexOf(t) : -1;
+      if (i >= 0) list!.splice(i, 1);
+    }
+    this.torches = [];
     this.bubble.textContent = 'Hi hi hi ! Marché conclu…';
     this.bubbleT = 2.5;
     this.host.pact(this.curse);
@@ -146,53 +209,56 @@ export class Altar {
     this.prompt.hidden = false;
   }
 
-  /** La dalle : pierre sombre, runes et flammes violettes, éteintes une fois le pacte signé. */
+  /**
+   * Les esprits de l'Autel (retour de test : « les petits esprits violets qui volaient, tu peux
+   * les remettre ») : des feux follets qui montent au-dessus des gargouilles et des torches, en
+   * mode additif ; ils pâlissent une fois le pacte signé.
+   */
   extras(time: number): { y: number; draw(b: CanvasRenderingContext2D, camX: number, camY: number, k: number): void }[] {
-    const p = this.stone;
-    if (!this.active || !p) return [];
-    return [
-      {
-        y: (p.y + 0.3) * TILE,
-        draw: (b, camX, camY, k) => {
-          const cx = (p.x * TILE - camX) * k;
-          const cy = ((p.y + 0.2) * TILE - camY) * k;
-          const W = 1.5 * TILE * k;
-          const H = 0.55 * TILE * k;
-          // Ombre, puis la dalle (dessus clair, flanc sombre).
-          b.fillStyle = 'rgba(10,4,20,0.4)';
+    if (!this.active || !this.wisps.length) return [];
+    const glow = 1 - this.used * 0.7;
+    const c = this.stone!;
+    // Des feux follets qui tournent autour du cercle, à hauteur d'épaule.
+    const orbit = {
+      y: (c.y + 2) * TILE,
+      draw: (b: CanvasRenderingContext2D, camX: number, camY: number, k: number) => {
+        b.save();
+        b.globalCompositeOperation = 'lighter';
+        for (let i = 0; i < 5; i++) {
+          const a = time * 0.6 + (i / 5) * Math.PI * 2;
+          const x = ((c.x + Math.cos(a) * 2.4) * TILE - camX) * k;
+          const y = ((c.y + Math.sin(a) * 1.4) * TILE - camY) * k - (1 + Math.sin(time * 2 + i) * 0.3) * TILE * k;
+          const g = b.createRadialGradient(x, y, 0, x, y, 6 * k);
+          g.addColorStop(0, `rgba(230,190,255,${0.85 * glow})`);
+          g.addColorStop(0.35, `rgba(170,100,255,${0.45 * glow})`);
+          g.addColorStop(1, 'rgba(120,60,200,0)');
+          b.fillStyle = g;
           b.beginPath();
-          b.ellipse(cx, cy + H * 0.9, W * 1.1, H * 0.7, 0, 0, Math.PI * 2);
+          b.arc(x, y, 6 * k, 0, Math.PI * 2);
           b.fill();
-          b.fillStyle = '#2b2433';
-          b.fillRect(cx - W, cy - H * 0.2, W * 2, H);
-          b.fillStyle = '#4a4054';
-          b.fillRect(cx - W, cy - H * 0.9, W * 2, H * 0.75);
-          b.fillStyle = '#5d5268';
-          b.fillRect(cx - W, cy - H * 0.9, W * 2, Math.max(1, k));
-          // Runes gravées, qui luisent tant que le pacte n'est pas signé.
-          const glow = 1 - this.used;
-          b.fillStyle = `rgba(190,140,255,${0.25 + 0.55 * glow * (0.6 + 0.4 * Math.sin(time * 3))})`;
-          for (let i = -2; i <= 2; i++) b.fillRect(cx + i * W * 0.38 - k, cy + H * 0.15, 2 * k, H * 0.4);
-          // Flammes aux deux coins.
-          b.save();
-          b.globalCompositeOperation = 'lighter';
-          for (const side of [-1, 1]) {
-            const fx = cx + side * W * 0.82;
-            const fy = cy - H * 0.9;
-            for (let i = 0; i < 5; i++) {
-              const u = (time * 1.4 + i / 5 + (side > 0 ? 0.37 : 0)) % 1;
-              const r = (1 - u) * 3.2 * k * glow;
-              if (r <= 0.2) continue;
-              b.fillStyle = `rgba(${170 + 60 * (1 - u)},${90 + 40 * u},255,${0.75 * (1 - u) * glow})`;
-              b.beginPath();
-              b.arc(fx + Math.sin(time * 6 + i) * 1.2 * k, fy - u * 0.9 * TILE * k, r, 0, Math.PI * 2);
-              b.fill();
-            }
-          }
-          b.restore();
-        },
+        }
+        b.restore();
       },
-    ];
+    };
+    return [orbit, ...this.wisps.map((w, j) => ({
+      y: (w.y + 3) * TILE,
+      draw: (b: CanvasRenderingContext2D, camX: number, camY: number, k: number) => {
+        const fx = (w.x * TILE - camX) * k;
+        const fy = (w.y * TILE - camY) * k;
+        b.save();
+        b.globalCompositeOperation = 'lighter';
+        for (let i = 0; i < 4; i++) {
+          const u = (time * 0.7 + i / 4 + j * 0.37) % 1;
+          const r = (1 - u) * 3 * k * glow;
+          if (r <= 0.2) continue;
+          b.fillStyle = `rgba(${170 + 60 * (1 - u)},${90 + 40 * u},255,${0.7 * (1 - u) * glow})`;
+          b.beginPath();
+          b.arc(fx + Math.sin(time * 3 + i + j) * 2 * k, fy - u * 1.6 * TILE * k, r, 0, Math.PI * 2);
+          b.fill();
+        }
+        b.restore();
+      },
+    }))];
   }
 
   placeLabels(proj: Projector): void {

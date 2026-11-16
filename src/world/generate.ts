@@ -1,6 +1,6 @@
 import { fbm } from '../core/noise';
 import { Rng } from '../core/rng';
-import type { Biome } from './biomes';
+import type { Ambiance, Biome } from './biomes';
 import { BLOB, CAVE, CHEST, FLOWERS, GROUND, PROPS, TILE, TOWN_STYLES, type Blob, type SpriteDef, type Tile } from './tiles';
 import { coreDepth, LAYOUT_NAMES, orientShape, pickLayout, shapeDepth, type LayoutId, type Shape } from './layouts';
 import { furnishTown, layoutStreets, type Paving } from './town';
@@ -122,6 +122,13 @@ export interface WorldMap {
   reachable: Uint8Array;
   objects: WorldObject[];
   flat: FlatDecor[];
+  /**
+   * Décors de sol immobiles, cuits avec le sol (tatami du Dojo, foin de la Pension, cercle de
+   * l'Autel) : des cases de l'atlas, posées par les salles spéciales après la génération.
+   */
+  decals: FlatDecor[];
+  /** Ambiance propre à la salle (salles calmes, main.ts : SPECIAL_AMBIANCE), à la place de celle du biome. */
+  ambiance?: Ambiance;
   /** Nénuphars : dessinés à part pour flotter sur l'eau. */
   lilies: FlatDecor[];
   /** Village : revêtements rectangulaires (rues, place, allées), style et plan. */
@@ -463,6 +470,8 @@ export function generate(
    */
   const want: Side = options.entry ?? 'S';
   const shape: Shape | null = picked && picked.routes.length && !biome.coast && !biome.buildings ? orientShape(picked, want) : picked;
+  /** Salle calme (layouts.ts, sanctuaire) : ni mare ni plateau rocheux sur la place, où la salle pose son décor. */
+  const sanctum = shape?.id === 'sanctuaire';
   const W = options.camp ? CAMP_W : (shape?.w ?? MAP_W);
   const H = options.camp ? CAMP_H : (shape?.h ?? MAP_H);
   useGrid(W, H);
@@ -739,7 +748,7 @@ export function generate(
     cleanThin(water, canBeLake);
   } else if (ringed) {
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (inRing(x, y) && !path[idx(x, y)]) water[idx(x, y)] = 1;
-  } else if (biome.water && !store) {
+  } else if (biome.water && !store && !sanctum) {
     /** Îlot à coffre : au milieu du grand lac de la clairière, ou du lac au cœur d'une boucle. */
     const isle = lake ? { x: W / 2, y: H / 2 - 4 } : wetCore && biome.water.lake ? { x: wetCore.x - 0.5, y: wetCore.y - 0.5 } : null;
     isleAt = isle;
@@ -796,7 +805,7 @@ export function generate(
         if (y < b2) cliff2[i] = 1;
       }
     }
-  } else if (biome.mesas && !store) {
+  } else if (biome.mesas && !store && !sanctum) {
     cliff ??= new Uint8Array(N);
     const mesa = new Uint8Array(N);
     const nearWet = dilate(water, 2);
@@ -1543,7 +1552,7 @@ export function generate(
 
   return {
     w: W, h: H, biome, seed, inside, path, patch, water, tall, hide, cliff, cliff2, stairs, face, blocked, solid, reachable,
-    objects, flat, lilies, spawn, entrySide, exits, hub, paving, townStyle: townStyle?.name ?? null,
+    objects, flat, decals: [], lilies, spawn, entrySide, exits, hub, paving, townStyle: townStyle?.name ?? null,
     townLayout: plan?.layout ?? null, fountains: plan?.fountains ?? [], cave, berries, chest,
     front: routed ? (shape!.front ?? null) : null,
     layout: shape?.id ?? null, layoutName: shape ? `${LAYOUT_NAMES[shape.id]} ${W}×${H}` : null,

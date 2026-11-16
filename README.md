@@ -69,8 +69,9 @@ ne garde que « Repaire (tests) » — retour au camp, +1000 Baies, tout remettr
 zéro — et les réglages de test gardés dans le navigateur (biome forcé, forme des
 salles, météo) reviennent à ceux du jeu. Le serveur de dev garde tout.
 
-Run (portée de `RunManager.gd` et `CombatArena.gd`) : 4 actes de 7 salles
-(5 combats, une boutique, un boss). La run part toujours de la Prairie, et
+Run (portée de `RunManager.gd` et `CombatArena.gd`) : 4 actes de 9 salles
+(7 combats, une boutique, un boss ; écart voulu, le jeu en avait 7 dont 5
+combats, retour de test : « entre 8 et 10 salles par biome »). La run part toujours de la Prairie, et
 chaque boss vaincu ouvre une porte par biome voisin sur la **carte du monde**
 (ajout, `src/world/worldmap.ts`, retour de test : « on passe du lac à la
 montagne en deux secondes, ce n'est pas logique ») : une carte fixe, quatre
@@ -170,27 +171,81 @@ Salles spéciales (ajout, `src/run/run.ts` et `room.ts`) : une porte sur
 plusieurs peut en annoncer une (35 %, deux par acte au plus, jamais vers la
 boutique ou le boss). **Défi** ⏱ : les vagues sous chrono (30 s + 10 s par
 vague) ; réussi, ₽ ×3 et un don garanti, raté, les sauvages s'enfuient sans
-récompense. **Piège** : sa porte ne le dit pas (retour de test), elle promet
+récompense. Il s'annonce en grand (« Défi : 12 sauvages en 70 s ») et le
+chrono compte les vaincus (« 5 / 12 sauvages »). **Piège** : sa porte ne le dit pas (retour de test), elle promet
 sa récompense comme une autre ; la récompense attend au centre d'une salle
 vide, et en approchant, trois vagues serrées à +3 niveaux surgissent (₽ ×2).
 Le **Marchand ambulant** (`src/run/merchant.ts`, Miaouss, son Pari et son
 Échange) n'est plus tiré (retour de test : « le marchand, j'en veux pas ») ;
-son code reste. **Source** ✚ (`run/spring.ts`) : un bassin qui soigne l'équipe.
-**Autel maudit** ☠ (`run/altar.ts`) : sans ennemis, Feuforêve veille sur une
-dalle aux flammes violettes ; [E], une fois, signe un pacte : un don d'un
+son code reste. **Source** ✚ (`run/spring.ts`) : un étang qui soigne l'équipe. **Autel maudit** ☠
+(`run/altar.ts`) : sans ennemis, Feuforêve veille sur le cercle magique de la
+Tour des morts d'Essentials, entre gargouilles et torches (éteintes au pacte) ; [E], une fois, signe un pacte : un don d'un
 cran plus rare (`Boons.bonus`), contre une malédiction tirée à l'arrivée et
 lisible sur la fiche, qui pèse jusqu'à la fin de l'acte (`Run.curse`, écrite
 sous le lieu en haut à gauche) : **Sauvages enragés** (+2 niveaux, champion
 compris), **Bourse percée** (₽ des salles divisés par deux) ou **Sans repos**
 (les K.O. ne se relèvent plus en fin de salle). On peut passer son chemin.
-**Dojo** ✊ (`run/dojo.ts`) : sans ennemis, un tatami et un mannequin de
-paille, et Machopeur, maître des lieux ; [E] au tatami ouvre l'écran
+**Dojo** ✊ (`run/dojo.ts`) : sans ennemis, le tatami des arènes d'Essentials
+et un rocher du tileset, et Machopeur, maître des lieux ; [E] au tatami ouvre l'écran
 « Nouvelle attaque » sans prix (apprendre ou renforcer, pour le membre
 choisi), deux fois par salle ; fermer l'écran sans choisir ne compte pas.
-**Pension** ❀ (`run/pension.ts`) : sans ennemis, un enclos garni de foin
-gardé par Écrémeuh ; [E] à l'enclos, une fois : chaque membre gagne un
-niveau (`PENSION_LEVELS`), le plus faible deux (annonce et évolution comme
-en combat).
+**Pension** ❀ (`run/pension.ts`) : sans ennemis, un enclos (le foin et la
+clôture du tileset) gardé par Écrémeuh ; [E] dans l'enclos, une fois : chaque
+membre gagne un niveau (`PENSION_LEVELS`), le plus faible deux (annonce et
+évolution comme en combat). [E] à côté d'Écrémeuh, une fois : l'**échange**
+(`ui/swapscreen.ts`) — un membre rentre au Repaire, un libéré libre (ni dans
+l'équipe ni en mission) prend sa place, au niveau du partant s'il est plus
+bas, PV pleins, avec ses attaques et son objet ; l'équipe du Repaire suit.
+Pas en ligne.
+
+Salles calmes (Source, Autel, Dojo, Pension ; retours de test du 16 novembre
+2026 : « une salle couloir, la source sur le chemin… une petite salle faite
+pour, plus de décor, une ambiance différente pour chaque salle ») :
+- une forme à elles, le **Sanctuaire** (`layouts.ts`, 34 × 28 ou 36 × 28,
+  jamais tirée ailleurs, pas au Village ni sur le littoral) : le chemin fait
+  le tour d'une grande place par un côté, sans mare ni plateau rocheux ; la
+  salle y pose son décor ;
+- une **ambiance** à elles (`SPECIAL_AMBIANCE`, main.ts, `WorldMap.ambiance`)
+  à la place de celle du biome : l'Autel à la nuit tombée (ses torches
+  éclairent), la Source au crépuscule et ses lucioles, le Dojo au soleil
+  couchant, la Pension un matin doré ; ni météo ni pièges de terrain ;
+- des **décors** tous pris du tileset ou d'Essentials (« pas de trucs
+  pixelisés faits à la main »), posés au sol par `WorldMap.decals` (cuits
+  avec le sol) ou comme objets (`Placer.prop`), la place dégagée d'abord
+  (`Placer.clearArea`) : le Dojo, sa salle au toit rouge, un tatami de
+  9 × 6, des torches et des rochers (la leçon se prend sur le tatami) ;
+  l'Autel, un dallage de la Tour des morts, le cercle, des gargouilles, des
+  urnes et deux torches ; la Source, un étang (le jeu « mare »), des
+  nénuphars, des fleurs et des pierres pâles ; la Pension, un enclos de
+  13 × 9 avec une ouverture au sud, la paillote, trois tas de foin, des
+  tonneaux et des caisses. Deuxième retour de test : la Source a une statue à
+  la tête de l'étang, la Rosée Âme d'Essentials qui flotte au-dessus de
+  l'eau dans un halo, des halos et des éclats de lumière (dessinés) ; on boit
+  en parlant à Leveinard (menu) ; l'Autel, des arbres
+  morts, d'autres gargouilles, des champignons et ses esprits violets
+  (dessinés) ; le Dojo, des caisses, des tonneaux, des rondins et des
+  souches.
+- des **habitants** (`run/residents.ts`, `RESIDENTS`) : deux ou trois
+  Pokémon par salle (fées à la Source, apprentis au Dojo, spectres à
+  l'Autel, pensionnaires à la Pension) qui vont et viennent autour de leur
+  coin, s'arrêtent quand on approche ; [E] leur parle (l'invite en bas à
+  droite et le « ! » d'Essentials au-dessus de qui a un service, comme au
+  Repaire). Parfois, l'un propose
+  un **service** (`meta/errands.ts`, `Save.errands`, trois au plus) : un
+  contrat comme ceux de Kangourex (même tirage, primes en Baies ×1,3) ;
+  rempli, il faut retrouver l'habitant dans une salle de son genre pour être
+  payé (il y revient 85 fois sur 100 tant qu'on lui doit une réponse). La
+  proposition montre ce qu'il paie, icônes d'Essentials à l'appui, et ce que
+  fait l'objet (Super Bonbon, objet tenu) ; les services en cours se lisent
+  dans la fiche de l'équipe (C), en run comme au Repaire ;
+- à la Pension, un seul interlocuteur, Écrémeuh, et son **menu**
+  (`ui/talkscreen.ts`) : entraîner l'équipe (autant de niveaux que de
+  membres, plus un, plus un par acte, à **répartir** soi-même,
+  `ui/trainscreen.ts` ; d'autres s'achètent, 90 ₽ × l'acte la pièce), échanger
+  un membre, ou rien ; chacun une fois.
+
+Les Pokémon des places (boutique, salles spéciales, prisonniers de grotte)
+bouclent leur pose de repos et se tournent vers toi quand tu approches.
 
 Météo (ajout, `src/world/weather.ts`) : chaque salle de combat tire son ciel
 selon le biome — souvent clair, parfois Pluie, Soleil ardent, Tempête de
@@ -212,6 +267,11 @@ debout qui passe à 9 cases d'un intimidateur debout perd un quart de son
 Attaque pendant 10 s (comme Rugissement), une fois par salle, dans les deux
 sens. Écart voulu : les jeux n'intimident qu'à l'entrée, mais ici les
 sauvages arrivent par vagues. Les talents se lisent sur l'espèce dessinée.
+L'intimidateur se montre : il fait son geste d'attaque vers sa cible, avec
+l'animation de Rugissement et « Intimidation » au-dessus de lui (une fois
+par seconde au plus). Le talent est écrit sur la fiche de run (C), sur la
+fiche de l'équipe et dans le Pokédex au Repaire (celui d'une évolution aussi :
+« une fois évolué, dès le niveau N », `talentInLine`).
 
 Grottes (portée de `_spawn_cave_portals` et `CaveArena.gd`) : passé les deux
 premières salles de la run, une bouche peut s'ouvrir au pied d'une falaise —
@@ -328,9 +388,9 @@ Bétochef à 6.
   deux piliers de pierre, puis une rue de briques qui ondule jusqu'à la place
   (seuil gris, puis briques beiges : le chemin de terre ne bute plus sur le
   pavé) ; douze libérés de plus au camp (ils flânent sur la place). Deux
-  d'entre eux portent l'eau du puits à leur maison, un seau plein à l'aller
-  (chemin calculé case par case autour du puits et du banc), et une
-  lavandière frotte le linge dans son baquet sous une corde à linge ;
+  d'entre eux portent l'eau du puits à leur maison (chemin calculé case par
+  case autour du puits et du banc), et une lavandière frotte le linge à son
+  tonneau (le seau et la corde à linge, dessinés à la main, sont retirés) ;
 - **Carrière** (Bois 14, Nourriture 6 ; après le Terrain d'entraînement) :
   une poche gagnée sur la forêt au nord-est, derrière le relais (`POSTS.quarry`,
   et une trouée qui la relie) ; du gravier, de gros blocs, un tas de pierres,
@@ -532,12 +592,11 @@ un cadeau (quelques ₽, une Potion, une Baie Oran pour l'équipe), un par
 visite au plus. On les contourne, ils ne se laissent pas pousser. Sur l'étal,
 un **lot de Baies** par visite (7, 17 ou 40 Baies pour 100, 220 ou 480 ₽,
 `BERRY_PACKS`, les quantités du jeu divisées par trois) : convertir sa bourse
-en monnaie du Repaire, à un taux exprès ingrat. Et un **objet tenu** par
-visite (ajout) : un des moins chers du marché du Repaire (≤ 160 Baies), à
-4 ₽ la Baie de son prix (280 à 640 ₽), versé à la réserve du Repaire pour
-être tenu au retour (`HELD_FOR_SALE`, `ShopHost.giveItem` ; refusé chez
-l'invité, qui n'a pas de Repaire). Pas encore de rachat (il faudrait un
-inventaire en run).
+en monnaie du Repaire, à un taux exprès ingrat. Et un **lot de ressources**
+par visite (retour de test du 16 novembre 2026, à la place de l'objet tenu :
+« acheter des pierres, d'autres ressources, ça me va ») : 6 Bois, 5 Pierre
+ou 5 Nourriture pour 150 à 170 ₽ (`RES_PACKS`, `ShopHost.giveRes` ; refusé
+chez l'invité, qui n'a pas de Repaire). Rien ne se revend.
 
 **Solde des mercenaires** (`CombatArena._collect_merc_retainers`) : à
 l'entrée de chaque boutique suivante, un mercenaire encore debout réclame la

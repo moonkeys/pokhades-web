@@ -2,6 +2,7 @@ import { loadMove, type Move } from '../combat/moves';
 import { sfx } from '../audio/audio';
 import { fetchJson } from '../assets/json';
 import { BASE_TEAM_LEVEL, Pokemon } from '../combat/pokemon';
+import { talentInLine } from '../data/abilities';
 import { sheetOf } from '../data/bestiary';
 import { dexOf } from '../data/forms';
 import { BUILDINGS, BUNKS, BUNK_ROOM, bunkPrice, CANDY, CS_LIST, HELD_ITEMS, RESOURCES, RESOURCE_IDS, SHARDS, TMS, UPGRADES, applyHeld, buildingsShown, canAfford, heldBoosts, heldItem, heldText, teamSlots, type Cost, type HeldItem, type ResourceId, type Upgrade } from '../meta/catalog';
@@ -911,6 +912,9 @@ export class CampScreen {
     for (const t of data?.types ?? []) typePill(t, head);
     el('small', 'cs-info', card, `n°${String(dexOf(id)).padStart(3, '0')}${met ? ` · ${wins(id)} victoire${wins(id) > 1 ? 's' : ''}` : ''}`);
     // Où le trouver, une fois croisé : ses biomes, et les grottes qui le gardent.
+    // Son talent, s'il en a un que le jeu fait jouer, ou celui d'une de ses évolutions.
+    const talent = met || own ? talentInLine(id) : null;
+    if (talent) el('small', 'cs-info cs-talent', card, `◆ Talent : ${talent.name} — ${talent.desc}${talent.level ? ` (une fois évolué, dès le niveau ${talent.level})` : ''}.`);
     if (met) {
       const { wild, caves } = habitat(id);
       const parts = [...(wild.length ? [`Vit en : ${wild.join(', ')}`] : []), ...(caves.length ? [`Grottes : ${caves.join(', ')}`] : [])];
@@ -1107,6 +1111,9 @@ export class CampScreen {
     const w0 = weights.get(id);
     if (w0) chip('⚖', String(w0.total), `Poids ${w0.total} : Pokémon ${w0.mon} · attaques ${w0.moves} · objet ${w0.item}. L’équipe ne doit pas dépasser son plafond pour partir.`);
     chip('✦', natureText(indiv.nature).split(' (')[0], `Nature : ${natureText(indiv.nature)}`);
+    // Le talent (data/abilities.ts), ou celui qu'apportera une évolution (Têtarte → Tarpaud).
+    const talent = talentInLine(speciesOf(save, id));
+    if (talent) chip('◆', talent.name, `Talent : ${talent.name} — ${talent.desc}${talent.level ? ` (une fois évolué, dès le niveau ${talent.level})` : ''}.`);
     const from = originShort(save, id);
     if (from) chip('⚑', '', from);
     const act = el('div', 'cs-actions', who);

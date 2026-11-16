@@ -9,8 +9,10 @@ import { VICTORY_ROAD, WORLD, WORLD_LINKS, type BiomeLink } from '../world/world
 import { preEvolutionOf } from '../data/evolutions';
 import { typeMates } from '../data/trainers';
 
-// Structure d'une run, reprise de RunManager.gd : 4 actes de 7 salles (5
-// combats, une boutique, un boss), un biome par acte. Les portes de sortie
+// Structure d'une run, reprise de RunManager.gd : 4 actes de 9 salles (7
+// combats, une boutique, un boss), un biome par acte. Écart voulu (retour de
+// test du 16 novembre 2026 : « entre 8 et 10 salles par biome ») : le jeu en
+// comptait 7 (5 combats) ; avec les salles sans combat, ça filait trop vite. Les portes de sortie
 // annoncent la récompense de la salle suivante, tirée sans remise (deux
 // portes ne proposent jamais la même).
 //
@@ -28,8 +30,8 @@ import { typeMates } from '../data/trainers';
 // effectifs, Pokémon venus d'ailleurs, sbires des champions — et les salles
 // comptent la taille de l'équipe : six Pokémon affrontent plus de monde.
 
-export const COMBATS_PER_ACT = 5;
-export const ROOMS_PER_ACT = 7;
+export const COMBATS_PER_ACT = 7;
+export const ROOMS_PER_ACT = 9;
 /** Actes d'une run ordinaire ; la Route Victoire en ajoute un. */
 export const ACTS = 4;
 export type { BiomeLink };
@@ -115,7 +117,7 @@ const CURSE_LEVELS = 2;
 const OFFERED_SPECIALS: readonly SpecialId[] = ['challenge', 'trap', 'spring', 'altar', 'dojo', 'pension'];
 /** Chance qu'une porte devienne une salle spéciale, et plafond par acte. */
 const SPECIAL_CHANCE = 0.35;
-const SPECIALS_PER_ACT = 2;
+const SPECIALS_PER_ACT = 3;
 
 /** Ce qu'annonce une porte : la récompense de la salle suivante, ou le boss. */
 export interface ExitOffer {
@@ -493,7 +495,9 @@ export class Run {
   private levelAt(room: number): number {
     const act = Math.min(this.acts - 1, Math.floor(room / ROOMS_PER_ACT));
     const curse = this.curse === 'levels' && this.curseAct === act ? CURSE_LEVELS : 0;
-    return 10 + Math.floor(room * 1.2) + act * 3 + (act === this.victoryAct ? 6 : 0) + curse;
+    // (8,4 niveaux par acte, comme quand un acte comptait 7 salles à 1,2 : des actes plus longs ne
+    // font pas monter la fin de run plus haut.)
+    return 10 + Math.floor((room * 8.4) / ROOMS_PER_ACT) + act * 3 + (act === this.victoryAct ? 6 : 0) + curse;
   }
 
   /**

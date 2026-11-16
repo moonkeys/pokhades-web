@@ -4,23 +4,25 @@ import { Actor } from '../entities/actor';
 import type { InputSample } from '../input/input';
 import type { CombatFx, Projector } from '../render/combatfx';
 import type { WorldMap } from '../world/generate';
-import { TILE } from '../world/tiles';
+import { CAMP_PROPS, DOJO_HALL, DOJO_MAT, PROPS, type SpriteDef } from '../world/tiles';
 import { Placer } from './placement';
 
 // Dojo, salle spéciale (A-FAIRE 1.9 : « d'autres salles »). Pas d'ennemis,
 // portes ouvertes, comme la Source et l'Autel : au centre, un tatami et un
-// mannequin de paille, et Machopeur, maître des lieux. [E] au tatami : une
+// rocher d'entraînement, et Machopeur, maître des lieux. [E] au tatami : une
 // leçon gratuite, l'écran « Nouvelle attaque » de la récompense (apprendre ou
 // renforcer, pour le membre choisi). DOJO_LESSONS leçons par salle ; fermer
 // l'écran sans rien prendre ne consomme rien.
 //
-// Ni le tileset ni Essentials n'ont de tatami : il est dessiné, comme le
-// bassin et l'autel.
+// Retour de test du 16 novembre 2026 (pas de décor dessiné à la main) : le
+// tatami est celui des arènes d'Essentials (DOJO_MAT, six nattes répétées en
+// 9 × 6 cases), devant la salle d'entraînement au toit rouge du tileset ; le
+// mannequin de paille devient un rocher du tileset, que le maître frappe à la
+// fin de chaque leçon. [E] n'importe où sur le tatami.
 
 export const DOJO_NPC = 67;
 /** Leçons offertes par le maître dans une même salle. */
 export const DOJO_LESSONS = 2;
-const REACH = 2.2;
 const LINES = ['Ossu ! Monte sur le tatami, je vais t’apprendre un coup.', 'Machopeur fait craquer ses poings : la leçon est gratuite.'];
 
 export interface DojoHost {
@@ -31,7 +33,12 @@ export interface DojoHost {
 export class Dojo {
   active = false;
   readonly npcs: Actor[] = [];
-  private mat: { x: number; y: number } | null = null;
+  /** Le tatami : son milieu et ses demi-côtés (cases). On prend la leçon dessus. */
+  private mat: { x: number; y: number; rx: number; ry: number } | null = null;
+  /** Le rocher que frappe le maître (centre du sprite). */
+  private rock = { x: 0, y: 0 };
+  /** Les coins des habitants (residents.ts) : centre et rayon de promenade. */
+  spots: { x: number; y: number; r: number }[] = [];
   private left = 0;
   /** Écran des attaques ouvert : on ne le rouvre pas tant qu'il l'est. */
   private busy = false;
@@ -81,14 +88,49 @@ export class Dojo {
     this.active = true;
     this.left = DOJO_LESSONS;
     this.talked = false;
+    // Au milieu de la place du Sanctuaire (layouts.ts) : la salle d'entraînement au toit rouge,
+    // le tatami devant (9 × 6 nattes, cuites avec le sol), des torches de part et d'autre de la
+    // porte, des rochers d'entraînement sur les côtés. La place est dégagée d'abord.
     const place = new Placer(world);
-    const at = place.freeSpot(Math.floor(world.hub.x), Math.floor(world.hub.y));
-    this.mat = { x: at.x, y: at.y };
-    // Le mannequin, à droite du tatami, barre sa case.
-    const dummy = Math.floor(at.y) * world.w + Math.floor(at.x) + 1;
-    if (world.blocked[dummy] === 0) world.blocked[dummy] = 1;
-    place.block(Math.floor(at.x) + 1, Math.floor(at.y));
-    const n = place.freeSpot(Math.floor(at.x) - 2, Math.floor(at.y) - 1);
+    const cx = Math.floor(world.hub.x);
+    const cy = Math.floor(world.hub.y);
+    place.clearArea(cx - 7, cy - 7, 15, 13);
+    place.prop(DOJO_HALL, cx + 0.5, cy - 1.9);
+    const x0 = cx - 4;
+    const y0 = cy;
+    const MW = 3 * DOJO_MAT.w;
+    const MH = 3 * DOJO_MAT.h;
+    for (let dy = 0; dy < MH; dy++)
+      for (let dx = 0; dx < MW; dx++) world.decals.push({ tile: [DOJO_MAT.tile[0] + (dx % DOJO_MAT.w), DOJO_MAT.tile[1] + (dy % DOJO_MAT.h)], x: x0 + dx, y: y0 + dy });
+    this.mat = { x: x0 + MW / 2, y: y0 + MH / 2, rx: MW / 2, ry: MH / 2 };
+    for (const dx of [-3.5, 4.5]) place.prop(CAMP_PROPS.torch, cx + dx, cy - 0.6);
+    // Le rocher que frappe le maître, à droite du tatami ; un plus petit à gauche.
+    const rx = x0 + MW + 1.5;
+    const ry = y0 + 4;
+    place.prop(PROPS.boulder[0], rx, ry);
+    this.rock = { x: rx, y: ry - 0.8 };
+    place.prop(PROPS.rockSmall[0], x0 - 1.5, y0 + 3);
+    place.prop(PROPS.rockSmall[1], x0 - 1, y0 + 5);
+    // Retour de test (« des trucs de casse et tout ») : des tonneaux à briser près de la salle, des
+    // rondins empilés, des souches qui servent de poteaux de frappe, des pierres à fendre. (Les
+    // caisses du tileset se lisaient comme des pancartes : retirées.)
+    const gear: [SpriteDef, number, number][] = [
+      [CAMP_PROPS.barrels[1], cx - 5.5, cy - 0.8],
+      [PROPS.boulder[1], cx - 6.6, cy - 0.2],
+      [CAMP_PROPS.barrels[0], cx + 6.5, cy - 0.6],
+      [CAMP_PROPS.barrels[1], cx + 7.3, cy],
+      [PROPS.log[0], cx - 6.5, cy + 2.2],
+      [PROPS.log[0], cx - 6.5, cy + 3.4],
+      [PROPS.stump[0], cx + 8, cy + 2.5],
+      [PROPS.stump[1], cx + 6.5, cy + 6.6],
+      [PROPS.stump[0], cx - 3, cy + 7],
+    ];
+    for (const [sp, x, y] of gear) place.prop(sp, x, y);
+    this.spots = [
+      { x: cx - 6.5, y: cy + 6, r: 2 },
+      { x: cx + 3, y: cy + 7.5, r: 2.5 },
+    ];
+    const n = { x: x0 + MW / 2, y: y0 + 1.4 };
     const actor = new Actor(DOJO_NPC, n.x, n.y);
     actor.dir = 0;
     void loadInfo(DOJO_NPC).then((i) => (actor.info = i));
@@ -102,7 +144,8 @@ export class Dojo {
 
   update(dt: number, input: InputSample, player: Actor, rand: () => number): void {
     if (!this.active || !this.mat) return;
-    this.near = this.left > 0 && !this.busy && Math.hypot(player.x - this.mat.x, player.y - this.mat.y) < REACH;
+    const on = Math.abs(player.x - this.mat.x) < this.mat.rx && Math.abs(player.y - this.mat.y) < this.mat.ry + 0.5;
+    this.near = this.left > 0 && !this.busy && on;
     this.bubbleT -= dt;
     const m = this.master;
     if (m && this.hitT > 0) {
@@ -130,14 +173,13 @@ export class Dojo {
     sfx('menuOpen');
     this.host.lesson(() => {
       const m = this.master;
-      const p = this.mat!;
       this.left--;
-      // Le maître frappe le mannequin pour conclure la leçon.
+      // Le maître frappe le rocher pour conclure la leçon.
       if (m) {
         m.setPose(['Attack', 'Idle']);
         this.hitT = 0.8;
       }
-      this.fx.attackAnim('fighting', p.x + 1, p.y);
+      this.fx.attackAnim('fighting', this.rock.x, this.rock.y);
       this.say(this.left > 0 ? 'Ossu ! Encore une leçon, si tu veux.' : 'Ossu ! Tu en sais assez pour aujourd’hui.');
     });
   }
@@ -162,60 +204,6 @@ export class Dojo {
       el('shop-buy', '✔ Prendre la leçon [E]'),
     );
     this.prompt.hidden = false;
-  }
-
-  /** Le tatami (bordure sombre, paille claire) et le mannequin de paille sur son poteau. */
-  extras(): { y: number; draw(b: CanvasRenderingContext2D, camX: number, camY: number, k: number): void }[] {
-    const p = this.mat;
-    if (!this.active || !p) return [];
-    const mat = {
-      // Au sol : dessous de tout ce qui se tient dessus.
-      y: (p.y - 1.2) * TILE,
-      draw: (b: CanvasRenderingContext2D, camX: number, camY: number, k: number) => {
-        const cx = (p.x * TILE - camX) * k;
-        const cy = (p.y * TILE - camY) * k;
-        const W = 1.4 * TILE * k;
-        const H = 0.95 * TILE * k;
-        b.fillStyle = 'rgba(20,12,4,0.25)';
-        b.fillRect(cx - W + k, cy - H + 2 * k, W * 2, H * 2);
-        b.fillStyle = '#3d4a2c';
-        b.fillRect(cx - W, cy - H, W * 2, H * 2);
-        b.fillStyle = '#c9b77a';
-        const e = 2 * k;
-        b.fillRect(cx - W + e, cy - H + e, W * 2 - 2 * e, H * 2 - 2 * e);
-        // Les nattes : deux moitiés, et le tressage en traits fins.
-        b.fillStyle = '#b5a266';
-        b.fillRect(cx - k / 2, cy - H + e, k, H * 2 - 2 * e);
-        b.fillStyle = 'rgba(120,100,50,0.35)';
-        for (let y = cy - H + e + 3 * k; y < cy + H - e; y += 3 * k) b.fillRect(cx - W + e, y, W * 2 - 2 * e, Math.max(1, k / 2));
-      },
-    };
-    const dummy = {
-      y: (p.y + 0.4) * TILE,
-      draw: (b: CanvasRenderingContext2D, camX: number, camY: number, k: number) => {
-        const shake = this.hitT > 0 ? Math.sin(this.hitT * 40) * 1.5 * k : 0;
-        const cx = ((p.x + 1) * TILE - camX) * k + shake;
-        const cy = ((p.y + 0.4) * TILE - camY) * k;
-        const u = TILE * k;
-        b.fillStyle = 'rgba(20,12,4,0.35)';
-        b.beginPath();
-        b.ellipse(cx, cy, 0.4 * u, 0.15 * u, 0, 0, Math.PI * 2);
-        b.fill();
-        // Poteau, bras, corps et tête de paille liée.
-        b.fillStyle = '#6b4a2a';
-        b.fillRect(cx - 0.08 * u, cy - 1.3 * u, 0.16 * u, 1.3 * u);
-        b.fillRect(cx - 0.45 * u, cy - 1.0 * u, 0.9 * u, 0.12 * u);
-        b.fillStyle = '#d8b864';
-        b.fillRect(cx - 0.22 * u, cy - 1.15 * u, 0.44 * u, 0.7 * u);
-        b.beginPath();
-        b.arc(cx, cy - 1.35 * u, 0.2 * u, 0, Math.PI * 2);
-        b.fill();
-        b.fillStyle = '#a3443a';
-        b.fillRect(cx - 0.22 * u, cy - 0.85 * u, 0.44 * u, 0.08 * u);
-        b.fillRect(cx - 0.22 * u, cy - 1.42 * u, 0.44 * u, 0.06 * u);
-      },
-    };
-    return [mat, dummy];
   }
 
   placeLabels(proj: Projector): void {

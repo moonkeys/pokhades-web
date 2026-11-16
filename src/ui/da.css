@@ -779,11 +779,12 @@
 .notif:nth-child(even) {
   rotate: 0.6deg;
 }
-/* Le bout de ruban qui la tient au mur. */
+/* Le bout de ruban qui la tient au mur : à gauche, au-dessus de l'icône (retour de test du
+   16 novembre 2026 : au milieu, il passait sur le titre). */
 .notif::before {
   content: '';
   position: absolute;
-  left: 50%;
+  left: calc(2.6 * var(--u));
   top: calc(-0.5 * var(--u));
   width: calc(3.2 * var(--u));
   height: calc(1 * var(--u));
@@ -3608,6 +3609,15 @@
   font-weight: 700;
   color: #2f8a3a;
 }
+.stats-card .talent {
+  margin-top: calc(0.4 * var(--u));
+  font-size: calc(0.9 * var(--u));
+  line-height: 1.25;
+  color: var(--ink-soft, #4a3f36);
+}
+.stats-card .talent b {
+  color: #7a4fb0;
+}
 .stats-card .held {
   display: flex;
   gap: calc(0.3 * var(--u));
@@ -5125,4 +5135,167 @@ body.net-on .hud-team {
   margin-left: calc(0.4 * var(--u));
   font-size: calc(1.1 * var(--u));
   font-style: normal;
+}
+
+/* Échange à la Pension (ui/swapscreen.ts) : deux colonnes de papier, une carte par Pokémon. */
+.swap-col {
+  padding: calc(1.2 * var(--u)) calc(1.4 * var(--u));
+  color: var(--ink);
+}
+.swap-title {
+  display: block;
+  margin-bottom: calc(0.8 * var(--u));
+  font-family: var(--head);
+  font-size: calc(1.5 * var(--u));
+  text-transform: uppercase;
+}
+.swap-empty {
+  margin: 0;
+  font-size: calc(1 * var(--u));
+}
+.swap-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(calc(9.5 * var(--u)), 1fr));
+  gap: calc(0.7 * var(--u));
+}
+.swap-mon {
+  display: grid;
+  justify-items: center;
+  gap: calc(0.15 * var(--u));
+  padding: calc(0.5 * var(--u));
+  font: inherit;
+  color: var(--ink);
+  background: rgba(0, 0, 0, 0.05);
+  border: 2px solid transparent;
+  border-radius: calc(0.4 * var(--u));
+  cursor: pointer;
+}
+.swap-mon img {
+  width: calc(5.5 * var(--u));
+  height: calc(5.5 * var(--u));
+  object-fit: contain;
+}
+.swap-mon span {
+  font-weight: 700;
+  font-size: calc(1 * var(--u));
+}
+.swap-mon small {
+  font-size: calc(0.85 * var(--u));
+  opacity: 0.75;
+}
+.swap-mon.ko img {
+  filter: grayscale(1);
+  opacity: 0.6;
+}
+.swap-mon:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+.swap-mon.on {
+  border-color: var(--yel);
+  background: color-mix(in srgb, var(--yel) 25%, transparent);
+}
+.swap-acts {
+  display: flex;
+  gap: var(--u);
+  justify-content: center;
+}
+.swap-acts button {
+  min-width: calc(12 * var(--u));
+}
+.swap-note {
+  text-align: center;
+  color: var(--paper);
+  opacity: 0.8;
+  font-size: calc(0.9 * var(--u));
+}
+
+/* Parler à un Pokémon des salles calmes (ui/talkscreen.ts) : son portrait, ce qu'il dit, des choix. */
+.talk-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: calc(1.4 * var(--u));
+  align-items: center;
+  width: min(92vw, calc(62 * var(--u)));
+  padding: calc(1.6 * var(--u)) calc(2 * var(--u));
+  color: var(--ink);
+}
+.talk-art {
+  width: calc(12 * var(--u));
+  height: calc(12 * var(--u));
+  object-fit: contain;
+}
+.talk-body {
+  display: grid;
+  gap: calc(0.8 * var(--u));
+  justify-items: start;
+}
+.talk-text {
+  margin: 0;
+  font-size: calc(1.3 * var(--u));
+  line-height: 1.4;
+}
+.talk-hint {
+  font-size: calc(0.85 * var(--u));
+  color: var(--muted);
+}
+
+/* Répartir les niveaux de la Pension (ui/trainscreen.ts). */
+.train-mon {
+  cursor: default;
+}
+.train-btns {
+  display: flex;
+  gap: calc(0.4 * var(--u));
+}
+.train-btns button {
+  width: calc(2.6 * var(--u));
+  height: calc(2.2 * var(--u));
+  font-family: var(--head);
+  font-size: calc(1.4 * var(--u));
+  color: var(--ink);
+  background: var(--yel);
+  border: none;
+  cursor: pointer;
+}
+.train-btns button:first-child {
+  color: var(--paper);
+  background: var(--ink);
+}
+/* Récompenses d'un service (ui/talkscreen.ts) : icône d'Essentials, libellé, ce que fait l'objet. */
+.talk-rewards {
+  display: grid;
+  gap: calc(0.4 * var(--u));
+}
+.talk-reward {
+  display: flex;
+  gap: calc(0.6 * var(--u));
+  align-items: center;
+}
+.talk-reward img {
+  width: calc(2.6 * var(--u));
+  height: calc(2.6 * var(--u));
+  image-rendering: pixelated;
+}
+.talk-reward b {
+  display: block;
+  font-size: calc(1.1 * var(--u));
+}
+.talk-reward small {
+  font-size: calc(0.9 * var(--u));
+  color: var(--muted);
+}
+/* Services des habitants, dans la fiche de l'équipe (ui/statsheet.ts). */
+.stats-errands .errand {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: calc(0.8 * var(--u));
+}
+.stats-errands .errand-art {
+  width: calc(3.2 * var(--u));
+  height: calc(3.2 * var(--u));
+  object-fit: contain;
+}
+.stats-errands .errand.done b {
+  color: #2f8a3a;
 }

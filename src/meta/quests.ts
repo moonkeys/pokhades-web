@@ -210,7 +210,8 @@ export function refillContracts(save: Save): void {
   while (save.contracts.list.length < CONTRACT_SLOTS) save.contracts.list.push(rollContract(++save.contracts.seed));
 }
 
-function contractGain(c: Contract, ev: QuestEvent): number {
+/** Ce que vaut l'événement pour un contrat (0 : rien). Repris par les services des habitants (errands.ts). */
+export function contractGain(c: Contract, ev: QuestEvent): number {
   switch (c.kind) {
     case 'kill_type':
       return ev.kind === 'kill' && ev.types.includes(c.type!) ? 1 : 0;

@@ -1,5 +1,5 @@
-import type { WorldMap } from '../world/generate';
-import { TILE } from '../world/tiles';
+import type { WorldMap, WorldObject } from '../world/generate';
+import { TILE, type SpriteDef } from '../world/tiles';
 
 // Où poser les Pokémon d'une place (boutique, Repaire) : sur une case libre,
 // à pied, hors de l'eau, que personne n'occupe déjà, et que rien ne cache — un
@@ -21,6 +21,55 @@ export class Placer {
   /** Un Pokémon ou un accessoire est-il déjà posé à moins de `r` cases ? */
   occupied(at: Spot, r = 1.5): boolean {
     return this.taken.some((t) => Math.hypot(t.x - at.x, t.y - at.y) < r);
+  }
+
+  /**
+   * Dégage un rectangle de cases (coin haut-gauche, taille) pour y poser un décor de salle
+   * spéciale : les rochers, arbres et buissons de la salle dont le pied y tombe (ou juste
+   * dessous : leur sprite monterait dessus) et les fleurs s'en vont, les cases se libèrent,
+   * l'herbe haute est fauchée. L'eau et les falaises restent.
+   */
+  clearArea(x0: number, y0: number, w: number, h: number): void {
+    const world = this.world;
+    const inRect = (x: number, y: number, pad: number) => x >= x0 - 1 && x < x0 + w + 1 && y >= y0 && y < y0 + h + pad;
+    for (let i = world.objects.length - 1; i >= 0; i--) {
+      const o = world.objects[i];
+      if (inRect(Math.floor(o.x / TILE), Math.floor(o.y / TILE), 2)) world.objects.splice(i, 1);
+    }
+    // Les fleurs posées à plat aussi (elles restaient sur le dallage de l'Autel), les arbres à baies
+    // (un a poussé sur le tatami du Dojo) et le coffre : la salle les relit ensuite (main.ts).
+    world.flat = world.flat.filter((f) => !inRect(f.x, f.y, 0));
+    if (world.berries) world.berries = world.berries.filter((b) => !inRect(Math.floor(b.x), Math.floor(b.y), 2));
+    if (world.chest && inRect(Math.floor(world.chest.x), Math.floor(world.chest.y), 2)) world.chest = null;
+    for (let y = y0; y < y0 + h; y++)
+      for (let x = x0; x < x0 + w; x++) {
+        if (x < 0 || y < 0 || x >= world.w || y >= world.h) continue;
+        const i = y * world.w + x;
+        if (!world.inside[i] || world.water[i] || world.cliff?.[i]) continue;
+        world.blocked[i] = world.solid[i] = world.tall[i] = 0;
+      }
+  }
+
+  /**
+   * Pose un objet du décor (`x` : son milieu, `y` : la rangée où il touche le sol, en cases),
+   * comme le Repaire (camp.ts, put) : il barre les cases de son pied, sur sa largeur et sa
+   * profondeur ; un gros (trois cases et plus) ne se traverse pas même en dash. Rend l'objet.
+   */
+  prop(sprite: SpriteDef, x: number, y: number, blocks = true): WorldObject {
+    const world = this.world;
+    const o: WorldObject = { sprite, x: Math.round(x * TILE), y: Math.round(y * TILE), fades: false };
+    world.objects.push(o);
+    this.take({ x, y });
+    if (!blocks || sprite.trunk <= 0) return o;
+    const rows = Math.max(1, Math.ceil((sprite.depth ?? 6) / TILE));
+    const row = Math.floor(y - 0.05);
+    for (let ry = row - rows + 1; ry <= row; ry++) {
+      for (let cx = Math.floor(x - sprite.trunk / 2 + 0.1); cx <= Math.floor(x + sprite.trunk / 2 - 0.1); cx++) {
+        this.block(cx, ry);
+        if (sprite.trunk >= 3 && cx >= 0 && ry >= 0 && cx < world.w && ry < world.h) world.solid[ry * world.w + cx] = 1;
+      }
+    }
+    return o;
   }
 
   block(x: number, y: number): void {

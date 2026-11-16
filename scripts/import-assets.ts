@@ -152,7 +152,7 @@ for (const f of ['ball_POKEBALL', 'ball_POKEBALL_open']) renamed.push([`${ESSENT
 // Illustrations officielles des légendaires donateurs (data/artwork, PMDSprites.get_artwork) : l'écran des dons.
 for (const dex of DONOR_SPECIES) files.push(`data/artwork/${dex}.png`);
 // Icônes de l'étal de la boutique (ShopStock.gd, Graphics/Items), et la pièce du butin (portes, src/ui/rewardicons.ts).
-for (const f of ['POTION', 'SUPERPOTION', 'HYPERPOTION', 'MAXPOTION', 'REVIVE', 'MAXREVIVE', 'machine_NORMAL', 'COINCASE', 'AMULETCOIN']) {
+for (const f of ['POTION', 'SUPERPOTION', 'HYPERPOTION', 'MAXPOTION', 'REVIVE', 'MAXREVIVE', 'machine_NORMAL', 'COINCASE', 'AMULETCOIN', 'STICK', 'SOULDEW']) {
   renamed.push([`${ESSENTIALS}/Items/${f}.png`, `assets/essentials/items/${f}.png`]);
 }
 // Repaire : les CT (une icône par type), les objets tenus et les améliorations (src/meta/catalog.ts).
@@ -181,6 +181,8 @@ for (const r of Object.values(RESOURCES)) if (r.icon) renamed.push([`${ESSENTIAL
 // (cf. ESSENTIALS_BLOCKS dans src/world/tiles.ts). Découper ici demanderait une dépendance.
 renamed.push([`${ESSENTIALS}/Tilesets/Outside.png`, 'assets/essentials/tilesets/Outside.png']);
 renamed.push([`${ESSENTIALS}/Tilesets/Gyms interior.png`, 'assets/essentials/tilesets/Gyms interior.png']);
+// Le cercle magique de l'Autel maudit (ESSENTIALS_BLOCKS).
+renamed.push([`${ESSENTIALS}/Tilesets/Graveyard tower interior.png`, 'assets/essentials/tilesets/Graveyard tower interior.png']);
 renamed.push([`${ESSENTIALS}/Autotiles/Fountain1.png`, 'assets/essentials/autotiles/Fountain1.png']);
 for (const f of ['ball_BEASTBALL', 'ball_BEASTBALL_open', 'ballBurst_particle', 'ballBurst_particle_s', 'ballBurst_dazzle']) {
   renamed.push([`${ESSENTIALS}/Battle animations/${f}.png`, `assets/essentials/battle/${f}.png`]);

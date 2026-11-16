@@ -1,3 +1,4 @@
+import { sanitizeErrands, type Errand } from './errands';
 // Progression permanente, gardée d'une run à l'autre (GameManager.gd, save.json) :
 // les Baies, l'équipe composée au Repaire, ses attaques et ses objets tenus,
 // les CT achetées et les améliorations. Mémorisée dans le navigateur ; sans
@@ -53,6 +54,8 @@ export interface Save {
   quests: { active: QuestId[]; progress: Partial<Record<QuestId, number>>; done: QuestId[] };
   /** Contrats de Kangourex, renouvelés à chaque réclamation (meta/quests.ts) ; `seed` : compteur du tirage. */
   contracts: { list: Contract[]; seed: number };
+  /** Services des habitants des salles calmes (meta/errands.ts) ; `seed` : compteur du tirage. */
+  errands: { list: Errand[]; seed: number };
   /** Runs lancées depuis le Repaire. */
   runs: number;
   /** L'équipe (uid des individus) ; le premier mène, au camp comme en run. */
@@ -178,6 +181,7 @@ const DEFAULTS: Save = {
   missions: [],
   quests: { active: [], progress: {}, done: [] },
   contracts: { list: [], seed: 0 },
+  errands: { list: [], seed: 0 },
   runs: 0,
   team: [1],
   loadouts: {},
@@ -255,6 +259,7 @@ export function migrate(save: Save): Save {
   // Quêtes inconnues oubliées, trois actives au plus, progression bornée à l'objectif.
   save.quests = sanitizeQuests(save.quests);
   save.contracts = sanitizeContracts(save.contracts);
+  save.errands = sanitizeErrands(save.errands);
   // add_champion_shards : jamais sous 0, toujours entier.
   save.shards = Math.max(0, Math.floor(Number(save.shards) || 0));
   // Ressources : une clé manquante ou nulle donnerait NaN au premier ajout.
@@ -402,13 +407,15 @@ export function grantAlly(save: Save, species: number): { id: number; waiting: b
 
 /**
  * Un champion vaincu (A-FAIRE 1.7 : « le déblocage par les boss de champion ») : un Pokémon
- * de son équipe, ramené à sa forme de base, rejoint la rébellion — son as d'abord, puis en
- * remontant les vagues, le premier qu'on n'a ni au Repaire ni en attente. Repaire plein : il
+ * de son équipe, ramené à sa forme de base, rejoint la rébellion — le plus faible d'abord (sa
+ * première vague), puis, victoire après victoire, en montant jusqu'à son as : le premier qu'on
+ * n'a ni au Repaire ni en attente (retour de test du 16 novembre 2026 : « plus on le bat, plus
+ * on se rapproche du Pokémon le plus fort »). Repaire plein : il
  * attend avec les recrues. Rend l'espèce, ou null si l'équipe n'a plus rien à offrir.
  */
 export function grantChampion(save: Save, bases: readonly number[], champion: string): { id: number; waiting: boolean } | null {
   if (!save.started) return null;
-  for (const species of [...bases].reverse()) {
+  for (const species of bases) {
     let id = species;
     for (let pre = preEvolutionOf(id); pre !== null; pre = preEvolutionOf(id)) id = pre;
     if (ownsSpecies(save, id) || save.candidates.some((c) => c.species === id)) continue;

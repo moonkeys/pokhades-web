@@ -21,7 +21,7 @@ import type { Biome } from './biomes';
 // leurs bouts deviennent les portes (findExits). Les routes, elles, suivent
 // le squelette de la forme pour ne pas tailler de tranchée dans la forêt.
 
-export type LayoutId = 'clairiere' | 'arene' | 'couloir' | 'front' | 'haltere' | 'carrefour' | 'boucle' | 'lacets' | 'ile' | 'terrasses';
+export type LayoutId = 'clairiere' | 'arene' | 'couloir' | 'front' | 'haltere' | 'carrefour' | 'boucle' | 'lacets' | 'ile' | 'terrasses' | 'sanctuaire';
 
 export const LAYOUT_NAMES: Record<LayoutId, string> = {
   clairiere: 'Clairière',
@@ -34,6 +34,7 @@ export const LAYOUT_NAMES: Record<LayoutId, string> = {
   lacets: 'Lacets',
   ile: 'Île',
   terrasses: 'Terrasses',
+  sanctuaire: 'Sanctuaire',
 };
 
 type Pt = { x: number; y: number };
@@ -308,6 +309,27 @@ const LAYOUTS: Record<LayoutId, LayoutDef> = {
       const routes = [[entry, S, c, N, { x: N.x + rng.range(-4, 4), y: 0.5 }], [S, rim(315), Wp, rim(225), N], [S, rim(45), E, rim(135), N]];
       if (rng.chance(0.6)) routes.push(rng.chance(0.5) ? [Wp, { x: 0.5, y: c.y + rng.range(-3, 3) }] : [E, { x: w - 0.5, y: c.y + rng.range(-3, 3) }]);
       return { prims: [ellipse(c.x, c.y, w / 2 - 1, h / 2 - 1)], core, land, entry, hub: c, routes, wobble: 1.5 };
+    },
+  },
+  // Sanctuaire (retour de test du 16 novembre 2026 : les salles calmes étaient des couloirs, la
+  // Source posée en plein chemin) : une petite salle ronde pour la Source, l'Autel, le Dojo et la
+  // Pension, jamais tirée ailleurs. Le chemin fait le tour d'une grande place laissée libre, où la
+  // salle pose son décor ; l'entrée en bas, la sortie en haut, parfois une sur un côté.
+  sanctuaire: {
+    // Retour de test (« beaucoup de vide autour ») : plus petite que les autres formes.
+    sizes: [[34, 28], [36, 28]],
+    build: (w, h, rng) => {
+      const c = { x: w / 2, y: h / 2 };
+      const rim = (deg: number): Pt => ({ x: c.x + Math.sin((deg * Math.PI) / 180) * w * 0.36, y: c.y + Math.cos((deg * Math.PI) / 180) * h * 0.36 });
+      const S = rim(0);
+      const N = rim(180);
+      const entry = { x: S.x, y: h - 0.5 };
+      const west = rng.chance(0.5);
+      // Le tour de la place, par un seul côté : l'autre reste un pré, le décor y déborde.
+      const ring = west ? [S, rim(315), rim(270), rim(225), N] : [S, rim(45), rim(90), rim(135), N];
+      const routes = [[entry, S], ring, [N, { x: N.x + rng.range(-3, 3), y: 0.5 }]];
+      if (rng.chance(0.6)) routes.push(west ? [rim(270), { x: 0.5, y: c.y + rng.range(-3, 3) }] : [rim(90), { x: w - 0.5, y: c.y + rng.range(-3, 3) }]);
+      return { prims: [ellipse(c.x, c.y, w / 2 - 1, h / 2 - 1)], core: null, entry, hub: c, routes, wobble: 1 };
     },
   },
   // Terrasses (A-FAIRE 1.12 : « des terrasses au Rocailleux ») : trois

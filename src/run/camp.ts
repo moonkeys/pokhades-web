@@ -386,7 +386,6 @@ export class Camp {
   private talkers: Talker[] = [];
   private fire = { x: 0, y: 0 };
   /** Le baquet de la lavandière (bourg), sous sa corde à linge. */
-  private laundry: Spot | null = null;
   private gate = { x: 0, y: 0 };
   /** 0 à 1 : le halo de l'arche s'embrase quand on part en run (main.ts, startDeparture). */
   departGlow = 0;
@@ -451,7 +450,6 @@ export class Camp {
     this.jetty = null;
     this.lure = null;
     this.beds = [];
-    this.laundry = null;
     this.npcs.length = 0;
     this.layer.replaceChildren();
     this.prompt.hidden = true;
@@ -890,8 +888,11 @@ export class Camp {
       put(PROPS.paleStones[3], quarry.x + 4.2, quarry.y + 2, false);
     }
     if (has('dorm')) {
-      put(CAMP_PROPS.tepee, dorm.x - 3.5, dorm.y - 0.6);
-      put(CAMP_PROPS.tepee, dorm.x + 3.5, dorm.y - 0.6);
+      // Décalés vers l'ouest (retour de test du 16 novembre 2026, capture à l'appui : le tipi de
+      // droite passait par-dessus le panneau du plan du monde, posé à la même abscisse ; le
+      // gauche, poussé trop loin, s'enfonçait dans les arbres).
+      put(CAMP_PROPS.tepee, dorm.x - 5, dorm.y - 0.6);
+      put(CAMP_PROPS.tepee, dorm.x - 0.5, dorm.y - 0.6);
     }
     if (has('jetty')) {
       // Le ponton : son plancher avance au-dessus de l'eau, et l'on y marche jusqu'au bout.
@@ -1251,11 +1252,12 @@ export class Camp {
       const t = this.talk(id, i ? house : well, rng.int(8), ['Idle'], LINES.water);
       t.errand = { stops: [well, house], i: i ? 0 : 1, wait: rng.range(0.5, 2.5), carry: i === 0, path: null, stuckT: 0 };
     });
-    // La lavandière, à son baquet au coin de la place, sous la corde à linge.
+    // La lavandière, à son baquet au coin de la place : un tonneau du tileset (retour de test du
+    // 16 novembre 2026 : pas de décor dessiné à la main ; le baquet, le seau des porteurs et la
+    // corde à linge l'étaient, le tileset n'en a pas).
     groups.wash.forEach((id) => {
       const tub = place.freeSpot(square.x + 1, square.y + square.h - 1, 2);
-      place.block(Math.floor(tub.x), Math.floor(tub.y));
-      this.laundry = { x: tub.x, y: tub.y };
+      put(CAMP_PROPS.barrels[0], tub.x, tub.y);
       const t = this.talk(id, { x: tub.x + 1.1, y: tub.y }, 6, ['Idle'], LINES.washer);
       t.wash = { scrubT: rng.range(0.5, 1.5) };
     });
@@ -1527,19 +1529,6 @@ export class Camp {
       const m = f.dummy;
       if (m && m.rock) out.push({ y: m.y * TILE + 2, draw: (b, camX, camY, k) => drawChips(b, (m.x * TILE - camX) * k, (m.y * TILE - camY) * k, k, m.hitT) });
       else if (m) out.push({ y: m.y * TILE, draw: (b, camX, camY, k) => drawDummy(b, Math.round((m.x * TILE - camX) * k), Math.round((m.y * TILE - camY) * k), k, m.hitT) });
-      // Le seau du porteur d'eau, plein, à côté de lui (devant s'il va vers le sud).
-      const e = f.errand;
-      if (e?.carry) {
-        const a = f.actor;
-        const side = a.dir >= 1 && a.dir <= 3 ? -1 : 1;
-        out.push({ y: a.y * TILE + 0.5, draw: (b, camX, camY, k) => drawBucket(b, Math.round(((a.x + side * 0.45) * TILE - camX) * k), Math.round(((a.y - 0.1) * TILE - camY) * k), k) });
-      }
-    }
-    const tub = this.laundry;
-    if (tub) {
-      out.push({ y: tub.y * TILE, draw: (b, camX, camY, k) => drawTub(b, Math.round((tub.x * TILE - camX) * k), Math.round((tub.y * TILE - camY) * k), k, time) });
-      // La corde à linge, derrière le baquet : deux poteaux et le linge qui bat au vent.
-      out.push({ y: (tub.y - 1) * TILE, draw: (b, camX, camY, k) => drawClothesline(b, Math.round(((tub.x - 0.5) * TILE - camX) * k), Math.round(((tub.y - 1) * TILE - camY) * k), k, time) });
     }
     return out;
   }
@@ -1732,86 +1721,6 @@ function drawPlanBoard(b: CanvasRenderingContext2D, art: HTMLCanvasElement, px: 
   b.imageSmoothingEnabled = false;
   b.drawImage(art, x0 + frame * k, y0 + frame * k, art.width * k, art.height * k);
   b.imageSmoothingEnabled = smooth;
-}
-
-/** Seau de bois cerclé, rempli d'eau (porteurs d'eau du bourg). (x, y) : pied du seau. */
-function drawBucket(b: CanvasRenderingContext2D, x: number, y: number, k: number): void {
-  const w = 5 * k;
-  const h = 6 * k;
-  b.fillStyle = 'rgba(0,0,0,0.25)';
-  b.fillRect(x - w / 2, y - k, w, k);
-  b.fillStyle = '#7a5230';
-  b.fillRect(x - w / 2, y - h, w, h);
-  b.fillStyle = '#5a3a20';
-  b.fillRect(x - w / 2, y - h * 0.7, w, k);
-  b.fillRect(x - w / 2, y - h * 0.25, w, k);
-  b.fillStyle = '#6fb6e8';
-  b.fillRect(x - w / 2 + k, y - h, w - 2 * k, k);
-  // L'anse.
-  b.strokeStyle = '#3b2a1a';
-  b.lineWidth = Math.max(1, k * 0.6);
-  b.beginPath();
-  b.arc(x, y - h, w * 0.45, Math.PI, 0);
-  b.stroke();
-}
-
-/** Baquet de lessive : cuve de bois, eau savonneuse et bulles qui montent. (x, y) : pied. */
-function drawTub(b: CanvasRenderingContext2D, x: number, y: number, k: number, time: number): void {
-  const w = 14 * k;
-  const h = 7 * k;
-  b.fillStyle = 'rgba(0,0,0,0.25)';
-  b.beginPath();
-  b.ellipse(x, y, w * 0.6, 2.5 * k, 0, 0, Math.PI * 2);
-  b.fill();
-  b.fillStyle = '#8a5d34';
-  b.fillRect(x - w / 2, y - h, w, h);
-  b.fillStyle = '#5e3d22';
-  b.fillRect(x - w / 2, y - h * 0.55, w, k);
-  b.fillStyle = '#cfe6f2';
-  b.beginPath();
-  b.ellipse(x, y - h, w / 2 - k, 2.2 * k, 0, 0, Math.PI * 2);
-  b.fill();
-  // Des bulles qui montent et éclatent.
-  b.fillStyle = 'rgba(255,255,255,0.85)';
-  for (let i = 0; i < 4; i++) {
-    const u = (time * 0.6 + i / 4) % 1;
-    const r = (1 - u) * 1.6 * k + 0.5 * k;
-    b.beginPath();
-    b.arc(x + Math.sin(i * 2.1 + time) * w * 0.3, y - h - u * 8 * k, r, 0, Math.PI * 2);
-    b.fill();
-  }
-}
-
-const LINEN = ['#f4efe2', '#e8604c', '#6fa8dc', '#f2c14e', '#f4efe2'];
-/** Corde à linge entre deux poteaux (3 cases), draps et foulards qui ondulent. (x, y) : pied du poteau gauche. */
-function drawClothesline(b: CanvasRenderingContext2D, x: number, y: number, k: number, time: number): void {
-  const span = 3 * TILE * k;
-  const top = y - 22 * k;
-  b.fillStyle = '#6b4a2a';
-  b.fillRect(x - k, top, 2 * k, y - top);
-  b.fillRect(x + span - k, top, 2 * k, y - top);
-  b.strokeStyle = '#d8d0b8';
-  b.lineWidth = Math.max(1, k * 0.5);
-  b.beginPath();
-  b.moveTo(x, top + k);
-  b.quadraticCurveTo(x + span / 2, top + 5 * k, x + span, top + k);
-  b.stroke();
-  LINEN.forEach((c, i) => {
-    const u = (i + 0.7) / (LINEN.length + 0.4);
-    const cx = x + span * u;
-    const sag = 4 * u * (1 - u) * 4 * k;
-    const cw = (i % 2 ? 5 : 7) * k;
-    const ch = (i % 2 ? 6 : 9) * k;
-    const sway = Math.sin(time * 2.2 + i * 1.3) * 1.2 * k;
-    b.fillStyle = c;
-    b.beginPath();
-    b.moveTo(cx - cw / 2, top + k + sag);
-    b.lineTo(cx + cw / 2, top + k + sag);
-    b.lineTo(cx + cw / 2 + sway, top + k + sag + ch);
-    b.lineTo(cx - cw / 2 + sway, top + k + sag + ch);
-    b.closePath();
-    b.fill();
-  });
 }
 
 /**

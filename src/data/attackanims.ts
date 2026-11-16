@@ -22,7 +22,9 @@ export interface AttackSheet {
 /** Une planche par type. */
 export const TYPE_SHEETS: Record<string, AttackSheet> = {
   normal: { file: '003-Attack01', frames: [0, 4] },
-  fighting: { file: '011-Weapon06', frames: [1, 6] },
+  // Retour de test du 16 novembre 2026 (Balayage « très chelou, deux trucs différents ») : les
+  // cases 3 à 6 de la planche sont des boules de feu et des éclats ; on ne garde que l'impact.
+  fighting: { file: '011-Weapon06', frames: [1, 2] },
   fire: { file: 'fire5', frames: [0, 8] },
   water: { file: '018-Water01' },
   electric: { file: 'Thunder2' },
