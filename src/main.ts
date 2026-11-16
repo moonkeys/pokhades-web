@@ -18,7 +18,7 @@ import { MERC_RETAINER, Shop } from './run/shop';
 import { Camp, CAMP_SEED, campPockets, STATIONS, stationId, type Station } from './run/camp';
 import { CampScreen, movePool, teamWeight, type CampCtx } from './ui/campscreen';
 import { NetBadge } from './ui/netbadge';
-import { BAIES, FIELD_FOOD, RESOURCES, RESOURCE_IDS, ROOM_RES, SHARDS, UPGRADES, applyHeld, heldItem, teamSlots, type ResourceId } from './meta/catalog';
+import { BAIES, FIELD_FOOD, QUARRY_STONE, RESOURCES, RESOURCE_IDS, ROOM_RES, SHARDS, UPGRADES, applyHeld, heldItem, teamSlots, type ResourceId } from './meta/catalog';
 import { addMon, capacity, exile, grantAlly, grantChampion, isFull, level, loadSave, markSeen, monName, ownedSpecies, ownsSpecies, recordDefeat, resetSave, roster, speciesOf, startLevel, welcomeMon, writeSave } from './meta/save';
 import { applyTraits, natureText } from './meta/mons';
 import { quest, questEvent, type QuestEvent, contractEvent, contractText } from './meta/quests';
@@ -36,7 +36,7 @@ import { CompanionBrain } from './combat/companion';
 import { EnemyBrain } from './combat/enemy';
 import { BOONS, DONORS, RARITY_COLOR, RARITY_NAME, STAT_BOONS, type BoonOffer } from './combat/boons';
 import { tune, type Move } from './combat/moves';
-import { BASE_TEAM_LEVEL, Pokemon } from './combat/pokemon';
+import { BASE_TEAM_LEVEL, Pokemon, xpForLevel } from './combat/pokemon';
 import { STEP, startLoop } from './core/loop';
 import { Rng } from './core/rng';
 import { CAMP_NPCS, SWIMMERS } from './data/species';
@@ -61,6 +61,8 @@ import { Merchant } from './run/merchant';
 import { SPRING_HEAL, Spring } from './run/spring';
 import { Altar } from './run/altar';
 import { Dojo } from './run/dojo';
+import { PENSION_LEVELS, Pension } from './run/pension';
+import { INTIMIDATE, INTIMIDATE_MULT, INTIMIDATE_RANGE, INTIMIDATE_TIME, WEATHER_ABILITIES } from './data/abilities';
 import { evolveMove, rollSkillOffer, upgradeMove, type SkillOffer } from './run/rewards';
 import { COMBATS_PER_ACT, CURSES, LEAGUE_MASTER, ROOMS_PER_ACT, Run } from './run/run';
 import { Hud } from './ui/hud';
@@ -388,6 +390,30 @@ async function boot(): Promise<void> {
         },
         close,
       );
+    },
+  });
+  // Pension (salle spéciale, run/pension.ts) : Écrémeuh entraîne l'équipe, chaque membre gagne PENSION_LEVELS
+  // niveau, le plus faible un de plus. Les niveaux passent par combat.levelUp (annonce, évolution).
+  const pension = new Pension(document.body, fx, {
+    message: (text) => runHud.message(text),
+    train: () => {
+      const members = team.filter((m) => !m.remote && m.pokemon);
+      const low = Math.min(...members.map((m) => m.pokemon!.level));
+      const weakest = members.find((m) => m.pokemon!.level === low);
+      let total = 0;
+      for (const m of members) {
+        const mon = m.pokemon!;
+        const target = mon.level + PENSION_LEVELS + (m === weakest ? 1 : 0);
+        total += target - mon.level;
+        fx.attackAnim('fx_boost', m.x, m.y, undefined, true);
+        void mon.addXp(Math.max(0, xpForLevel(target, mon.id) - mon.xp)).then((n) => {
+          if (!n) return;
+          fx.number('buff', m.x, m.y, 0, `Niv. ${mon.level} !`);
+          combat.levelUp(m);
+        });
+      }
+      if (total) sfx('levelup');
+      return total;
     },
   });
   // Source (salle spéciale de soin, run/spring.ts) : Leveinard veille sur un bassin qui soigne l'équipe.
@@ -864,6 +890,52 @@ async function boot(): Promise<void> {
     setWeather(weatherNow());
     runHud.notify({ title: WEATHERS[w].name, text: WEATHERS[w].hint, icon: WEATHERS[w].icon });
   };
+  /**
+   * Talents d'entrée (data/abilities.ts), une fois par Pokémon et par salle, du côté de l'équipe
+   * comme des sauvages et des champions. Météo : Crachin, Sécheresse, Sable Volant ou Alerte
+   * Neige changent le temps de la salle ; le dernier arrivé l'emporte. Intimidation : l'Attaque
+   * des adversaires à portée baisse, et chaque adversaire qui arrive face à un intimidateur
+   * encore debout l'est à son tour.
+   */
+  const talentsSeen = new Set<Actor>();
+  const intimidated = new Set<Actor>();
+  const standing = (a: Actor) => a.deathT < 0 && Boolean(a.pokemon) && !a.pokemon!.fainted;
+  const intimidate = (by: Actor, foe: Actor) => {
+    if (intimidated.has(foe) || Math.hypot(foe.x - by.x, foe.y - by.y) > INTIMIDATE_RANGE) return;
+    intimidated.add(foe);
+    foe.pokemon!.applyBuff('atk', INTIMIDATE_MULT, INTIMIDATE_TIME);
+    fx.number('debuff', foe.x, foe.y, 0, 'ATT ↓');
+  };
+  // (Par l'espèce dessinée : `baseId` est l'uid du membre pour l'équipe du Repaire.)
+  const intimidates = (a: Actor) => INTIMIDATE.has(a.speciesId);
+  const entryTalents = () => {
+    if (mode !== 'run' || cave.active || run.isShop() || net.role === 'client') return;
+    // Intimidation : chaque adversaire debout qui passe à portée d'un intimidateur debout, une fois par salle.
+    for (const [side, other] of [[team, wild], [wild, team]] as const) {
+      for (const a of side) {
+        if (!standing(a) || !intimidates(a)) continue;
+        for (const f of other) if (standing(f)) intimidate(a, f);
+      }
+    }
+    for (const a of [...team, ...wild]) {
+      if (talentsSeen.has(a) || !standing(a)) continue;
+      talentsSeen.add(a);
+      if (intimidates(a)) {
+        fx.number('buff', a.x, a.y, 0, 'Intimidation');
+        sfx('statDown');
+      }
+      // (L'arène du Village est d'intérieur : pas de temps à changer.)
+      if (run.isBoss() && run.biome === 'village') continue;
+      const t = WEATHER_ABILITIES[a.speciesId];
+      if (!t || roomWeather === t.weather) continue;
+      roomWeather = t.weather;
+      setWeather(weatherNow());
+      sfx('ability');
+      fx.number('buff', a.x, a.y, 0, t.name);
+      const w = WEATHERS[t.weather];
+      runHud.notify({ title: `Talent : ${t.name}`, text: `${a.pokemon!.name} : ${w.name.toLowerCase()} (${w.hint})`, icon: w.icon, art: a.speciesId });
+    }
+  };
 
   /**
    * L'as d'un champion méga-évolue en entamant ses deux dernières barres
@@ -906,6 +978,8 @@ async function boot(): Promise<void> {
     outdoor = null;
     megaRevert();
     megaUsed = false;
+    talentsSeen.clear();
+    intimidated.clear();
     cave.clear();
     berries.build(world, BIOMES[run.biome].berry);
     hazards.build(world, run.mapSeed, run.isBoss());
@@ -981,6 +1055,8 @@ async function boot(): Promise<void> {
     if (run.special === 'altar') altar.start(world, () => new Rng(run.mapSeed ^ 0x416c7472).next());
     dojo.clear();
     if (run.special === 'dojo') dojo.start(world);
+    pension.clear();
+    if (run.special === 'pension') pension.start(world);
     combat.hooks.onRoomEnter(player, run, !first && run.room % 7 === 0, run.rng);
     // Test de la grotte (panneau) : chaque salle de combat part de sa grotte ; la salle attend dehors, figée.
     if (opts.biome === 'grotte' && !run.isShop() && !run.isBoss()) enterCave();
@@ -1176,6 +1252,7 @@ async function boot(): Promise<void> {
     spring.clear();
     altar.clear();
     dojo.clear();
+    pension.clear();
     director.clear();
     cave.clear();
     berries.clear();
@@ -1578,6 +1655,8 @@ async function boot(): Promise<void> {
       const back = tickMissions(save);
       // Le champ de la clairière rapporte un peu de Nourriture à chaque salle (sans annonce : c'est le fond du camp).
       if (save.built.includes('field')) save.resources.food += FIELD_FOOD;
+      // La carrière, de même, un peu de Pierre.
+      if (save.built.includes('quarry')) save.resources.stone += QUARRY_STONE;
       // Chaque salle libérée rapporte un peu de bois et de pierre, un champion
       // davantage, vivres compris (retour de test du 11 novembre 2026 : sans
       // coffre ni biome rocheux, pas moyen de gagner de la pierre). Sans
@@ -1949,7 +2028,7 @@ async function boot(): Promise<void> {
     // Les Pokémon de la boutique ne se laissent pas pousser : l'équipe les contourne.
     for (const a of team) {
       if (a.deathT >= 0) continue;
-      for (const n of [...shop.npcs, ...merchant.npcs, ...spring.npcs, ...altar.npcs, ...dojo.npcs, ...camp.npcs, ...cave.npcs]) {
+      for (const n of [...shop.npcs, ...merchant.npcs, ...spring.npcs, ...altar.npcs, ...dojo.npcs, ...pension.npcs, ...camp.npcs, ...cave.npcs]) {
         const dx = a.x - n.x;
         const dy = a.y - n.y;
         const d = Math.hypot(dx, dy);
@@ -2211,7 +2290,7 @@ async function boot(): Promise<void> {
     // Aller à une salle : 1ʳᵉ salle de combat, boutique ou boss de l'acte (PV et dons conservés).
     // Depuis le Repaire, une run part d'abord.
     if (mode === 'camp') newRun();
-    const special = kind === 'challenge' || kind === 'trap' || kind === 'merchant' || kind === 'spring' || kind === 'altar' || kind === 'dojo' ? kind : null;
+    const special = kind === 'challenge' || kind === 'trap' || kind === 'merchant' || kind === 'spring' || kind === 'altar' || kind === 'dojo' || kind === 'pension' ? kind : null;
     run.room = act * ROOMS_PER_ACT + (special ? 1 : kind === 'combat' ? 0 : kind === 'shop' ? COMBATS_PER_ACT : ROOMS_PER_ACT - 1);
     run.special = special;
     endT = -1;
@@ -2266,6 +2345,7 @@ async function boot(): Promise<void> {
     ...spring.extras(time),
     ...altar.extras(time),
     ...dojo.extras(),
+    ...pension.extras(time),
     ...cave.extras(),
     ...(outside() ? [...berries.extras(), ...chests.extras(), ...hazards.extras(time), ...director.captureExtras()] : []),
   ];
@@ -2533,7 +2613,7 @@ async function boot(): Promise<void> {
       }),
       ...wild.map((a) => snapActor(a, netIds.of(a), false)),
       // Les figurants : le vendeur et les mercenaires de la boutique, Miaouss, les prisonniers de grotte.
-      ...[...shop.npcs, ...merchant.npcs, ...spring.npcs, ...altar.npcs, ...dojo.npcs, ...cave.npcs].map((a) => snapActor(a, netIds.of(a), false, true)),
+      ...[...shop.npcs, ...merchant.npcs, ...spring.npcs, ...altar.npcs, ...dojo.npcs, ...pension.npcs, ...cave.npcs].map((a) => snapActor(a, netIds.of(a), false, true)),
     ];
     net.broadcast({
       t: 'snap',
@@ -2662,6 +2742,7 @@ async function boot(): Promise<void> {
     spring.clear();
     altar.clear();
     dojo.clear();
+    pension.clear();
     director.clear();
     cave.clear();
     berries.clear();
@@ -3016,6 +3097,9 @@ async function boot(): Promise<void> {
     else altar.hide();
     if (outside()) dojo.update(dt, sample, player, Math.random);
     else dojo.hide();
+    if (outside()) entryTalents();
+    if (outside()) pension.update(dt, sample, player, Math.random);
+    else pension.hide();
     camp.update(dt, dialogue.open ? { ...sample, interact: false } : sample, player, world);
     if (trainer?.gone) trainer = null;
     // K.O. : retirés après leur fondu.
@@ -3110,7 +3194,7 @@ async function boot(): Promise<void> {
     const extras = [...runExtras(), ...camp.extras(time)];
     // Au Repaire, en ligne : les autres joueurs qui s'y promènent.
     const others = mode !== 'camp' ? [] : net.role === 'host' ? visitors : net.role === 'client' && hostCamp ? field.list() : [];
-    renderer.draw(world, player, [...team, ...others, ...wild, ...shop.npcs, ...merchant.npcs, ...spring.npcs, ...altar.npcs, ...dojo.npcs, ...camp.npcs, ...cave.npcs], particles, footprints, fieldFx, combat, director, extras, opts, alpha, time, { weather: weatherNow(), particles: skyParticles });
+    renderer.draw(world, player, [...team, ...others, ...wild, ...shop.npcs, ...merchant.npcs, ...spring.npcs, ...altar.npcs, ...dojo.npcs, ...pension.npcs, ...camp.npcs, ...cave.npcs], particles, footprints, fieldFx, combat, director, extras, opts, alpha, time, { weather: weatherNow(), particles: skyParticles });
     dialogue.update(frameDt);
     document.body.classList.toggle('talking', dialogue.open);
     document.body.classList.toggle('modal', paused());
@@ -3125,6 +3209,8 @@ async function boot(): Promise<void> {
     spring.placeLabels(proj);
     altar.placeLabels(proj);
     dojo.placeLabels(proj);
+    pension.placeLabels(proj);
+    cave.placeLabels(proj);
     camp.placeLabels(proj);
     hud.setMega(megaReady() ? 'ready' : megaFrom.has(player) ? 'on' : null);
     hud.update(frameDt, player, combat, wild, proj, time, team);
@@ -3168,6 +3254,8 @@ async function boot(): Promise<void> {
         director,
         shop,
         altar,
+        cave,
+        pension,
         camp,
         /** Jeu en ligne : la scène reçue (invité), le décor de la salle (hôte), la session. */
         netDebug: () => ({ scene: hostScene, extras: runExtras().length, net, field }),

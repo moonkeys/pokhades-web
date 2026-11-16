@@ -18,6 +18,61 @@ export interface PatchNote {
 
 export const PATCH_NOTES: readonly PatchNote[] = [
   {
+    id: '2026-11-16',
+    date: '16 novembre 2026',
+    title: 'Intimidation',
+    sections: [
+      {
+        title: 'Combat',
+        items: ['Talent Intimidation (Arcanin, Léviator, Luxray, Baggiguane…) : les adversaires qui s’approchent perdent un quart de leur Attaque pendant 10 s. Ça marche dans les deux sens.'],
+      },
+    ],
+  },
+  {
+    id: '2026-11-15',
+    date: '15 novembre 2026',
+    title: 'La Carrière et les talents météo',
+    sections: [
+      {
+        title: 'Combat',
+        items: ['Talents météo : Tarpaud, Chartor, Tyranocif, Blizzaroi… changent le temps de la salle en y entrant (Crachin, Sécheresse, Sable Volant, Alerte Neige), dans ton équipe comme en face.'],
+      },
+      {
+        title: 'Repaire',
+        items: ['Nouvel aménagement, après le terrain d’entraînement : la Carrière, au nord-est. Deux libérés y taillent la pierre : +1 Pierre par salle nettoyée.'],
+      },
+    ],
+  },
+  {
+    id: '2026-11-14',
+    date: '14 novembre 2026',
+    title: 'La Pension, la vie au bourg et des sbires plus mobiles',
+    sections: [
+      {
+        title: 'Run',
+        items: [
+          'Nouvelle salle : la Pension ❀, où Écrémeuh entraîne l’équipe : un niveau chacun, deux pour le plus faible.',
+          'Les sbires des grottes changent souvent de place après un lancer de Poké Ball : on ne les coince plus.',
+        ],
+      },
+      {
+        title: 'Repaire',
+        items: ['Au bourg, des libérés portent l’eau du puits à leur maison, et une lavandière frotte le linge sous sa corde à linge.'],
+      },
+    ],
+  },
+  {
+    id: '2026-11-13-b',
+    date: '13 novembre 2026',
+    title: 'Des sbires mauvais perdants',
+    sections: [
+      {
+        title: 'Run',
+        items: ['Les sbires des grottes lâchent une réplique en s’enfuyant, vaincus (une autre s’ils rendent tes Pokémon).'],
+      },
+    ],
+  },
+  {
     id: '2026-11-13',
     date: '13 novembre 2026',
     title: 'Recrues de champion et contrats mieux payés',

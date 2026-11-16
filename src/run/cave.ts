@@ -1,12 +1,12 @@
 import { sfx } from '../audio/audio';
 import { loadInfo, loadSheet } from '../assets/pmd';
 import { Rng } from '../core/rng';
-import { BIOME_GRUNTS, GRUNT_INTROS, GRUNT_THEMES, type GruntTheme } from '../data/grunts';
+import { BIOME_GRUNTS, GRUNT_DEFEATS, GRUNT_DEFEATS_RELEASE, GRUNT_INTROS, GRUNT_THEMES, type GruntTheme } from '../data/grunts';
 import { SWIMMERS } from '../data/species';
 import { Actor } from '../entities/actor';
 import { Trainer } from '../entities/trainer';
 import type { InputSample } from '../input/input';
-import type { CombatFx } from '../render/combatfx';
+import type { CombatFx, Projector } from '../render/combatfx';
 import type { Speaker } from '../ui/dialogue';
 import type { CaveLayout } from '../world/cave';
 import type { WorldMap } from '../world/generate';
@@ -53,6 +53,8 @@ const WAKE_RADIUS = 7;
 const THROW_EVERY = 4.2;
 const THROW_PER_ACT = 0.35;
 const THROW_MIN = 3;
+/** Chance qu'il change de place après un lancer (A-FAIRE 1.6 : « un sbire qui change de place en lançant »). */
+const RELOCATE_CHANCE = 0.6;
 /** Première Ball, après l'envoi de son équipe (s). */
 const FIRST_THROW = 2.4;
 /** Il s'arrête et vise ce temps-là avant de lancer (s). */
@@ -144,6 +146,9 @@ export class CaveDirector {
   /** Course de la grille : -1 fermée, puis de 0 à 1 pendant qu'elle se relève. */
   private lift = -1;
   private readonly prompt: HTMLElement;
+  /** Sa réplique de défaite, dans une bulle qui le suit dans sa fuite, et le temps qu'elle reste. */
+  private readonly bubble: HTMLElement;
+  private bubbleT = 0;
 
   constructor(
     parent: HTMLElement,
@@ -155,7 +160,12 @@ export class CaveDirector {
     this.prompt = document.createElement('div');
     this.prompt.className = 'shop-prompt da-paper';
     this.prompt.hidden = true;
-    parent.append(this.prompt);
+    const layer = document.createElement('div');
+    layer.className = 'room-labels';
+    this.bubble = document.createElement('div');
+    this.bubble.className = 'room-label shop-bubble';
+    layer.append(this.bubble);
+    parent.append(this.prompt, layer);
     this.capture = new CaptureThreat(parent, fx, {
       captured: (a) => {
         this.captives.push(a);
@@ -221,6 +231,8 @@ export class CaveDirector {
     this.near = null;
     this.asking = false;
     this.prompt.hidden = true;
+    this.bubbleT = 0;
+    this.bubble.classList.remove('open');
     this.fade = 0;
   }
 
@@ -256,6 +268,8 @@ export class CaveDirector {
     }
     if (this.phase !== 'fadeOut') this.fade = Math.max(0, this.fade - dt / FADE);
     this.grunt?.update(dt, world, Math.random);
+    this.bubbleT -= dt;
+    this.bubble.classList.toggle('open', this.bubbleT > 0 && !!this.grunt);
     if (this.grunt?.gone) this.grunt = null;
     this.capture.update(dt, input, player);
 
@@ -286,6 +300,9 @@ export class CaveDirector {
         if (this.grunt) {
           this.grunt.fleeTo(L.exit.x + 0.5, L.exit.y + 0.5);
           this.host.message(`Le ${this.look.title} s’enfuit !`);
+          const lines = this.captives.length ? GRUNT_DEFEATS_RELEASE : GRUNT_DEFEATS;
+          this.bubble.textContent = lines[Math.floor(Math.random() * lines.length)];
+          this.bubbleT = 3.5;
           sfx('flee');
           if (this.captives.length) this.host.release(this.captives, this.grunt.x, this.grunt.y);
         }
@@ -359,7 +376,11 @@ export class CaveDirector {
     const ready = player.deathT < 0 && !player.trapped && !this.capture.busy;
     if (this.aimT >= 0) {
       this.aimT -= dt;
-      if (this.aimT < 0 && ready) this.capture.throwAt(g.x, g.y - 0.6, player.x, player.y);
+      if (this.aimT < 0 && ready) {
+        this.capture.throwAt(g.x, g.y - 0.6, player.x, player.y);
+        // Puis, souvent, il court se poster ailleurs dans l'arène, loin du joueur : on ne le coince pas.
+        if (Math.random() < RELOCATE_CHANCE) this.relocate(g, player);
+      }
       return;
     }
     this.throwT -= dt;
@@ -370,6 +391,30 @@ export class CaveDirector {
   }
 
   private run: Run | null = null;
+
+  /** Une nouvelle place dans l'arène, sur une case libre, à distance de lui et le plus loin possible du joueur. */
+  private relocate(g: Trainer, player: Actor): void {
+    const L = this.layout;
+    if (!L) return;
+    const world = L.world;
+    const A = L.arena;
+    let best: { x: number; y: number } | null = null;
+    let far = -1;
+    for (let k = 0; k < 10; k++) {
+      const a = Math.random() * Math.PI * 2;
+      const r = 0.35 + Math.random() * 0.5;
+      const x = A.x + Math.cos(a) * A.rx * r;
+      const y = A.y + Math.sin(a) * A.ry * r;
+      const i = Math.floor(y - 0.1) * world.w + Math.floor(x);
+      if (world.blocked[i] || world.water[i] || Math.hypot(x - g.x, y - g.y) < 3) continue;
+      const d = Math.hypot(x - player.x, y - player.y);
+      if (d > far) {
+        far = d;
+        best = { x, y };
+      }
+    }
+    if (best) g.dashTo(best.x, best.y);
+  }
 
   /** Fin du dialogue : il envoie son Pokémon fort entre lui et nous, et l'escorte dans l'arène, d'un jet de Ball chacun. */
   private send(world: WorldMap, run: Run, player: Actor): void {
@@ -527,4 +572,13 @@ export class CaveDirector {
     this.prompt.hidden = !hint;
     if (hint) this.prompt.replaceChildren(Object.assign(document.createElement('div'), { className: 'shop-hint', textContent: hint }));
   }
+
+  /** La bulle au-dessus de la tête du sbire (planche de 2 cases de haut). */
+  placeLabels(proj: Projector): void {
+    const g = this.grunt;
+    if (!g || this.bubbleT <= 0) return;
+    const pos = proj.toCss(g.x, g.y - 2.1);
+    this.bubble.style.transform = `translate(${pos.x}px, ${pos.y}px) translate(-50%, -100%)`;
+  }
+
 }

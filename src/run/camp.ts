@@ -209,6 +209,10 @@ const LINES = {
   sage: ['Peu franchissent l’eau. Encore moins reviennent en parler.', 'Ces pierres tenaient debout bien avant les Poké Balls. Elles verront leur fin.', 'Ta rébellion n’invente rien, petit. Elle se souvient.'],
   hermit: ['On vit ici sans chaînes depuis toujours. On ne savait pas que c’était rare.', 'Le lac nous protège mieux qu’aucune palissade.', 'Reste si tu veux. Repars si tu dois. Personne ne te retiendra.'],
   farmer: ['La terre d’ici est bonne. Personne ne l’avait jamais retournée.', 'Ce qui pousse là nourrira le camp tout l’hiver.', 'Des racines, des choux, des baies… et pas un dresseur à l’horizon.'],
+  // Le bourg (A-FAIRE 2.3 bis : « une activité aux libérés du bourg ») : porteurs d'eau et lavandière.
+  water: ['Un seau pour chaque maison, et on recommence.', 'L’eau du puits est glacée, même l’été.', 'Avant, je buvais dans les flaques des routes. Un puits, tu te rends compte ?'],
+  washer: ['Frotte, rince, étends. Le linge sèche vite, ici.', 'Les foulards de la rébellion doivent être propres pour la prochaine run !', 'Pas une tache ne me résiste. Pas même la boue du Marais.'],
+  quarry: ['Un coup, deux coups… et la pierre cède. Elle finit toujours par céder.', 'Cette pierre-là deviendra un mur du bourg. Ou une marche. Ou un caillou.', 'Avant, je cassais des rochers pour un dresseur. Maintenant, c’est pour nous.'],
   trainer: ['Encore une série. Le champion, lui, ne se repose pas.', 'Ce mannequin a la tête de {champion}. Enfin, je l’imagine.', 'Frappe, esquive, recommence. C’est tout.'],
 };
 
@@ -293,6 +297,9 @@ const POSTS = {
   // Les passages de la place vers l'atelier du bâtisseur et l'Étude : à mi-chemin, sur leur allée.
   yardWay: [-4.5, 6.5],
   studyWay: [-9, 3.4],
+  // La carrière, au nord-est derrière le relais, et la trouée qui l'y relie.
+  quarry: [20, -11],
+  quarryWay: [14, -12],
 } as const satisfies Record<string, readonly [number, number]>;
 
 /**
@@ -321,6 +328,7 @@ export function campPockets(built: readonly BuildingId[], hub: { x: number; y: n
     ...(has('training') ? [p('training', 6.5, 4)] : []),
     ...(has('outpost') ? [p('scout', 5.5, 3.5)] : []),
     ...(has('tavern') ? [p('elder', 7, 4)] : []),
+    ...(has('quarry') ? [p('quarry', 6.5, 4.5), p('quarryWay', 4.5, 3)] : []),
   ];
 }
 
@@ -359,8 +367,12 @@ interface Talker {
   talk: number;
   bubble: HTMLElement;
   bubbleT: number;
-  /** S'entraîne sur ce mannequin. */
-  dummy?: { x: number; y: number; hitT: number; trainT: number };
+  /** S'entraîne sur ce mannequin (ou, `rock`, taille ce rocher à la carrière). */
+  dummy?: { x: number; y: number; hitT: number; trainT: number; rock?: boolean };
+  /** Porteur d'eau : du puits (arrêt 0) à une maison et retour, le seau plein à l'aller. */
+  errand?: { stops: Spot[]; i: number; wait: number; carry: boolean; path: Spot[] | null; stuckT: number };
+  /** Lavandière : frotte le linge dans son baquet (`scrubT` : prochain geste). */
+  wash?: { scrubT: number };
   /** Va et vient autour de `home` (au pas), en restant dans l'eau si `water`. */
   wander?: { home: Spot; radius: number; goal: Spot; wait: number; water?: boolean };
 }
@@ -373,6 +385,8 @@ export class Camp {
   /** Pokémon libérés, dormeurs, ceux qui s'entraînent, le passeur et les habitants de l'île. */
   private talkers: Talker[] = [];
   private fire = { x: 0, y: 0 };
+  /** Le baquet de la lavandière (bourg), sous sa corde à linge. */
+  private laundry: Spot | null = null;
   private gate = { x: 0, y: 0 };
   /** 0 à 1 : le halo de l'arche s'embrase quand on part en run (main.ts, startDeparture). */
   departGlow = 0;
@@ -437,6 +451,7 @@ export class Camp {
     this.jetty = null;
     this.lure = null;
     this.beds = [];
+    this.laundry = null;
     this.npcs.length = 0;
     this.layer.replaceChildren();
     this.prompt.hidden = true;
@@ -521,6 +536,7 @@ export class Camp {
     // pots, et son allée de sable passait sur la terre battue (retour de test). Il est à quatre
     // pas du chemin du nord : plus d'allée.
     const training = at0('training');
+    const quarry = at0('quarry');
     // Le relais de Roucarnage, à côté de Dracolosse, à l'est de l'arche : le courrier part
     // avec ceux qui partent (retour de test : il était perdu au sud-est, près du puits).
     const relay = { x: gx + 7.5, y: gy + 2.6 };
@@ -860,6 +876,19 @@ export class Camp {
       put(PROPS.stump[1], training.x - 4.3, training.y + 0.4);
       put(PROPS.log[0], training.x - 0.5, training.y - 0.4);
     }
+    if (has('quarry')) {
+      // La carrière : du gravier au sol, de gros blocs au fond, des éclats partout, et le tas de
+      // pierres taillées devant (les deux rochers qu'on taille se posent avec leurs tailleurs).
+      ground(quarry.x, quarry.y + 0.6, 4.8, 2.8, LANE.gravel, 405);
+      put(PROPS.boulder[1], quarry.x - 3.4, quarry.y - 1.4);
+      put(PROPS.paleRocks[0], quarry.x + 0.2, quarry.y - 2);
+      put(PROPS.boulder[0], quarry.x + 3.6, quarry.y - 1.2);
+      put(PROPS.paleStones[0], quarry.x - 0.4, quarry.y + 2.6, false);
+      put(PROPS.paleStones[1], quarry.x + 0.4, quarry.y + 2.7, false);
+      put(PROPS.paleStones[2], quarry.x, quarry.y + 2.2, false);
+      put(PROPS.rockSmall[1], quarry.x - 4.4, quarry.y + 1.8, false);
+      put(PROPS.paleStones[3], quarry.x + 4.2, quarry.y + 2, false);
+    }
     if (has('dorm')) {
       put(CAMP_PROPS.tepee, dorm.x - 3.5, dorm.y - 0.6);
       put(CAMP_PROPS.tepee, dorm.x + 3.5, dorm.y - 0.6);
@@ -1145,13 +1174,16 @@ export class Camp {
       training: has('training') ? 2 : 0,
       dorm: beds.length,
       field: has('field') ? 2 : 0,
+      quarry: has('quarry') ? 2 : 0,
       bench: has('gardens') ? benches.length : 0,
       lamp: Math.min(2, lamps.length),
       bar: barSeats.length,
+      well: has('hamlet') ? 2 : 0,
+      wash: has('hamlet') ? 1 : 0,
     };
-    const groups: Record<keyof typeof room, number[]> = { fire: [], training: [], dorm: [], field: [], bench: [], lamp: [], bar: [] };
+    const groups: Record<keyof typeof room, number[]> = { fire: [], training: [], dorm: [], field: [], quarry: [], bench: [], lamp: [], bar: [], well: [], wash: [] };
     const strollers: number[] = [];
-    const order = (['fire', 'bar', 'training', 'dorm', 'field', 'bench', 'lamp'] as const).filter((g) => room[g] > 0);
+    const order = (['fire', 'bar', 'well', 'wash', 'training', 'quarry', 'dorm', 'field', 'bench', 'lamp'] as const).filter((g) => room[g] > 0);
     let turn = 0;
     for (const id of walkers) {
       const g = order.map((_, k) => order[(turn + k) % order.length]).find((h) => groups[h].length < room[h]);
@@ -1199,10 +1231,33 @@ export class Camp {
       const t = this.talk(id, { x: dummy.x + side * 1.5, y: dummy.y }, side > 0 ? 6 : 2, ['Idle'], LINES.trainer, true);
       t.dummy = dummy;
     });
+    groups.quarry.forEach((id, i) => {
+      // Chacun son rocher, de part et d'autre du tas, et il le frappe depuis l'extérieur, comme un mannequin.
+      const side = i ? 1 : -1;
+      const rock = { x: quarry.x + side * 2, y: quarry.y + 0.9, hitT: 0, trainT: rng.range(0.4, 1.6), rock: true };
+      put(PROPS.rockSmall[0], rock.x, rock.y);
+      const t = this.talk(id, { x: rock.x + side * 1.4, y: rock.y }, side > 0 ? 6 : 2, ['Idle'], LINES.quarry, true);
+      t.dummy = rock;
+    });
     groups.field.forEach((id, i) => {
       // Aux champs : ils vont et viennent entre les rangs.
       const s = place.freeSpot(field.x + 2 + i * 4, field.y + 2, 2);
       this.talk(id, s, rng.int(8), ['Idle'], LINES.farmer).wander = { home: { x: field.x + field.w / 2, y: field.y + field.h / 2 }, radius: 3, goal: { ...s }, wait: rng.range(1, 4) };
+    });
+    // Au bourg, les porteurs d'eau vont du puits à leur maison, chacun la sienne, le seau plein.
+    groups.well.forEach((id, i) => {
+      const well = place.freeSpot(Math.floor(eastWell.x) + (i ? 1 : -1), Math.floor(eastWell.y) + 1, 2);
+      const house = place.freeSpot(Math.floor(hamlet[i].x), Math.floor(hamlet[i].y) + 1, 2);
+      const t = this.talk(id, i ? house : well, rng.int(8), ['Idle'], LINES.water);
+      t.errand = { stops: [well, house], i: i ? 0 : 1, wait: rng.range(0.5, 2.5), carry: i === 0, path: null, stuckT: 0 };
+    });
+    // La lavandière, à son baquet au coin de la place, sous la corde à linge.
+    groups.wash.forEach((id) => {
+      const tub = place.freeSpot(square.x + 1, square.y + square.h - 1, 2);
+      place.block(Math.floor(tub.x), Math.floor(tub.y));
+      this.laundry = { x: tub.x, y: tub.y };
+      const t = this.talk(id, { x: tub.x + 1.1, y: tub.y }, 6, ['Idle'], LINES.washer);
+      t.wash = { scrubT: rng.range(0.5, 1.5) };
     });
     // Les flâneurs se partagent la place et les clairières défrichées, à tour de rôle.
     // Écart voulu : plus aucun sauvage de passage (ils venaient avec le défrichage et les
@@ -1321,7 +1376,18 @@ export class Camp {
     }
     for (const f of this.talkers) {
       if (f.wander) this.stroll(f, f.wander, dt, world, f === near ? player : null);
+      else if (f.errand) this.fetch(f, f.errand, dt, world, f === near ? player : null);
       else f.actor.tickTimers(dt);
+      if (f.wash) {
+        // Un geste de lavandière toutes les 1 à 2 s : elle plonge le linge dans le baquet.
+        f.actor.dir = f === near ? dirFromVector(player.x - f.actor.x, player.y - f.actor.y) : 6;
+        f.wash.scrubT -= dt;
+        if (f.wash.scrubT <= 0 && f !== near) {
+          f.actor.playAction(['Hop'], 0);
+          f.actor.lunge = { dx: -0.3, dy: 0, t: 0 };
+          f.wash.scrubT = 1 + Math.random();
+        }
+      }
       f.bubbleT -= dt;
       f.bubble.classList.toggle('open', f.bubbleT > 0);
       const m = f.dummy;
@@ -1383,6 +1449,48 @@ export class Camp {
     } else if ((mx || my) && a.x === x && a.y === y) w.goal = { x, y };
   }
 
+  /**
+   * Porteur d'eau : il marche au pas jusqu'à son arrêt, s'y attarde (il puise, ou
+   * verse le seau à la maison), puis repart vers l'autre. Il s'arrête pour écouter.
+   */
+  private fetch(f: Talker, e: NonNullable<Talker['errand']>, dt: number, world: WorldMap, listener: Actor | null): void {
+    const a = f.actor;
+    // Le chemin case par case (le puits et le banc de la place font un mur) : calculé au départ de chaque trajet.
+    if (!e.path) e.path = gridPath(world, a, e.stops[e.i]);
+    const goal = e.path[0] ?? e.stops[e.i];
+    let mx = 0;
+    let my = 0;
+    if (listener) a.dir = dirFromVector(listener.x - a.x, listener.y - a.y);
+    else if (e.wait > 0) {
+      e.wait -= dt;
+      if (e.wait <= 0) {
+        e.i = 1 - e.i;
+        e.path = null;
+      }
+    } else {
+      const len = Math.hypot(goal.x - a.x, goal.y - a.y);
+      if (len < 0.35 && e.path.length > 1) e.path.shift();
+      else if (len < 0.35) {
+        // Arrivé : au puits, il remplit son seau ; à la maison, il le vide.
+        e.carry = e.i === 0;
+        e.wait = 2 + Math.random() * 2;
+        a.playAction(['Hop'], 0);
+      } else {
+        mx = ((goal.x - a.x) / len) * 0.16;
+        my = ((goal.y - a.y) / len) * 0.16;
+      }
+    }
+    const [x, y] = [a.x, a.y];
+    a.updatePlayer(dt, { mx, my, dash: false, move: -1, interact: false, ult: false, swap: false }, world);
+    // Coincé contre un obstacle (un visiteur, un autre libéré) plus d'une seconde : il passe outre.
+    e.stuckT = (mx || my) && Math.hypot(a.x - x, a.y - y) < 0.002 ? e.stuckT + dt : 0;
+    if (e.stuckT > 1) {
+      a.x = a.prevX = goal.x;
+      a.y = a.prevY = goal.y;
+      e.stuckT = 0;
+    }
+  }
+
   private renderPrompt(): void {
     const n = this.near;
     const hint = this.atBoard ? '[E] Plan du monde' : !n ? '' : 'station' in n ? `[E] ${n.actor.info?.name ?? '…'} — ${STATIONS[n.station].title}` : `[E] Parler à ${n.actor.info?.name ?? '…'}`;
@@ -1417,7 +1525,21 @@ export class Camp {
     for (const st of this.stalls) out.push({ y: st.y * TILE + 1, draw: (b, camX, camY, k) => this.drawStall(b, camX, camY, k, st, time) });
     for (const f of this.talkers) {
       const m = f.dummy;
-      if (m) out.push({ y: m.y * TILE, draw: (b, camX, camY, k) => drawDummy(b, Math.round((m.x * TILE - camX) * k), Math.round((m.y * TILE - camY) * k), k, m.hitT) });
+      if (m && m.rock) out.push({ y: m.y * TILE + 2, draw: (b, camX, camY, k) => drawChips(b, (m.x * TILE - camX) * k, (m.y * TILE - camY) * k, k, m.hitT) });
+      else if (m) out.push({ y: m.y * TILE, draw: (b, camX, camY, k) => drawDummy(b, Math.round((m.x * TILE - camX) * k), Math.round((m.y * TILE - camY) * k), k, m.hitT) });
+      // Le seau du porteur d'eau, plein, à côté de lui (devant s'il va vers le sud).
+      const e = f.errand;
+      if (e?.carry) {
+        const a = f.actor;
+        const side = a.dir >= 1 && a.dir <= 3 ? -1 : 1;
+        out.push({ y: a.y * TILE + 0.5, draw: (b, camX, camY, k) => drawBucket(b, Math.round(((a.x + side * 0.45) * TILE - camX) * k), Math.round(((a.y - 0.1) * TILE - camY) * k), k) });
+      }
+    }
+    const tub = this.laundry;
+    if (tub) {
+      out.push({ y: tub.y * TILE, draw: (b, camX, camY, k) => drawTub(b, Math.round((tub.x * TILE - camX) * k), Math.round((tub.y * TILE - camY) * k), k, time) });
+      // La corde à linge, derrière le baquet : deux poteaux et le linge qui bat au vent.
+      out.push({ y: (tub.y - 1) * TILE, draw: (b, camX, camY, k) => drawClothesline(b, Math.round(((tub.x - 0.5) * TILE - camX) * k), Math.round(((tub.y - 1) * TILE - camY) * k), k, time) });
     }
     return out;
   }
@@ -1612,3 +1734,127 @@ function drawPlanBoard(b: CanvasRenderingContext2D, art: HTMLCanvasElement, px: 
   b.imageSmoothingEnabled = smooth;
 }
 
+/** Seau de bois cerclé, rempli d'eau (porteurs d'eau du bourg). (x, y) : pied du seau. */
+function drawBucket(b: CanvasRenderingContext2D, x: number, y: number, k: number): void {
+  const w = 5 * k;
+  const h = 6 * k;
+  b.fillStyle = 'rgba(0,0,0,0.25)';
+  b.fillRect(x - w / 2, y - k, w, k);
+  b.fillStyle = '#7a5230';
+  b.fillRect(x - w / 2, y - h, w, h);
+  b.fillStyle = '#5a3a20';
+  b.fillRect(x - w / 2, y - h * 0.7, w, k);
+  b.fillRect(x - w / 2, y - h * 0.25, w, k);
+  b.fillStyle = '#6fb6e8';
+  b.fillRect(x - w / 2 + k, y - h, w - 2 * k, k);
+  // L'anse.
+  b.strokeStyle = '#3b2a1a';
+  b.lineWidth = Math.max(1, k * 0.6);
+  b.beginPath();
+  b.arc(x, y - h, w * 0.45, Math.PI, 0);
+  b.stroke();
+}
+
+/** Baquet de lessive : cuve de bois, eau savonneuse et bulles qui montent. (x, y) : pied. */
+function drawTub(b: CanvasRenderingContext2D, x: number, y: number, k: number, time: number): void {
+  const w = 14 * k;
+  const h = 7 * k;
+  b.fillStyle = 'rgba(0,0,0,0.25)';
+  b.beginPath();
+  b.ellipse(x, y, w * 0.6, 2.5 * k, 0, 0, Math.PI * 2);
+  b.fill();
+  b.fillStyle = '#8a5d34';
+  b.fillRect(x - w / 2, y - h, w, h);
+  b.fillStyle = '#5e3d22';
+  b.fillRect(x - w / 2, y - h * 0.55, w, k);
+  b.fillStyle = '#cfe6f2';
+  b.beginPath();
+  b.ellipse(x, y - h, w / 2 - k, 2.2 * k, 0, 0, Math.PI * 2);
+  b.fill();
+  // Des bulles qui montent et éclatent.
+  b.fillStyle = 'rgba(255,255,255,0.85)';
+  for (let i = 0; i < 4; i++) {
+    const u = (time * 0.6 + i / 4) % 1;
+    const r = (1 - u) * 1.6 * k + 0.5 * k;
+    b.beginPath();
+    b.arc(x + Math.sin(i * 2.1 + time) * w * 0.3, y - h - u * 8 * k, r, 0, Math.PI * 2);
+    b.fill();
+  }
+}
+
+const LINEN = ['#f4efe2', '#e8604c', '#6fa8dc', '#f2c14e', '#f4efe2'];
+/** Corde à linge entre deux poteaux (3 cases), draps et foulards qui ondulent. (x, y) : pied du poteau gauche. */
+function drawClothesline(b: CanvasRenderingContext2D, x: number, y: number, k: number, time: number): void {
+  const span = 3 * TILE * k;
+  const top = y - 22 * k;
+  b.fillStyle = '#6b4a2a';
+  b.fillRect(x - k, top, 2 * k, y - top);
+  b.fillRect(x + span - k, top, 2 * k, y - top);
+  b.strokeStyle = '#d8d0b8';
+  b.lineWidth = Math.max(1, k * 0.5);
+  b.beginPath();
+  b.moveTo(x, top + k);
+  b.quadraticCurveTo(x + span / 2, top + 5 * k, x + span, top + k);
+  b.stroke();
+  LINEN.forEach((c, i) => {
+    const u = (i + 0.7) / (LINEN.length + 0.4);
+    const cx = x + span * u;
+    const sag = 4 * u * (1 - u) * 4 * k;
+    const cw = (i % 2 ? 5 : 7) * k;
+    const ch = (i % 2 ? 6 : 9) * k;
+    const sway = Math.sin(time * 2.2 + i * 1.3) * 1.2 * k;
+    b.fillStyle = c;
+    b.beginPath();
+    b.moveTo(cx - cw / 2, top + k + sag);
+    b.lineTo(cx + cw / 2, top + k + sag);
+    b.lineTo(cx + cw / 2 + sway, top + k + sag + ch);
+    b.lineTo(cx - cw / 2 + sway, top + k + sag + ch);
+    b.closePath();
+    b.fill();
+  });
+}
+
+/**
+ * Chemin le plus court sur la grille (cases libres, 4 voisins), de la case de
+ * `from` à celle de `to` : les centres des cases à suivre, `to` en dernier.
+ * Rien de trouvé (dans 40 cases de rayon) : tout droit vers `to`.
+ */
+function gridPath(world: WorldMap, from: Spot, to: Spot): Spot[] {
+  const W = world.w;
+  const cell = (p: Spot) => Math.floor(p.y - 0.25) * W + Math.floor(p.x);
+  const start = cell(from);
+  const end = cell(to);
+  const prev = new Map<number, number>([[start, -1]]);
+  const queue = [start];
+  for (let q = 0; q < queue.length && !prev.has(end); q++) {
+    const c = queue[q];
+    const cx = c % W;
+    const cy = Math.floor(c / W);
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = cx + dx;
+      const ny = cy + dy;
+      const n = ny * W + nx;
+      if (nx < 0 || ny < 0 || nx >= W || ny >= world.h || prev.has(n)) continue;
+      if (world.blocked[n] && n !== end) continue;
+      if (Math.abs(nx - Math.floor(from.x)) > 40 || Math.abs(ny - Math.floor(from.y)) > 40) continue;
+      prev.set(n, c);
+      queue.push(n);
+    }
+  }
+  if (!prev.has(end)) return [to];
+  const out: Spot[] = [{ ...to }];
+  for (let c = prev.get(end)!; c !== start && c >= 0; c = prev.get(c)!) out.unshift({ x: (c % W) + 0.5, y: Math.floor(c / W) + 0.9 });
+  return out;
+}
+
+/** Les éclats d'un rocher qu'on vient de frapper (`hitT` de 0,35 à 0) : ils jaillissent et retombent. */
+function drawChips(b: CanvasRenderingContext2D, x: number, y: number, k: number, hitT: number): void {
+  if (hitT <= 0) return;
+  const u = 1 - hitT / 0.35;
+  b.fillStyle = `rgba(190,184,172,${1 - u})`;
+  for (let i = 0; i < 5; i++) {
+    const a = -Math.PI * (0.15 + i * 0.175);
+    const r = (3 + i) * k * (0.4 + u);
+    b.fillRect(Math.round(x + Math.cos(a) * r * 1.4), Math.round(y - 6 * k + Math.sin(a) * r * 1.2 + u * u * 6 * k), Math.max(1, k), Math.max(1, k));
+  }
+}

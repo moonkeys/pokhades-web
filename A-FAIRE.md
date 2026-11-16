@@ -242,8 +242,13 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
 - **Mode Nuzlocke** (fait : Échap → Réglages, `Options.nuzlocke`, `nuzlockeToll`
   de main.ts) : en fin de run, un Pokémon encore K.O. ou resté capturé est
   relâché pour de bon (jamais le dernier de l'équipe). Reste : d'autres sbires (Team Aqua, Magma…) si le
-  dépôt en a les planches ; un sbire qui change de place en lançant ; des
-  répliques de défaite.
+  dépôt en a les planches (Essentials n'a que la Team Rocket).
+  Changer de place en lançant (fait, 14 novembre 2026) : après un lancer, six
+  fois sur dix, le sbire court se poster ailleurs dans l'arène, le plus loin
+  possible du joueur (`CaveDirector.relocate`, `Trainer.dashTo`).
+  Répliques de défaite (fait, 13 novembre 2026) : en s'enfuyant, le sbire
+  lance une réplique dans une bulle qui le suit (`GRUNT_DEFEATS`, ou
+  `GRUNT_DEFEATS_RELEASE` quand il rend des Pokémon capturés).
 
 ### 1.7 Débloquer des Pokémon, Pokédex (fait)
 - **Starter** au premier lancement (`src/ui/starterscreen.ts`), parmi les
@@ -290,7 +295,19 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
 - Panneau (H) → « Météo » : la forcer partout.
 - Danse Pluie, Zénith, Tempête de Sable et Grêle changent le temps de la
   salle jusqu'à l'éclaircie (`weather` dans `EFFECTS`, `Combat.weatherMove`) ;
-  Danse Pluie et Zénith chez le tuteur (150). Reste : des talents.
+  Danse Pluie et Zénith chez le tuteur (150).
+- Talents météo (ajout, 15 novembre 2026, `src/data/abilities.ts`) :
+  Crachin, Sécheresse, Sable Volant, Alerte Neige, sur 12 espèces (table à
+  la main, PokéAPI copiée sans talents) ; en entrant dans la salle (équipe,
+  sauvages, champion), une fois par Pokémon et par salle, le dernier arrivé
+  l'emporte (`weatherTalents`, main.ts). Écart voulu : talents cachés
+  comptés (Feunard, Gigalithe).
+- Intimidation (ajout, 16 novembre 2026, même fichier) : 27 espèces ; tout
+  adversaire debout à 9 cases d'un intimidateur debout perd 25 % d'Attaque
+  10 s (`applyBuff`, comme Rugissement), une fois par salle, dans les deux
+  sens (`entryTalents`, main.ts). Écart voulu : pas seulement à l'entrée
+  (vagues). Talents lus sur `speciesId` (`baseId` est l'uid au Repaire).
+  Reste : d'autres talents.
 
 ### 1.9 Salles spéciales (fait)
 - Une porte sur plusieurs peut mener à une salle spéciale (`Run.offers`,
@@ -319,6 +336,10 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
   tatami et un mannequin de paille veillés par Machopeur ; [E] : l'écran
   « Nouvelle attaque », gratuit, deux leçons par salle (`DOJO_LESSONS`).
   Proposé par les portes ; panneau → « Dojo ».
+- **Pension** ❀ (`run/pension.ts`, ajout, 14 novembre 2026) : sans ennemis,
+  un enclos de foin gardé par Écrémeuh ; [E] une fois : chaque membre gagne
+  un niveau, le plus faible deux (`PENSION_LEVELS`). Proposée par les
+  portes ; panneau → « Pension ».
 - Reste : d'autres salles.
 
 ### 1.10 Son (fait)
@@ -463,9 +484,13 @@ Si d'autres se voient en jeu, noter leur emplacement.
   deux paillasses, 26 libérés au camp au lieu de 16, trois visiteurs de plus)
   s'y bâtissent ensuite. Écart voulu : le camp grandit sur la forêt, pas de
   zone séparée.
-- Reste : d'autres aménagements dans la clairière (le terrain est encore
-  libre au nord-est), des visiteurs propres à chaque zone, des récoltes plus
-  variées.
+- **Carrière** (ajout, 15 novembre 2026) : la clairière de l'ouest est
+  pleine (maisons, champ, tournesols) ; la carrière prend une poche à elle au
+  nord-est, derrière le relais (`POSTS.quarry`, `quarryWay`), après le
+  terrain d'entraînement. Deux libérés y frappent leur rocher (le mannequin
+  du terrain, `dummy.rock`, éclats dessinés) ; +1 Pierre par salle
+  (`QUARRY_STONE`). Vérifiée atteignable à pied depuis le feu.
+- Reste : des visiteurs propres à chaque zone, des récoltes plus variées.
 
 ### 2.3 bis Agrandir le camp (fait)
 - Quatre aménagements de plus (`BUILDINGS`) : **Jardins fleuris** (massifs,
@@ -479,8 +504,12 @@ Si d'autres se voient en jeu, noter leur emplacement.
   aménagement (`DWELLERS_PER` : Maisons 10, Hameau 12, Jardins 2,
   Lampadaires 2) ; les flâneurs se partagent la place et les clairières.
 - Réplique du bâtisseur selon l'avancée (ouest, puis est, puis hameau).
-- Reste : une activité aux libérés du bourg (puits, lessive…). (Lampadaires et
-  hameau revus après le test : voir 2.3 ter.)
+- Activité au bourg (fait, 14 novembre 2026) : deux porteurs d'eau vont du
+  puits à leur maison et reviennent (`Talker.errand`, `gridPath`), le seau
+  plein à l'aller ; une lavandière frotte le linge dans un baquet, sous une
+  corde à linge où sèchent draps et foulards (dessinés : `drawTub`,
+  `drawClothesline`). (Lampadaires et hameau revus après le test : voir
+  2.3 ter.)
 
 ### 2.3 ter Retours de test du Repaire (fait)
 - Rondins du feu : tous les libérés y dorment (avant : assis, endormis ou

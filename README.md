@@ -187,6 +187,10 @@ compris), **Bourse percée** (₽ des salles divisés par deux) ou **Sans repos*
 paille, et Machopeur, maître des lieux ; [E] au tatami ouvre l'écran
 « Nouvelle attaque » sans prix (apprendre ou renforcer, pour le membre
 choisi), deux fois par salle ; fermer l'écran sans choisir ne compte pas.
+**Pension** ❀ (`run/pension.ts`) : sans ennemis, un enclos garni de foin
+gardé par Écrémeuh ; [E] à l'enclos, une fois : chaque membre gagne un
+niveau (`PENSION_LEVELS`), le plus faible deux (annonce et évolution comme
+en combat).
 
 Météo (ajout, `src/world/weather.ts`) : chaque salle de combat tire son ciel
 selon le biome — souvent clair, parfois Pluie, Soleil ardent, Tempête de
@@ -195,7 +199,19 @@ jeux, la Pluie renforce l'Eau (×1,5) et affaiblit le Feu (×0,5), le Soleil
 l'inverse ; le Sable et la Grêle usent de 3 % des PV max toutes les 3 s ceux
 qui n'y résistent pas (Roche, Sol, Acier ; Glace), sans jamais mettre K.O. ;
 le Brouillard voile la vue. Particules, teinte et notification à l'entrée ;
-le panneau peut la forcer.
+le panneau peut la forcer. Talents météo (ajout, `src/data/abilities.ts`) :
+Tarpaud, Bekipan, Kyogre (Crachin), Feunard, Chartor, Groudon (Sécheresse),
+Tyranocif, Hippopotas, Hippodocus, Gigalithe (Sable Volant), Blizzi et
+Blizzaroi (Alerte Neige) changent le temps de la salle en y entrant, qu'ils
+soient de l'équipe, sauvages ou au champion ; une fois par Pokémon et par
+salle, le dernier arrivé l'emporte (pas à la boutique, en grotte ni dans
+l'arène du Village). La table est tenue à la main : les données PokéAPI
+copiées n'ont pas les talents. **Intimidation** (même fichier, 27 espèces :
+Arbok, Arcanin, Léviator, Luxray, Crocorible, Baggiguane…) : tout adversaire
+debout qui passe à 9 cases d'un intimidateur debout perd un quart de son
+Attaque pendant 10 s (comme Rugissement), une fois par salle, dans les deux
+sens. Écart voulu : les jeux n'intimident qu'à l'entrée, mais ici les
+sauvages arrivent par vagues. Les talents se lisent sur l'espèce dessinée.
 
 Grottes (portée de `_spawn_cave_portals` et `CaveArena.gd`) : passé les deux
 premières salles de la run, une bouche peut s'ouvrir au pied d'une falaise —
@@ -212,12 +228,14 @@ parle (son portrait, une réplique), puis envoie d'un jet de Poké Ball son
 Pokémon fort, le gardien (trois barres de PV), et une escorte de sauvages
 du biome. Pendant le combat, il lance des **Poké Balls** sur le Pokémon joué
 (`src/run/capture.ts`) : un anneau rouge marque le point de chute, on en sort
-ou on dashe. Touché, on est aspiré dans la Ball ; ← et → en alternance
+ou on dashe. Après un lancer, six fois sur dix, il court se poster ailleurs
+dans l'arène, loin du joueur : on ne le coince pas. Touché, on est aspiré dans la Ball ; ← et → en alternance
 remplissent une jauge, qui se vide d'autant plus vite qu'il reste peu de PV.
 Pleine, la Ball éclate ; vide, elle se referme : notification « Capturé ! »,
 le Pokémon quitte l'équipe (le suivant debout prend la main ; le dernier
 capturé, c'est la défaite). Toute son équipe à terre, le sbire s'enfuit par
-la bouche et rend ses prises ; si l'on fuit avant, elles sont perdues pour la
+la bouche, une réplique de défaite dans une bulle au-dessus de lui
+(`GRUNT_DEFEATS`, une autre s'il rend des Pokémon), et rend ses prises ; si l'on fuit avant, elles sont perdues pour la
 run. Vaincu : des ₽ et l'équipe soignée ; son Pokémon fort repart avec lui
 (il ne se recrute pas). Le prisonnier, enfermé dans une
 cellule creusée au fond du cachot (il en secoue la grille, la palissade à
@@ -309,7 +327,15 @@ Bétochef à 6.
   autour d'une place pavée de chevrons, son puits au milieu ; on y entre par
   deux piliers de pierre, puis une rue de briques qui ondule jusqu'à la place
   (seuil gris, puis briques beiges : le chemin de terre ne bute plus sur le
-  pavé) ; douze libérés de plus au camp (ils flânent sur la place).
+  pavé) ; douze libérés de plus au camp (ils flânent sur la place). Deux
+  d'entre eux portent l'eau du puits à leur maison, un seau plein à l'aller
+  (chemin calculé case par case autour du puits et du banc), et une
+  lavandière frotte le linge dans son baquet sous une corde à linge ;
+- **Carrière** (Bois 14, Nourriture 6 ; après le Terrain d'entraînement) :
+  une poche gagnée sur la forêt au nord-est, derrière le relais (`POSTS.quarry`,
+  et une trouée qui la relie) ; du gravier, de gros blocs, un tas de pierres,
+  et deux libérés qui frappent chacun leur rocher, dont jaillissent des
+  éclats ; +1 Pierre par salle nettoyée en run (`QUARRY_STONE`).
 
 Ce qui attend un autre chantier n'apparaît chez le bâtisseur qu'une run après
 que celui-ci est bâti (`buildingsShown`, `Save.builtAt`) ; le bâti passe en bas
