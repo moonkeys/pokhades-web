@@ -4,7 +4,7 @@ import { Actor } from '../entities/actor';
 import type { InputSample } from '../input/input';
 import type { CombatFx, Projector } from '../render/combatfx';
 import type { WorldMap } from '../world/generate';
-import { CAMP_PROPS, DOJO_HALL, DOJO_MAT, PROPS } from '../world/tiles';
+import { CAMP_PROPS, DOJO_HALL, DOJO_MAT, PROPS, TOWN_DECOR, type SpriteDef } from '../world/tiles';
 import { Placer } from './placement';
 
 // Dojo, salle spéciale (A-FAIRE 1.9 : « d'autres salles »). Pas d'ennemis,
@@ -37,6 +37,8 @@ export class Dojo {
   private mat: { x: number; y: number; rx: number; ry: number } | null = null;
   /** Le rocher que frappe le maître (centre du sprite). */
   private rock = { x: 0, y: 0 };
+  /** Les coins des habitants (residents.ts) : centre et rayon de promenade. */
+  spots: { x: number; y: number; r: number }[] = [];
   private left = 0;
   /** Écran des attaques ouvert : on ne le rouvre pas tant qu'il l'est. */
   private busy = false;
@@ -109,6 +111,24 @@ export class Dojo {
     this.rock = { x: rx, y: ry - 0.8 };
     place.prop(PROPS.rockSmall[0], x0 - 1.5, y0 + 3);
     place.prop(PROPS.rockSmall[1], x0 - 1, y0 + 5);
+    // Retour de test (« des trucs de casse et tout ») : des caisses et des tonneaux à briser près de
+    // la salle, des rondins empilés, des souches qui servent de poteaux de frappe.
+    const gear: [SpriteDef, number, number][] = [
+      [TOWN_DECOR.crates, cx - 5.5, cy - 0.8],
+      [TOWN_DECOR.crates, cx - 6.4, cy - 0.2],
+      [CAMP_PROPS.barrels[0], cx + 6.5, cy - 0.6],
+      [CAMP_PROPS.barrels[1], cx + 7.3, cy],
+      [PROPS.log[0], cx - 6.5, cy + 2.2],
+      [PROPS.log[0], cx - 6.5, cy + 3.4],
+      [PROPS.stump[0], cx + 8, cy + 2.5],
+      [PROPS.stump[1], cx + 6.5, cy + 6.6],
+      [PROPS.stump[0], cx - 3, cy + 7],
+    ];
+    for (const [sp, x, y] of gear) place.prop(sp, x, y);
+    this.spots = [
+      { x: cx - 6.5, y: cy + 6, r: 2 },
+      { x: cx + 3, y: cy + 7.5, r: 2.5 },
+    ];
     const n = { x: x0 + MW / 2, y: y0 + 1.4 };
     const actor = new Actor(DOJO_NPC, n.x, n.y);
     actor.dir = 0;

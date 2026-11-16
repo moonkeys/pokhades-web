@@ -316,7 +316,8 @@ const LAYOUTS: Record<LayoutId, LayoutDef> = {
   // Pension, jamais tirée ailleurs. Le chemin fait le tour d'une grande place laissée libre, où la
   // salle pose son décor ; l'entrée en bas, la sortie en haut, parfois une sur un côté.
   sanctuaire: {
-    sizes: [[44, 34], [46, 36]],
+    // Retour de test (« beaucoup de vide autour ») : plus petite que les autres formes.
+    sizes: [[34, 28], [36, 28]],
     build: (w, h, rng) => {
       const c = { x: w / 2, y: h / 2 };
       const rim = (deg: number): Pt => ({ x: c.x + Math.sin((deg * Math.PI) / 180) * w * 0.36, y: c.y + Math.cos((deg * Math.PI) / 180) * h * 0.36 });

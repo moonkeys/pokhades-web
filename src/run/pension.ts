@@ -1,10 +1,9 @@
-import { sfx } from '../audio/audio';
 import { loadInfo, loadSheet } from '../assets/pmd';
 import { Actor } from '../entities/actor';
 import type { InputSample } from '../input/input';
 import type { CombatFx, Projector } from '../render/combatfx';
 import type { WorldMap } from '../world/generate';
-import { CAMP_PROPS, FENCES, TILE, TOWN_DECOR } from '../world/tiles';
+import { CAMP_PROPS, FENCES, PROPS, TILE, TOWN_DECOR } from '../world/tiles';
 import { Placer } from './placement';
 
 // Pension, salle spéciale (A-FAIRE 1.9 : « d'autres salles »). Pas d'ennemis,
@@ -24,16 +23,16 @@ import { Placer } from './placement';
 export const PENSION_NPC = 241;
 /** Niveaux gagnés par chaque membre ; le plus faible en gagne un de plus. */
 export const PENSION_LEVELS = 1;
-/** Les pensionnaires de l'enclos : Tauros, Ponyta. */
-const MATES = [128, 77] as const;
 const KEEPER_REACH = 1.8;
 const LINES = ['Meuh ! Laisse-les gambader dans l’enclos, ils en ressortiront plus forts.', 'Écrémeuh rumine, le regard sur le foin frais.'];
 
 export interface PensionHost {
-  /** Entraîne l'équipe ; rend le nombre total de niveaux gagnés. */
-  train(): number;
-  /** Ouvre l'écran d'échange ; `done(true)` si un membre a été échangé. Faux : pas d'échange possible. */
-  swap(done: (swapped: boolean) => void): boolean;
+  /**
+   * Le menu d'Écrémeuh (main.ts) : `trained(n)` si l'équipe s'est entraînée (n niveaux
+   * répartis), `swapped(true)` après un échange, `swapped(false)` si personne n'était libre,
+   * `swapped(null)` ou `closed()` si l'on a refermé sans rien faire.
+   */
+  menu(state: { trained: boolean; swapped: boolean }, trained: (levels: number) => void, swapped: (ok: boolean | null) => void, closed: () => void): void;
   message(text: string): void;
 }
 
@@ -43,12 +42,13 @@ export class Pension {
   /** L'intérieur de l'enclos (cases, bornes comprises) : on s'entraîne dedans. */
   private pen: { x0: number; x1: number; y0: number; y1: number } | null = null;
   private used = false;
-  private near = false;
   /** À côté d'Écrémeuh, l'échange encore possible. */
   private nearKeeper = false;
   private swapped = false;
   private busy = false;
   private keeper: Actor | null = null;
+  /** Les coins des pensionnaires (residents.ts) : centre et rayon de promenade. */
+  spots: { x: number; y: number; r: number }[] = [];
   private talked = false;
   private bubbleT = 0;
   private stompT = 0;
@@ -81,7 +81,7 @@ export class Pension {
   }
 
   hide(): void {
-    this.near = this.nearKeeper = false;
+    this.nearKeeper = false;
     this.prompt.hidden = true;
     this.bubble.classList.remove('open');
   }
@@ -117,24 +117,25 @@ export class Pension {
         const row = dy === -HH ? 0 : dy === HH ? 2 : 1;
         world.objects.push({ sprite: { rect: [(fc + col) * TILE, (fr + row) * TILE, TILE, TILE], foot: TILE - 1, trunk: 1 }, x: (cx + dx) * TILE + TILE / 2, y: (cy + dy + 1) * TILE - 1, fades: false });
       }
+    // Du foin (retour de test : « encore du foin et d'autres trucs ») : trois tas, cuits avec le sol.
     const { col: hc, row: hr } = CAMP_PROPS.hay;
-    for (const [hx, hy] of [[cx + 1, cy - 3], [cx - 5, cy + 1]])
+    for (const [hx, hy] of [[cx + 1, cy - 3], [cx - 5, cy + 1], [cx + 2, cy + 1]])
       for (let dy = 0; dy < 3; dy++) for (let dx = 0; dx < 3; dx++) world.decals.push({ tile: [hc + dx, hr + dy], x: hx + dx, y: hy + dy });
     place.prop(CAMP_PROPS.thatchHut, cx - 2.5, cy - 0.6);
     place.prop(CAMP_PROPS.barrels[0], cx + 4.5, cy - 2);
     place.prop(CAMP_PROPS.barrels[1], cx + 5.3, cy - 1.4);
     place.prop(TOWN_DECOR.crates, cx + 5.4, cy + 3);
-    // Les pensionnaires : Tauros et Ponyta, au repos dans l'enclos.
-    for (const [id, x, y] of [[MATES[0], cx + 3.5, cy + 1.9], [MATES[1], cx - 3.5, cy + 0.2]] as const) {
-      const mate = new Actor(id, x, y);
-      mate.dir = 0;
-      void loadInfo(id).then((i) => (mate.info = i));
-      void loadSheet(id, ['Idle']).then((sh) => {
-        mate.sheet = sh;
-        mate.setPose(['Idle']);
-      });
-      this.npcs.push(mate);
-    }
+    place.prop(TOWN_DECOR.crates, cx - 5.4, cy - 2.6);
+    // Dehors, le long de la clôture : de quoi nourrir la pension.
+    place.prop(CAMP_PROPS.barrels[0], cx - 7.5, cy + 4.6);
+    place.prop(TOWN_DECOR.crates, cx + 7.6, cy - 3.4);
+    place.prop(PROPS.log[0], cx + 8, cy + 2);
+    // Les pensionnaires (residents.ts) se promènent dans l'enclos.
+    this.spots = [
+      { x: cx + 3, y: cy + 0.4, r: 2 },
+      { x: cx - 4, y: cy + 2.4, r: 1.5 },
+      { x: cx + 1, y: cy - 1.8, r: 1.5 },
+    ];
     const n = { x: cx - 1.5, y: cy + 2.9 };
     const actor = new Actor(PENSION_NPC, n.x, n.y);
     actor.dir = 0;
@@ -149,12 +150,10 @@ export class Pension {
 
   update(dt: number, input: InputSample, player: Actor, rand: () => number): void {
     if (!this.active || !this.pen) return;
+    // Un seul interlocuteur (retour de test : on entraînait sans le vouloir en voulant échanger) :
+    // Écrémeuh, et son menu (main.ts) — entraîner, échanger, ou rien.
     const k = this.keeper;
-    this.nearKeeper = !this.swapped && !this.busy && Boolean(k) && Math.hypot(player.x - k!.x, player.y - k!.y) < KEEPER_REACH;
-    const px = Math.floor(player.x);
-    const py = Math.floor(player.y);
-    const inside = px >= this.pen.x0 && px <= this.pen.x1 && py >= this.pen.y0 && py <= this.pen.y1;
-    this.near = !this.nearKeeper && !this.used && !this.busy && inside;
+    this.nearKeeper = !this.busy && (!this.used || !this.swapped) && Boolean(k) && Math.hypot(player.x - k!.x, player.y - k!.y) < KEEPER_REACH;
     this.bubbleT -= dt;
     const m = this.keeper;
     if (m && this.stompT > 0) {
@@ -167,26 +166,27 @@ export class Pension {
     }
     this.bubble.classList.toggle('open', this.bubbleT > 0);
     this.renderPrompt();
-    if (input.interact && this.nearKeeper) this.trade();
-    else if (input.interact && this.near) this.train();
+    if (input.interact && this.nearKeeper) this.talkTo();
   }
 
-  private trade(): void {
+  private talkTo(): void {
     this.busy = true;
     this.nearKeeper = false;
     this.prompt.hidden = true;
-    sfx('menuOpen');
-    const opened = this.host.swap((swapped) => {
-      this.busy = false;
-      if (!swapped) return;
-      this.swapped = true;
-      this.say('Meuh ! Je l’ai renvoyé au Repaire. Prends bien soin du nouveau.');
-    });
-    if (!opened) {
-      this.busy = false;
-      this.swapped = true;
-      this.say('Meuh… Personne au Repaire n’est libre pour un échange.');
-    }
+    this.host.menu(
+      { trained: this.used, swapped: this.swapped },
+      (levels) => {
+        this.busy = false;
+        this.trained(levels);
+      },
+      (ok) => {
+        this.busy = false;
+        this.swapped = this.swapped || ok !== null;
+        if (ok) this.say('Meuh ! Je l’ai renvoyé au Repaire. Prends bien soin du nouveau.');
+        else if (ok === false) this.say('Meuh… Personne au Repaire n’est libre pour un échange.');
+      },
+      () => (this.busy = false),
+    );
   }
 
   private say(text: string): void {
@@ -194,49 +194,34 @@ export class Pension {
     this.bubbleT = 3.5;
   }
 
-  private train(): void {
+  /** L'entraînement est fait : Écrémeuh piétine, l'enclos brille. */
+  private trained(levels: number): void {
     const p = this.pen!;
     this.used = true;
-    this.near = false;
-    this.prompt.hidden = true;
-    sfx('menuOpen');
     this.fx.attackAnim('fx_boost', (p.x0 + p.x1 + 1) / 2, (p.y0 + p.y1 + 1) / 2);
     const m = this.keeper;
     if (m) {
       m.setPose(['Stomp', 'Idle']);
       this.stompT = 0.9;
     }
-    const n = this.host.train();
-    this.host.message(n ? `L’équipe s’entraîne à la pension : ${n} niveau${n > 1 ? 'x' : ''} gagné${n > 1 ? 's' : ''} !` : 'L’équipe s’entraîne à la pension.');
+    this.host.message(`L’équipe s’entraîne à la pension : ${levels} niveau${levels > 1 ? 'x' : ''} gagné${levels > 1 ? 's' : ''} !`);
     this.say('Meuh ! Revenez quand vous voulez.');
   }
 
   private renderPrompt(): void {
-    const mode = this.nearKeeper ? 'swap' : this.near ? 'train' : '';
-    if (!mode) {
+    if (!this.nearKeeper) {
       this.prompt.hidden = true;
       return;
     }
-    if (!this.prompt.hidden && this.prompt.dataset.mode === mode) return;
-    this.prompt.dataset.mode = mode;
+    if (!this.prompt.hidden) return;
     const el = (cls: string, text: string) => Object.assign(document.createElement('div'), { className: cls, textContent: text });
-    if (mode === 'swap') {
-      this.prompt.replaceChildren(
-        el('shop-name', 'Échange'),
-        el('da-stamp shop-cost', 'Gratuit'),
-        el('shop-desc', 'Renvoie un membre de l’équipe au Repaire, et fais venir à sa place un Pokémon qui y vit.'),
-        el('shop-note', 'Un échange par pension.'),
-        el('shop-buy', '✔ Échanger [E]'),
-      );
-      this.prompt.hidden = false;
-      return;
-    }
+    const offers = [...(this.used ? [] : ['entraîner l’équipe']), ...(this.swapped ? [] : ['échanger un membre contre un Pokémon du Repaire'])];
     this.prompt.replaceChildren(
       el('shop-name', 'Pension'),
       el('da-stamp shop-cost', 'Gratuit'),
-      el('shop-desc', `Chaque membre de l’équipe gagne ${PENSION_LEVELS} niveau, le plus faible ${PENSION_LEVELS + 1}.`),
-      el('shop-note', 'Une seule fois.'),
-      el('shop-buy', '✔ Entraîner l’équipe [E]'),
+      el('shop-desc', `Écrémeuh peut ${offers.join(', ou ')}.`),
+      el('shop-note', 'Chacun une fois par pension.'),
+      el('shop-buy', '✔ Parler à Écrémeuh [E]'),
     );
     this.prompt.hidden = false;
   }

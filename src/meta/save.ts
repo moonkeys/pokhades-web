@@ -1,3 +1,4 @@
+import { sanitizeErrands, type Errand } from './errands';
 // Progression permanente, gardée d'une run à l'autre (GameManager.gd, save.json) :
 // les Baies, l'équipe composée au Repaire, ses attaques et ses objets tenus,
 // les CT achetées et les améliorations. Mémorisée dans le navigateur ; sans
@@ -53,6 +54,8 @@ export interface Save {
   quests: { active: QuestId[]; progress: Partial<Record<QuestId, number>>; done: QuestId[] };
   /** Contrats de Kangourex, renouvelés à chaque réclamation (meta/quests.ts) ; `seed` : compteur du tirage. */
   contracts: { list: Contract[]; seed: number };
+  /** Services des habitants des salles calmes (meta/errands.ts) ; `seed` : compteur du tirage. */
+  errands: { list: Errand[]; seed: number };
   /** Runs lancées depuis le Repaire. */
   runs: number;
   /** L'équipe (uid des individus) ; le premier mène, au camp comme en run. */
@@ -178,6 +181,7 @@ const DEFAULTS: Save = {
   missions: [],
   quests: { active: [], progress: {}, done: [] },
   contracts: { list: [], seed: 0 },
+  errands: { list: [], seed: 0 },
   runs: 0,
   team: [1],
   loadouts: {},
@@ -255,6 +259,7 @@ export function migrate(save: Save): Save {
   // Quêtes inconnues oubliées, trois actives au plus, progression bornée à l'objectif.
   save.quests = sanitizeQuests(save.quests);
   save.contracts = sanitizeContracts(save.contracts);
+  save.errands = sanitizeErrands(save.errands);
   // add_champion_shards : jamais sous 0, toujours entier.
   save.shards = Math.max(0, Math.floor(Number(save.shards) || 0));
   // Ressources : une clé manquante ou nulle donnerait NaN au premier ajout.

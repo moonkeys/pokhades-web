@@ -5,7 +5,7 @@ import type { InputSample } from '../input/input';
 import type { CombatFx, Projector } from '../render/combatfx';
 import { blobTile, useGrid, type WorldMap } from '../world/generate';
 import { hash2 } from '../core/rng';
-import { BLOB, FLOWERS, LILIES, PROPS } from '../world/tiles';
+import { BLOB, CAMP_PROPS, FLOWERS, LILIES, PROPS, TILE } from '../world/tiles';
 import { Placer } from './placement';
 
 // Source, salle spéciale de soin (A-FAIRE 1.9 : « d'autres salles (soin…) »).
@@ -40,6 +40,9 @@ export class Spring {
   private pool: { x: number; y: number; rx: number; ry: number } | null = null;
   /** 0 : pleine ; 0 → 1 : l'eau pâlit après usage. */
   private used = 0;
+  private sparkT = 1;
+  /** Les coins des fées (residents.ts) : centre et rayon de promenade. */
+  spots: { x: number; y: number; r: number }[] = [];
   private near = false;
   private nurse: Actor | null = null;
   private talked = false;
@@ -129,6 +132,17 @@ export class Spring {
     place.prop(PROPS.paleStones[0], cx - 4.5, cy + 3.2, false);
     place.prop(PROPS.paleStones[2], cx + 3.5, cy - 2.8, false);
     place.prop(PROPS.paleStones[3], cx + 4.8, cy + 3.4, false);
+    // Retour de test (« un truc qui fait plus source magique ») : une statue veille à la tête de
+    // l'étang, d'où montent des éclats de lumière (extras), et l'eau jaillit en soins (update).
+    place.prop(CAMP_PROPS.statue, cx + 0.5, cy - 2.2);
+    place.prop(PROPS.paleRocks[1], cx - 2.5, cy - 2.6);
+    place.prop(PROPS.paleStones[1], cx + 3, cy - 3, false);
+    // Les fées de la source (residents.ts), autour de l'étang.
+    this.spots = [
+      { x: cx - 5.5, y: cy + 4.5, r: 2 },
+      { x: cx + 5, y: cy + 5, r: 2 },
+      { x: cx - 6.5, y: cy - 1, r: 1.5 },
+    ];
     const n = { x: cx + 6.5, y: cy + 0.9 };
     const actor = new Actor(SPRING_NPC, n.x, n.y);
     actor.dir = 0;
@@ -144,6 +158,13 @@ export class Spring {
   update(dt: number, input: InputSample, player: Actor, rand: () => number): void {
     if (!this.active || !this.pool) return;
     if (this.used > 0) this.used = Math.min(1, this.used + dt / 1.2);
+    // L'eau jaillit en soins, ici ou là sur l'étang (la planche Heal5 d'Essentials), tant qu'on n'a pas bu.
+    this.sparkT -= dt;
+    if (this.sparkT <= 0 && this.used === 0) {
+      const q = this.pool;
+      this.fx.attackAnim('fx_heal', q.x + (rand() - 0.5) * q.rx * 1.2, q.y + (rand() - 0.5) * q.ry, undefined, true);
+      this.sparkT = 1.8 + rand() * 1.6;
+    }
     // Au bord de l'étang : à moins d'une case et demie de sa rive.
     const p = this.pool;
     this.near = this.used === 0 && Math.hypot((player.x - p.x) / (p.rx + REACH), (player.y - p.y) / (p.ry + REACH)) < 1;
@@ -185,6 +206,34 @@ export class Spring {
       el('shop-buy', '✔ Boire [E]'),
     );
     this.prompt.hidden = false;
+  }
+
+  /** Des éclats de lumière montent de l'étang, de plus en plus pâles une fois qu'on a bu. */
+  extras(time: number): { y: number; draw(b: CanvasRenderingContext2D, camX: number, camY: number, k: number): void }[] {
+    const q = this.pool;
+    if (!this.active || !q) return [];
+    const glow = 1 - this.used * 0.8;
+    return [
+      {
+        y: (q.y + q.ry + 1) * TILE,
+        draw: (b, camX, camY, k) => {
+          b.save();
+          b.globalCompositeOperation = 'lighter';
+          for (let i = 0; i < 14; i++) {
+            const u = (time * 0.35 + i / 14) % 1;
+            const a = i * 2.39;
+            const x = ((q.x + Math.cos(a) * q.rx * 0.75) * TILE - camX) * k;
+            const y = ((q.y + Math.sin(a) * q.ry * 0.6) * TILE - camY) * k - u * 1.8 * TILE * k;
+            const r = Math.max(1, (1.6 - u) * k);
+            b.fillStyle = `rgba(${190 + 50 * (1 - u)},255,${235},${0.75 * (1 - u) * glow})`;
+            b.beginPath();
+            b.arc(x + Math.sin(time * 2 + i) * 1.5 * k, y, r, 0, Math.PI * 2);
+            b.fill();
+          }
+          b.restore();
+        },
+      },
+    ];
   }
 
   placeLabels(proj: Projector): void {

@@ -4,7 +4,7 @@ import { Actor } from '../entities/actor';
 import type { InputSample } from '../input/input';
 import type { CombatFx, Projector } from '../render/combatfx';
 import type { WorldMap, WorldObject } from '../world/generate';
-import { ALTAR_CIRCLE, ALTAR_FLOOR, ALTAR_PROPS, CAMP_PROPS, TILE } from '../world/tiles';
+import { ALTAR_CIRCLE, ALTAR_FLOOR, ALTAR_PROPS, CAMP_PROPS, PROPS, TILE, TREES, type SpriteDef } from '../world/tiles';
 import { Placer } from './placement';
 import { CURSES, CURSE_IDS, type CurseId } from './run';
 
@@ -36,6 +36,10 @@ export class Altar {
   private world: WorldMap | null = null;
   /** Les deux torches : signer le pacte les éteint (elles quittent la salle). */
   private torches: WorldObject[] = [];
+  /** Où montent les esprits violets (cases). */
+  private wisps: { x: number; y: number }[] = [];
+  /** Les coins des habitants (residents.ts) : centre et rayon de promenade. */
+  spots: { x: number; y: number; r: number }[] = [];
   private curse: CurseId = 'levels';
   /** 0 : intact ; 0 → 1 : les flammes s'éteignent après le pacte. */
   private used = 0;
@@ -68,6 +72,8 @@ export class Altar {
     this.stone = null;
     this.world = null;
     this.torches = [];
+    this.wisps = [];
+    this.spots = [];
     this.keeper = null;
     this.npcs.length = 0;
     this.hide();
@@ -112,6 +118,27 @@ export class Altar {
     place.prop(ALTAR_PROPS.urns[0], cx + 3.5, cy - 2);
     this.world = world;
     this.torches = [-1.5, 2.5].map((dx) => place.prop(CAMP_PROPS.torch, cx + dx, cy - 1.6));
+    // Autour du dallage (retour de test : « encore un peu plus de décor autour ») : arbres morts,
+    // gargouilles sur socle le long des bords, grands champignons et cailloux.
+    const around: [SpriteDef, number, number][] = [
+      [TREES.dead[0], cx - 6.5, cy - 2],
+      [TREES.dead[0], cx + 7.5, cy + 1],
+      [TREES.dead[0], cx - 6, cy + 5],
+      [ALTAR_PROPS.statues[0], cx - 5.5, cy + 1],
+      [ALTAR_PROPS.statues[1], cx + 6.5, cy - 2],
+      [PROPS.tallMushroom[0], cx + 6.5, cy + 4],
+      [PROPS.tallMushroom[0], cx - 5.5, cy - 4],
+      [ALTAR_PROPS.urns[1], cx + 5.5, cy + 5],
+      [PROPS.rockSmall[0], cx + 2.5, cy + 5.5],
+      [PROPS.rockSmall[1], cx - 2.5, cy - 5],
+    ];
+    for (const [sp, x, y] of around) place.prop(sp, x, y);
+    // Les esprits qui montent (dessinés : extras), au-dessus des gargouilles et des torches.
+    this.wisps = [[cx - 3.5, cy - 4], [cx + 4.5, cy - 4], [cx - 1.5, cy - 3.4], [cx + 2.5, cy - 3.4], [cx - 3.5, cy + 2.4], [cx + 4.5, cy + 2.4]].map(([x, y]) => ({ x, y }));
+    this.spots = [
+      { x: cx - 4, y: cy + 6, r: 2.5 },
+      { x: cx + 5, y: cy + 6.5, r: 2.5 },
+    ];
     const n = { x: cx + 0.5, y: cy - 1.6 };
     const actor = new Actor(ALTAR_NPC, n.x, n.y);
     actor.dir = 0;
@@ -175,6 +202,35 @@ export class Altar {
       el('shop-buy', '✔ Signer [E]'),
     );
     this.prompt.hidden = false;
+  }
+
+  /**
+   * Les esprits de l'Autel (retour de test : « les petits esprits violets qui volaient, tu peux
+   * les remettre ») : des feux follets qui montent au-dessus des gargouilles et des torches, en
+   * mode additif ; ils pâlissent une fois le pacte signé.
+   */
+  extras(time: number): { y: number; draw(b: CanvasRenderingContext2D, camX: number, camY: number, k: number): void }[] {
+    if (!this.active || !this.wisps.length) return [];
+    const glow = 1 - this.used * 0.7;
+    return this.wisps.map((w, j) => ({
+      y: (w.y + 3) * TILE,
+      draw: (b: CanvasRenderingContext2D, camX: number, camY: number, k: number) => {
+        const fx = (w.x * TILE - camX) * k;
+        const fy = (w.y * TILE - camY) * k;
+        b.save();
+        b.globalCompositeOperation = 'lighter';
+        for (let i = 0; i < 4; i++) {
+          const u = (time * 0.7 + i / 4 + j * 0.37) % 1;
+          const r = (1 - u) * 3 * k * glow;
+          if (r <= 0.2) continue;
+          b.fillStyle = `rgba(${170 + 60 * (1 - u)},${90 + 40 * u},255,${0.7 * (1 - u) * glow})`;
+          b.beginPath();
+          b.arc(fx + Math.sin(time * 3 + i + j) * 2 * k, fy - u * 1.6 * TILE * k, r, 0, Math.PI * 2);
+          b.fill();
+        }
+        b.restore();
+      },
+    }));
   }
 
   placeLabels(proj: Projector): void {

@@ -36,8 +36,11 @@ export class Placer {
       const o = world.objects[i];
       if (inRect(Math.floor(o.x / TILE), Math.floor(o.y / TILE), 2)) world.objects.splice(i, 1);
     }
-    // Les fleurs posées à plat aussi (elles restaient sur le dallage de l'Autel).
+    // Les fleurs posées à plat aussi (elles restaient sur le dallage de l'Autel), les arbres à baies
+    // (un a poussé sur le tatami du Dojo) et le coffre : la salle les relit ensuite (main.ts).
     world.flat = world.flat.filter((f) => !inRect(f.x, f.y, 0));
+    if (world.berries) world.berries = world.berries.filter((b) => !inRect(Math.floor(b.x), Math.floor(b.y), 2));
+    if (world.chest && inRect(Math.floor(world.chest.x), Math.floor(world.chest.y), 2)) world.chest = null;
     for (let y = y0; y < y0 + h; y++)
       for (let x = x0; x < x0 + w; x++) {
         if (x < 0 || y < 0 || x >= world.w || y >= world.h) continue;
