@@ -30,6 +30,8 @@ export const PATCH_NOTES: readonly PatchNote[] = [
           'Pension : parle à Écrémeuh pour échanger un membre de l’équipe contre un Pokémon du Repaire.',
           'Source, Autel, Dojo, Pension : une petite salle ronde à elles, chacune son ambiance (nuit, crépuscule, couchant, matin), sans météo ; de grands décors du tileset et d’Essentials (étang, autel aux gargouilles, dojo au toit rouge, grand enclos où l’on entre).',
           'Leurs gardiens et les Pokémon de la boutique bougent et se tournent vers toi.',
+          'Des habitants s’y promènent (fées, apprentis, spectres, pensionnaires) : parle-leur ; certains te confient un service, à rendre puis à faire payer en les retrouvant.',
+          'Pension : Écrémeuh propose son menu (entraîner ou échanger), et tu répartis toi-même les niveaux.',
           'Défi : l’objectif s’annonce (« 12 sauvages en 70 s ») et le chrono compte les vaincus.',
           'Boutique : un lot de Bois, de Pierre ou de Nourriture à la place de l’objet tenu.',
         ],

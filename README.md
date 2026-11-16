@@ -201,7 +201,7 @@ Pas en ligne.
 Salles calmes (Source, Autel, Dojo, Pension ; retours de test du 16 novembre
 2026 : « une salle couloir, la source sur le chemin… une petite salle faite
 pour, plus de décor, une ambiance différente pour chaque salle ») :
-- une forme à elles, le **Sanctuaire** (`layouts.ts`, 44 × 34 ou 46 × 36,
+- une forme à elles, le **Sanctuaire** (`layouts.ts`, 34 × 28 ou 36 × 28,
   jamais tirée ailleurs, pas au Village ni sur le littoral) : le chemin fait
   le tour d'une grande place par un côté, sans mare ni plateau rocheux ; la
   salle y pose son décor ;
@@ -217,8 +217,25 @@ pour, plus de décor, une ambiance différente pour chaque salle ») :
   l'Autel, un dallage de la Tour des morts, le cercle, des gargouilles, des
   urnes et deux torches ; la Source, un étang (le jeu « mare »), des
   nénuphars, des fleurs et des pierres pâles ; la Pension, un enclos de
-  13 × 9 avec une ouverture au sud, la paillote, du foin, des tonneaux et
-  deux pensionnaires (Tauros, Ponyta) : on s'entraîne à l'intérieur.
+  13 × 9 avec une ouverture au sud, la paillote, trois tas de foin, des
+  tonneaux et des caisses. Deuxième retour de test : la Source a une statue à
+  la tête de l'étang, des éclats de lumière qui montent (dessinés) et des
+  soins qui jaillissent de l'eau (planche Heal5) ; l'Autel, des arbres
+  morts, d'autres gargouilles, des champignons et ses esprits violets
+  (dessinés) ; le Dojo, des caisses, des tonneaux, des rondins et des
+  souches.
+- des **habitants** (`run/residents.ts`, `RESIDENTS`) : deux ou trois
+  Pokémon par salle (fées à la Source, apprentis au Dojo, spectres à
+  l'Autel, pensionnaires à la Pension) qui vont et viennent autour de leur
+  coin, s'arrêtent quand on approche ; [E] leur parle. Parfois, l'un propose
+  un **service** (`meta/errands.ts`, `Save.errands`, trois au plus) : un
+  contrat comme ceux de Kangourex (même tirage, primes en Baies ×1,3) ;
+  rempli, il faut retrouver l'habitant dans une salle de son genre pour être
+  payé (il y revient 85 fois sur 100 tant qu'on lui doit une réponse) ;
+- à la Pension, un seul interlocuteur, Écrémeuh, et son **menu**
+  (`ui/talkscreen.ts`) : entraîner l'équipe (autant de niveaux que de
+  membres, plus un, à **répartir** soi-même, `ui/trainscreen.ts`), échanger
+  un membre, ou rien ; chacun une fois.
 
 Les Pokémon des places (boutique, salles spéciales, prisonniers de grotte)
 bouclent leur pose de repos et se tournent vers toi quand tu approches.
