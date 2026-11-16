@@ -1,6 +1,7 @@
 import { sfx } from '../audio/audio';
 import { BOONS, DONORS, RARITY_COLOR, RARITY_NAME, valueText, type Boons } from '../combat/boons';
 import type { Pokemon } from '../combat/pokemon';
+import { talentOf } from '../data/abilities';
 import type { HeldItem } from '../meta/catalog';
 import { typeColor } from '../render/combatfx';
 import { typePill } from './hud';
@@ -165,6 +166,13 @@ export function statCard(parent: HTMLElement, { mon, item, ko, ally }: SheetEntr
   if (mon.critChance > 0.005) extra.push(`Critique ${Math.round(mon.critChance * 100)} %`);
   if (mon.dodgeChance > 0.005) extra.push(`Esquive ${Math.round(mon.dodgeChance * 100)} %`);
   if (extra.length) el('div', 'extra', card, extra.join(' · '));
+  // Le talent, s'il en a un que le jeu fait jouer (data/abilities.ts).
+  const talent = talentOf(mon.id);
+  if (talent) {
+    const t = el('div', 'talent', card);
+    el('b', '', t, `Talent : ${talent.name}`);
+    t.append(` — ${talent.desc}.`);
+  }
 
   const held = el('div', 'held', card);
   if (item) {

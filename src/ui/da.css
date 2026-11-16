@@ -3609,6 +3609,15 @@
   font-weight: 700;
   color: #2f8a3a;
 }
+.stats-card .talent {
+  margin-top: calc(0.4 * var(--u));
+  font-size: calc(0.9 * var(--u));
+  line-height: 1.25;
+  color: var(--ink-soft, #4a3f36);
+}
+.stats-card .talent b {
+  color: #7a4fb0;
+}
 .stats-card .held {
   display: flex;
   gap: calc(0.3 * var(--u));
