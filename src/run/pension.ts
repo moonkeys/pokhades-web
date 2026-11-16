@@ -3,7 +3,7 @@ import { Actor } from '../entities/actor';
 import type { InputSample } from '../input/input';
 import type { CombatFx, Projector } from '../render/combatfx';
 import type { WorldMap } from '../world/generate';
-import { CAMP_PROPS, FENCES, PROPS, TILE, TOWN_DECOR } from '../world/tiles';
+import { CAMP_PROPS, FENCES, PROPS, TILE } from '../world/tiles';
 import { Placer } from './placement';
 
 // Pension, salle spéciale (A-FAIRE 1.9 : « d'autres salles »). Pas d'ennemis,
@@ -124,11 +124,11 @@ export class Pension {
     place.prop(CAMP_PROPS.thatchHut, cx - 2.5, cy - 0.6);
     place.prop(CAMP_PROPS.barrels[0], cx + 4.5, cy - 2);
     place.prop(CAMP_PROPS.barrels[1], cx + 5.3, cy - 1.4);
-    place.prop(TOWN_DECOR.crates, cx + 5.4, cy + 3);
-    place.prop(TOWN_DECOR.crates, cx - 5.4, cy - 2.6);
+    place.prop(CAMP_PROPS.barrels[0], cx + 5.4, cy + 3);
+    place.prop(PROPS.stump[0], cx - 5.4, cy - 2.6);
     // Dehors, le long de la clôture : de quoi nourrir la pension.
     place.prop(CAMP_PROPS.barrels[0], cx - 7.5, cy + 4.6);
-    place.prop(TOWN_DECOR.crates, cx + 7.6, cy - 3.4);
+    place.prop(CAMP_PROPS.barrels[1], cx + 7.6, cy - 3.4);
     place.prop(PROPS.log[0], cx + 8, cy + 2);
     // Les pensionnaires (residents.ts) se promènent dans l'enclos.
     this.spots = [

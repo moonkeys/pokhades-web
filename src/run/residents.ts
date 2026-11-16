@@ -51,21 +51,28 @@ export interface Resident {
   talk: number;
   bubble: HTMLElement;
   bubbleT: number;
+  /** Le « ! » d'Essentials, comme au Repaire : un service à proposer ou à payer. */
+  news: HTMLElement;
 }
 
 export class Residents {
   readonly npcs: Actor[] = [];
   readonly list: Resident[] = [];
   private readonly layer: HTMLElement;
+  /** L'invite en bas à droite, comme au Repaire (« [E] Parler à Mélofée »). */
+  private readonly prompt: HTMLElement;
   private near: Resident | null = null;
 
   constructor(
     parent: HTMLElement,
-    private readonly host: { talk(r: Resident): void },
+    private readonly host: { talk(r: Resident): void; news(r: Resident): boolean },
   ) {
     this.layer = document.createElement('div');
     this.layer.className = 'room-labels';
-    parent.append(this.layer);
+    this.prompt = document.createElement('div');
+    this.prompt.className = 'shop-prompt da-paper';
+    this.prompt.hidden = true;
+    parent.append(this.layer, this.prompt);
   }
 
   clear(): void {
@@ -73,6 +80,12 @@ export class Residents {
     this.npcs.length = 0;
     this.near = null;
     this.layer.replaceChildren();
+    this.hide();
+  }
+
+  hide(): void {
+    this.prompt.hidden = true;
+    this.prompt.dataset.key = '';
   }
 
   /**
@@ -97,8 +110,11 @@ export class Residents {
       });
       const bubble = document.createElement('div');
       bubble.className = 'room-label shop-bubble';
-      this.layer.append(bubble);
-      this.list.push({ actor, id, room, home: { x: s.x, y: s.y }, radius: s.r, goal: { x: s.x, y: s.y }, wait: rng.range(0.5, 3), offers: rng.chance(0.6), talk: 0, bubble, bubbleT: 0 });
+      const news = document.createElement('div');
+      news.className = 'room-label camp-news';
+      news.hidden = true;
+      this.layer.append(bubble, news);
+      this.list.push({ actor, id, room, home: { x: s.x, y: s.y }, radius: s.r, goal: { x: s.x, y: s.y }, wait: rng.range(0.5, 3), offers: rng.chance(0.6), talk: 0, bubble, bubbleT: 0, news });
       this.npcs.push(actor);
     });
   }
@@ -115,15 +131,19 @@ export class Residents {
         this.near = r;
       }
       r.bubbleT -= dt;
-      r.bubble.classList.toggle('open', r.bubbleT > 0);
+      // (Basculée seulement quand il le faut : la rouvrir à chaque image la faisait clignoter.)
+      const talking = r.bubbleT > 0;
+      if (r.bubble.classList.contains('open') !== talking) r.bubble.classList.toggle('open', talking);
+      const news = this.host.news(r);
+      if (r.news.hidden === news) r.news.hidden = !news;
       // Près du joueur, il s'arrête (main.ts le tourne vers lui).
       if (d < 2.4) {
-        a.moving = false;
+        this.stop(r);
         continue;
       }
       if (r.wait > 0) {
         r.wait -= dt;
-        a.moving = false;
+        this.stop(r);
         if (r.wait <= 0) {
           const ang = rand() * Math.PI * 2;
           const k = 0.3 + rand() * 0.7;
@@ -136,9 +156,11 @@ export class Residents {
       const len = Math.hypot(dx, dy);
       if (len < 0.15) {
         r.wait = 1.5 + rand() * 3;
-        a.moving = false;
+        this.stop(r);
         continue;
       }
+      // En marche, la planche de marche (la pose de repos, une action, passerait devant).
+      if (a.action) a.action = null;
       const step = Math.min(len, SPEED * dt);
       const bx = a.x;
       const by = a.y;
@@ -148,17 +170,25 @@ export class Residents {
       // Bloqué (un obstacle) : il s'arrête et repart ailleurs.
       if (Math.abs(a.x - bx) + Math.abs(a.y - by) < step * 0.2) r.wait = 0.8 + rand() * 1.5;
     }
-    // Une invite discrète au-dessus de celui à portée.
     const n = this.near;
-    if (n && n.bubbleT <= 0) {
-      n.bubble.textContent = '[E] Parler';
-      n.bubble.classList.add('open');
+    const hint = n ? `[E] Parler à ${n.actor.info?.name ?? '…'}` : '';
+    if (this.prompt.dataset.key !== hint) {
+      this.prompt.dataset.key = hint;
+      this.prompt.hidden = !hint;
+      if (hint) this.prompt.replaceChildren(Object.assign(document.createElement('div'), { className: 'shop-hint', textContent: hint }));
     }
     if (input.interact && n) {
       this.host.talk(n);
       return true;
     }
     return false;
+  }
+
+  /** Il s'arrête : sa pose de repos reprend. */
+  private stop(r: Resident): void {
+    const a = r.actor;
+    a.moving = false;
+    if (!a.action && a.sheet) a.setPose(['Idle']);
   }
 
   /** Une réplique au hasard de sa salle. */
@@ -179,6 +209,10 @@ export class Residents {
       const head = a.sheet ? (a.sheet.footRow + 1 - a.sheet.topRow) / 16 : 1.2;
       const pos = proj.toCss(a.x, a.y - head - 0.3);
       r.bubble.style.transform = `translate(${pos.x}px, ${pos.y}px) translate(-50%, -100%)`;
+      if (!r.news.hidden) {
+        r.news.style.transform = r.bubble.style.transform;
+        r.news.style.setProperty('--px', `${proj.perTile / 16}px`);
+      }
     }
   }
 }

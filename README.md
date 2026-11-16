@@ -219,22 +219,26 @@ pour, plus de décor, une ambiance différente pour chaque salle ») :
   nénuphars, des fleurs et des pierres pâles ; la Pension, un enclos de
   13 × 9 avec une ouverture au sud, la paillote, trois tas de foin, des
   tonneaux et des caisses. Deuxième retour de test : la Source a une statue à
-  la tête de l'étang, des éclats de lumière qui montent (dessinés) et des
-  soins qui jaillissent de l'eau (planche Heal5) ; l'Autel, des arbres
+  la tête de l'étang, la Rosée Âme d'Essentials qui flotte au-dessus de
+  l'eau dans un halo, des halos et des éclats de lumière (dessinés) ; on boit
+  en parlant à Leveinard (menu) ; l'Autel, des arbres
   morts, d'autres gargouilles, des champignons et ses esprits violets
   (dessinés) ; le Dojo, des caisses, des tonneaux, des rondins et des
   souches.
 - des **habitants** (`run/residents.ts`, `RESIDENTS`) : deux ou trois
   Pokémon par salle (fées à la Source, apprentis au Dojo, spectres à
   l'Autel, pensionnaires à la Pension) qui vont et viennent autour de leur
-  coin, s'arrêtent quand on approche ; [E] leur parle. Parfois, l'un propose
+  coin, s'arrêtent quand on approche ; [E] leur parle (l'invite en bas à
+  droite et le « ! » d'Essentials au-dessus de qui a un service, comme au
+  Repaire). Parfois, l'un propose
   un **service** (`meta/errands.ts`, `Save.errands`, trois au plus) : un
   contrat comme ceux de Kangourex (même tirage, primes en Baies ×1,3) ;
   rempli, il faut retrouver l'habitant dans une salle de son genre pour être
   payé (il y revient 85 fois sur 100 tant qu'on lui doit une réponse) ;
 - à la Pension, un seul interlocuteur, Écrémeuh, et son **menu**
   (`ui/talkscreen.ts`) : entraîner l'équipe (autant de niveaux que de
-  membres, plus un, à **répartir** soi-même, `ui/trainscreen.ts`), échanger
+  membres, plus un, plus un par acte, à **répartir** soi-même,
+  `ui/trainscreen.ts` ; d'autres s'achètent, 90 ₽ × l'acte la pièce), échanger
   un membre, ou rien ; chacun une fois.
 
 Les Pokémon des places (boutique, salles spéciales, prisonniers de grotte)

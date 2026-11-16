@@ -4,7 +4,7 @@ import { Actor } from '../entities/actor';
 import type { InputSample } from '../input/input';
 import type { CombatFx, Projector } from '../render/combatfx';
 import type { WorldMap } from '../world/generate';
-import { CAMP_PROPS, DOJO_HALL, DOJO_MAT, PROPS, TOWN_DECOR, type SpriteDef } from '../world/tiles';
+import { CAMP_PROPS, DOJO_HALL, DOJO_MAT, PROPS, type SpriteDef } from '../world/tiles';
 import { Placer } from './placement';
 
 // Dojo, salle spéciale (A-FAIRE 1.9 : « d'autres salles »). Pas d'ennemis,
@@ -111,11 +111,12 @@ export class Dojo {
     this.rock = { x: rx, y: ry - 0.8 };
     place.prop(PROPS.rockSmall[0], x0 - 1.5, y0 + 3);
     place.prop(PROPS.rockSmall[1], x0 - 1, y0 + 5);
-    // Retour de test (« des trucs de casse et tout ») : des caisses et des tonneaux à briser près de
-    // la salle, des rondins empilés, des souches qui servent de poteaux de frappe.
+    // Retour de test (« des trucs de casse et tout ») : des tonneaux à briser près de la salle, des
+    // rondins empilés, des souches qui servent de poteaux de frappe, des pierres à fendre. (Les
+    // caisses du tileset se lisaient comme des pancartes : retirées.)
     const gear: [SpriteDef, number, number][] = [
-      [TOWN_DECOR.crates, cx - 5.5, cy - 0.8],
-      [TOWN_DECOR.crates, cx - 6.4, cy - 0.2],
+      [CAMP_PROPS.barrels[1], cx - 5.5, cy - 0.8],
+      [PROPS.boulder[1], cx - 6.6, cy - 0.2],
       [CAMP_PROPS.barrels[0], cx + 6.5, cy - 0.6],
       [CAMP_PROPS.barrels[1], cx + 7.3, cy],
       [PROPS.log[0], cx - 6.5, cy + 2.2],

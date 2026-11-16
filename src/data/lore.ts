@@ -163,7 +163,7 @@ export const LORE: LoreChapter[] = [
       { title: 'Le Défi', text: 'Bats tous les sauvages avant la fin du chrono : il annonce combien, et compte les vaincus. Réussi, le gain est triplé et un don t’attend ; trop lent, ils s’enfuient avec la récompense.' },
       { title: 'Le Piège', text: 'Aucune porte ne l’annonce. Une récompense trop belle au milieu d’une salle vide… Approche, et l’embuscade se referme : trois vagues, plus nombreuses et plus fortes. Survis, et le gain est doublé.' },
       // run/spring.ts
-      { title: 'La Source', color: '#6fd3e0', text: 'Pas d’ennemis : Leveinard veille sur un étang magique, au crépuscule, avec des fées. Bois-y une fois (E) : chaque membre regagne 60 % de ses PV, perd son statut, et les K.O. se relèvent.' },
+      { title: 'La Source', color: '#6fd3e0', text: 'Pas d’ennemis : Leveinard veille sur un étang magique, au crépuscule, avec des fées. Parle-lui (E) pour boire. Bois-y une fois (E) : chaque membre regagne 60 % de ses PV, perd son statut, et les K.O. se relèvent.' },
       // run/altar.ts, run/run.ts (CURSES)
       { title: 'L’Autel maudit', color: '#b48ce8', text: 'De nuit, Feuforêve garde un cercle magique entre deux torches. Signe le pacte (E) : un don plus rare, contre une malédiction jusqu’à la fin de l’acte, lisible avant de signer.' },
       // run/residents.ts, meta/errands.ts
@@ -171,7 +171,7 @@ export const LORE: LoreChapter[] = [
       // run/dojo.ts
       { title: 'Le Dojo', color: '#e08a4c', text: 'Machopeur tient un dojo au toit rouge. Monte sur son tatami (E) : une leçon gratuite, apprendre une attaque forte ou en renforcer une, pour le Pokémon de ton choix. Deux leçons par dojo ; refermer le parchemin sans rien prendre ne compte pas.' },
       // run/pension.ts
-      { title: 'La Pension', color: '#e8a8c8', text: 'Écrémeuh garde un grand enclos. Parle-lui (E) : elle entraîne l’équipe (des niveaux que tu répartis comme tu veux) ou échange un membre contre un Pokémon du Repaire, chacun une fois.' },
+      { title: 'La Pension', color: '#e8a8c8', text: 'Écrémeuh garde un grand enclos. Parle-lui (E) : elle entraîne l’équipe (des niveaux que tu répartis comme tu veux, plus nombreux à chaque acte, et d’autres contre des ₽) ou échange un membre contre un Pokémon du Repaire, chacun une fois.' },
       // entities/actor.ts (terrainMult), run/hazards.ts, run/room.ts (Village), world/generate.ts (hide)
       { title: 'Le terrain', text: 'Chaque biome a son piège : hautes herbes qui cachent les sauvages, boue qui ralentit, lave qui brûle, tourbillons de sable, glace qui fait glisser, dresseurs qui lancent des Poké Balls au Village.' },
       // run/cave.ts

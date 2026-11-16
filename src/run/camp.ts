@@ -888,8 +888,10 @@ export class Camp {
       put(PROPS.paleStones[3], quarry.x + 4.2, quarry.y + 2, false);
     }
     if (has('dorm')) {
-      put(CAMP_PROPS.tepee, dorm.x - 3.5, dorm.y - 0.6);
-      put(CAMP_PROPS.tepee, dorm.x + 3.5, dorm.y - 0.6);
+      // Décalés vers l'ouest (retour de test du 16 novembre 2026, capture à l'appui : le tipi de
+      // droite passait par-dessus le panneau du plan du monde, posé à la même abscisse).
+      put(CAMP_PROPS.tepee, dorm.x - 7, dorm.y - 0.6);
+      put(CAMP_PROPS.tepee, dorm.x - 0.5, dorm.y - 0.6);
     }
     if (has('jetty')) {
       // Le ponton : son plancher avance au-dessus de l'eau, et l'on y marche jusqu'au bout.

@@ -1,5 +1,5 @@
 import { sfx } from '../audio/audio';
-import { loadInfo, loadSheet } from '../assets/pmd';
+import { loadImage, loadInfo, loadSheet } from '../assets/pmd';
 import { Actor } from '../entities/actor';
 import type { InputSample } from '../input/input';
 import type { CombatFx, Projector } from '../render/combatfx';
@@ -21,8 +21,8 @@ import { Placer } from './placement';
 export const SPRING_NPC = 113;
 /** Part des PV max rendue à chaque membre. */
 export const SPRING_HEAL = 0.6;
-/** Portée du bord de l'étang (cases), et ses demi-axes. */
-const REACH = 1.6;
+/** Portée pour parler à Leveinard (cases), et les demi-axes de l'étang. */
+const REACH = 1.8;
 const POND_RX = 4.5;
 const POND_RY = 3;
 const LINES = ['Lei ! Bois, l’eau de la source soigne tout.', 'Lei-lei ! Repose-toi un peu avant de repartir.'];
@@ -31,6 +31,8 @@ export interface SpringHost {
   /** Soigne l'équipe ; rend combien de membres se sont relevés. */
   heal(): number;
   message(text: string): void;
+  /** Parler à Leveinard (main.ts, menu) : `drink` s'il propose de boire et qu'on accepte, `closed` sinon. */
+  menu(canDrink: boolean, drink: () => void, closed: () => void): void;
 }
 
 export class Spring {
@@ -40,7 +42,9 @@ export class Spring {
   private pool: { x: number; y: number; rx: number; ry: number } | null = null;
   /** 0 : pleine ; 0 → 1 : l'eau pâlit après usage. */
   private used = 0;
-  private sparkT = 1;
+  /** Leveinard est en pleine conversation (menu ouvert). */
+  private busy = false;
+  private dew: HTMLImageElement | null = null;
   /** Les coins des fées (residents.ts) : centre et rayon de promenade. */
   spots: { x: number; y: number; r: number }[] = [];
   private near = false;
@@ -65,6 +69,7 @@ export class Spring {
     this.prompt.className = 'shop-prompt da-paper';
     this.prompt.hidden = true;
     parent.append(this.layer, this.prompt);
+    void loadImage('/game/assets/essentials/items/SOULDEW.png').then((img) => (this.dew = img), () => {});
   }
 
   clear(): void {
@@ -158,16 +163,9 @@ export class Spring {
   update(dt: number, input: InputSample, player: Actor, rand: () => number): void {
     if (!this.active || !this.pool) return;
     if (this.used > 0) this.used = Math.min(1, this.used + dt / 1.2);
-    // L'eau jaillit en soins, ici ou là sur l'étang (la planche Heal5 d'Essentials), tant qu'on n'a pas bu.
-    this.sparkT -= dt;
-    if (this.sparkT <= 0 && this.used === 0) {
-      const q = this.pool;
-      this.fx.attackAnim('fx_heal', q.x + (rand() - 0.5) * q.rx * 1.2, q.y + (rand() - 0.5) * q.ry, undefined, true);
-      this.sparkT = 1.8 + rand() * 1.6;
-    }
-    // Au bord de l'étang : à moins d'une case et demie de sa rive.
-    const p = this.pool;
-    this.near = this.used === 0 && Math.hypot((player.x - p.x) / (p.rx + REACH), (player.y - p.y) / (p.ry + REACH)) < 1;
+    // Retour de test : la Source s'active en parlant à Leveinard, qui la garde.
+    const nurse = this.nurse;
+    this.near = !this.busy && Boolean(nurse) && Math.hypot(player.x - nurse!.x, player.y - nurse!.y) < REACH;
     this.bubbleT -= dt;
     const m = this.nurse;
     if (m && !this.talked && Math.hypot(player.x - m.x, player.y - m.y) < 5) {
@@ -177,7 +175,19 @@ export class Spring {
     }
     this.bubble.classList.toggle('open', this.bubbleT > 0);
     this.renderPrompt();
-    if (input.interact && this.near) this.drink();
+    if (input.interact && this.near) {
+      this.busy = true;
+      this.near = false;
+      this.prompt.hidden = true;
+      this.host.menu(
+        this.used === 0,
+        () => {
+          this.busy = false;
+          this.drink();
+        },
+        () => (this.busy = false),
+      );
+    }
   }
 
   private drink(): void {
@@ -201,36 +211,78 @@ export class Spring {
     this.prompt.replaceChildren(
       el('shop-name', 'Source'),
       el('da-stamp shop-cost', 'Gratuit'),
-      el('shop-desc', `Chaque membre regagne ${Math.round(SPRING_HEAL * 100)} % de ses PV et perd son statut ; un membre K.O. se relève.`),
+      el('shop-desc', this.used ? 'L’équipe a déjà bu à la source.' : `Chaque membre regagne ${Math.round(SPRING_HEAL * 100)} % de ses PV et perd son statut ; un membre K.O. se relève.`),
       el('shop-note', 'Une seule fois.'),
-      el('shop-buy', '✔ Boire [E]'),
+      el('shop-buy', '✔ Parler à Leveinard [E]'),
     );
     this.prompt.hidden = false;
   }
 
-  /** Des éclats de lumière montent de l'étang, de plus en plus pâles une fois qu'on a bu. */
+  /**
+   * La magie de la source (retour de test : « des petits halos de lumière, un truc qui flotte au
+   * milieu du lac ») : la Rosée Âme d'Essentials flotte au-dessus de l'eau, dans un grand halo qui
+   * respire ; des halos plus petits naissent et s'éteignent sur l'étang, des éclats montent. Tout
+   * pâlit une fois qu'on a bu.
+   */
   extras(time: number): { y: number; draw(b: CanvasRenderingContext2D, camX: number, camY: number, k: number): void }[] {
     const q = this.pool;
     if (!this.active || !q) return [];
-    const glow = 1 - this.used * 0.8;
+    const glow = 1 - this.used * 0.75;
+    const halo = (b: CanvasRenderingContext2D, x: number, y: number, r: number, a: number) => {
+      const g = b.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, `rgba(220,255,250,${a})`);
+      g.addColorStop(0.4, `rgba(140,230,255,${a * 0.45})`);
+      g.addColorStop(1, 'rgba(120,200,255,0)');
+      b.fillStyle = g;
+      b.beginPath();
+      b.arc(x, y, r, 0, Math.PI * 2);
+      b.fill();
+    };
     return [
       {
         y: (q.y + q.ry + 1) * TILE,
         draw: (b, camX, camY, k) => {
+          const X = (x: number) => (x * TILE - camX) * k;
+          const Y = (y: number) => (y * TILE - camY) * k;
           b.save();
           b.globalCompositeOperation = 'lighter';
+          // Les halos qui naissent et s'éteignent sur l'eau.
+          for (let i = 0; i < 6; i++) {
+            const u = (time * 0.25 + i / 6) % 1;
+            const a = i * 2.1 + Math.floor(time * 0.25 + i / 6) * 1.7;
+            const life = Math.sin(u * Math.PI);
+            halo(b, X(q.x + Math.cos(a) * q.rx * 0.6), Y(q.y + Math.sin(a) * q.ry * 0.5), (0.9 + life * 0.5) * TILE * k, 0.35 * life * glow);
+          }
+          // Les éclats qui montent.
           for (let i = 0; i < 14; i++) {
             const u = (time * 0.35 + i / 14) % 1;
             const a = i * 2.39;
-            const x = ((q.x + Math.cos(a) * q.rx * 0.75) * TILE - camX) * k;
-            const y = ((q.y + Math.sin(a) * q.ry * 0.6) * TILE - camY) * k - u * 1.8 * TILE * k;
             const r = Math.max(1, (1.6 - u) * k);
-            b.fillStyle = `rgba(${190 + 50 * (1 - u)},255,${235},${0.75 * (1 - u) * glow})`;
+            b.fillStyle = `rgba(${190 + 50 * (1 - u)},255,235,${0.75 * (1 - u) * glow})`;
             b.beginPath();
-            b.arc(x + Math.sin(time * 2 + i) * 1.5 * k, y, r, 0, Math.PI * 2);
+            b.arc(X(q.x + Math.cos(a) * q.rx * 0.75) + Math.sin(time * 2 + i) * 1.5 * k, Y(q.y + Math.sin(a) * q.ry * 0.6) - u * 1.8 * TILE * k, r, 0, Math.PI * 2);
             b.fill();
           }
+          // Le grand halo de la Rosée Âme, qui respire.
+          const bob = Math.sin(time * 1.6) * 0.18;
+          const ox = X(q.x);
+          const oy = Y(q.y - 0.6 + bob);
+          halo(b, ox, oy, (1.9 + Math.sin(time * 2.2) * 0.2) * TILE * k, 0.55 * glow);
           b.restore();
+          // Son reflet, puis la Rosée Âme elle-même (pixels nets).
+          const dew = this.dew;
+          if (dew) {
+            const s = k * 0.75;
+            const w = dew.width * s;
+            const h = dew.height * s;
+            b.save();
+            b.globalAlpha = 0.25 * glow;
+            b.imageSmoothingEnabled = false;
+            b.drawImage(dew, Math.round(ox - w / 2), Math.round(Y(q.y + 0.5 - bob) - h / 2), Math.round(w), Math.round(h * 0.5));
+            b.globalAlpha = 0.6 + 0.4 * glow;
+            b.drawImage(dew, Math.round(ox - w / 2), Math.round(oy - h / 2), Math.round(w), Math.round(h));
+            b.restore();
+          }
         },
       },
     ];

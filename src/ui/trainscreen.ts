@@ -47,8 +47,12 @@ export class TrainScreen {
     return !this.root.hidden;
   }
 
-  /** `done` reçoit les niveaux donnés à chaque membre (par clé) ; `cancel` : refermé sans valider. */
-  show(members: readonly TrainEntry[], points: number, done: (alloc: Map<number, number>) => void, cancel: () => void): void {
+  /**
+   * `done` reçoit les niveaux donnés à chaque membre (par clé) ; `cancel` : refermé sans valider.
+   * `shop` (retour de test : « si on veut donner encore plus de niveaux, on peut payer ») : des
+   * niveaux de plus, à `price` ₽ pièce, tant que `buy` accepte (il débite la bourse).
+   */
+  show(members: readonly TrainEntry[], points: number, done: (alloc: Map<number, number>) => void, cancel: () => void, shop?: { price: number; money: () => number; buy: () => boolean }): void {
     this.onCancel = cancel;
     this.root.replaceChildren();
     const page = el('div', 'stats-page swap-page', this.root);
@@ -60,9 +64,14 @@ export class TrainScreen {
     const grid = el('div', 'swap-grid', box);
     const alloc = new Map<number, number>(members.map((m) => [m.key, 0]));
     const go = document.createElement('button');
+    const extra = document.createElement('button');
     const refresh = () => {
       const used = [...alloc.values()].reduce((a, b) => a + b, 0);
       left.textContent = `${points - used} niveau${points - used > 1 ? 'x' : ''} à répartir`;
+      if (shop) {
+        extra.textContent = `+1 niveau · ${shop.price} ₽ (bourse : ${shop.money()} ₽)`;
+        extra.disabled = shop.money() < shop.price;
+      }
       go.disabled = used < points;
       for (const card of grid.querySelectorAll<HTMLElement>('.swap-mon')) {
         const k = Number(card.dataset.key);
@@ -107,9 +116,19 @@ export class TrainScreen {
       this.hide();
       done(alloc);
     });
+    if (shop) {
+      extra.className = 'recruit-no';
+      acts.append(extra);
+      extra.addEventListener('click', () => {
+        if (!shop.buy()) return sfx('buzzer');
+        points++;
+        sfx('buy');
+        refresh();
+      });
+    }
     const no = el('button', 'recruit-no', acts, 'Plus tard') as HTMLButtonElement;
     no.addEventListener('click', () => this.close());
-    el('small', 'swap-note', page, 'Une seule fois par pension. Les niveaux montent comme en combat : nouvelles attaques et évolutions comprises.');
+    el('small', 'swap-note', page, 'Une seule fois par pension. Les niveaux montent comme en combat : nouvelles attaques et évolutions comprises. Les ₽ dépensés le sont même si tu refermes.');
     refresh();
     sfx('menuOpen');
     this.root.hidden = false;

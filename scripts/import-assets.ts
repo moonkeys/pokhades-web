@@ -152,7 +152,7 @@ for (const f of ['ball_POKEBALL', 'ball_POKEBALL_open']) renamed.push([`${ESSENT
 // Illustrations officielles des légendaires donateurs (data/artwork, PMDSprites.get_artwork) : l'écran des dons.
 for (const dex of DONOR_SPECIES) files.push(`data/artwork/${dex}.png`);
 // Icônes de l'étal de la boutique (ShopStock.gd, Graphics/Items), et la pièce du butin (portes, src/ui/rewardicons.ts).
-for (const f of ['POTION', 'SUPERPOTION', 'HYPERPOTION', 'MAXPOTION', 'REVIVE', 'MAXREVIVE', 'machine_NORMAL', 'COINCASE', 'AMULETCOIN', 'STICK']) {
+for (const f of ['POTION', 'SUPERPOTION', 'HYPERPOTION', 'MAXPOTION', 'REVIVE', 'MAXREVIVE', 'machine_NORMAL', 'COINCASE', 'AMULETCOIN', 'STICK', 'SOULDEW']) {
   renamed.push([`${ESSENTIALS}/Items/${f}.png`, `assets/essentials/items/${f}.png`]);
 }
 // Repaire : les CT (une icône par type), les objets tenus et les améliorations (src/meta/catalog.ts).

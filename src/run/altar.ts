@@ -134,7 +134,12 @@ export class Altar {
     ];
     for (const [sp, x, y] of around) place.prop(sp, x, y);
     // Les esprits qui montent (dessinés : extras), au-dessus des gargouilles et des torches.
-    this.wisps = [[cx - 3.5, cy - 4], [cx + 4.5, cy - 4], [cx - 1.5, cy - 3.4], [cx + 2.5, cy - 3.4], [cx - 3.5, cy + 2.4], [cx + 4.5, cy + 2.4]].map(([x, y]) => ({ x, y }));
+    // (Retour de test : « encore plus de petites flammes violettes ».) Au-dessus des gargouilles, des
+    // torches, des urnes et des arbres morts ; d'autres tournent autour du cercle (extras).
+    this.wisps = [
+      [cx - 3.5, cy - 4], [cx + 4.5, cy - 4], [cx - 1.5, cy - 3.4], [cx + 2.5, cy - 3.4], [cx - 3.5, cy + 2.4], [cx + 4.5, cy + 2.4],
+      [cx - 2.5, cy - 2.6], [cx + 3.5, cy - 2.6], [cx - 6.5, cy - 4], [cx + 7.5, cy - 1], [cx - 6, cy + 3], [cx - 5.5, cy + 0.2], [cx + 6.5, cy - 3.2],
+    ].map(([x, y]) => ({ x, y }));
     this.spots = [
       { x: cx - 4, y: cy + 6, r: 2.5 },
       { x: cx + 5, y: cy + 6.5, r: 2.5 },
@@ -212,7 +217,30 @@ export class Altar {
   extras(time: number): { y: number; draw(b: CanvasRenderingContext2D, camX: number, camY: number, k: number): void }[] {
     if (!this.active || !this.wisps.length) return [];
     const glow = 1 - this.used * 0.7;
-    return this.wisps.map((w, j) => ({
+    const c = this.stone!;
+    // Des feux follets qui tournent autour du cercle, à hauteur d'épaule.
+    const orbit = {
+      y: (c.y + 2) * TILE,
+      draw: (b: CanvasRenderingContext2D, camX: number, camY: number, k: number) => {
+        b.save();
+        b.globalCompositeOperation = 'lighter';
+        for (let i = 0; i < 5; i++) {
+          const a = time * 0.6 + (i / 5) * Math.PI * 2;
+          const x = ((c.x + Math.cos(a) * 2.4) * TILE - camX) * k;
+          const y = ((c.y + Math.sin(a) * 1.4) * TILE - camY) * k - (1 + Math.sin(time * 2 + i) * 0.3) * TILE * k;
+          const g = b.createRadialGradient(x, y, 0, x, y, 6 * k);
+          g.addColorStop(0, `rgba(230,190,255,${0.85 * glow})`);
+          g.addColorStop(0.35, `rgba(170,100,255,${0.45 * glow})`);
+          g.addColorStop(1, 'rgba(120,60,200,0)');
+          b.fillStyle = g;
+          b.beginPath();
+          b.arc(x, y, 6 * k, 0, Math.PI * 2);
+          b.fill();
+        }
+        b.restore();
+      },
+    };
+    return [orbit, ...this.wisps.map((w, j) => ({
       y: (w.y + 3) * TILE,
       draw: (b: CanvasRenderingContext2D, camX: number, camY: number, k: number) => {
         const fx = (w.x * TILE - camX) * k;
@@ -230,7 +258,7 @@ export class Altar {
         }
         b.restore();
       },
-    }));
+    }))];
   }
 
   placeLabels(proj: Projector): void {

@@ -58,7 +58,7 @@ import { Hazards } from './run/hazards';
 import { CaveDirector } from './run/cave';
 import { ChestSite } from './run/chests';
 import { Merchant } from './run/merchant';
-import { SPRING_HEAL, Spring } from './run/spring';
+import { SPRING_HEAL, SPRING_NPC, Spring } from './run/spring';
 import { Altar } from './run/altar';
 import { Dojo } from './run/dojo';
 import { PENSION_LEVELS, PENSION_NPC, Pension } from './run/pension';
@@ -407,10 +407,14 @@ async function boot(): Promise<void> {
   // d'échanger un membre contre un Pokémon du Repaire (ui/swapscreen.ts), chacun une fois.
   /** Les membres du Repaire (uid) dans l'équipe : pas les mercenaires, ni les invités en ligne. */
   const homeMembers = () => team.flatMap((m, i) => (!m.remote && !m.runAlly && save.mons[m.baseId] && m.pokemon ? [{ m, i }] : []));
+  /** Prix d'un niveau de plus à la Pension, au premier acte (multiplié par l'acte). */
+  const PENSION_LEVEL_PRICE = 90;
   const pensionTrain = (done: (levels: number) => void, cancel: () => void) => {
     const members = homeMembers();
-    // Autant de niveaux que de membres, plus un : comme avant (un chacun, deux au plus faible), mais au choix.
-    const points = members.length * PENSION_LEVELS + 1;
+    // Autant de niveaux que de membres, plus un, plus un par acte franchi (retour de test : « en fonction
+    // de comment on avance dans le jeu, donner plus de niveaux ») ; d'autres s'achètent, de plus en plus chers.
+    const points = members.length * PENSION_LEVELS + 1 + run.act;
+    const price = PENSION_LEVEL_PRICE * (run.act + 1);
     trainScreen.show(
       members.map(({ m, i }) => ({ key: i, species: m.speciesId, name: m.pokemon!.name, level: m.pokemon!.level })),
       points,
@@ -432,6 +436,15 @@ async function boot(): Promise<void> {
         done(total);
       },
       cancel,
+      {
+        price,
+        money: () => run.money,
+        buy: () => {
+          if (run.money < price) return false;
+          run.money -= price;
+          return true;
+        },
+      },
     );
   };
   const pensionSwap = (done: (ok: boolean | null) => void) => {
@@ -488,6 +501,12 @@ async function boot(): Promise<void> {
   // Habitants des salles calmes (run/residents.ts) et leurs services (meta/errands.ts) : une
   // réplique, un service à accepter, ou le paiement d'un service rendu.
   const residents: Residents = new Residents(document.body, {
+    // Le « ! » : un service rendu à faire payer, ou un service à proposer (s'il reste de la place).
+    news: (r) => {
+      const owed = errandOf(save, r.id);
+      if (owed) return errandDone(owed);
+      return r.offers && save.started && net.role !== 'client' && save.errands.list.length < MAX_ERRANDS;
+    },
     talk: (r) => {
       const name = r.actor.info?.name ?? '…';
       const owed = errandOf(save, r.id);
@@ -520,6 +539,15 @@ async function boot(): Promise<void> {
   // Source (salle spéciale de soin, run/spring.ts) : Leveinard veille sur un bassin qui soigne l'équipe.
   const spring = new Spring(document.body, fx, {
     message: (text) => runHud.message(text),
+    // Retour de test : la source s'active en parlant à Leveinard.
+    menu: (canDrink, drink, closed) =>
+      talkScreen.show(
+        SPRING_NPC,
+        'Leveinard',
+        canDrink ? 'Lei ! L’eau de la source soigne tout : les blessures, les poisons, même les K.O. Tu veux boire ?' : 'Lei-lei ! La source a besoin de repos. Reviens à la prochaine.',
+        canDrink ? [{ label: 'Boire à la source', pick: drink }, { label: 'Au revoir', pick: closed }] : [{ label: 'Au revoir', pick: closed }],
+        closed,
+      ),
     heal: () => {
       let up = 0;
       for (const m of team) {
@@ -3235,6 +3263,7 @@ async function boot(): Promise<void> {
     else merchant.hide();
     // Les habitants des salles calmes d'abord : [E] près de l'un d'eux lui parle, la salle ne le reprend pas.
     const talked = outside() && residents.update(dt, world, player, sample, Math.random);
+    if (!outside()) residents.hide();
     const roomSample = talked ? { ...sample, interact: false } : sample;
     if (outside()) spring.update(dt, roomSample, player, Math.random);
     else spring.hide();
