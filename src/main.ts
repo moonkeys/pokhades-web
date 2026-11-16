@@ -1819,7 +1819,7 @@ async function boot(): Promise<void> {
       }
     },
     enterCave: () => enterCave(),
-    setTimer: (seconds) => runHud.setTimer(seconds),
+    setTimer: (seconds, goal) => runHud.setTimer(seconds, goal),
     // Défi raté : les sauvages encore debout s'enfuient dans un nuage.
     dismissEnemies: () => {
       for (const e of wild) if (e.deathT < 0) fx.poof(e.x, e.y);

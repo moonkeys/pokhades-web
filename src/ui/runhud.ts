@@ -197,12 +197,15 @@ export class RunHud {
     }
   }
 
-  /** Chrono du Défi, en secondes ; null le masque. Rouge dans les dix dernières. */
-  setTimer(seconds: number | null): void {
+  /**
+   * Chrono du Défi, en secondes ; null le masque. Rouge dans les dix dernières. `goal` : l'objectif
+   * en cours (« 5 / 12 sauvages »), écrit à côté du chrono.
+   */
+  setTimer(seconds: number | null, goal?: string): void {
     this.timer.hidden = seconds === null;
     if (seconds === null) return;
     const s = Math.ceil(seconds);
-    const text = `⏱ ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+    const text = `⏱ ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}${goal ? ` · ${goal}` : ''}`;
     if (this.timer.textContent !== text) this.timer.textContent = text;
     this.timer.classList.toggle('hurry', s <= 10);
   }
