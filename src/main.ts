@@ -75,6 +75,7 @@ import { EvolutionScreen } from './ui/evolutionscreen';
 import { RewardScreen } from './ui/rewardscreen';
 import { RunHud } from './ui/runhud';
 import { RecruitScreen } from './ui/recruitscreen';
+import { SwapScreen } from './ui/swapscreen';
 import { StarterScreen } from './ui/starterscreen';
 import { QuizScreen, STARTER_NATURE } from './ui/quizscreen';
 import { TitleScreen } from './ui/titlescreen';
@@ -176,6 +177,7 @@ async function boot(): Promise<void> {
   /** Le plan du monde (panneau de l’arche) et le carnet des exploits (Xatu) : ui/journal.ts, meta/feats.ts. */
   const journal = new Journal(document.body, atlas);
   const recruitScreen = new RecruitScreen(document.body);
+  const swapScreen = new SwapScreen(document.body);
   const starterScreen = new StarterScreen(document.body);
   const quizScreen = new QuizScreen(document.body);
   /** Le menu principal, au lancement (ui/titlescreen.ts) : montré plus bas, juste avant le premier enterCamp. */
@@ -414,6 +416,44 @@ async function boot(): Promise<void> {
       }
       if (total) sfx('levelup');
       return total;
+    },
+    swap: (done) => {
+      // Les membres du Repaire (uid) : pas les mercenaires, ni les invités en ligne.
+      const outs = team.flatMap((m, i) => (!m.remote && !m.runAlly && save.mons[m.baseId] && m.pokemon ? [{ key: i, species: m.speciesId, name: m.pokemon.name, level: m.pokemon.level, ko: m.deathT >= 0 || m.pokemon.fainted }] : []));
+      const inTeam = new Set(team.map((m) => m.baseId));
+      const ins = roster(save)
+        .filter((uid) => !inTeam.has(uid) && !save.team.includes(uid) && !busy(save, uid))
+        .map((uid) => ({ key: uid, species: speciesOf(save, uid), name: monName(save, uid, '…'), level: startLevel(save, uid, BASE_TEAM_LEVEL) }));
+      if (net.inRun || !outs.length || !ins.length) return false;
+      // Les noms des libérés sans surnom : ceux de leur espèce, chargés avant d'ouvrir l'écran.
+      void Promise.all(ins.map(async (e) => (e.name === '…' ? { ...e, name: (await loadInfo(e.species)).name } : e))).then((named) =>
+        swapScreen.show(
+          outs,
+          named,
+          (i, uid) => {
+            const old = team[i];
+            if (!old) return done(false);
+            // Il arrive au niveau de celui qu'il remplace, s'il est plus bas, avec ses attaques et son objet.
+            const lvl = Math.max(startLevel(save, uid, BASE_TEAM_LEVEL), old.pokemon?.level ?? 0);
+            const m = newMember(uid, old.x, old.y, lvl, true);
+            m.dashMax = m.dashCharges = 1 + level(save, 'dash');
+            m.canSwim = director.swim;
+            takeOver(old, m);
+            team[i] = m;
+            if (old === player) player = m;
+            // La composition du Repaire suit : il prend la place du sortant.
+            save.team = save.team.map((u) => (u === old.baseId ? uid : u));
+            if (!save.team.includes(uid)) save.team.push(uid);
+            writeSave(save);
+            fx.ballSend(m.x, m.y);
+            cry(m.speciesId, -4);
+            runHud.notify({ title: 'Échange', text: `${old.pokemon?.name ?? '?'} rentre au Repaire ; ${named.find((e) => e.key === uid)?.name ?? '?'} rejoint l’équipe.`, art: m.speciesId });
+            done(true);
+          },
+          () => done(false),
+        ),
+      );
+      return true;
     },
   });
   // Source (salle spéciale de soin, run/spring.ts) : Leveinard veille sur un bassin qui soigne l'équipe.
@@ -804,7 +844,7 @@ async function boot(): Promise<void> {
     cry(player.speciesId, -4);
   };
   /** Un écran ouvert par-dessus le jeu : la simulation se fige. */
-  const paused = () => rewardScreen.open || evolutionScreen.open || bossPreview.open || runSummary.open || settingsMenu.open || campScreen.open || statSheet.open || recruitScreen.open || starterScreen.open || quizScreen.open || journal.open || titleScreen.open;
+  const paused = () => rewardScreen.open || evolutionScreen.open || bossPreview.open || runSummary.open || settingsMenu.open || campScreen.open || statSheet.open || recruitScreen.open || swapScreen.open || starterScreen.open || quizScreen.open || journal.open || titleScreen.open;
   /** Clic sur un membre du HUD : comme Tab, mais vers celui-là, s'il est debout et qu'on l'est aussi. */
   const pickMember = (i: number) => {
     const m = team[i];

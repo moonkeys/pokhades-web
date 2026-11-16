@@ -14,17 +14,24 @@ import { Placer } from './placement';
 // plus (le rattrapage des derniers venus). Les niveaux passent par main.ts,
 // qui sait annoncer et faire évoluer.
 //
+// L'échange (retour de test du 16 novembre 2026) : [E] à côté d'Écrémeuh, une
+// fois par Pension, renvoie un membre au Repaire et en fait venir un autre
+// parmi les libérés (écran ui/swapscreen.ts, mené par main.ts).
+//
 // Ni le tileset ni Essentials n'ont d'enclos : il est dessiné, comme le bassin.
 
 export const PENSION_NPC = 241;
 /** Niveaux gagnés par chaque membre ; le plus faible en gagne un de plus. */
 export const PENSION_LEVELS = 1;
 const REACH = 2.6;
+const KEEPER_REACH = 1.8;
 const LINES = ['Meuh ! Laisse-les gambader dans l’enclos, ils en ressortiront plus forts.', 'Écrémeuh rumine, le regard sur le foin frais.'];
 
 export interface PensionHost {
   /** Entraîne l'équipe ; rend le nombre total de niveaux gagnés. */
   train(): number;
+  /** Ouvre l'écran d'échange ; `done(true)` si un membre a été échangé. Faux : pas d'échange possible. */
+  swap(done: (swapped: boolean) => void): boolean;
   message(text: string): void;
 }
 
@@ -34,6 +41,10 @@ export class Pension {
   private pen: { x: number; y: number } | null = null;
   private used = false;
   private near = false;
+  /** À côté d'Écrémeuh, l'échange encore possible. */
+  private nearKeeper = false;
+  private swapped = false;
+  private busy = false;
   private keeper: Actor | null = null;
   private talked = false;
   private bubbleT = 0;
@@ -67,7 +78,7 @@ export class Pension {
   }
 
   hide(): void {
-    this.near = false;
+    this.near = this.nearKeeper = false;
     this.prompt.hidden = true;
     this.bubble.classList.remove('open');
   }
@@ -77,6 +88,8 @@ export class Pension {
     this.clear();
     this.active = true;
     this.used = false;
+    this.swapped = false;
+    this.busy = false;
     this.talked = false;
     const place = new Placer(world);
     const at = place.freeSpot(Math.floor(world.hub.x), Math.floor(world.hub.y));
@@ -102,7 +115,9 @@ export class Pension {
 
   update(dt: number, input: InputSample, player: Actor, rand: () => number): void {
     if (!this.active || !this.pen) return;
-    this.near = !this.used && Math.hypot(player.x - this.pen.x, player.y - this.pen.y) < REACH;
+    const k = this.keeper;
+    this.nearKeeper = !this.swapped && !this.busy && Boolean(k) && Math.hypot(player.x - k!.x, player.y - k!.y) < KEEPER_REACH;
+    this.near = !this.nearKeeper && !this.used && !this.busy && Math.hypot(player.x - this.pen.x, player.y - this.pen.y) < REACH;
     this.bubbleT -= dt;
     const m = this.keeper;
     if (m && this.stompT > 0) {
@@ -115,7 +130,26 @@ export class Pension {
     }
     this.bubble.classList.toggle('open', this.bubbleT > 0);
     this.renderPrompt();
-    if (input.interact && this.near) this.train();
+    if (input.interact && this.nearKeeper) this.trade();
+    else if (input.interact && this.near) this.train();
+  }
+
+  private trade(): void {
+    this.busy = true;
+    this.nearKeeper = false;
+    this.prompt.hidden = true;
+    sfx('menuOpen');
+    const opened = this.host.swap((swapped) => {
+      this.busy = false;
+      if (!swapped) return;
+      this.swapped = true;
+      this.say('Meuh ! Je l’ai renvoyé au Repaire. Prends bien soin du nouveau.');
+    });
+    if (!opened) {
+      this.busy = false;
+      this.swapped = true;
+      this.say('Meuh… Personne au Repaire n’est libre pour un échange.');
+    }
   }
 
   private say(text: string): void {
@@ -141,12 +175,25 @@ export class Pension {
   }
 
   private renderPrompt(): void {
-    if (!this.near) {
+    const mode = this.nearKeeper ? 'swap' : this.near ? 'train' : '';
+    if (!mode) {
       this.prompt.hidden = true;
       return;
     }
-    if (!this.prompt.hidden) return;
+    if (!this.prompt.hidden && this.prompt.dataset.mode === mode) return;
+    this.prompt.dataset.mode = mode;
     const el = (cls: string, text: string) => Object.assign(document.createElement('div'), { className: cls, textContent: text });
+    if (mode === 'swap') {
+      this.prompt.replaceChildren(
+        el('shop-name', 'Échange'),
+        el('da-stamp shop-cost', 'Gratuit'),
+        el('shop-desc', 'Renvoie un membre de l’équipe au Repaire, et fais venir à sa place un Pokémon qui y vit.'),
+        el('shop-note', 'Un échange par pension.'),
+        el('shop-buy', '✔ Échanger [E]'),
+      );
+      this.prompt.hidden = false;
+      return;
+    }
     this.prompt.replaceChildren(
       el('shop-name', 'Pension'),
       el('da-stamp shop-cost', 'Gratuit'),
