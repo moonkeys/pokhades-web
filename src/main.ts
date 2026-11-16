@@ -900,11 +900,24 @@ async function boot(): Promise<void> {
   const talentsSeen = new Set<Actor>();
   const intimidated = new Set<Actor>();
   const standing = (a: Actor) => a.deathT < 0 && Boolean(a.pokemon) && !a.pokemon!.fainted;
+  /** Dernier « rugissement » de chaque intimidateur (horloge de la page, ms) : un geste par seconde au plus. */
+  const roared = new Map<Actor, number>();
   const intimidate = (by: Actor, foe: Actor) => {
     if (intimidated.has(foe) || Math.hypot(foe.x - by.x, foe.y - by.y) > INTIMIDATE_RANGE) return;
     intimidated.add(foe);
     foe.pokemon!.applyBuff('atk', INTIMIDATE_MULT, INTIMIDATE_TIME);
     fx.number('debuff', foe.x, foe.y, 0, 'ATT ↓');
+    // Retour de test (16 novembre 2026 : « montrer qu'il fait intimidation ») : l'intimidateur fait
+    // son geste d'attaque, tourné vers sa cible, avec l'animation de Rugissement (Essentials, Growl),
+    // et le nom du talent au-dessus de lui.
+    const now = performance.now();
+    if (now - (roared.get(by) ?? -Infinity) < 1000) return;
+    roared.set(by, now);
+    by.dir = dirFromVector(foe.x - by.x, foe.y - by.y);
+    by.playAction(['Attack', 'Shoot', 'Charge'], 0);
+    fx.attackAnim('normal', by.x, by.y, 'growl', true);
+    fx.number('buff', by.x, by.y, 0, 'Intimidation');
+    sfx('statDown');
   };
   // (Par l'espèce dessinée : `baseId` est l'uid du membre pour l'équipe du Repaire.)
   const intimidates = (a: Actor) => INTIMIDATE.has(a.speciesId);
@@ -920,10 +933,6 @@ async function boot(): Promise<void> {
     for (const a of [...team, ...wild]) {
       if (talentsSeen.has(a) || !standing(a)) continue;
       talentsSeen.add(a);
-      if (intimidates(a)) {
-        fx.number('buff', a.x, a.y, 0, 'Intimidation');
-        sfx('statDown');
-      }
       // (L'arène du Village est d'intérieur : pas de temps à changer.)
       if (run.isBoss() && run.biome === 'village') continue;
       const t = WEATHER_ABILITIES[a.speciesId];
@@ -980,6 +989,7 @@ async function boot(): Promise<void> {
     megaUsed = false;
     talentsSeen.clear();
     intimidated.clear();
+    roared.clear();
     cave.clear();
     berries.build(world, BIOMES[run.biome].berry);
     hazards.build(world, run.mapSeed, run.isBoss());
