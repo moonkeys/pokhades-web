@@ -206,7 +206,12 @@ Blizzaroi (Alerte Neige) changent le temps de la salle en y entrant, qu'ils
 soient de l'équipe, sauvages ou au champion ; une fois par Pokémon et par
 salle, le dernier arrivé l'emporte (pas à la boutique, en grotte ni dans
 l'arène du Village). La table est tenue à la main : les données PokéAPI
-copiées n'ont pas les talents.
+copiées n'ont pas les talents. **Intimidation** (même fichier, 27 espèces :
+Arbok, Arcanin, Léviator, Luxray, Crocorible, Baggiguane…) : tout adversaire
+debout qui passe à 9 cases d'un intimidateur debout perd un quart de son
+Attaque pendant 10 s (comme Rugissement), une fois par salle, dans les deux
+sens. Écart voulu : les jeux n'intimident qu'à l'entrée, mais ici les
+sauvages arrivent par vagues. Les talents se lisent sur l'espèce dessinée.
 
 Grottes (portée de `_spawn_cave_portals` et `CaveArena.gd`) : passé les deux
 premières salles de la run, une bouche peut s'ouvrir au pied d'une falaise —

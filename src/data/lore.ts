@@ -97,6 +97,7 @@ export const LORE: LoreChapter[] = [
       { title: 'Les attaques de météo', text: 'Danse Pluie, Zénith, Tempête de Sable et Grêle changent le temps de la salle jusqu’à son éclaircie (voir le chapitre États). Danse Pluie et Zénith se vendent chez M. Mime.' },
       // data/abilities.ts
       { title: 'Les talents météo', text: 'Certains Pokémon changent le temps rien qu’en arrivant : Tarpaud et Kyogre font pleuvoir (Crachin), Chartor et Groudon allument le soleil (Sécheresse), Tyranocif et Hippodocus lèvent le sable (Sable Volant), Blizzaroi fait tomber la grêle (Alerte Neige). Dans ton équipe comme en face : le dernier arrivé l’emporte.' },
+      { title: 'Intimidation', text: 'Arcanin, Léviator, Luxray, Crocorible, et même Baggiguane font peur : tout adversaire qui s’en approche perd un quart de son Attaque pendant dix secondes, une fois par salle. Méfie-toi des Grahyèna : ça marche aussi contre toi.' },
       // catalog.ts:111-135, meta/weight.ts
       { title: 'CT du tuteur', text: 'M. Mime vend des CT au Repaire, une fois pour toutes : l’attaque s’équipe ensuite à la hutte de Porygon. Gare au poids : une attaque de plus de 40 de puissance pèse dans l’équipe.' },
       // boons.ts:345-348, boonhooks.ts:501-576

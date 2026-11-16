@@ -31,3 +31,30 @@ export const WEATHER_ABILITIES: Readonly<Record<number, WeatherAbility>> = {
   459: SNOW_WARNING, // Blizzi
   460: SNOW_WARNING, // Blizzaroi
 };
+
+// Intimidation (ajout, même table à la main) : à son arrivée, les adversaires
+// à portée voient leur Attaque baisser, comme sous Rugissement. Écart voulu :
+// les sauvages venant par vagues, chaque adversaire qui entre ensuite à portée
+// d'un intimidateur encore debout est intimidé à son tour (une fois par salle).
+
+/** Baisse d'Attaque infligée par Intimidation (Rugissement : 0,75). */
+export const INTIMIDATE_MULT = 0.75;
+/** Durée de la baisse, en secondes (Rugissement : 8). */
+export const INTIMIDATE_TIME = 10;
+/** Portée, en cases. */
+export const INTIMIDATE_RANGE = 9;
+
+/** Espèces (n° national) qui ont Intimidation (talent caché compris : Baggiguane, Baggaïd). */
+export const INTIMIDATE: ReadonlySet<number> = new Set([
+  23, 24, // Abo, Arbok
+  58, 59, // Caninos, Arcanin
+  128, 130, // Tauros, Léviator
+  209, 210, // Snubbull, Granbull
+  234, 237, // Cerfrouse, Kapoera
+  262, 284, 303, 373, // Grahyèna, Maskadra, Mysdibule, Drattak
+  397, 398, // Étourvol, Étouraptor
+  403, 404, 405, // Lixy, Luxio, Luxray
+  507, 508, // Ponchien, Mastouffe
+  551, 552, 553, // Mascaïman, Escroco, Crocorible
+  559, 560, // Baggiguane, Baggaïd (talent caché)
+]);

@@ -18,6 +18,17 @@ export interface PatchNote {
 
 export const PATCH_NOTES: readonly PatchNote[] = [
   {
+    id: '2026-11-16',
+    date: '16 novembre 2026',
+    title: 'Intimidation',
+    sections: [
+      {
+        title: 'Combat',
+        items: ['Talent Intimidation (Arcanin, Léviator, Luxray, Baggiguane…) : les adversaires qui s’approchent perdent un quart de leur Attaque pendant 10 s. Ça marche dans les deux sens.'],
+      },
+    ],
+  },
+  {
     id: '2026-11-15',
     date: '15 novembre 2026',
     title: 'La Carrière et les talents météo',

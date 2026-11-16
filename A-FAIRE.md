@@ -301,7 +301,13 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
   la main, PokéAPI copiée sans talents) ; en entrant dans la salle (équipe,
   sauvages, champion), une fois par Pokémon et par salle, le dernier arrivé
   l'emporte (`weatherTalents`, main.ts). Écart voulu : talents cachés
-  comptés (Feunard, Gigalithe). Reste : d'autres talents (hors météo).
+  comptés (Feunard, Gigalithe).
+- Intimidation (ajout, 16 novembre 2026, même fichier) : 27 espèces ; tout
+  adversaire debout à 9 cases d'un intimidateur debout perd 25 % d'Attaque
+  10 s (`applyBuff`, comme Rugissement), une fois par salle, dans les deux
+  sens (`entryTalents`, main.ts). Écart voulu : pas seulement à l'entrée
+  (vagues). Talents lus sur `speciesId` (`baseId` est l'uid au Repaire).
+  Reste : d'autres talents.
 
 ### 1.9 Salles spéciales (fait)
 - Une porte sur plusieurs peut mener à une salle spéciale (`Run.offers`,
