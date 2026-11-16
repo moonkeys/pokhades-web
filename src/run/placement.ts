@@ -23,6 +23,28 @@ export class Placer {
     return this.taken.some((t) => Math.hypot(t.x - at.x, t.y - at.y) < r);
   }
 
+  /**
+   * Dégage un rectangle de cases (coin haut-gauche, taille) pour y poser un décor de salle
+   * spéciale : les rochers, arbres et buissons de la salle dont le pied y tombe (ou juste
+   * dessous : leur sprite monterait dessus) s'en vont, les cases se libèrent, l'herbe haute
+   * est fauchée. L'eau et les falaises restent.
+   */
+  clearArea(x0: number, y0: number, w: number, h: number): void {
+    const world = this.world;
+    const inRect = (x: number, y: number, pad: number) => x >= x0 - 1 && x < x0 + w + 1 && y >= y0 && y < y0 + h + pad;
+    for (let i = world.objects.length - 1; i >= 0; i--) {
+      const o = world.objects[i];
+      if (inRect(Math.floor(o.x / TILE), Math.floor(o.y / TILE), 2)) world.objects.splice(i, 1);
+    }
+    for (let y = y0; y < y0 + h; y++)
+      for (let x = x0; x < x0 + w; x++) {
+        if (x < 0 || y < 0 || x >= world.w || y >= world.h) continue;
+        const i = y * world.w + x;
+        if (!world.inside[i] || world.water[i] || world.cliff?.[i]) continue;
+        world.blocked[i] = world.solid[i] = world.tall[i] = 0;
+      }
+  }
+
   block(x: number, y: number): void {
     const w = this.world;
     if (x >= 0 && y >= 0 && x < w.w && y < w.h) w.blocked[y * w.w + x] = 1;

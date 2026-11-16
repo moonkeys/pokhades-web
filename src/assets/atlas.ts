@@ -21,10 +21,11 @@ export async function buildAtlas(tileset: HTMLImageElement): Promise<HTMLCanvasE
       console.warn(err);
       return null;
     });
-  const [extras, outside, gym, fountain] = await Promise.all([
+  const [extras, outside, gym, grave, fountain] = await Promise.all([
     load(ESSENTIALS_PAVEMENTS),
     load(ESSENTIALS_SHEETS.outside),
     load(ESSENTIALS_SHEETS.gym),
+    load(ESSENTIALS_SHEETS.grave),
     load(ESSENTIALS_SHEETS.fountain),
   ]);
   if (extras) {
@@ -36,7 +37,7 @@ export async function buildAtlas(tileset: HTMLImageElement): Promise<HTMLCanvasE
   }
   // Blocs d'Essentials, réduits de moitié au plus proche (lissage coupé plus haut) : leurs
   // pixels étant doublés, on retombe exactement sur l'original en 16 px.
-  const sheets = { outside, gym };
+  const sheets = { outside, gym, grave };
   for (const b of ESSENTIALS_BLOCKS) {
     const src = sheets[b.sheet];
     if (!src) continue;

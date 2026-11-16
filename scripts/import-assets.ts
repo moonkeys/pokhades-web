@@ -181,6 +181,8 @@ for (const r of Object.values(RESOURCES)) if (r.icon) renamed.push([`${ESSENTIAL
 // (cf. ESSENTIALS_BLOCKS dans src/world/tiles.ts). Découper ici demanderait une dépendance.
 renamed.push([`${ESSENTIALS}/Tilesets/Outside.png`, 'assets/essentials/tilesets/Outside.png']);
 renamed.push([`${ESSENTIALS}/Tilesets/Gyms interior.png`, 'assets/essentials/tilesets/Gyms interior.png']);
+// Le cercle magique de l'Autel maudit (ESSENTIALS_BLOCKS).
+renamed.push([`${ESSENTIALS}/Tilesets/Graveyard tower interior.png`, 'assets/essentials/tilesets/Graveyard tower interior.png']);
 renamed.push([`${ESSENTIALS}/Autotiles/Fountain1.png`, 'assets/essentials/autotiles/Fountain1.png']);
 for (const f of ['ball_BEASTBALL', 'ball_BEASTBALL_open', 'ballBurst_particle', 'ballBurst_particle_s', 'ballBurst_dazzle']) {
   renamed.push([`${ESSENTIALS}/Battle animations/${f}.png`, `assets/essentials/battle/${f}.png`]);

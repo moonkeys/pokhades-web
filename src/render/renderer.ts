@@ -205,6 +205,7 @@ export class Renderer {
       }
     }
     if (world.paving.length) this.drawPaving(g, world, put);
+    for (const d of world.decals) put(d.tile, d.x, d.y);
     for (const f of world.fountains) Renderer.paintFountain(g, f.x * TILE, f.y * TILE, this.tileset);
     if (biome.water?.render === 'waves') {
       // Mer : houle partout, et sur la rangée qui touche le sable, le ressac d'écume.

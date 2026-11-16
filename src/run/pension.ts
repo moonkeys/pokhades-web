@@ -4,7 +4,7 @@ import { Actor } from '../entities/actor';
 import type { InputSample } from '../input/input';
 import type { CombatFx, Projector } from '../render/combatfx';
 import type { WorldMap } from '../world/generate';
-import { TILE } from '../world/tiles';
+import { CAMP_PROPS, FENCES, TILE } from '../world/tiles';
 import { Placer } from './placement';
 
 // Pension, salle spéciale (A-FAIRE 1.9 : « d'autres salles »). Pas d'ennemis,
@@ -18,12 +18,13 @@ import { Placer } from './placement';
 // fois par Pension, renvoie un membre au Repaire et en fait venir un autre
 // parmi les libérés (écran ui/swapscreen.ts, mené par main.ts).
 //
-// Ni le tileset ni Essentials n'ont d'enclos : il est dessiné, comme le bassin.
+// L'enclos est fait du tileset (retour de test du 16 novembre 2026 : pas de décor
+// dessiné à la main) : le foin des paillasses du Repaire, la clôture des jardins.
 
 export const PENSION_NPC = 241;
 /** Niveaux gagnés par chaque membre ; le plus faible en gagne un de plus. */
 export const PENSION_LEVELS = 1;
-const REACH = 2.6;
+const REACH = 3.6;
 const KEEPER_REACH = 1.8;
 const LINES = ['Meuh ! Laisse-les gambader dans l’enclos, ils en ressortiront plus forts.', 'Écrémeuh rumine, le regard sur le foin frais.'];
 
@@ -94,14 +95,26 @@ export class Pension {
     const place = new Placer(world);
     const at = place.freeSpot(Math.floor(world.hub.x), Math.floor(world.hub.y));
     this.pen = { x: at.x, y: at.y };
-    // L'enclos couvre trois cases sur trois : on en fait le tour, on n'y marche pas.
-    for (let dy = -1; dy <= 1; dy++)
-      for (let dx = -1; dx <= 1; dx++) {
-        const c = (Math.floor(at.y) + dy) * world.w + Math.floor(at.x) + dx;
+    // L'enclos, 5 × 5 cases, tout du tileset : le foin des paillasses du Repaire (3 × 3) au
+    // milieu, cuit avec le sol, et la clôture de bois des jardins de village tout autour. On en
+    // fait le tour, on n'y marche pas.
+    const cx = Math.floor(at.x);
+    const cy = Math.floor(at.y);
+    place.clearArea(cx - 2, cy - 2, 5, 5);
+    const { col: hc, row: hr } = CAMP_PROPS.hay;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) world.decals.push({ tile: [hc + dx + 1, hr + dy + 1], x: cx + dx, y: cy + dy });
+    const [fc, fr] = FENCES.wood.origin;
+    for (let dy = -2; dy <= 2; dy++)
+      for (let dx = -2; dx <= 2; dx++) {
+        const c = (cy + dy) * world.w + cx + dx;
         if (world.blocked[c] === 0) world.blocked[c] = 1;
-        place.block(Math.floor(at.x) + dx, Math.floor(at.y) + dy);
+        place.block(cx + dx, cy + dy);
+        if (Math.abs(dx) < 2 && Math.abs(dy) < 2) continue;
+        const col = dx === -2 ? 0 : dx === 2 ? 2 : 1;
+        const row = dy === -2 ? 0 : dy === 2 ? 2 : 1;
+        world.objects.push({ sprite: { rect: [(fc + col) * TILE, (fr + row) * TILE, TILE, TILE], foot: TILE - 1, trunk: 1 }, x: (cx + dx) * TILE + TILE / 2, y: (cy + dy + 1) * TILE - 1, fades: false });
       }
-    const n = place.freeSpot(Math.floor(at.x) - 3, Math.floor(at.y) + 1);
+    const n = place.freeSpot(cx - 4, cy + 1);
     const actor = new Actor(PENSION_NPC, n.x, n.y);
     actor.dir = 0;
     void loadInfo(PENSION_NPC).then((i) => (actor.info = i));
@@ -202,69 +215,6 @@ export class Pension {
       el('shop-buy', '✔ Entraîner l’équipe [E]'),
     );
     this.prompt.hidden = false;
-  }
-
-  /** L'enclos : foin au sol, clôture de piquets et de deux lisses, plus tassé une fois servi. */
-  extras(time: number): { y: number; draw(b: CanvasRenderingContext2D, camX: number, camY: number, k: number): void }[] {
-    const p = this.pen;
-    if (!this.active || !p) return [];
-    const W = 1.8;
-    const H = 1.1;
-    const post = (b: CanvasRenderingContext2D, x: number, y: number, u: number) => {
-      b.fillStyle = '#5a3c20';
-      b.fillRect(x - 0.07 * u, y - 0.75 * u, 0.14 * u, 0.75 * u);
-      b.fillStyle = '#8a6036';
-      b.fillRect(x - 0.07 * u, y - 0.75 * u, 0.07 * u, 0.75 * u);
-    };
-    const rails = (b: CanvasRenderingContext2D, x0: number, x1: number, y: number, u: number) => {
-      b.fillStyle = '#7a5230';
-      b.fillRect(x0, y - 0.6 * u, x1 - x0, 0.09 * u);
-      b.fillRect(x0, y - 0.32 * u, x1 - x0, 0.09 * u);
-    };
-    // Le foin et la clôture du fond, sous ce qui se tient devant.
-    const back = {
-      y: (p.y - H) * TILE,
-      draw: (b: CanvasRenderingContext2D, camX: number, camY: number, k: number) => {
-        const u = TILE * k;
-        const cx = (p.x * TILE - camX) * k;
-        const cy = (p.y * TILE - camY) * k;
-        b.fillStyle = 'rgba(20,12,4,0.22)';
-        b.fillRect(cx - W * u + k, cy - H * u + 2 * k, 2 * W * u, 2 * H * u);
-        b.fillStyle = this.used ? '#b49a52' : '#d9bf5e';
-        b.fillRect(cx - W * u, cy - H * u, 2 * W * u, 2 * H * u);
-        // Brins de foin qui bougent un peu.
-        b.strokeStyle = this.used ? 'rgba(110,86,30,0.5)' : 'rgba(150,118,40,0.6)';
-        b.lineWidth = Math.max(1, k / 2);
-        for (let i = 0; i < 18; i++) {
-          const hx = cx + ((i * 37) % 100) / 100 * 2 * (W - 0.15) * u - (W - 0.15) * u;
-          const hy = cy + ((i * 53) % 100) / 100 * 2 * (H - 0.15) * u - (H - 0.15) * u;
-          const sway = Math.sin(time * 1.5 + i) * 0.05 * u;
-          b.beginPath();
-          b.moveTo(hx, hy);
-          b.lineTo(hx + 0.18 * u + sway, hy - 0.12 * u);
-          b.stroke();
-        }
-        const top = cy - H * u;
-        rails(b, cx - W * u, cx + W * u, top, u);
-        for (let i = 0; i <= 4; i++) post(b, cx - W * u + (i / 4) * 2 * W * u, top, u);
-        for (const sx of [-1, 1]) {
-          b.fillStyle = '#7a5230';
-          b.fillRect(cx + sx * W * u - 0.045 * u, top - 0.6 * u, 0.09 * u, 2 * H * u);
-        }
-      },
-    };
-    // La clôture de devant, par-dessus ce qui se tient dans l'enclos.
-    const front = {
-      y: (p.y + H) * TILE,
-      draw: (b: CanvasRenderingContext2D, camX: number, camY: number, k: number) => {
-        const u = TILE * k;
-        const cx = (p.x * TILE - camX) * k;
-        const bot = ((p.y + H) * TILE - camY) * k;
-        rails(b, cx - W * u, cx + W * u, bot, u);
-        for (let i = 0; i <= 4; i++) post(b, cx - W * u + (i / 4) * 2 * W * u, bot, u);
-      },
-    };
-    return [back, front];
   }
 
   placeLabels(proj: Projector): void {

@@ -248,12 +248,14 @@ export const ESSENTIALS_PAVEMENTS = '/game/assets/essentials/pavements.png';
 export const ESSENTIALS_SHEETS = {
   outside: '/game/assets/essentials/tilesets/Outside.png',
   gym: '/game/assets/essentials/tilesets/Gyms interior.png',
+  /** Le cercle magique de l'Autel maudit (run/altar.ts). */
+  grave: '/game/assets/essentials/tilesets/Graveyard tower interior.png',
   /** Autotile animé du jet de la fontaine : 5 images de 96 px de large côte à côte. */
   fountain: '/game/assets/essentials/autotiles/Fountain1.png',
 } as const;
 
 /** Blocs recopiés : coin haut-gauche dans la planche (cases de 32 px), taille en cases, destination dans l'atlas. */
-export const ESSENTIALS_BLOCKS: readonly { sheet: 'outside' | 'gym'; from: Tile; size: readonly [w: number, h: number]; to: Tile }[] = [
+export const ESSENTIALS_BLOCKS: readonly { sheet: 'outside' | 'gym' | 'grave'; from: Tile; size: readonly [w: number, h: number]; to: Tile }[] = [
   // Bassin rond de la fontaine (Outside.png, colonnes 5-7, rangées 140-142).
   { sheet: 'outside', from: t(5, 140), size: [3, 3], to: t(112, 0) },
   // Jeu d'arène « terrain jaune » (Gyms interior.png, colonnes 0-7, rangées 74-85) : murs de
@@ -261,7 +263,18 @@ export const ESSENTIALS_BLOCKS: readonly { sheet: 'outside' | 'gym'; from: Tile;
   { sheet: 'gym', from: t(0, 74), size: [8, 12], to: t(112, 3) },
   // Paillasson rouge de l'entrée d'arène (Gyms interior.png, colonnes 3-5, rangées 142-143).
   { sheet: 'gym', from: t(3, 142), size: [3, 2], to: t(120, 3) },
+  // Tatami du Dojo (Gyms interior.png, colonnes 5-7, rangées 139-140 : six nattes bordées de vert).
+  { sheet: 'gym', from: t(5, 139), size: [3, 2], to: t(123, 0) },
+  // Cercle magique de l'Autel maudit (Graveyard tower interior.png, colonnes 0-2, rangées 7-9).
+  { sheet: 'grave', from: t(0, 7), size: [3, 3], to: t(126, 0) },
 ];
+
+/**
+ * Décors de sol des salles spéciales, pris dans Essentials (retour de test du 16 novembre
+ * 2026 : pas de décor dessiné à la main) : coin haut-gauche dans l'atlas, taille en cases.
+ */
+export const DOJO_MAT = { tile: t(123, 0), w: 3, h: 2 } as const;
+export const ALTAR_CIRCLE = { tile: t(126, 0), w: 3, h: 3 } as const;
 
 /**
  * Fontaine de place (retour de test : la fontaine peinte au pixel était « trop

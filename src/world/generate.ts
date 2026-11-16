@@ -122,6 +122,11 @@ export interface WorldMap {
   reachable: Uint8Array;
   objects: WorldObject[];
   flat: FlatDecor[];
+  /**
+   * Décors de sol immobiles, cuits avec le sol (tatami du Dojo, foin de la Pension, cercle de
+   * l'Autel) : des cases de l'atlas, posées par les salles spéciales après la génération.
+   */
+  decals: FlatDecor[];
   /** Nénuphars : dessinés à part pour flotter sur l'eau. */
   lilies: FlatDecor[];
   /** Village : revêtements rectangulaires (rues, place, allées), style et plan. */
@@ -1543,7 +1548,7 @@ export function generate(
 
   return {
     w: W, h: H, biome, seed, inside, path, patch, water, tall, hide, cliff, cliff2, stairs, face, blocked, solid, reachable,
-    objects, flat, lilies, spawn, entrySide, exits, hub, paving, townStyle: townStyle?.name ?? null,
+    objects, flat, decals: [], lilies, spawn, entrySide, exits, hub, paving, townStyle: townStyle?.name ?? null,
     townLayout: plan?.layout ?? null, fountains: plan?.fountains ?? [], cave, berries, chest,
     front: routed ? (shape!.front ?? null) : null,
     layout: shape?.id ?? null, layoutName: shape ? `${LAYOUT_NAMES[shape.id]} ${W}×${H}` : null,

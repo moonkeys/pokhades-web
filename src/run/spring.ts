@@ -4,7 +4,6 @@ import { Actor } from '../entities/actor';
 import type { InputSample } from '../input/input';
 import type { CombatFx, Projector } from '../render/combatfx';
 import type { WorldMap } from '../world/generate';
-import { TILE } from '../world/tiles';
 import { Placer } from './placement';
 
 // Source, salle spéciale de soin (A-FAIRE 1.9 : « d'autres salles (soin…) »).
@@ -14,8 +13,8 @@ import { Placer } from './placement';
 // statut, et un membre K.O. se relève (le relever passe par main.ts, qui sait
 // le faire pour les Rappels). Le bassin pâlit ensuite.
 //
-// Ni le tileset ni Essentials n'ont de bassin à poser au milieu d'une salle :
-// il est dessiné (margelle de pierre, eau, reflets), à défaut de sprite.
+// Le bassin est la fontaine d'Essentials (retour de test du 16 novembre 2026 :
+// pas de décor dessiné à la main ; il était peint au pinceau).
 
 export const SPRING_NPC = 113;
 /** Part des PV max rendue à chaque membre. */
@@ -82,12 +81,18 @@ export class Spring {
     const place = new Placer(world);
     const at = place.freeSpot(Math.floor(world.hub.x), Math.floor(world.hub.y));
     this.pool = { x: at.x, y: at.y };
-    // Le bassin couvre trois cases de large : on en fait le tour, on n'y marche pas.
-    for (let dx = -1; dx <= 1; dx++) {
-      const c = Math.floor(at.y) * world.w + Math.floor(at.x) + dx;
-      if (world.blocked[c] === 0) world.blocked[c] = 1;
-      place.block(Math.floor(at.x) + dx, Math.floor(at.y));
-    }
+    // Le bassin rond d'Essentials et son jet (le même que sur la place du Village, FOUNTAIN),
+    // 3 × 3 cases : on en fait le tour, on n'y marche pas.
+    const cx = Math.floor(at.x);
+    const cy = Math.floor(at.y);
+    place.clearArea(cx - 1, cy - 1, 3, 3);
+    world.fountains.push({ x: cx - 1, y: cy - 1 });
+    for (let dy = -1; dy <= 1; dy++)
+      for (let dx = -1; dx <= 1; dx++) {
+        const c = (cy + dy) * world.w + cx + dx;
+        if (world.blocked[c] === 0) world.blocked[c] = 1;
+        place.block(cx + dx, cy + dy);
+      }
     const n = place.freeSpot(Math.floor(at.x) + 3, Math.floor(at.y) - 1);
     const actor = new Actor(SPRING_NPC, n.x, n.y);
     actor.dir = 0;
@@ -142,61 +147,6 @@ export class Spring {
       el('shop-buy', '✔ Boire [E]'),
     );
     this.prompt.hidden = false;
-  }
-
-  /** Le bassin : margelle de pierres, eau qui scintille, plus terne une fois bue. */
-  extras(time: number): { y: number; draw(b: CanvasRenderingContext2D, camX: number, camY: number, k: number): void }[] {
-    const p = this.pool;
-    if (!this.active || !p) return [];
-    return [
-      {
-        y: (p.y - 0.4) * TILE,
-        draw: (b, camX, camY, k) => {
-          const cx = (p.x * TILE - camX) * k;
-          const cy = ((p.y - 0.2) * TILE - camY) * k;
-          const R = 1.7 * TILE * k;
-          // Margelle.
-          b.fillStyle = '#6f6a63';
-          b.beginPath();
-          b.ellipse(cx, cy + 1.5 * k, R + 3 * k, (R + 3 * k) * 0.55, 0, 0, Math.PI * 2);
-          b.fill();
-          b.fillStyle = '#a9a39a';
-          b.beginPath();
-          b.ellipse(cx, cy, R + 2 * k, (R + 2 * k) * 0.55, 0, 0, Math.PI * 2);
-          b.fill();
-          // Eau.
-          const fade = this.used;
-          const g = b.createRadialGradient(cx, cy - R * 0.15, 0, cx, cy, R);
-          g.addColorStop(0, fade ? '#7fb4c2' : '#c8fbff');
-          g.addColorStop(0.55, fade ? '#4f8496' : '#5fd0e8');
-          g.addColorStop(1, fade ? '#2f5a6a' : '#2b8fb8');
-          b.fillStyle = g;
-          b.beginPath();
-          b.ellipse(cx, cy, R, R * 0.55, 0, 0, Math.PI * 2);
-          b.fill();
-          // Reflets et éclats de lumière qui montent, tant qu'elle n'a pas servi.
-          b.save();
-          b.globalCompositeOperation = 'lighter';
-          b.strokeStyle = `rgba(255,255,255,${0.35 * (1 - fade)})`;
-          b.lineWidth = Math.max(1, k);
-          for (let i = 0; i < 2; i++) {
-            const u = (time * 0.6 + i * 0.5) % 1;
-            b.beginPath();
-            b.ellipse(cx, cy, R * u, R * u * 0.55, 0, 0, Math.PI * 2);
-            b.stroke();
-          }
-          for (let i = 0; i < 6; i++) {
-            const u = (time * 0.5 + i / 6) % 1;
-            const a = i * 2.1;
-            b.fillStyle = `rgba(180,255,220,${0.8 * (1 - u) * (1 - fade)})`;
-            b.beginPath();
-            b.arc(cx + Math.cos(a) * R * 0.6, cy + Math.sin(a) * R * 0.25 - u * 1.2 * TILE * k, Math.max(1, 1.4 * k), 0, Math.PI * 2);
-            b.fill();
-          }
-          b.restore();
-        },
-      },
-    ];
   }
 
   placeLabels(proj: Projector): void {

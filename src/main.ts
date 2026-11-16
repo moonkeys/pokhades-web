@@ -359,6 +359,8 @@ async function boot(): Promise<void> {
   // Autel maudit (salle spéciale, run/altar.ts) : un pacte, un don d'un cran plus rare contre une malédiction.
   const altar = new Altar(document.body, fx, {
     pact: (curse) => {
+      // Les torches éteintes (retirées par l'autel) : leur halo, calculé à la cuisson, part avec elles.
+      renderer.bake(world);
       run.curse = curse;
       run.curseAct = run.act;
       runHud.notify({ title: `Pacte scellé : ${CURSES[curse].name}`, text: `${CURSES[curse].desc} Jusqu’à la fin de l’acte.`, icon: '☠', color: '#b48ce8' });
@@ -1107,7 +1109,9 @@ async function boot(): Promise<void> {
     if (run.special === 'dojo') dojo.start(world);
     pension.clear();
     if (run.special === 'pension') pension.start(world);
-    combat.hooks.onRoomEnter(player, run, !first && run.room % 7 === 0, run.rng);
+    // Leurs décors de sol (tatami, foin, cercle, bassin) se posent après coup : le sol se recuit.
+    if (run.special === 'spring' || run.special === 'altar' || run.special === 'dojo' || run.special === 'pension') renderer.bake(world);
+    combat.hooks.onRoomEnter(player, run, !first && run.room % ROOMS_PER_ACT === 0, run.rng);
     // Test de la grotte (panneau) : chaque salle de combat part de sa grotte ; la salle attend dehors, figée.
     if (opts.biome === 'grotte' && !run.isShop() && !run.isBoss()) enterCave();
     else netRoom(roomKey, BIOME_COLOR[run.biome], roomMusic());
@@ -2392,10 +2396,6 @@ async function boot(): Promise<void> {
     ...[...(trainer ? [trainer] : []), ...(mode === 'run' && outside() ? director.trainers : [])].map((t) => ({ y: t.y * TILE, draw: t.draw.bind(t) })),
     ...shop.extras(time),
     ...merchant.extras(time),
-    ...spring.extras(time),
-    ...altar.extras(time),
-    ...dojo.extras(),
-    ...pension.extras(time),
     ...cave.extras(),
     ...(outside() ? [...berries.extras(), ...chests.extras(), ...hazards.extras(time), ...director.captureExtras()] : []),
   ];
@@ -3306,6 +3306,8 @@ async function boot(): Promise<void> {
         altar,
         cave,
         pension,
+        dojo,
+        spring,
         camp,
         /** Jeu en ligne : la scène reçue (invité), le décor de la salle (hôte), la session. */
         netDebug: () => ({ scene: hostScene, extras: runExtras().length, net, field }),

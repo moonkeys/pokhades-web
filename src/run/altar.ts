@@ -4,19 +4,22 @@ import { Actor } from '../entities/actor';
 import type { InputSample } from '../input/input';
 import type { CombatFx, Projector } from '../render/combatfx';
 import type { WorldMap } from '../world/generate';
-import { TILE } from '../world/tiles';
+import { ALTAR_CIRCLE, CAMP_PROPS, TILE } from '../world/tiles';
+import type { WorldObject } from '../world/generate';
 import { Placer } from './placement';
 import { CURSES, CURSE_IDS, type CurseId } from './run';
 
 // Autel maudit, salle spéciale (A-FAIRE 1.9 : « d'autres salles (autel à dons
 // maudits…) »). Pas d'ennemis, portes ouvertes, comme à la Source : au centre,
-// une dalle de pierre noire où brûlent des flammes violettes, veillée par
-// Feuforêve. La malédiction du pacte est tirée à l'arrivée et affichée sur la
+// un cercle magique entre deux torches, veillé par Feuforêve. La malédiction du pacte est tirée à l'arrivée et affichée sur la
 // fiche : on sait ce qu'on signe. [E] : le pacte, une fois — un don d'un cran
 // plus rare (main.ts : Boons.bonus), et la malédiction pèse jusqu'à la fin de
 // l'acte (Run.curse). On peut aussi passer son chemin.
 //
-// Ni le tileset ni Essentials n'ont d'autel : il est dessiné, comme le bassin.
+// Retour de test du 16 novembre 2026 (pas de décor dessiné à la main) : la
+// dalle peinte au pinceau devient le cercle magique de la Tour des morts
+// d'Essentials (ALTAR_CIRCLE), et ses flammes les torches du Repaire ; signer
+// le pacte les éteint (elles quittent la salle).
 
 export const ALTAR_NPC = 200;
 const REACH = 2.2;
@@ -31,6 +34,9 @@ export class Altar {
   active = false;
   readonly npcs: Actor[] = [];
   private stone: { x: number; y: number } | null = null;
+  private world: WorldMap | null = null;
+  /** Les deux torches : signer le pacte les éteint (elles quittent la salle). */
+  private torches: WorldObject[] = [];
   private curse: CurseId = 'levels';
   /** 0 : intact ; 0 → 1 : les flammes s'éteignent après le pacte. */
   private used = 0;
@@ -61,6 +67,8 @@ export class Altar {
   clear(): void {
     this.active = false;
     this.stone = null;
+    this.world = null;
+    this.torches = [];
     this.keeper = null;
     this.npcs.length = 0;
     this.hide();
@@ -82,13 +90,23 @@ export class Altar {
     const place = new Placer(world);
     const at = place.freeSpot(Math.floor(world.hub.x), Math.floor(world.hub.y));
     this.stone = { x: at.x, y: at.y };
-    // La dalle couvre trois cases de large : on en fait le tour.
-    for (let dx = -1; dx <= 1; dx++) {
-      const c = Math.floor(at.y) * world.w + Math.floor(at.x) + dx;
+    // Le cercle (3 × 3 cases, cuit avec le sol) : on peut marcher dessus. Une torche de chaque
+    // côté, qui barre sa case.
+    const cx = Math.floor(at.x);
+    const cy = Math.floor(at.y);
+    place.clearArea(cx - 2, cy - 2, 5, 4);
+    for (let dy = 0; dy < ALTAR_CIRCLE.h; dy++)
+      for (let dx = 0; dx < ALTAR_CIRCLE.w; dx++) world.decals.push({ tile: [ALTAR_CIRCLE.tile[0] + dx, ALTAR_CIRCLE.tile[1] + dy], x: cx - 1 + dx, y: cy - 1 + dy });
+    this.world = world;
+    this.torches = [-2, 2].map((dx) => {
+      const o: WorldObject = { sprite: CAMP_PROPS.torch, x: (cx + dx) * TILE + TILE / 2, y: cy * TILE - 1, fades: false };
+      world.objects.push(o);
+      const c = (cy - 1) * world.w + cx + dx;
       if (world.blocked[c] === 0) world.blocked[c] = 1;
-      place.block(Math.floor(at.x) + dx, Math.floor(at.y));
-    }
-    const n = place.freeSpot(Math.floor(at.x) - 3, Math.floor(at.y) - 1);
+      place.block(cx + dx, cy - 1);
+      return o;
+    });
+    const n = place.freeSpot(Math.floor(at.x) - 4, Math.floor(at.y));
     const actor = new Actor(ALTAR_NPC, n.x, n.y);
     actor.dir = 0;
     void loadInfo(ALTAR_NPC).then((i) => (actor.info = i));
@@ -123,6 +141,13 @@ export class Altar {
     this.prompt.hidden = true;
     sfx('buzzer');
     this.fx.attackAnim('ghost', p.x, p.y);
+    for (const t of this.torches) {
+      this.fx.attackAnim('ghost', t.x / TILE, t.y / TILE - 1, undefined, true);
+      const list = this.world?.objects;
+      const i = list ? list.indexOf(t) : -1;
+      if (i >= 0) list!.splice(i, 1);
+    }
+    this.torches = [];
     this.bubble.textContent = 'Hi hi hi ! Marché conclu…';
     this.bubbleT = 2.5;
     this.host.pact(this.curse);
@@ -144,55 +169,6 @@ export class Altar {
       el('shop-buy', '✔ Signer [E]'),
     );
     this.prompt.hidden = false;
-  }
-
-  /** La dalle : pierre sombre, runes et flammes violettes, éteintes une fois le pacte signé. */
-  extras(time: number): { y: number; draw(b: CanvasRenderingContext2D, camX: number, camY: number, k: number): void }[] {
-    const p = this.stone;
-    if (!this.active || !p) return [];
-    return [
-      {
-        y: (p.y + 0.3) * TILE,
-        draw: (b, camX, camY, k) => {
-          const cx = (p.x * TILE - camX) * k;
-          const cy = ((p.y + 0.2) * TILE - camY) * k;
-          const W = 1.5 * TILE * k;
-          const H = 0.55 * TILE * k;
-          // Ombre, puis la dalle (dessus clair, flanc sombre).
-          b.fillStyle = 'rgba(10,4,20,0.4)';
-          b.beginPath();
-          b.ellipse(cx, cy + H * 0.9, W * 1.1, H * 0.7, 0, 0, Math.PI * 2);
-          b.fill();
-          b.fillStyle = '#2b2433';
-          b.fillRect(cx - W, cy - H * 0.2, W * 2, H);
-          b.fillStyle = '#4a4054';
-          b.fillRect(cx - W, cy - H * 0.9, W * 2, H * 0.75);
-          b.fillStyle = '#5d5268';
-          b.fillRect(cx - W, cy - H * 0.9, W * 2, Math.max(1, k));
-          // Runes gravées, qui luisent tant que le pacte n'est pas signé.
-          const glow = 1 - this.used;
-          b.fillStyle = `rgba(190,140,255,${0.25 + 0.55 * glow * (0.6 + 0.4 * Math.sin(time * 3))})`;
-          for (let i = -2; i <= 2; i++) b.fillRect(cx + i * W * 0.38 - k, cy + H * 0.15, 2 * k, H * 0.4);
-          // Flammes aux deux coins.
-          b.save();
-          b.globalCompositeOperation = 'lighter';
-          for (const side of [-1, 1]) {
-            const fx = cx + side * W * 0.82;
-            const fy = cy - H * 0.9;
-            for (let i = 0; i < 5; i++) {
-              const u = (time * 1.4 + i / 5 + (side > 0 ? 0.37 : 0)) % 1;
-              const r = (1 - u) * 3.2 * k * glow;
-              if (r <= 0.2) continue;
-              b.fillStyle = `rgba(${170 + 60 * (1 - u)},${90 + 40 * u},255,${0.75 * (1 - u) * glow})`;
-              b.beginPath();
-              b.arc(fx + Math.sin(time * 6 + i) * 1.2 * k, fy - u * 0.9 * TILE * k, r, 0, Math.PI * 2);
-              b.fill();
-            }
-          }
-          b.restore();
-        },
-      },
-    ];
   }
 
   placeLabels(proj: Projector): void {
