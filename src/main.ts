@@ -975,8 +975,8 @@ async function boot(): Promise<void> {
     for (const a of [...team, ...wild]) {
       if (talentsSeen.has(a) || !standing(a)) continue;
       talentsSeen.add(a);
-      // (L'arène du Village est d'intérieur : pas de temps à changer.)
-      if (run.isBoss() && run.biome === 'village') continue;
+      // (L'arène du Village est d'intérieur, les salles calmes ont leur ambiance : pas de temps à changer.)
+      if ((run.isBoss() && run.biome === 'village') || run.special === 'spring' || run.special === 'altar' || run.special === 'dojo' || run.special === 'pension') continue;
       const t = WEATHER_ABILITIES[a.speciesId];
       if (!t || roomWeather === t.weather) continue;
       roomWeather = t.weather;
@@ -1034,7 +1034,11 @@ async function boot(): Promise<void> {
     roared.clear();
     cave.clear();
     berries.build(world, BIOMES[run.biome].berry);
-    hazards.build(world, run.mapSeed, run.isBoss());
+    // Les salles calmes (Source, Autel, Dojo, Pension) ont leur ambiance : ni pièges de terrain
+    // (tourbillons de sable…), ni météo (retour de test du 16 novembre 2026).
+    const calm = run.special === 'spring' || run.special === 'altar' || run.special === 'dojo' || run.special === 'pension';
+    if (calm) hazards.clear();
+    else hazards.build(world, run.mapSeed, run.isBoss());
     chests.build(world);
     roomHurt = false;
     questProgress({ kind: 'act', act: run.act });
@@ -1066,8 +1070,8 @@ async function boot(): Promise<void> {
     // L'arène du Village est une salle d'intérieur : ni pluie, ni pollen.
     const indoor = run.isBoss() && run.biome === 'village';
     // Le ciel découle de celui de la salle d'avant (world/weather.ts) ; une boutique ou un intérieur le laisse en pause.
-    roomWeather = run.isShop() || indoor ? 'clear' : opts.weather !== 'run' ? opts.weather : rollWeather(run.biome, run.mapSeed, first ? undefined : lastSky);
-    if (!run.isShop() && !indoor) lastSky = roomWeather;
+    roomWeather = run.isShop() || indoor || calm ? 'clear' : opts.weather !== 'run' ? opts.weather : rollWeather(run.biome, run.mapSeed, first ? undefined : lastSky);
+    if (!run.isShop() && !indoor && !calm) lastSky = roomWeather;
     setWeather(weatherNow());
     // Le ciel change : on dit ce que ça change au combat.
     if (roomWeather !== before && roomWeather !== 'clear') runHud.notify({ title: WEATHERS[roomWeather].name, text: WEATHERS[roomWeather].hint, icon: WEATHERS[roomWeather].icon });
@@ -3148,6 +3152,15 @@ async function boot(): Promise<void> {
     if (outside()) dojo.update(dt, sample, player, Math.random);
     else dojo.hide();
     if (outside()) entryTalents();
+    // Les Pokémon des places (boutique, salles spéciales, prisonniers de grotte) : leur pose « Idle »
+    // ne bouclait pas (retour de test du 16 novembre 2026 : « on dirait qu'ils sont juste fixes »).
+    // Ils se tournent vers toi quand tu approches, s'ils ne sont pas en pleine action.
+    for (const n of [...shop.npcs, ...merchant.npcs, ...spring.npcs, ...altar.npcs, ...dojo.npcs, ...pension.npcs, ...cave.npcs]) {
+      n.tickTimers(dt);
+      n.animT += dt;
+      const near = Math.hypot(player.x - n.x, player.y - n.y) < 4;
+      if (near && (!n.action || n.action.anim.name === n.pose)) n.dir = dirFromVector(player.x - n.x, player.y - n.y);
+    }
     if (outside()) pension.update(dt, sample, player, Math.random);
     else pension.hide();
     camp.update(dt, dialogue.open ? { ...sample, interact: false } : sample, player, world);
