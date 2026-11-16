@@ -779,11 +779,12 @@
 .notif:nth-child(even) {
   rotate: 0.6deg;
 }
-/* Le bout de ruban qui la tient au mur. */
+/* Le bout de ruban qui la tient au mur : à gauche, au-dessus de l'icône (retour de test du
+   16 novembre 2026 : au milieu, il passait sur le titre). */
 .notif::before {
   content: '';
   position: absolute;
-  left: 50%;
+  left: calc(2.6 * var(--u));
   top: calc(-0.5 * var(--u));
   width: calc(3.2 * var(--u));
   height: calc(1 * var(--u));
