@@ -1694,7 +1694,7 @@ async function boot(): Promise<void> {
         // Jusqu'au changement de salle (CombatArena.gd:1796).
         audio.playMusic('victory');
         runHud.notify({ title: 'Champion vaincu', text: `${run.champion.name} est tombé.`, art: run.champion.team.at(-1)?.[0], color: 'var(--yel)' });
-        // Un Pokémon de son équipe rejoint la rébellion (son as d'abord), s'il en reste un qu'on n'a pas.
+        // Un Pokémon de son équipe rejoint la rébellion (le plus faible d'abord, son as en dernier), s'il en reste un qu'on n'a pas.
         if (net.role !== 'client') {
           const got = grantChampion(save, run.champion.team.map(([final]) => final), run.champion.name);
           if (got) {
@@ -3228,7 +3228,7 @@ async function boot(): Promise<void> {
     if (frameDt > 0) fps += (1 / frameDt - fps) * 0.05;
     const name = player.info?.name ?? '…';
     panel.setStatus(
-      `${mode === 'camp' ? `Repaire · ${save.baies} Baies · prochaine run ${opts.seed} · ` : ''}Run ${run.seed} · salle ${run.room + 1}/28 · ${BIOMES[run.biome].name}${world.townStyle ? ` « ${world.townStyle} »` : ''} · ${name} · vue ${renderer.viewW}×${renderer.viewH} px (${(renderer.viewW / TILE).toFixed(1)}×${(renderer.viewH / TILE).toFixed(1)} cases) · ×${renderer.scale} · ${Math.round(fps)} i/s`,
+      `${mode === 'camp' ? `Repaire · ${save.baies} Baies · prochaine run ${opts.seed} · ` : ''}Run ${run.seed} · salle ${run.room + 1}/${run.acts * ROOMS_PER_ACT} · ${BIOMES[run.biome].name}${world.townStyle ? ` « ${world.townStyle} »` : ''} · ${name} · vue ${renderer.viewW}×${renderer.viewH} px (${(renderer.viewW / TILE).toFixed(1)}×${(renderer.viewH / TILE).toFixed(1)} cases) · ×${renderer.scale} · ${Math.round(fps)} i/s`,
     );
   }, () => net.active);
 

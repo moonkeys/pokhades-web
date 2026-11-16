@@ -69,8 +69,9 @@ ne garde que « Repaire (tests) » — retour au camp, +1000 Baies, tout remettr
 zéro — et les réglages de test gardés dans le navigateur (biome forcé, forme des
 salles, météo) reviennent à ceux du jeu. Le serveur de dev garde tout.
 
-Run (portée de `RunManager.gd` et `CombatArena.gd`) : 4 actes de 7 salles
-(5 combats, une boutique, un boss). La run part toujours de la Prairie, et
+Run (portée de `RunManager.gd` et `CombatArena.gd`) : 4 actes de 9 salles
+(7 combats, une boutique, un boss ; écart voulu, le jeu en avait 7 dont 5
+combats, retour de test : « entre 8 et 10 salles par biome »). La run part toujours de la Prairie, et
 chaque boss vaincu ouvre une porte par biome voisin sur la **carte du monde**
 (ajout, `src/world/worldmap.ts`, retour de test : « on passe du lac à la
 montagne en deux secondes, ce n'est pas logique ») : une carte fixe, quatre

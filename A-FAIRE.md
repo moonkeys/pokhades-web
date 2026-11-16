@@ -311,7 +311,7 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
 
 ### 1.9 Salles spéciales (fait)
 - Une porte sur plusieurs peut mener à une salle spéciale (`Run.offers`,
-  35 %, 2 par acte au plus, jamais deux pareilles de suite, jamais vers la
+  35 %, 3 par acte au plus (2 avant les actes de 9 salles), jamais deux pareilles de suite, jamais vers la
   boutique ou le boss, ni en ouvrant un acte) ; son étiquette dit laquelle.
 - **Défi** ⏱ : les vagues sous chrono (30 s + 10 s par vague, puce du HUD) ;
   réussi, ₽ ×3 et un don garanti ; raté, les sauvages s'enfuient et la
