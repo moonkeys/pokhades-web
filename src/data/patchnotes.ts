@@ -18,6 +18,30 @@ export interface PatchNote {
 
 export const PATCH_NOTES: readonly PatchNote[] = [
   {
+    id: '2026-11-16-b',
+    date: '16 novembre 2026',
+    title: 'Retours de test : biomes plus longs, échanges et vrais décors',
+    sections: [
+      {
+        title: 'Run',
+        items: [
+          'Chaque biome compte 9 salles (7 combats ou salles spéciales, la boutique, le champion), et jusqu’à 3 salles spéciales.',
+          'Un champion vaincu cède d’abord son Pokémon le plus faible ; plus tu le bats, plus tu te rapproches de son as.',
+          'Pension : parle à Écrémeuh pour échanger un membre de l’équipe contre un Pokémon du Repaire.',
+          'Dojo, Pension, Source, Autel : leurs décors viennent du tileset et d’Essentials (tatami, enclos, fontaine, cercle magique).',
+        ],
+      },
+      {
+        title: 'Combat',
+        items: ['Intimidation se voit : le Pokémon fait son geste, avec l’animation de Rugissement.', 'Le talent d’un Pokémon est écrit sur sa fiche (C), à l’équipe et au Pokédex.'],
+      },
+      {
+        title: 'Confort',
+        items: ['Le ruban des notifications ne cache plus leur titre.', 'Les leçons de Bouldeneu sont plus courtes.'],
+      },
+    ],
+  },
+  {
     id: '2026-11-16',
     date: '16 novembre 2026',
     title: 'Intimidation',

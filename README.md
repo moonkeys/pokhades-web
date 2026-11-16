@@ -176,22 +176,32 @@ sa récompense comme une autre ; la récompense attend au centre d'une salle
 vide, et en approchant, trois vagues serrées à +3 niveaux surgissent (₽ ×2).
 Le **Marchand ambulant** (`src/run/merchant.ts`, Miaouss, son Pari et son
 Échange) n'est plus tiré (retour de test : « le marchand, j'en veux pas ») ;
-son code reste. **Source** ✚ (`run/spring.ts`) : un bassin qui soigne l'équipe.
-**Autel maudit** ☠ (`run/altar.ts`) : sans ennemis, Feuforêve veille sur une
-dalle aux flammes violettes ; [E], une fois, signe un pacte : un don d'un
+son code reste. **Source** ✚ (`run/spring.ts`) : la fontaine d'Essentials
+(celle des villages), qui soigne l'équipe. **Autel maudit** ☠
+(`run/altar.ts`) : sans ennemis, Feuforêve veille sur le cercle magique de la
+Tour des morts d'Essentials, entre deux torches (éteintes au pacte) ; [E], une fois, signe un pacte : un don d'un
 cran plus rare (`Boons.bonus`), contre une malédiction tirée à l'arrivée et
 lisible sur la fiche, qui pèse jusqu'à la fin de l'acte (`Run.curse`, écrite
 sous le lieu en haut à gauche) : **Sauvages enragés** (+2 niveaux, champion
 compris), **Bourse percée** (₽ des salles divisés par deux) ou **Sans repos**
 (les K.O. ne se relèvent plus en fin de salle). On peut passer son chemin.
-**Dojo** ✊ (`run/dojo.ts`) : sans ennemis, un tatami et un mannequin de
-paille, et Machopeur, maître des lieux ; [E] au tatami ouvre l'écran
+**Dojo** ✊ (`run/dojo.ts`) : sans ennemis, le tatami des arènes d'Essentials
+et un rocher du tileset, et Machopeur, maître des lieux ; [E] au tatami ouvre l'écran
 « Nouvelle attaque » sans prix (apprendre ou renforcer, pour le membre
 choisi), deux fois par salle ; fermer l'écran sans choisir ne compte pas.
-**Pension** ❀ (`run/pension.ts`) : sans ennemis, un enclos garni de foin
-gardé par Écrémeuh ; [E] à l'enclos, une fois : chaque membre gagne un
-niveau (`PENSION_LEVELS`), le plus faible deux (annonce et évolution comme
-en combat).
+**Pension** ❀ (`run/pension.ts`) : sans ennemis, un enclos (le foin et la
+clôture du tileset) gardé par Écrémeuh ; [E] à l'enclos, une fois : chaque
+membre gagne un niveau (`PENSION_LEVELS`), le plus faible deux (annonce et
+évolution comme en combat). [E] à côté d'Écrémeuh, une fois : l'**échange**
+(`ui/swapscreen.ts`) — un membre rentre au Repaire, un libéré libre (ni dans
+l'équipe ni en mission) prend sa place, au niveau du partant s'il est plus
+bas, PV pleins, avec ses attaques et son objet ; l'équipe du Repaire suit.
+Pas en ligne.
+
+Décors des salles spéciales (retour de test du 16 novembre 2026 : « pas de
+trucs pixelisés faits à la main ») : tous pris du tileset ou d'Essentials,
+posés au sol par `WorldMap.decals` (cuits avec le sol) ou comme objets ; la
+place est dégagée d'abord (`Placer.clearArea`).
 
 Météo (ajout, `src/world/weather.ts`) : chaque salle de combat tire son ciel
 selon le biome — souvent clair, parfois Pluie, Soleil ardent, Tempête de
@@ -213,6 +223,11 @@ debout qui passe à 9 cases d'un intimidateur debout perd un quart de son
 Attaque pendant 10 s (comme Rugissement), une fois par salle, dans les deux
 sens. Écart voulu : les jeux n'intimident qu'à l'entrée, mais ici les
 sauvages arrivent par vagues. Les talents se lisent sur l'espèce dessinée.
+L'intimidateur se montre : il fait son geste d'attaque vers sa cible, avec
+l'animation de Rugissement et « Intimidation » au-dessus de lui (une fois
+par seconde au plus). Le talent est écrit sur la fiche de run (C), sur la
+fiche de l'équipe et dans le Pokédex au Repaire (celui d'une évolution aussi :
+« une fois évolué, dès le niveau N », `talentInLine`).
 
 Grottes (portée de `_spawn_cave_portals` et `CaveArena.gd`) : passé les deux
 premières salles de la run, une bouche peut s'ouvrir au pied d'une falaise —
@@ -329,9 +344,9 @@ Bétochef à 6.
   deux piliers de pierre, puis une rue de briques qui ondule jusqu'à la place
   (seuil gris, puis briques beiges : le chemin de terre ne bute plus sur le
   pavé) ; douze libérés de plus au camp (ils flânent sur la place). Deux
-  d'entre eux portent l'eau du puits à leur maison, un seau plein à l'aller
-  (chemin calculé case par case autour du puits et du banc), et une
-  lavandière frotte le linge dans son baquet sous une corde à linge ;
+  d'entre eux portent l'eau du puits à leur maison (chemin calculé case par
+  case autour du puits et du banc), et une lavandière frotte le linge à son
+  tonneau (le seau et la corde à linge, dessinés à la main, sont retirés) ;
 - **Carrière** (Bois 14, Nourriture 6 ; après le Terrain d'entraînement) :
   une poche gagnée sur la forêt au nord-est, derrière le relais (`POSTS.quarry`,
   et une trouée qui la relie) ; du gravier, de gros blocs, un tas de pierres,
