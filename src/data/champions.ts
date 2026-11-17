@@ -168,3 +168,27 @@ export function championSpecies(): number[] {
   for (const c of Object.values(CHAMPIONS)) for (const [f, b] of c.team) ids.add(f).add(b);
   return [...ids];
 }
+
+/**
+ * Les attaques de l'as de chaque champion (retour de test du 17 novembre 2026 : « que chaque
+ * Pokémon ait vraiment ses attaques à lui dans le boss » ; son jeu appris au niveau était souvent
+ * faible, ou de statut). Quatre attaques fidèles à l'espèce et au champion, de types variés : ses
+ * figures, son bond et sa grande attaque les reprennent (combat/enemy.ts), d'où un combat
+ * différent dans chaque arène. Noms d'API PokéAPI.
+ */
+export const ACE_MOVES: Readonly<Record<string, readonly string[]>> = {
+  Pierre: ['rock-slide', 'earthquake', 'stone-edge', 'iron-tail'],
+  Ondine: ['surf', 'psychic', 'ice-beam', 'swift'],
+  'Major Bob': ['thunderbolt', 'thunder', 'iron-tail', 'quick-attack'],
+  Erika: ['petal-dance', 'sludge-bomb', 'giga-drain', 'moonblast'],
+  Koga: ['sludge-bomb', 'flamethrower', 'shadow-ball', 'dark-pulse'],
+  Morgane: ['psychic', 'shadow-ball', 'dazzling-gleam', 'psybeam'],
+  Auguste: ['flamethrower', 'fire-blast', 'extreme-speed', 'crunch'],
+  Giovanni: ['earthquake', 'rock-slide', 'megahorn', 'stone-edge'],
+  Olga: ['blizzard', 'ice-beam', 'psychic', 'ice-punch'],
+  Aldo: ['cross-chop', 'dynamic-punch', 'rock-slide', 'earthquake'],
+  Agatha: ['shadow-ball', 'sludge-bomb', 'dark-pulse', 'thunderbolt'],
+  Peter: ['outrage', 'dragon-claw', 'hyper-beam', 'thunder'],
+  Régis: ['hydro-pump', 'surf', 'ice-beam', 'earthquake'],
+  Blanche: ['body-slam', 'rollout', 'stomp', 'zen-headbutt'],
+};

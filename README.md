@@ -656,7 +656,11 @@ son nom au-dessus de lui ; pas d'« ultime », retour de test), sous un voile
 rouge, sauf trois zones sûres cerclées de vert, 2,2 s pour s'y mettre
 (`ultimate`, forme `field`). Toutes ses figures reprennent ses propres
 attaques, nom et type compris, à tour de rôle (`offense`), et leurs zones
-grandissent avec leur puissance (jusqu'à ×1,5). Les Pokémon d'un champion ne nagent plus (au Lac, ils
+grandissent avec leur puissance (jusqu'à ×1,5). Chaque as a son jeu de
+quatre attaques choisi pour son champion (`ACE_MOVES`, data/champions.ts) :
+Éboulement, Séisme, Lame de Roc et Queue de Fer pour l'Onix de Pierre ;
+Surf, Psyko, Laser Glace et Météores pour le Staross d'Ondine ; Colère,
+Draco-Griffe, Ultralaser et Fatal-Foudre pour le Dracolosse de Peter… Les Pokémon d'un champion ne nagent plus (au Lac, ils
 partaient au large, hors d'atteinte). Le champion se tient **sur un rocher**
 de l'anneau, au nord-est (`WorldMap.podium`), immobile et hors d'atteinte ;
 vaincu, il lâche une dernière phrase et disparaît dans un nuage. Sur son

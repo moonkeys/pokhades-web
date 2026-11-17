@@ -402,6 +402,10 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
 - Cinquième passe : bond de l'as sur le membre le plus éloigné, grande
   attaque de l'as enragé (sa plus forte, nommée ; pas d'« ultime ») (arène entière sauf trois zones sûres, forme `field`),
   figures au centre selon son type (anneaux, pluie de frappes…).
+- Sixième passe : les figures reprennent les attaques de l'as (noms, types,
+  taille selon la puissance), sa grande attaque est sa plus forte, et chaque
+  as a quatre attaques choisies pour son champion (`ACE_MOVES`). Reste : à
+  juger en jeu, arène par arène.
 - Quatrième passe : emblème Poké Ball au sol au centre des arènes, dresseur
   qui suit le joueur du regard, Éclats de Champion qui s'envolent à la
   victoire.

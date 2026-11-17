@@ -29,7 +29,7 @@ export const PATCH_NOTES: readonly PatchNote[] = [
           'Plus ton équipe est grande, plus il est coriace (PV, attaque, et une barre de plus à ses Pokémon dès quatre membres).',
           'Le champion se tient sur un rocher au bord de son arène ; vaincu, il lâche une phrase et disparaît. Sa réplique d’entrée ne se coupe plus.',
           'L’as prend parfois le centre de l’arène et frappe tout autour, selon son type : ondes de choc, croix de rayons, cônes, anneaux de feu, pluie d’éclairs…',
-          'Ses figures reprennent ses propres attaques, nom et type compris, plus larges si elles sont puissantes. Il bondit aussi sur le Pokémon le plus éloigné, et à sa dernière barre lance sa plus forte attaque sur toute l’arène, sauf trois zones sûres cerclées de vert.',
+          'Chaque as a quatre attaques choisies pour son champion (Séisme et Lame de Roc pour l’Onix de Pierre, Surf et Psyko pour le Staross d’Ondine…). Ses figures les reprennent, nom et type compris, plus larges si elles sont puissantes. Il bondit aussi sur le Pokémon le plus éloigné, et à sa dernière barre lance sa plus forte attaque sur toute l’arène, sauf trois zones sûres cerclées de vert.',
           'Les Pokémon d’un champion ne nagent plus : au Lac, ils ne partent plus au large.',
           'Ils ne reculent plus pour tirer et attaquent plus souvent.',
           'Le champion te suit du regard sur son rocher et bondit quand il envoie un Pokémon ; chaque Pokémon ennemi arrive avec l’animation de son type.',

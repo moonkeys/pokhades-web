@@ -12,7 +12,7 @@ import { buildAtlas } from './assets/atlas';
 import { PLAYER_ACTIONS, WILD_ACTIONS, loadImage, loadInfo, loadSheet } from './assets/pmd';
 import { sheetIdOf } from './data/forms';
 import { megaById, megaFormsOf, type MegaForm } from './data/megas';
-import { FINAL_BOSS_DEFEAT, FINAL_BOSS_INTRO, MASTER_DEFEAT, type Champion } from './data/champions';
+import { ACE_MOVES, FINAL_BOSS_DEFEAT, FINAL_BOSS_INTRO, MASTER_DEFEAT, type Champion } from './data/champions';
 import { Trainer } from './entities/trainer';
 import { MERC_RETAINER, Shop } from './run/shop';
 import { Camp, CAMP_SEED, campPockets, STATIONS, stationId, type Station } from './run/camp';
@@ -35,7 +35,7 @@ import { Combat, DEATH_TIME } from './combat/combat';
 import { CompanionBrain } from './combat/companion';
 import { EnemyBrain } from './combat/enemy';
 import { BOONS, DONORS, RARITY_COLOR, RARITY_NAME, STAT_BOONS, type BoonOffer } from './combat/boons';
-import { tune, type Move } from './combat/moves';
+import { loadMove, tune, type Move } from './combat/moves';
 import { BASE_TEAM_LEVEL, Pokemon, xpForLevel } from './combat/pokemon';
 import { typeMates } from './data/trainers';
 import { preEvolutionOf } from './data/evolutions';
@@ -830,6 +830,19 @@ async function boot(): Promise<void> {
       }
       // L'archétype dépend des capacités : le cerveau naît avec la fiche.
       a.brain = new EnemyBrain(a);
+      // L'as d'un champion prend le jeu d'attaques choisi pour lui (data/champions.ts, ACE_MOVES) ;
+      // son cerveau renaît avec (l'archétype en dépend).
+      const ace = a.role === 'boss' && mode === 'run' ? ACE_MOVES[run.champion.name] : undefined;
+      if (ace) {
+        void Promise.all(ace.map((api) => loadMove(api, mon.level))).then((ms) => {
+          const got = ms.filter((m): m is NonNullable<typeof m> => Boolean(m));
+          if (!got.length || a.pokemon !== mon || a.deathT >= 0) return;
+          mon.moves.splice(0, mon.moves.length, ...got);
+          mon.movesVersion++;
+          a.brain = new EnemyBrain(a);
+          a.brain.provoke();
+        });
+      }
       // Son apparition se voit (retour de test : « un petit truc pour montrer qu'il est apparu…
       // des petites vagues ») : l'animation de son type là où il arrive ; un Pokémon de champion,
       // son dresseur bondit sur son rocher.
