@@ -34,7 +34,7 @@ export const CHAMPIONS: Record<string, Champion> = {
   Ondine: {
     name: 'Ondine',
     type: 'water',
-    team: [[120, 120], [121, 120]],
+    team: [[121, 120], [80, 79]],
     sprite: 'trainer_LEADER_Misty.png',
     intro: 'Ta petite rébellion ? Une vaguelette. Mes Pokémon d’Eau la noieront avant qu’elle n’atteigne le large.',
   },
@@ -110,14 +110,14 @@ export const CHAMPIONS: Record<string, Champion> = {
   Peter: {
     name: 'Peter',
     type: 'dragon',
-    team: [[130, 129], [148, 147], [6, 4], [149, 147]],
+    team: [[130, 129], [148, 147], [149, 147], [6, 4]],
     sprite: 'trainer_ELITEFOUR_Lance.png',
     intro: 'Les dragons ne servent personne… sauf moi. Si un sauvage peut briser une chaîne, qu’il brise d’abord la mienne.',
   },
   Régis: {
     name: 'Régis',
     type: 'normal',
-    team: [[18, 16], [65, 63], [112, 111], [130, 129], [59, 58], [9, 7]],
+    team: [[18, 16], [112, 111], [130, 129], [59, 58], [9, 7], [65, 63]],
     sprite: 'trainer_CHAMPION.png',
     intro: 'Alors c’est toi, la rumeur. Tous les champions à terre, le Conseil en déroute… Je suis le Maître de la Ligue. Au-dessus de moi, il n’y a rien. Montre-moi ce que vaut ta liberté.',
   },
@@ -175,10 +175,14 @@ export function championSpecies(): number[] {
  * faible, ou de statut). Quatre attaques fidèles à l'espèce et au champion, de types variés : ses
  * figures, son bond et sa grande attaque les reprennent (combat/enemy.ts), d'où un combat
  * différent dans chaque arène. Noms d'API PokéAPI.
+ *
+ * Un as dont la Méga n'a pas de planches cède la place (retour de test du 17 novembre 2026) :
+ * Flagadoss chez Ondine (Staross reste dans l'équipe), Dracaufeu chez Peter (Méga X, Dragon),
+ * Alakazam chez Régis.
  */
 export const ACE_MOVES: Readonly<Record<string, readonly string[]>> = {
   Pierre: ['rock-slide', 'earthquake', 'stone-edge', 'iron-tail'],
-  Ondine: ['surf', 'psychic', 'ice-beam', 'swift'],
+  Ondine: ['surf', 'psychic', 'ice-beam', 'zen-headbutt'],
   'Major Bob': ['thunderbolt', 'thunder', 'iron-tail', 'quick-attack'],
   Erika: ['petal-dance', 'sludge-bomb', 'giga-drain', 'moonblast'],
   Koga: ['sludge-bomb', 'flamethrower', 'shadow-ball', 'dark-pulse'],
@@ -188,7 +192,7 @@ export const ACE_MOVES: Readonly<Record<string, readonly string[]>> = {
   Olga: ['blizzard', 'ice-beam', 'psychic', 'ice-punch'],
   Aldo: ['cross-chop', 'dynamic-punch', 'rock-slide', 'earthquake'],
   Agatha: ['shadow-ball', 'sludge-bomb', 'dark-pulse', 'thunderbolt'],
-  Peter: ['outrage', 'dragon-claw', 'hyper-beam', 'thunder'],
-  Régis: ['hydro-pump', 'surf', 'ice-beam', 'earthquake'],
+  Peter: ['flare-blitz', 'dragon-claw', 'outrage', 'air-slash'],
+  Régis: ['psychic', 'shadow-ball', 'thunder-punch', 'dazzling-gleam'],
   Blanche: ['body-slam', 'rollout', 'stomp', 'zen-headbutt'],
 };

@@ -199,21 +199,6 @@ async function boot(): Promise<void> {
   const dialogue = new Dialogue(document.body);
   /** Dresseur du champion, en salle de boss. */
   let trainer: Trainer | null = null;
-  /**
-   * Les Éclats de Champion, la récompense d'une arène (retours de test du 17 novembre 2026 : « qu'ils
-   * flottent à la place du don d'un Pokémon ») : à la victoire, ils apparaissent au centre de l'arène
-   * et y flottent en cercle, comme un don ; quand on s'en approche, ils filent vers le Pokémon joué
-   * et s'éteignent (déjà comptés : on ne peut pas les manquer). L'icône COMETSHARD d'Essentials.
-   */
-  const SHARD_LIFE = 0.5;
-  const shardFx: { x: number; y: number; vx: number; vy: number; t: number; home: { x: number; y: number }; taken: boolean }[] = [];
-  let shardIcon: HTMLImageElement | null = null;
-  void loadImage(`/game/assets/essentials/items/${SHARDS.icon}.png`).then((img) => (shardIcon = img), () => {});
-  const shardBurst = (x: number, y: number, k: number) => {
-    const n = Math.min(6, Math.max(3, k));
-    for (let i = 0; i < n; i++) shardFx.push({ x, y: y - 1, vx: 0, vy: 0, t: -i * 0.15, home: { x, y: y - 1 }, taken: false });
-    sfx('pkmnGet', -2);
-  };
   /** La bulle du champion au bord du terrain (ses répliques de phase), et son temps restant. */
   const trainerLayer = Object.assign(document.createElement('div'), { className: 'room-labels' });
   const trainerBubble = Object.assign(document.createElement('div'), { className: 'room-label shop-bubble' });
@@ -841,6 +826,16 @@ async function boot(): Promise<void> {
           a.brain.provoke();
         });
       }
+      // Un Pokémon de champion prend ses attaques les plus fortes, pas le kit des sauvages.
+      if (a.role === 'champion' && mode === 'run') {
+        void mon.strongestMoves().then((got) => {
+          if (got.length < 2 || a.pokemon !== mon || a.deathT >= 0) return;
+          mon.moves.splice(0, mon.moves.length, ...got);
+          mon.movesVersion++;
+          a.brain = new EnemyBrain(a);
+          a.brain.provoke();
+        });
+      }
       // Son apparition se voit (retour de test : « un petit truc pour montrer qu'il est apparu…
       // des petites vagues ») : l'animation de son type là où il arrive ; un Pokémon de champion,
       // son dresseur bondit sur son rocher.
@@ -1308,7 +1303,6 @@ async function boot(): Promise<void> {
     skillOffer = null;
     trainer = null;
     trainerVanishT = 0;
-    shardFx.length = 0;
     dialogue.close();
     director.start(world, run, opts.wild, first);
     // Le boss a sa musique (CombatArena.gd:1610) ; les autres salles, boutique comprise, la leur (écart voulu, sounds.ts).
@@ -1983,11 +1977,6 @@ async function boot(): Promise<void> {
       // Un champion tombé rapporte des Baies et des Éclats de Champion (CombatArena.gd:1899) ; le Dresseur final, davantage.
       if (run.isBoss()) {
         const n = BAIES.boss(run.act) + (run.isFinal ? BAIES.finalBonus : 0);
-        const k = SHARDS.boss(run.act) + (run.isFinal ? SHARDS.finalBonus : 0);
-        save.shards += k;
-        shardBurst(world.hub.x, world.hub.y, k);
-        shareLoot({ shards: k, text: `Champion vaincu : +${k} Éclat${k > 1 ? 's' : ''} de Champion` });
-        stats.shards += k;
         stats.champions.push(run.champion.name);
         // Le carnet des exploits (meta/feats.ts) : un champion de plus vaincu au moins une fois.
         beatChampion(run.champion.name);
@@ -2006,10 +1995,7 @@ async function boot(): Promise<void> {
             );
           }
         }
-        runHud.notifyAll([
-          { title: 'Baies', text: 'Pour le Repaire', item: 'ORANBERRY', qty: `+${n}`, color: 'var(--yel)' },
-          { title: `Éclat${k > 1 ? 's' : ''} de Champion`, text: 'Pour le Repaire', item: SHARDS.icon, qty: `+${k}`, color: 'var(--yel)' },
-        ]);
+        runHud.notify({ title: 'Baies', text: 'Pour le Repaire', item: 'ORANBERRY', qty: `+${n}`, color: 'var(--yel)' });
       }
       // Son équipe vaincue, le champion quitte la salle par la sortie.
       // Sur son rocher, il lâche une dernière phrase, puis disparaît dans un nuage (retour de test :
@@ -2018,6 +2004,16 @@ async function boot(): Promise<void> {
         trainerSay(CHAMPION_DEFEATS[Math.floor(Math.random() * CHAMPION_DEFEATS.length)]);
         trainerVanishT = 2.2;
       } else if (run.isBoss()) trainer?.flee(world);
+    },
+    // Les Éclats de Champion attendent au centre de l'arène, à la place du don (room.ts) : comptés quand on les prend.
+    claimShards: () => {
+      const k = SHARDS.boss(run.act) + (run.isFinal ? SHARDS.finalBonus : 0);
+      save.shards += k;
+      writeSave(save);
+      stats.shards += k;
+      sfx('pkmnGet', -2);
+      shareLoot({ shards: k, text: `Champion vaincu : +${k} Éclat${k > 1 ? 's' : ''} de Champion` });
+      runHud.notify({ title: `Éclat${k > 1 ? 's' : ''} de Champion`, text: 'Pour le Repaire', item: SHARDS.icon, qty: `+${k}`, color: 'var(--yel)' });
     },
     prepareReward: (reward) => {
       if (reward === 'boon') boonOffer = run.boons.offer(run.rng, run.room, run.act, run.donor);
@@ -2653,32 +2649,6 @@ async function boot(): Promise<void> {
     ...shop.extras(time),
     ...merchant.extras(time),
     ...altar.extras(time),
-    ...shardFx.map((s) => ({
-      y: Infinity,
-      draw: (b: CanvasRenderingContext2D, camX: number, camY: number, k: number) => {
-        const icon = shardIcon;
-        if (!icon || s.t < 0) return;
-        const u = s.taken ? s.t / SHARD_LIFE : 0;
-        const px = Math.round((s.x * TILE - camX) * k);
-        const py = Math.round((s.y * TILE - camY) * k);
-        b.save();
-        b.globalCompositeOperation = 'lighter';
-        const g = b.createRadialGradient(px, py, 0, px, py, 10 * k);
-        g.addColorStop(0, `rgba(255,240,180,${0.6 * (1 - u)})`);
-        g.addColorStop(1, 'rgba(255,200,80,0)');
-        b.fillStyle = g;
-        b.beginPath();
-        b.arc(px, py, 10 * k, 0, Math.PI * 2);
-        b.fill();
-        b.restore();
-        b.save();
-        b.globalAlpha = Math.min(1, (1 - u) * 1.6);
-        b.imageSmoothingEnabled = false;
-        const w = icon.width * k * 0.6;
-        b.drawImage(icon, px - w / 2, py - w / 2, w, w);
-        b.restore();
-      },
-    })),
     ...spring.extras(time),
     ...cave.extras(),
     ...(outside() ? [...berries.extras(), ...chests.extras(), ...hazards.extras(time), ...director.captureExtras()] : []),
@@ -3410,26 +3380,6 @@ async function boot(): Promise<void> {
     }
     if (trainer) trainer.watch = player;
     trainer?.update(dt, world, Math.random);
-    shardFx.forEach((s, i) => {
-      if (!s.taken) {
-        s.t += dt;
-        // En cercle autour du centre, qui tourne doucement et respire.
-        const a = time * 0.8 + (i / shardFx.length) * Math.PI * 2;
-        s.x = s.home.x + Math.cos(a) * 1.1;
-        s.y = s.home.y + Math.sin(a) * 0.55 + Math.sin(time * 2.4 + i) * 0.12;
-        if (Math.hypot(player.x - s.home.x, player.y - s.home.y) < 1.8) {
-          s.taken = true;
-          s.t = 0;
-        }
-        return;
-      }
-      // Ramassé : il file vers le Pokémon joué et s'éteint.
-      s.t += dt;
-      s.x += (player.x - s.x) * Math.min(1, dt * 9);
-      s.y += (player.y - 0.8 - s.y) * Math.min(1, dt * 9);
-      if (s.t >= SHARD_LIFE && s === shardFx[shardFx.length - 1]) sfx('claim');
-    });
-    for (let i = shardFx.length - 1; i >= 0; i--) if (shardFx[i].taken && shardFx[i].t > SHARD_LIFE) shardFx.splice(i, 1);
     if (trainerVanishT > 0) {
       trainerVanishT -= dt;
       if (trainerVanishT <= 0 && trainer) {

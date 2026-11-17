@@ -660,8 +660,15 @@ attaques, nom et type compris, à tour de rôle (`offense`), et leurs zones
 grandissent avec leur puissance (jusqu'à ×1,5). Chaque as a son jeu de
 quatre attaques choisi pour son champion (`ACE_MOVES`, data/champions.ts) :
 Éboulement, Séisme, Lame de Roc et Queue de Fer pour l'Onix de Pierre ;
-Surf, Psyko, Laser Glace et Météores pour le Staross d'Ondine ; Colère,
-Draco-Griffe, Ultralaser et Fatal-Foudre pour le Dracolosse de Peter… Les Pokémon d'un champion ne nagent plus (au Lac, ils
+Surf, Psyko, Laser Glace et Psykoud'Boul pour le Flagadoss d'Ondine ;
+Boutefeu, Draco-Griffe, Colère et Lame d'Air pour le Dracaufeu de Peter…
+Un as dont la Méga n'a pas de planches a cédé la place à un Pokémon dont la
+Méga en a (Flagadoss chez Ondine, Dracaufeu chez Peter, Alakazam chez Régis).
+Les autres Pokémon d'un champion prennent leurs quatre attaques les plus
+fortes apprises à leur niveau (`Pokemon.strongestMoves`), plus le kit faible
+des sauvages : Léviator n'avait que Ligotage, Frénésie, Siphon et Charge.
+Après un champion, pas de don : ses Éclats de Champion attendent au centre,
+à prendre avec [E] comme une récompense de salle (perdus si l'on part sans). Les Pokémon d'un champion ne nagent plus (au Lac, ils
 partaient au large, hors d'atteinte). Le champion se tient **sur un rocher**
 de l'anneau, au nord-est (`WorldMap.podium`), immobile et hors d'atteinte ;
 vaincu, il lâche une dernière phrase et disparaît dans un nuage. Sur son
@@ -671,9 +678,7 @@ centre de chaque arène en plein air, une Poké Ball tracée dans le sol marque
 où sortent ses Pokémon : le liseré de l'emblème de l'arène du Village, changé
 par l'atlas en un trait sombre translucide et un reflet clair, comme gravé
 (`composeBall`, `ARENA_BALL`) ; il prend la teinte du sol de chaque biome ; les Pokémon du champion, son as compris, y sortent (les sauvages de
-l'escorte, à leurs places). À la victoire, les Éclats de Champion gagnés
-flottent en cercle au centre, comme un don, et filent vers le Pokémon joué
-quand il s'approche (`shardBurst` ; ils sont déjà comptés). Chaque Pokémon ennemi qui apparaît en run
+l'escorte, à leurs places). Chaque Pokémon ennemi qui apparaît en run
 joue l'animation de son type à son arrivée (des vagues pour un Pokémon Eau…).
 Les Pokémon d'un champion ne reculent plus pour tirer, et frappent plus
 souvent (recharge ×0,7, ×0,55 pour l'as ; zones toutes les 4,8 s, 3,2 s pour
@@ -722,8 +727,9 @@ et qu'il reste des ennemis. Même mise en scène que l'évolution ; la Méga pre
 types et stats de sa forme (fiche PokéAPI à son numéro de forme, 10034 pour
 Méga-Dracaufeu X…), garde attaques, niveau et part de PV, et reprend sa forme
 quand la salle est libérée, à la salle suivante ou au retour au Repaire. Une
-aura violette et rose l'entoure ; quand SpriteCollab n'a pas ses planches
-(Florizarre, Tortank…), elle garde celles de sa base, grandies de 20 %. Le HUD
+aura violette et rose l'entoure ; seules les formes dont SpriteCollab a les
+planches sont proposées (Méga-Florizarre, Méga-Tortank, Méga-Staross… ne le
+sont pas : ce n'était que la base grandie). Le HUD
 dit « Méga-évolution — F » quand elle est prête. Une espèce à deux formes
 (Dracaufeu, Mewtwo, Raichu X / Y ; Absol, Carchacrok, Lucario et leur forme Z)
 fait choisir, jeu en pause, à l'écran d'évolution (`MEGA_ALT_FORMS`). L'as

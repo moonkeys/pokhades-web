@@ -19,9 +19,12 @@ import type { Reward } from '../run/run';
 // (Run.offers le tire), le jeu ne le révélait qu'en prenant la récompense.
 
 const ITEMS = '/game/assets/essentials/items';
-const ICON_URL: Record<Exclude<Reward, 'boon'>, string> = {
+/** Ce qui peut attendre au centre d'une salle : une récompense de porte, ou les Éclats de Champion d'une arène. */
+export type Prize = Reward | 'shards';
+const ICON_URL: Record<Exclude<Prize, 'boon'>, string> = {
   loot: `${ITEMS}/AMULETCOIN.png`,
   skill: `${ITEMS}/machine_NORMAL.png`,
+  shards: `${ITEMS}/COMETSHARD.png`,
 };
 
 /**
@@ -119,7 +122,7 @@ export function rewardIcon(reward: Reward, donor?: DonorId): HTMLElement {
  * objets d'Essentials (48 px) sont du pixel art : on les agrandit sans
  * lissage. (Le don a son badge HTML, voir donorBadge.)
  */
-export function drawRewardIcon(b: CanvasRenderingContext2D, reward: Exclude<Reward, 'boon'>, cx: number, cy: number, size: number): void {
+export function drawRewardIcon(b: CanvasRenderingContext2D, reward: Exclude<Prize, 'boon'>, cx: number, cy: number, size: number): void {
   const img = image(ICON_URL[reward]);
   if (!img.complete || !img.naturalWidth) return;
   const smooth = b.imageSmoothingEnabled;

@@ -410,6 +410,10 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
   riposte au corps à corps pendant ses figures, prises de centre plus
   courtes et figures plus fréquentes, plus nombreuses et plus écartées ;
   éclats qui flottent au centre et filent vers le joueur.
+- Huitième passe : les Éclats de Champion remplacent le don au centre de
+  l'arène, à prendre avec [E] ; Pokémon de champion avec leurs attaques les
+  plus fortes (Léviator inactif) ; Méga sans planches retirées, et as de
+  rechange (Flagadoss, Dracaufeu, Alakazam).
 - Quatrième passe : emblème Poké Ball au sol au centre des arènes, dresseur
   qui suit le joueur du regard, Éclats de Champion qui s'envolent à la
   victoire.
