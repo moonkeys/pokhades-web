@@ -1,7 +1,7 @@
 import type { BiomeId } from '../data/species';
 import { findExits, type WorldMap } from './generate';
 import type { Paving } from './town';
-import { CAMP_PROPS, FENCES, FLOWERS, GYM, LAMP, LILIES, PROPS, TILE, TOWN_DECOR, TREES, type SpriteDef, type Tile } from './tiles';
+import { ARENA_BALL, CAMP_PROPS, FENCES, FLOWERS, GYM, LAMP, LILIES, PROPS, TILE, TOWN_DECOR, TREES, type SpriteDef, type Tile } from './tiles';
 
 // L'arène d'un champion (ajout, retour de test : « de vraies arènes, un endroit
 // précis pour chaque boss, toujours le même pour chaque biome… un cercle » ;
@@ -91,7 +91,9 @@ export function decorateArena(world: WorldMap, biome: BiomeId): void {
   // L'emblème Poké Ball de l'arène du Village (Essentials, 3 × 4 cases), au sol au centre (retour de
   // test du 17 novembre 2026 : les Pokémon du champion y apparaissent ; « le même style de Poké Ball
   // que sur l'arène, mais au sol »).
-  GYM.emblem.forEach((row, r) => row.forEach((tile, col) => world.decals.push({ tile, x: Math.floor(c.x) - 1 + col, y: Math.floor(c.y) - 2 + r })));
+  // (Détourée par l'atlas, ARENA_BALL : rien que la balle, posée sur le sol du biome.)
+  for (let r = 0; r < ARENA_BALL.h; r++)
+    for (let col = 0; col < ARENA_BALL.w; col++) world.decals.push({ tile: [ARENA_BALL.tile[0] + col, ARENA_BALL.tile[1] + r], x: Math.floor(c.x) - 1 + col, y: Math.floor(c.y) - 2 + r });
   ARENA_EXTRAS[biome]?.(world, place);
   world.objects.sort((a, b) => a.y - b.y);
 }

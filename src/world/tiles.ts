@@ -280,6 +280,13 @@ export const ESSENTIALS_BLOCKS: readonly { sheet: 'outside' | 'gym' | 'grave'; f
 export const DOJO_MAT = { tile: t(123, 0), w: 3, h: 2 } as const;
 export const ALTAR_CIRCLE = { tile: t(126, 0), w: 3, h: 3 } as const;
 export const ALTAR_FLOOR = { tile: t(129, 0), w: 4, h: 4 } as const;
+/**
+ * La Poké Ball des arènes en plein air (retour de test du 17 novembre 2026 : « le sol de l'arène,
+ * pas un sol de bâtiment ») : l'emblème de l'arène du Village (GYM.emblem) détouré par l'atlas
+ * (assets/atlas.ts, composeBall) — sol jaune et ligne médiane retirés, il ne reste que la balle,
+ * posée sur le sol du biome.
+ */
+export const ARENA_BALL = { tile: t(137, 0), w: 3, h: 4 } as const;
 /** Objets de l'Autel, dans les cases d'atlas des gargouilles (un sprite = une colonne). */
 export const ALTAR_PROPS = {
   /** Gargouille sur haute colonne (3 cases). */

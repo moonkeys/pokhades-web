@@ -32,7 +32,7 @@ export const PATCH_NOTES: readonly PatchNote[] = [
           'Les Pokémon d’un champion ne nagent plus : au Lac, ils ne partent plus au large.',
           'Ils ne reculent plus pour tirer et attaquent plus souvent.',
           'Le champion te suit du regard sur son rocher et bondit quand il envoie un Pokémon ; chaque Pokémon ennemi arrive avec l’animation de son type.',
-          'Une Poké Ball marque le centre de chaque arène, et les Éclats de Champion s’envolent à la victoire.',
+          'Une Poké Ball dessinée sur le sol de l’arène marque son centre, et les Éclats de Champion s’envolent à la victoire.',
           'L’arène de la Prairie n’a plus d’eau : un enclos de bois, de la paille, des petits champs, des tournesols. Celle du Lac a ses nénuphars et ses roseaux.',
         ],
       },

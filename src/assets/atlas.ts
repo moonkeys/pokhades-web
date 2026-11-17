@@ -1,4 +1,4 @@
-import { BLOB, EXTRA, ESSENTIALS_BLOCKS, ESSENTIALS_PAVEMENTS, ESSENTIALS_SHEETS, FOUNTAIN, GYM, SEA, TILE } from '../world/tiles';
+import { ARENA_BALL, BLOB, EXTRA, ESSENTIALS_BLOCKS, ESSENTIALS_PAVEMENTS, ESSENTIALS_SHEETS, FOUNTAIN, GYM, SEA, TILE } from '../world/tiles';
 import { loadImage } from './pmd';
 
 // Atlas de travail : le tileset Pokémon, complété des tuiles extraites
@@ -46,6 +46,7 @@ export async function buildAtlas(tileset: HTMLImageElement): Promise<HTMLCanvasE
   }
   if (fountain) composeJet(g, fountain);
   if (gym) composeMidLine(g);
+  if (gym) composeBall(g);
   paintVoid(g);
   return atlas;
 }
@@ -85,6 +86,29 @@ function composeMidLine(g: CanvasRenderingContext2D): void {
   copy(GYM.midL[0], up, TILE - 1, TILE - 1, 1);
   copy(GYM.midL[1], down, 0, 0, 1);
 }
+
+/**
+ * La Poké Ball détourée (ARENA_BALL) : l'emblème recopié, puis tout ce qui sort du cercle (le sol,
+ * la ligne médiane) et le sol jaune visible dans le trou du centre deviennent transparents.
+ */
+function composeBall(g: CanvasRenderingContext2D): void {
+  const [bc, br] = ARENA_BALL.tile;
+  GYM.emblem.forEach((row, r) => row.forEach(([c, rr], col) => g.drawImage(g.canvas, c * TILE, rr * TILE, TILE, TILE, (bc + col) * TILE, (br + r) * TILE, TILE, TILE)));
+  const w = ARENA_BALL.w * TILE;
+  const h = ARENA_BALL.h * TILE;
+  const img = g.getImageData(bc * TILE, br * TILE, w, h);
+  const d = img.data;
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      const out = Math.hypot(x + 0.5 - w / 2, y + 0.5 - h / 2) > BALL_R;
+      const yellow = d[i] > 190 && d[i + 1] > 180 && d[i + 2] < 140;
+      if (out || yellow) d[i + 3] = 0;
+    }
+  g.putImageData(img, bc * TILE, br * TILE);
+}
+/** Rayon (px) de la Poké Ball dans l'emblème, liseré blanc compris. */
+const BALL_R = 22.2;
 
 /** Le noir hors des murs de l'arène (GYM.void), comme autour des salles d'intérieur des jeux. */
 function paintVoid(g: CanvasRenderingContext2D): void {
