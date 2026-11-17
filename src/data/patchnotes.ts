@@ -23,10 +23,6 @@ export const PATCH_NOTES: readonly PatchNote[] = [
     title: 'Champions plus épiques et nouveaux talents',
     sections: [
       {
-        title: 'Repaire',
-        items: ['Le Dortoir n’a plus de paillasses de paille : ses dormeurs dorment dans l’herbe.'],
-      },
-      {
         title: 'Champions',
         items: [
           'L’as change de phase à chaque barre : son dresseur l’encourage, il appelle des sbires de son type, méga-évolue, puis enrage à la dernière barre.',
@@ -34,7 +30,9 @@ export const PATCH_NOTES: readonly PatchNote[] = [
           'Le champion se tient sur un rocher au bord de son arène ; vaincu, il lâche une phrase et disparaît. Sa réplique d’entrée ne se coupe plus.',
           'L’as prend parfois le centre de l’arène et frappe tout autour : ondes de choc, croix de rayons, cônes qui balaient.',
           'Les Pokémon d’un champion ne nagent plus : au Lac, ils ne partent plus au large.',
-          'Les arènes de la Prairie et du Lac ont leur décor : fleurs et tournesols, nénuphars et roseaux.',
+          'Ils ne reculent plus pour tirer et attaquent plus souvent.',
+          'Le champion regarde autour de lui sur son rocher et bondit quand il envoie un Pokémon ; chaque Pokémon ennemi arrive avec l’animation de son type.',
+          'L’arène de la Prairie n’a plus d’eau : un enclos de bois, de la paille, des petits champs, des tournesols. Celle du Lac a ses nénuphars et ses roseaux.',
         ],
       },
       {

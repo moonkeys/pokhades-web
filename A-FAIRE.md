@@ -394,8 +394,11 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
   effacé par le chargement de salle, sa réplique d'entrée aussi).
 - Deuxième passe : l'as prend le centre et y enchaîne ondes, rayons et
   cônes (`centerStance`) ; Pokémon de champion sans nage (Lac bloqué) ;
-  champion perché sur un rocher (`podium`), disparition avec une phrase ;
-  paillasses de paille du Dortoir retirées.
+  champion perché sur un rocher (`podium`), disparition avec une phrase.
+- Troisième passe : Pokémon de champion sans recul et plus vifs ; dresseur
+  animé (coups d'œil, bond à chaque envoi) ; animation de type à
+  l'apparition des ennemis ; plus d'anneau d'eau dans l'arène de la Prairie
+  (enclos de bois, paille, champs) ; paillasses du Dortoir remises.
 - Arènes : Prairie (fleurs, tournesols) et Lac (nénuphars, roseaux)
   distinctes. Reste : les autres arènes (à voir en jeu), juger l'équilibre
   à six.

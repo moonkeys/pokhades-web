@@ -1,7 +1,7 @@
 import type { BiomeId } from '../data/species';
 import { findExits, type WorldMap } from './generate';
 import type { Paving } from './town';
-import { CAMP_PROPS, FLOWERS, GYM, LAMP, LILIES, PROPS, TILE, TOWN_DECOR, TREES, type SpriteDef, type Tile } from './tiles';
+import { CAMP_PROPS, FENCES, FLOWERS, GYM, LAMP, LILIES, PROPS, TILE, TOWN_DECOR, TREES, type SpriteDef, type Tile } from './tiles';
 
 // L'arène d'un champion (ajout, retour de test : « de vraies arènes, un endroit
 // précis pour chaque boss, toujours le même pour chaque biome… un cercle » ;
@@ -102,17 +102,59 @@ type Place = (sp: SpriteDef, x: number, y: number) => boolean;
  */
 const ARENA_EXTRAS: Partial<Record<BiomeId, (world: WorldMap, place: Place) => void>> = {
   prairie: (world, place) => {
-    const c = world.hub;
-    for (let k = 0; k < 40; k++) {
-      const a = (k / 40) * Math.PI * 2;
-      const r = INNER_R + (k % 3) * 0.5;
-      const x = Math.floor(c.x + Math.cos(a) * r);
-      const y = Math.floor(c.y + Math.sin(a) * r * RING_Y);
+    // Le côté campagne (retour de test : « le bois, les champs, la paille ») : un enclos de bois
+    // autour du terrain (coins et côtés du tileset), ouvert au milieu de chaque côté pour les
+    // sorties ; de la paille et deux petits champs dans ses angles ; des fleurs, des tournesols et
+    // des rondins dehors.
+    const cx = Math.floor(world.hub.x);
+    const cy = Math.floor(world.hub.y);
+    const HW = 7;
+    const HH = 6;
+    const [fc, fr] = FENCES.wood.origin;
+    for (let dy = -HH; dy <= HH; dy++)
+      for (let dx = -HW; dx <= HW; dx++) {
+        const edgeX = Math.abs(dx) === HW;
+        const edgeY = Math.abs(dy) === HH;
+        if (!edgeX && !edgeY) continue;
+        // Les ouvertures : trois cases au milieu de chaque côté.
+        if ((edgeY && !edgeX && Math.abs(dx) <= 1) || (edgeX && !edgeY && Math.abs(dy) <= 1)) continue;
+        const x = cx + dx;
+        const y = cy + dy;
+        const i = y * world.w + x;
+        if (world.water[i]) continue;
+        const col = dx === -HW ? 0 : dx === HW ? 2 : 1;
+        const row = dy === -HH ? 0 : dy === HH ? 2 : 1;
+        world.objects.push({ sprite: { rect: [(fc + col) * TILE, (fr + row) * TILE, TILE, TILE], foot: TILE - 1, trunk: 1 }, x: x * TILE + TILE / 2, y: (y + 1) * TILE - 1, fades: false });
+        world.blocked[i] = 1;
+      }
+    // Paille (nord-ouest, sud-est) et champs (nord-est, sud-ouest), dans les angles de l'enclos.
+    const { col: hc, row: hr } = CAMP_PROPS.hay;
+    for (const [x, y] of [[cx - HW + 1, cy - HH + 1], [cx + HW - 3, cy + HH - 3]]) {
+      for (let dy = 0; dy < 3; dy++) for (let dx = 0; dx < 3; dx++) world.decals.push({ tile: [hc + dx, hr + dy], x: x + dx, y: y + dy });
+    }
+    const { col: sc, row: sr } = CAMP_PROPS.soil;
+    for (const [x, y] of [[cx + HW - 4, cy - HH + 1], [cx - HW + 1, cy + HH - 2]]) {
+      for (let dy = 0; dy < 2; dy++)
+        for (let dx = 0; dx < 3; dx++) {
+          world.decals.push({ tile: [sc + (dx === 0 ? 0 : dx === 2 ? 2 : 1), sr + (dy === 0 ? 0 : 2)], x: x + dx, y: y + dy });
+          world.objects.push({ sprite: { ...CAMP_PROPS.crops[(dx + dy) % CAMP_PROPS.crops.length], grass: true }, x: (x + dx) * TILE + TILE / 2, y: (y + dy + 1) * TILE - 1, fades: false });
+        }
+    }
+    // Dehors : des fleurs au pied de l'enclos, des tournesols et des rondins aux diagonales.
+    for (let k = 0; k < 44; k++) {
+      const t = k / 44;
+      const side = Math.floor(t * 4);
+      const u = (t * 4) % 1;
+      const [x, y] =
+        side === 0 ? [cx - HW + Math.floor(u * 2 * HW), cy - HH - 1] : side === 1 ? [cx + HW + 1, cy - HH + Math.floor(u * 2 * HH)] : side === 2 ? [cx + HW - Math.floor(u * 2 * HW), cy + HH + 1] : [cx - HW - 1, cy + HH - Math.floor(u * 2 * HH)];
       const i = y * world.w + x;
-      if (world.blocked[i] || world.water[i] || world.path[i]) continue;
+      if (k % 2 || world.blocked[i] || world.water[i] || world.path[i]) continue;
       world.flat.push({ tile: FLOWERS[(k * 3) % FLOWERS.length], x, y });
     }
-    for (const a of DIAGONALS) place(TOWN_DECOR.sunflowers, c.x + Math.cos(a) * (RING_R - 1.6), c.y + Math.sin(a) * (RING_R - 1.6) * RING_Y);
+    for (const a of DIAGONALS) {
+      place(TOWN_DECOR.sunflowers, world.hub.x + Math.cos(a + 0.28) * (RING_R - 0.4), world.hub.y + Math.sin(a + 0.28) * (RING_R - 0.4) * RING_Y);
+      place(PROPS.log[0], world.hub.x + Math.cos(a - 0.3) * (RING_R - 0.8), world.hub.y + Math.sin(a - 0.3) * (RING_R - 0.8) * RING_Y);
+    }
   },
   lac: (world, place) => {
     // L'arène du Lac est cernée d'eau (generate.ts) : des nénuphars sur l'eau qui l'entoure, et des
@@ -142,7 +184,7 @@ const ARENA_EXTRAS: Partial<Record<BiomeId, (world: WorldMap, place: Place) => v
   },
 };
 
-/** Rayon du bord du terrain (fleurs, roseaux) et les quatre diagonales (massifs de tournesols). */
+/** Rayon du bord du terrain (roseaux), et les quatre diagonales. */
 const INNER_R = 7.6;
 const DIAGONALS = [Math.PI / 4, (3 * Math.PI) / 4, (5 * Math.PI) / 4, (7 * Math.PI) / 4];
 

@@ -53,10 +53,12 @@ const BUFF_TIME = 7;
  * Pokémon, un boss qui ne faisait que viser une cible toutes les 1,8 s
  * tombait sans jamais inquiéter l'équipe (retour de test).
  */
-const BOSS_COOLDOWN_MULT = 0.75;
+/** Recharge d'un Pokémon de champion (×0,75 dans le jeu ; plus vif, retour de test : « plus d'attaques, plus souvent »), de son as. */
+const BOSS_COOLDOWN_MULT = 0.7;
+const ACE_COOLDOWN_MULT = 0.55;
 /** Première zone peu après l'entrée en scène, puis une toutes les AREA_COOLDOWN s. */
 const AREA_FIRST = 3.5;
-const AREA_COOLDOWN = { champion: 6, boss: 4.5 };
+const AREA_COOLDOWN = { champion: 4.8, boss: 3.2 };
 /** L'as enragé (dernière barre) : zones deux fois plus fréquentes, coups un quart plus rapprochés. */
 const ENRAGED_AREA = 0.5;
 const ENRAGED_COOLDOWN = 0.75;
@@ -166,7 +168,7 @@ export class EnemyBrain {
   /** Recharge entre deux attaques, raccourcie pour un champion et son as. */
   private get cooldown(): number {
     const rage = this.actor.enraged ? ENRAGED_COOLDOWN : 1;
-    return this.actor.role === 'wild' ? ATTACK_COOLDOWN : ATTACK_COOLDOWN * BOSS_COOLDOWN_MULT * rage;
+    return this.actor.role === 'wild' ? ATTACK_COOLDOWN : ATTACK_COOLDOWN * (this.actor.role === 'boss' ? ACE_COOLDOWN_MULT : BOSS_COOLDOWN_MULT) * rage;
   }
 
   get attackRange(): number {
@@ -297,7 +299,9 @@ export class EnemyBrain {
       case 'kiter':
         // Acculé (sa fuite ne l'éloigne plus) : il tient sa position et tire. Le jeu
         // le laissait fuir contre le mur sans jamais riposter.
-        if (d < KITE_MIN && !this.cornered()) this.flee(target, 0.95);
+        // Un Pokémon de champion ne recule pas (retour de test du 17 novembre 2026 : « il recule,
+        // et après il attaque ») : il tient sa position et tire.
+        if (d < KITE_MIN && !this.cornered() && this.actor.role === 'wild') this.flee(target, 0.95);
         else if (d < KITE_MIN) this.holdAndAttack(target);
         else if (d > RANGED_RANGE) this.approach(target, 1, dt, world);
         else this.holdAndAttack(target);

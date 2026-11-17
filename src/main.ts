@@ -813,6 +813,11 @@ async function boot(): Promise<void> {
       }
       // L'archétype dépend des capacités : le cerveau naît avec la fiche.
       a.brain = new EnemyBrain(a);
+      // Son apparition se voit (retour de test : « un petit truc pour montrer qu'il est apparu…
+      // des petites vagues ») : l'animation de son type là où il arrive ; un Pokémon de champion,
+      // son dresseur bondit sur son rocher.
+      if (mode === 'run') fx.attackAnim(mon.types[0], a.x, a.y, undefined, true);
+      if (a.role !== 'wild') trainer?.cheer();
       // Une vague attaque d'emblée : le sauvage est déjà provoqué.
       a.brain.provoke();
       // Un Pokémon de champion entre en puissance avant d'agir.
@@ -1156,6 +1161,7 @@ async function boot(): Promise<void> {
       const id = pool[Math.floor(Math.random() * pool.length)];
       const m = spawnEnemy(id, Math.max(2, run.roomLevel - 2), x, y, 'wild');
       fx.ballSend(x, y);
+      trainer?.cheer();
       m.brain?.provoke();
     }
     sfx('ballDrop');

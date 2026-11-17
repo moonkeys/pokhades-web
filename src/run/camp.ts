@@ -498,6 +498,10 @@ export class Camp {
         }
       }
     };
+    /** Pose au sol un carré de cases du tileset (paillasse, terre battue), cuit avec le sol. */
+    const floor = (col: number, row: number, w: number, h: number, x: number, y: number) => {
+      for (let dy = 0; dy < h; dy++) for (let dx = 0; dx < w; dx++) world.flat.push({ tile: [col + dx, row + dy], x: x + dx, y: y + dy });
+    };
     /** La terre labourée du champ sur w × h cases : le carré 3 × 3 du tileset étiré par ses bords. */
     const soil = (x: number, y: number, w: number, h: number) => {
       const { col, row } = CAMP_PROPS.soil;
@@ -1214,10 +1218,10 @@ export class Camp {
       this.talk(id, place.freeSpot(Math.floor(lamps[i].x), Math.floor(lamps[i].y), 2), 0, ['Idle'], persona(id));
     });
     groups.dorm.forEach((id, i) => {
-      // Une place pour dormir chacun, à même l'herbe : plus de paillasse de paille (retour de test du
-      // 17 novembre 2026 : « ça ne va pas avec ») ; on ne marche pas sur un dormeur.
+      // Une paillasse chacun ; un lit, ça ne se traverse pas (et rien ne s'y pose).
       const { x: bx, y: by } = beds[i];
-      place.block(bx + 1, by + 2);
+      floor(CAMP_PROPS.hay.col, CAMP_PROPS.hay.row, 3, 3, bx, by);
+      for (let dy = 0; dy < 3; dy++) for (let dx = 0; dx < 3; dx++) place.block(bx + dx, by + dy);
       this.talk(id, { x: bx + 1.5, y: by + 2.1 }, rng.int(8), ['Sleep', 'Laying'], SLEEPY);
     });
     groups.training.forEach((id, i) => {
