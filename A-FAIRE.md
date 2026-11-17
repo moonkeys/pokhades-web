@@ -392,6 +392,10 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
   l'équipe (PV +45 % et attaque +5 % par membre, 3 barres aux Pokémon du
   champion dès 4 membres), champion visible au bord de son arène (il était
   effacé par le chargement de salle, sa réplique d'entrée aussi).
+- Deuxième passe : l'as prend le centre et y enchaîne ondes, rayons et
+  cônes (`centerStance`) ; Pokémon de champion sans nage (Lac bloqué) ;
+  champion perché sur un rocher (`podium`), disparition avec une phrase ;
+  paillasses de paille du Dortoir retirées.
 - Arènes : Prairie (fleurs, tournesols) et Lac (nénuphars, roseaux)
   distinctes. Reste : les autres arènes (à voir en jeu), juger l'équilibre
   à six.

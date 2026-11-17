@@ -370,8 +370,9 @@ Bétochef à 6.
 - **Marché du tuteur** (150, Bois 20, Pierre 10, Nourriture 10) : trois étals
   sous auvent, M. Mime aux deux premiers (20 CT), Miaouss au troisième (ajout :
   douze objets tenus et le Super Bonbon, qui s'y donne et s'y reprend) ;
-- **Dortoir** (80, Bois 15, Nourriture 5) : deux tipis et des paillasses de
-  paille, et une place de mission de plus ;
+- **Dortoir** (80, Bois 15, Nourriture 5) : deux tipis, des dormeurs à même
+  l'herbe (plus de paillasses de paille, 17 novembre 2026), et une place de
+  mission de plus ;
 - **Terrain d'entraînement** (120, Bois 20, Pierre 15) : terre battue et deux
   mannequins, et la mission Entraînement ;
 - **Ponton** (120, Bois 30) : sur la rive, à l'écart du feu ; on marche sur son
@@ -643,11 +644,18 @@ brisée, « Phase n » au-dessus de lui et une réplique de son dresseur dans un
 bulle ; à la 4ᵉ et à la dernière barre, il appelle des sbires de son type (1,
 plus un par paire de membres de l'équipe) ; à la 2ᵉ, il méga-évolue s'il le
 peut ; à la dernière, il **enrage** (lueur rouge, zones deux fois plus
-fréquentes, coups un quart plus rapprochés : `Actor.enraged`). La difficulté
+fréquentes, coups un quart plus rapprochés : `Actor.enraged`). Toutes les
+11 s (7 s enragé), l'as **prend le centre** de l'arène 6 s et y enchaîne des
+figures autour de lui : deux ondes de choc, une croix de rayons puis sa
+diagonale, trois cônes qui balaient (`EnemyBrain.centerStance`) ; il ne reste
+jamais planté. Les Pokémon d'un champion ne nagent plus (au Lac, ils
+partaient au large, hors d'atteinte). Le champion se tient **sur un rocher**
+de l'anneau, au nord-est (`WorldMap.podium`), immobile et hors d'atteinte ;
+vaincu, il lâche une dernière phrase et disparaît dans un nuage. La difficulté
 suit l'équipe : +45 % de PV et +5 % d'attaque par membre au-delà du premier,
 une barre de plus aux Pokémon du champion dès quatre membres. Le dresseur
-se tient à cinq cases au nord du centre de son arène (il était effacé juste
-après son apparition, sa réplique d'entrée aussi : corrigé). Les arènes de
+n'était jamais visible (effacé juste après son apparition, sa réplique
+d'entrée aussi : corrigé). Les arènes de
 la Prairie (tapis de fleurs, massifs de tournesols) et du Lac (nénuphars,
 roseaux sur la rive) ont leur décor à elles (`ARENA_EXTRAS`, arena.ts). Le dresseur attend devant la sortie et s'enfuit
 par elle à la fin. Les K.O. rapportent de l'XP (niveau³ par niveau, comme

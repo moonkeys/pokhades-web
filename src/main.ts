@@ -205,6 +205,9 @@ async function boot(): Promise<void> {
   trainerLayer.append(trainerBubble);
   document.body.append(trainerLayer);
   let trainerBubbleT = 0;
+  /** Le champion vaincu disparaît dans ce délai (s), après sa dernière phrase ; ≤ 0 : rien en cours. */
+  let trainerVanishT = 0;
+  const CHAMPION_DEFEATS = ['Tch… Tu as gagné, cette fois.', 'Impressionnant… On se reverra !', 'Ta rébellion a du cran. Mais la Ligue est vaste.', 'Je me suis trompé sur ton compte…'];
   const trainerSay = (text: string) => {
     trainerBubble.textContent = text;
     trainerBubbleT = 3.5;
@@ -1030,10 +1033,15 @@ async function boot(): Promise<void> {
     // Barres de PV : 2 pour un Pokémon de champion, 5 pour son as (EnemyAI.gd:200-206).
     a.role = role;
     a.bars = a.barsLeft = role === 'boss' ? 5 : role === 'champion' ? (team.length >= 4 ? 3 : 2) : 1;
-    // Dans l'eau, seulement les espèces aquatiques, qui y nagent elles-mêmes.
-    if (SWIMMERS.has(id)) a.canSwim = a.nativeSwimmer = true;
+    // Dans l'eau, seulement les espèces aquatiques, qui y nagent elles-mêmes. Pas les Pokémon d'un
+    // champion (retour de test : au Lac, ils nageaient au large, hors d'atteinte, et la salle restait
+    // bloquée) : ils restent sur la terre ferme, et celui qui apparaîtrait dans l'eau va au centre.
+    if (SWIMMERS.has(id) && role === 'wild') a.canSwim = a.nativeSwimmer = true;
     const i = Math.floor(y - 0.05) * world.w + Math.floor(x);
-    if (world.water[i]) {
+    if (world.water[i] && role !== 'wild') {
+      a.x = a.prevX = world.hub.x;
+      a.y = a.prevY = world.hub.y;
+    } else if (world.water[i]) {
       a.swimming = true;
       a.swimBlend = 1;
     }
@@ -1967,7 +1975,12 @@ async function boot(): Promise<void> {
         ]);
       }
       // Son équipe vaincue, le champion quitte la salle par la sortie.
-      if (run.isBoss()) trainer?.flee(world);
+      // Sur son rocher, il lâche une dernière phrase, puis disparaît dans un nuage (retour de test :
+      // « il fait un petit truc, une petite phrase, et il disparaît ») ; ailleurs, il s'enfuit.
+      if (run.isBoss() && trainer?.perch) {
+        trainerSay(CHAMPION_DEFEATS[Math.floor(Math.random() * CHAMPION_DEFEATS.length)]);
+        trainerVanishT = 2.2;
+      } else if (run.isBoss()) trainer?.flee(world);
     },
     prepareReward: (reward) => {
       if (reward === 'boon') boonOffer = run.boons.offer(run.rng, run.room, run.act, run.donor);
@@ -2038,7 +2051,10 @@ async function boot(): Promise<void> {
       const final = run.isFinal;
       // Dans son arène, le champion se tient au bord nord du terrain, face à l'entrée ; il fuira par la sortie.
       // (Retour de test : « on ne voit pas les dresseurs » : plus près du terrain, 5 cases au lieu de 7,5.)
-      trainer = exit ? (roomKey.kind === 'room' && roomKey.arena ? new Trainer(champ.sprite, { x: world.hub.x, y: world.hub.y - 5 }, exit) : Trainer.atExit(champ.sprite, exit)) : null;
+      // Dans son arène, il se tient sur son rocher (world/arena.ts, podium), immobile et hors d'atteinte.
+      const podium = roomKey.kind === 'room' && roomKey.arena ? world.podium : undefined;
+      trainer = exit ? (podium ? new Trainer(champ.sprite, podium, exit, 0) : Trainer.atExit(champ.sprite, exit)) : null;
+      if (trainer && podium) trainer.perch = 22;
       runHud.announce(champ.name, typeColor(champ.type), run.onVictoryRoad ? 'MAÎTRE DE LA LIGUE' : final ? 'DRESSEUR FINAL' : "CHAMPION D'ARÈNE");
       // L'éclair du « VS » des combats de dresseur.
       sfx('vs');
@@ -3330,6 +3346,15 @@ async function boot(): Promise<void> {
       else director.update(dt, sample, world, run, player, wild, guests, claimers);
     }
     trainer?.update(dt, world, Math.random);
+    if (trainerVanishT > 0) {
+      trainerVanishT -= dt;
+      if (trainerVanishT <= 0 && trainer) {
+        fx.impact(trainer.x, trainer.y - 1.4, '#ffffff');
+        fx.attackAnim('normal', trainer.x, trainer.y - 1.4, 'sand-attack', true);
+        sfx('ballDrop');
+        trainer.gone = true;
+      }
+    }
     // L'Aimant à Baies d'Alakazam attire les baies tombées.
     // En ligne : les invités ramassent aussi les baies tombées et ouvrent les coffres (avant l'hôte,
     // dont l'invite « [E] » doit rester la sienne). Le gain revient à tous (shareLoot).

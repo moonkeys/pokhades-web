@@ -39,6 +39,9 @@ const RING: Record<BiomeId, { main: readonly SpriteDef[]; fill: readonly SpriteD
   glace: { main: [...PROPS.snowBoulder, ...TREES.snowy.slice(0, 2)], fill: [...PROPS.iceCrystals, ...PROPS.snowRocks], step: 2.2 },
 };
 
+/** Où se dresse le rocher du champion sur l'anneau (nord-est). */
+const PODIUM_ANGLE = -Math.PI / 4;
+
 /** Les quatre sorties (nord, est, sud, ouest), en angle. */
 const EXITS = [-Math.PI / 2, 0, Math.PI / 2, Math.PI];
 
@@ -61,9 +64,19 @@ export function decorateArena(world: WorldMap, biome: BiomeId): void {
   const perimeter = Math.PI * 2 * RING_R * ((1 + RING_Y) / 2);
   const n = Math.round(perimeter / ring.step);
   const seed = biome.length * 7;
+  // Le rocher du champion (retour de test du 17 novembre 2026 : « sur un piédestal, en hauteur, on
+  // ne peut pas l'atteindre ») : il prend une place de l'anneau, au nord-est, bien en vue.
+  const rock = biome === 'glace' ? PROPS.snowBoulder[0] : PROPS.boulder[0];
+  const px = c.x + Math.cos(PODIUM_ANGLE) * RING_R;
+  const py = c.y + Math.sin(PODIUM_ANGLE) * RING_R * RING_Y;
+  world.objects.push({ sprite: rock, x: Math.round(px * TILE) + TILE / 2, y: Math.round(py * TILE), fades: false });
+  for (let dy = -2; dy <= 0; dy++) for (let dx = -1; dx <= 1; dx++) world.blocked[(Math.floor(py) + dy) * w + Math.floor(px) + dx] = 1;
+  // (Juste devant le pied du rocher, au même endroit : trié après lui, le dresseur est dessiné dessus.)
+  world.podium = { x: (Math.round(px * TILE) + TILE / 2) / TILE, y: Math.round(py * TILE) / TILE + 0.05 };
   for (let k = 0; k < n; k++) {
     const a = (k / n) * Math.PI * 2 - Math.PI;
     if (EXITS.some((e) => Math.abs(Math.atan2(Math.sin(a - e), Math.cos(a - e))) < GAP)) continue;
+    if (Math.abs(Math.atan2(Math.sin(a - PODIUM_ANGLE), Math.cos(a - PODIUM_ANGLE))) < 0.3) continue;
     const list = k % 2 === 0 ? ring.main : ring.fill;
     const sp = list[(k * 5 + seed) % list.length];
     place(sp, c.x + Math.cos(a) * RING_R, c.y + Math.sin(a) * RING_R * RING_Y);

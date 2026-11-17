@@ -62,6 +62,11 @@ const ENRAGED_AREA = 0.5;
 const ENRAGED_COOLDOWN = 0.75;
 /** Temps entre la pose de la zone et l'impact : plus long qu'un tir (0,45 s), la zone étant bien plus grande. */
 const AREA_DELAY = { champion: 0.85, boss: 0.75 };
+/** L'as au centre : première prise de centre, durée, et attente entre deux (moins s'il enrage). */
+const STANCE_FIRST = 8;
+const STANCE_TIME = 6;
+const STANCE_EVERY = 11;
+const STANCE_EVERY_ENRAGED = 7;
 /** Puissance d'une zone (× celle de la capacité), et de chaque disque de la pluie. */
 const AREA_POWER = 1.25;
 const RAIN_POWER = 0.6;
@@ -117,6 +122,13 @@ export class EnemyBrain {
   private areaCasting = false;
   /** La prochaine zone sera la signature du champion (la première l'est : on la reconnaît d'entrée). */
   private signatureNext = true;
+  /**
+   * L'as au centre (retour de test du 17 novembre 2026 : « qu'il se mette au milieu… il attaque
+   * autour de lui, ou devant ; plusieurs styles de combat ») : `stanceNext` secondes avant sa
+   * prochaine prise de centre ; `stance` tant qu'il y est (temps restant, prochaine figure, rang).
+   */
+  private stanceNext = STANCE_FIRST;
+  private stance: { t: number; castT: number; k: number } | null = null;
   /** Suites d'une signature (salves de Prémonition, Roulades…), en s restantes. */
   private pending: { t: number; fn: () => void }[] = [];
   /** Anticipation en cours (s restantes), et cible verrouillée pendant ce temps. */
@@ -265,6 +277,14 @@ export class EnemyBrain {
       }
     }
     a.wander = false;
+    // L'as prend le centre de temps en temps, même sans cible : il ne reste jamais planté.
+    if (a.role === 'boss') {
+      if (!this.stance) {
+        this.stanceNext -= dt;
+        if (this.stanceNext <= 0) this.stance = { t: STANCE_TIME, castT: 0.9, k: 0 };
+      }
+      if (this.stance) return this.centerStance(dt, team, world, combat);
+    }
     if (!target) return;
 
     if (a.role !== 'wild' && this.areaT <= 0 && this.tryArea(target, team, combat)) return;
@@ -495,6 +515,60 @@ export class EnemyBrain {
     }
     this.castArea(target, delay);
     return true;
+  }
+
+  /**
+   * L'as au centre de l'arène : il y court, puis enchaîne des figures autour de lui, annoncées au
+   * sol — deux ondes de choc concentriques, une croix de rayons puis sa diagonale, trois cônes qui
+   * balaient —, plus vite s'il enrage. Au bout de STANCE_TIME, il reprend la chasse.
+   */
+  private centerStance(dt: number, team: readonly Actor[], world: WorldMap, combat: Combat): void {
+    const a = this.actor;
+    const st = this.stance!;
+    st.t -= dt;
+    if (st.t <= 0) {
+      this.stance = null;
+      this.stanceNext = a.enraged ? STANCE_EVERY_ENRAGED : STANCE_EVERY;
+      return;
+    }
+    const hub = world.hub;
+    const d = Math.hypot(hub.x - a.x, hub.y - a.y);
+    if (d > 0.8) {
+      const dir = this.nav.direction(dt, world, a.x, a.y, hub.x, hub.y, a.canSwim);
+      const v = SPEED * 1.3 * a.pokemon!.speedMult;
+      a.steerVx = dir.x * v;
+      a.steerVy = dir.y * v;
+      return;
+    }
+    st.castT -= dt;
+    if (st.castT > 0) return;
+    const mon = a.pokemon!;
+    const move = this.ranged ?? mon.moves.find((m) => m.power > 0) ?? null;
+    const power = Math.max(40, move?.power ?? 40) * AREA_POWER * 0.85;
+    const delay = AREA_DELAY.boss;
+    const alive = team.find((m) => m.pokemon && !m.pokemon.fainted && m.deathT < 0);
+    if (alive) this.face(alive.x, alive.y);
+    a.playAction(['Charge', 'Attack'], 0.4);
+    const ray = (ang: number, t: number) => combat.enemyArea(a, { kind: 'line', len: BEAM_LEN, halfW: BEAM_HALF_WIDTH, dx: Math.cos(ang), dy: Math.sin(ang) }, a.x, a.y, move, power, t);
+    switch (st.k++ % 3) {
+      case 0:
+        combat.enemyArea(a, { kind: 'circle', r: SHOCK_RADIUS }, a.x, a.y, move, power, delay);
+        combat.enemyArea(a, { kind: 'circle', r: SHOCK_RADIUS * 1.8 }, a.x, a.y, move, power * 0.8, delay + 0.6);
+        break;
+      case 1:
+        for (let i = 0; i < 4; i++) ray((i * Math.PI) / 2, delay);
+        for (let i = 0; i < 4; i++) ray((i * Math.PI) / 2 + Math.PI / 4, delay + 0.7);
+        break;
+      default: {
+        const base = Math.random() * Math.PI * 2;
+        for (let i = 0; i < 3; i++) {
+          const ang = base + (i * 2 * Math.PI) / 3;
+          combat.enemyArea(a, { kind: 'cone', r: CONE_RADIUS, half: CONE_HALF, dx: Math.cos(ang), dy: Math.sin(ang) }, a.x, a.y, move, power, delay + i * 0.35);
+        }
+      }
+    }
+    sfx('ability');
+    st.castT = a.enraged ? 1.5 : 2.1;
   }
 
   /** Le lanceur tient la pose (sans anneau : la zone au sol suffit) jusqu'à l'impact. */

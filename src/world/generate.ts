@@ -127,6 +127,8 @@ export interface WorldMap {
    * l'Autel) : des cases de l'atlas, posées par les salles spéciales après la génération.
    */
   decals: FlatDecor[];
+  /** Arène d'un champion (world/arena.ts) : le rocher où il se tient, hors d'atteinte. */
+  podium?: { x: number; y: number };
   /** Ambiance propre à la salle (salles calmes, main.ts : SPECIAL_AMBIANCE), à la place de celle du biome. */
   ambiance?: Ambiance;
   /** Nénuphars : dessinés à part pour flotter sur l'eau. */

@@ -51,6 +51,12 @@ export class Trainer {
   private rushing = false;
   /** Arrêté (s) : il vise, puis reprend ses cent pas. */
   private holdT = 0;
+  /**
+   * Perché (px) : le champion sur son rocher, au bord de l'arène (retour de test : « sur un
+   * piédestal, en hauteur ; il ne se balade pas dans l'arène »). Immobile, face au terrain, dessiné
+   * plus haut, sans ombre au sol.
+   */
+  perch = 0;
 
   /** Le dresseur d'un champion : deux cases devant la sortie, côté salle (visible, sans boucher le passage). */
   static atExit(sprite: string, exit: Exit): Trainer {
@@ -115,6 +121,11 @@ export class Trainer {
 
   update(dt: number, world: WorldMap, random: () => number): void {
     this.animT += dt;
+    if (this.perch && !this.fleeing) {
+      this.moving = false;
+      this.row = 0;
+      return;
+    }
     if (this.holdT > 0) {
       this.holdT -= dt;
       return;
@@ -237,11 +248,13 @@ export class Trainer {
     const w = FRAME_W * SCALE * k;
     const h = FRAME_H * SCALE * k;
     const fx = Math.round((this.x * TILE - camX) * k - w / 2);
-    const fy = Math.round((this.y * TILE - camY) * k - h + 1 * k);
-    b.fillStyle = 'rgba(16,24,12,0.28)';
-    b.beginPath();
-    b.ellipse(Math.round((this.x * TILE - camX) * k), Math.round((this.y * TILE - camY) * k), 5 * k, 2 * k, 0, 0, Math.PI * 2);
-    b.fill();
+    const fy = Math.round((this.y * TILE - camY) * k - h + 1 * k - this.perch * k);
+    if (!this.perch) {
+      b.fillStyle = 'rgba(16,24,12,0.28)';
+      b.beginPath();
+      b.ellipse(Math.round((this.x * TILE - camX) * k), Math.round((this.y * TILE - camY) * k), 5 * k, 2 * k, 0, 0, Math.PI * 2);
+      b.fill();
+    }
     b.drawImage(this.image, col * FRAME_W, this.row * FRAME_H, FRAME_W, FRAME_H, fx, fy, Math.round(w), Math.round(h));
   }
 

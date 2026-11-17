@@ -23,11 +23,17 @@ export const PATCH_NOTES: readonly PatchNote[] = [
     title: 'Champions plus épiques et nouveaux talents',
     sections: [
       {
+        title: 'Repaire',
+        items: ['Le Dortoir n’a plus de paillasses de paille : ses dormeurs dorment dans l’herbe.'],
+      },
+      {
         title: 'Champions',
         items: [
           'L’as change de phase à chaque barre : son dresseur l’encourage, il appelle des sbires de son type, méga-évolue, puis enrage à la dernière barre.',
           'Plus ton équipe est grande, plus il est coriace (PV, attaque, et une barre de plus à ses Pokémon dès quatre membres).',
-          'Le champion se voit au bord de son arène, et sa réplique d’entrée ne se coupe plus.',
+          'Le champion se tient sur un rocher au bord de son arène ; vaincu, il lâche une phrase et disparaît. Sa réplique d’entrée ne se coupe plus.',
+          'L’as prend parfois le centre de l’arène et frappe tout autour : ondes de choc, croix de rayons, cônes qui balaient.',
+          'Les Pokémon d’un champion ne nagent plus : au Lac, ils ne partent plus au large.',
           'Les arènes de la Prairie et du Lac ont leur décor : fleurs et tournesols, nénuphars et roseaux.',
         ],
       },
