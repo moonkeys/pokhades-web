@@ -653,10 +653,10 @@ de l'anneau, au nord-est (`WorldMap.podium`), immobile et hors d'atteinte ;
 vaincu, il lâche une dernière phrase et disparaît dans un nuage. Sur son
 rocher, il suit le joueur du regard (à l'arrêt, au Village aussi) et
 piétine ; il bondit quand il envoie un Pokémon ou appelle des renforts. Au
-centre de chaque arène en plein air, la Poké Ball de l'emblème de l'arène du
-Village marque où sortent ses Pokémon : détourée par l'atlas (sol jaune et
-ligne médiane retirés, `composeBall`, `ARENA_BALL`), posée sur le sol du
-biome. À la
+centre de chaque arène en plein air, une Poké Ball tracée dans le sol marque
+où sortent ses Pokémon : le liseré de l'emblème de l'arène du Village, changé
+par l'atlas en un trait sombre translucide et un reflet clair, comme gravé
+(`composeBall`, `ARENA_BALL`) ; il prend la teinte du sol de chaque biome. À la
 victoire, les Éclats de Champion gagnés jaillissent du centre et s'envolent
 en scintillant (`shardBurst`). Chaque Pokémon ennemi qui apparaît en run
 joue l'animation de son type à son arrivée (des vagues pour un Pokémon Eau…).

@@ -88,8 +88,11 @@ function composeMidLine(g: CanvasRenderingContext2D): void {
 }
 
 /**
- * La Poké Ball détourée (ARENA_BALL) : l'emblème recopié, puis tout ce qui sort du cercle (le sol,
- * la ligne médiane) et le sol jaune visible dans le trou du centre deviennent transparents.
+ * La Poké Ball tracée dans le sol (ARENA_BALL ; retour de test du 17 novembre 2026 : « tracée dans
+ * le sol, du biome actuel ») : de l'emblème, seul le liseré blanc reste (le contour, la ligne qui
+ * sépare les moitiés, l'anneau du centre), changé en un trait sombre et translucide, avec un
+ * reflet clair d'un pixel dessous, comme gravé. Translucide, il prend la teinte de n'importe quel
+ * sol : terre, sable, herbe, neige.
  */
 function composeBall(g: CanvasRenderingContext2D): void {
   const [bc, br] = ARENA_BALL.tile;
@@ -98,12 +101,19 @@ function composeBall(g: CanvasRenderingContext2D): void {
   const h = ARENA_BALL.h * TILE;
   const img = g.getImageData(bc * TILE, br * TILE, w, h);
   const d = img.data;
+  const line = new Uint8Array(w * h);
   for (let y = 0; y < h; y++)
     for (let x = 0; x < w; x++) {
       const i = (y * w + x) * 4;
-      const out = Math.hypot(x + 0.5 - w / 2, y + 0.5 - h / 2) > BALL_R;
-      const yellow = d[i] > 190 && d[i + 1] > 180 && d[i + 2] < 140;
-      if (out || yellow) d[i + 3] = 0;
+      const inside = Math.hypot(x + 0.5 - w / 2, y + 0.5 - h / 2) <= BALL_R;
+      line[y * w + x] = inside && d[i] > 240 && d[i + 1] > 240 && d[i + 2] > 240 ? 1 : 0;
+    }
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      if (line[y * w + x]) [d[i], d[i + 1], d[i + 2], d[i + 3]] = [40, 26, 12, 110];
+      else if (y > 0 && line[(y - 1) * w + x]) [d[i], d[i + 1], d[i + 2], d[i + 3]] = [255, 250, 230, 70];
+      else d[i + 3] = 0;
     }
   g.putImageData(img, bc * TILE, br * TILE);
 }
