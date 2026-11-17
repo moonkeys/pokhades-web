@@ -651,9 +651,12 @@ de frappes — selon son type, deux fois sur trois (`STANCE_STYLE`) ; il ne
 reste jamais planté (`EnemyBrain.centerStance`). Une fois sur deux, au lieu
 du centre, il **bondit** sur le membre le plus éloigné : un cercle au sol, il
 disparaît dans les airs et retombe en onde de choc (`leap`). Enragé, toutes
-les 15 s, son **ultime** : toute l'arène sous un voile rouge, sauf trois
-zones sûres cerclées de vert, 2,2 s pour s'y mettre (`ultimate`, forme
-`field`). Les Pokémon d'un champion ne nagent plus (au Lac, ils
+les 15 s, sa **plus forte attaque** sur toute l'arène (Séisme, Surf, Écrasement…,
+son nom au-dessus de lui ; pas d'« ultime », retour de test), sous un voile
+rouge, sauf trois zones sûres cerclées de vert, 2,2 s pour s'y mettre
+(`ultimate`, forme `field`). Toutes ses figures reprennent ses propres
+attaques, nom et type compris, à tour de rôle (`offense`), et leurs zones
+grandissent avec leur puissance (jusqu'à ×1,5). Les Pokémon d'un champion ne nagent plus (au Lac, ils
 partaient au large, hors d'atteinte). Le champion se tient **sur un rocher**
 de l'anneau, au nord-est (`WorldMap.podium`), immobile et hors d'atteinte ;
 vaincu, il lâche une dernière phrase et disparaît dans un nuage. Sur son

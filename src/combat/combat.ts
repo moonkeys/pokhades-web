@@ -110,7 +110,7 @@ export type AreaShape =
   /** Couronne entre r0 et r autour du centre : les ondes de Séisme, l'anneau de feu d'Auguste (signatures, enemy.ts). */
   | { kind: 'ring'; r0: number; r: number }
   /**
-   * L'ultime de l'as (enemy.ts) : tout un disque de rayon r, sauf des zones sûres (coordonnées de
+   * La grande attaque de l'as (enemy.ts) : tout un disque de rayon r, sauf des zones sûres (coordonnées de
    * la carte) où il faut courir se mettre.
    */
   | { kind: 'field'; r: number; safe: readonly { x: number; y: number; r: number }[] };
