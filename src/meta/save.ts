@@ -157,6 +157,12 @@ export interface Save {
    * apparaissent en pointillé entre les zones »).
    */
   trails: string[];
+  /**
+   * Les champions déjà rencontrés (arrivé dans leur arène) : le plan et le carnet ne disent le nom
+   * du champion d'une zone qu'à ce moment-là (retour de test du 17 novembre 2026 : « seulement
+   * quand tu l'as rencontré pour la première fois, pas dès qu'on rentre dans le biome »).
+   */
+  met: string[];
   wins: number;
   feats: string[];
   /** Records (chez Xatu) : la salle la plus loin atteinte en run (1 à 35). */
@@ -218,6 +224,7 @@ const DEFAULTS: Save = {
   beaten: [],
   visited: [],
   trails: [],
+  met: [],
   wins: 0,
   feats: [],
   bestRoom: 0,
@@ -306,6 +313,8 @@ export function migrate(save: Save): Save {
   save.beaten = names(save.beaten);
   save.visited = names(save.visited);
   save.trails = names(save.trails);
+  // (Un champion déjà vaincu a forcément été rencontré : les anciennes sauvegardes le gardent.)
+  save.met = [...new Set([...names(save.met), ...save.beaten])];
   save.feats = names(save.feats);
   save.wins = Math.max(0, Math.floor(Number(save.wins) || 0));
   save.bestRoom = Math.max(0, Math.floor(Number(save.bestRoom) || 0));

@@ -743,6 +743,8 @@ Si d'autres se voient en jeu, noter leur emplacement.
 - Le Conseil ne remplace plus de champion de biome : il garde la Route
   Victoire, un membre par run (Aldo, Agatha, Peter), puis le Maître.
 - Plan du Repaire : les routes déjà prises en pointillés (`Save.trails`).
+- Le nom d'un champion n'apparaît au plan et au carnet qu'une fois rencontré
+  (`Save.met`), pas dès son biome atteint.
 - Reste : d'autres dresseurs connus d'Essentials (Red, Leaf, Brendan) si l'on
   ajoute des biomes ; vérifier le plan en jeu (les pointillés n'ont pas été vus
   à l'écran).

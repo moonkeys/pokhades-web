@@ -934,7 +934,9 @@ coin du départ, à gauche de l'arche de Dracolosse.
   `world/worldmap.ts`. Les routes déjà prises en run (`Save.trails`, notées à
   l'entrée de chaque biome : « plage>marais ») s'y tracent en pointillés
   d'encre d'une zone à l'autre ; la traversée vers l'Océan, en pointillés
-  d'écume, reste pâle tant qu'on ne l'a pas faite. Les routes sont de petits chemins de terre peints, tracés
+  d'écume, reste pâle tant qu'on ne l'a pas faite. Le nom du champion d'une
+  zone ne s'affiche (au plan et au carnet) qu'une fois rencontré dans son
+  arène (`Save.met`) ; avant, « Champion ? ». Les routes sont de petits chemins de terre peints, tracés
   à la main (`TRAILS`) : ils partent de la Prairie, se rejoignent comme des
   sentiers et finissent au pied des escaliers des falaises ; seuls ceux qui
   partent d'un biome déjà atteint apparaissent (la traversée vers l'Océan, en

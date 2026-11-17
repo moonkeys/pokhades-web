@@ -2128,6 +2128,10 @@ async function boot(): Promise<void> {
     canBeCaptured: () => true,
     bossIntro: (exit) => {
       const champ = run.champion;
+      if (!save.met.includes(champ.name)) {
+        save.met.push(champ.name);
+        writeSave(save);
+      }
       const final = run.isFinal;
       // Dans son arène, le champion se tient au bord nord du terrain, face à l'entrée ; il fuira par la sortie.
       // (Retour de test : « on ne voit pas les dresseurs » : plus près du terrain, 5 cases au lieu de 7,5.)

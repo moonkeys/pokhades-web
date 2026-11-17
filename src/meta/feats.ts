@@ -2,7 +2,6 @@ import type { BiomeId } from '../data/species';
 import { ELITE, LEAGUE_GATE, LEAGUE_GATE_V1, LEAGUE_MASTER } from '../run/run';
 import { BIOMES } from '../world/biomes';
 import { WORLD, WORLD_LINKS } from '../world/worldmap';
-import { BIOME_CHAMPIONS } from '../data/champions';
 import { roster, type Save } from './save';
 
 // Le carnet des exploits (ajout, retour de test : « le but du jeu, c'est de
@@ -63,8 +62,6 @@ const beat = (name: string) => (save: Save): [number, number] => [save.beaten.in
 
 /** Un biome atteint (la Prairie, d'où part chaque run, l'est d'office). */
 const reached = (save: Save, b: BiomeId) => b === 'prairie' || save.visited.includes(b);
-/** Les biomes où l'on croise chaque champion (data/champions.ts, BIOME_CHAMPIONS). */
-const homesOf = (name: string) => (Object.keys(BIOME_CHAMPIONS) as BiomeId[]).filter((b) => BIOME_CHAMPIONS[b]?.includes(name));
 
 /**
  * Économie (retour de test : « on se fait de l'argent beaucoup trop facilement ») : les
@@ -79,8 +76,8 @@ export const FEATS: readonly Feat[] = [
     desc: `Champion ${CHAMPION_HOME[name]} : à battre une fois.`,
     progress: beat(name),
     reward: { baies: 30 + 10 * i, shards: 1 },
-    // Le champion d'une zone apparaît une fois la zone atteinte.
-    unlocked: (save) => homesOf(name).some((b) => reached(save, b)),
+    // Le champion d'une zone apparaît une fois rencontré, pas dès la zone atteinte.
+    unlocked: (save) => save.met.includes(name),
   })),
   {
     // (Le but qui ouvre la Route Victoire reste avec les champions, visible d'emblée : c'est lui

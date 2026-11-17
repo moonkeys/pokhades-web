@@ -41,6 +41,7 @@ export const PATCH_NOTES: readonly PatchNote[] = [
           'Un seul champion par biome : Ondine ne garde plus que la Plage, Morgane le Lac, Pierre l’Automne. Nouvelle championne à l’Océan : Flora, la dresseuse de Hoenn, et son Lokhlass.',
           'Le Conseil garde maintenant la Route Victoire, un membre à chaque run, avant le Maître.',
           'Sur le plan du Repaire, les routes que tu as déjà prises s’affichent en pointillés.',
+          'Le plan et le carnet ne nomment le champion d’une zone qu’une fois que tu l’as rencontré.',
           'Surprises : à sa Méga, le Dracaufeu de Peter appelle son jumeau chromatique, qui partage sa barre de vie ; Ondine, Pierre, Giovanni, Olga, Auguste et Erika font changer le temps.',
           'L’arène de la Prairie n’a plus d’eau : un enclos de bois, de la paille, des petits champs, des tournesols. Celle du Lac a ses nénuphars et ses roseaux.',
         ],

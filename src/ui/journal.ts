@@ -260,7 +260,7 @@ export class Journal {
           ? open
             ? 'Le Conseil · le Maître'
             : 'Bats les onze champions'
-          : (BIOME_CHAMPIONS[n.id] ?? []).map((c) => (save.beaten.includes(c) ? `${c} ✓` : c)).join(' · ');
+          : (BIOME_CHAMPIONS[n.id] ?? []).map((c) => (save.beaten.includes(c) ? `${c} ✓` : save.met.includes(c) ? c : 'Champion ?')).join(' · ');
       // Un biome pas encore atteint ne dit pas son nom (retour de test) : un « ? », à découvrir.
       const g2 = add('g', { class: `jr-place${known ? '' : ' fog'}${n.id === 'prairie' ? ' start' : ''}` });
       add('text', { x, y: y + 4, class: 'jr-label' }, g2).textContent = known ? name : '?';
