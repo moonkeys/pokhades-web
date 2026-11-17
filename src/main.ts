@@ -199,6 +199,23 @@ async function boot(): Promise<void> {
   const dialogue = new Dialogue(document.body);
   /** Dresseur du champion, en salle de boss. */
   let trainer: Trainer | null = null;
+  /**
+   * Les Éclats de Champion, la récompense d'une arène (retour de test du 17 novembre 2026 : « faire
+   * voler les éclats en hauteur ») : à la victoire, ils jaillissent du centre de l'arène l'un après
+   * l'autre, montent en scintillant et s'effacent (l'icône COMETSHARD d'Essentials).
+   */
+  const SHARD_LIFE = 2.4;
+  const shardFx: { x: number; y: number; vx: number; vy: number; t: number }[] = [];
+  let shardIcon: HTMLImageElement | null = null;
+  void loadImage(`/game/assets/essentials/items/${SHARDS.icon}.png`).then((img) => (shardIcon = img), () => {});
+  const shardBurst = (x: number, y: number, k: number) => {
+    const n = Math.max(4, k * 3);
+    for (let i = 0; i < n; i++) {
+      const a = -Math.PI / 2 + (i / (n - 1) - 0.5) * 1.6;
+      shardFx.push({ x, y, vx: Math.cos(a) * 2.2, vy: Math.sin(a) * 4.2 - 1.5, t: -i * 0.09 });
+    }
+    sfx('pkmnGet', -2);
+  };
   /** La bulle du champion au bord du terrain (ses répliques de phase), et son temps restant. */
   const trainerLayer = Object.assign(document.createElement('div'), { className: 'room-labels' });
   const trainerBubble = Object.assign(document.createElement('div'), { className: 'room-label shop-bubble' });
@@ -1955,6 +1972,7 @@ async function boot(): Promise<void> {
         const n = BAIES.boss(run.act) + (run.isFinal ? BAIES.finalBonus : 0);
         const k = SHARDS.boss(run.act) + (run.isFinal ? SHARDS.finalBonus : 0);
         save.shards += k;
+        shardBurst(world.hub.x, world.hub.y, k);
         shareLoot({ shards: k, text: `Champion vaincu : +${k} Éclat${k > 1 ? 's' : ''} de Champion` });
         stats.shards += k;
         stats.champions.push(run.champion.name);
@@ -2622,6 +2640,32 @@ async function boot(): Promise<void> {
     ...shop.extras(time),
     ...merchant.extras(time),
     ...altar.extras(time),
+    ...shardFx.map((s) => ({
+      y: Infinity,
+      draw: (b: CanvasRenderingContext2D, camX: number, camY: number, k: number) => {
+        const icon = shardIcon;
+        if (!icon || s.t < 0) return;
+        const u = s.t / SHARD_LIFE;
+        const px = Math.round((s.x * TILE - camX) * k);
+        const py = Math.round((s.y * TILE - camY) * k);
+        b.save();
+        b.globalCompositeOperation = 'lighter';
+        const g = b.createRadialGradient(px, py, 0, px, py, 10 * k);
+        g.addColorStop(0, `rgba(255,240,180,${0.6 * (1 - u)})`);
+        g.addColorStop(1, 'rgba(255,200,80,0)');
+        b.fillStyle = g;
+        b.beginPath();
+        b.arc(px, py, 10 * k, 0, Math.PI * 2);
+        b.fill();
+        b.restore();
+        b.save();
+        b.globalAlpha = Math.min(1, (1 - u) * 1.6);
+        b.imageSmoothingEnabled = false;
+        const w = icon.width * k * 0.6;
+        b.drawImage(icon, px - w / 2, py - w / 2, w, w);
+        b.restore();
+      },
+    })),
     ...spring.extras(time),
     ...cave.extras(),
     ...(outside() ? [...berries.extras(), ...chests.extras(), ...hazards.extras(time), ...director.captureExtras()] : []),
@@ -3351,7 +3395,16 @@ async function boot(): Promise<void> {
       if (cave.active) cave.update(dt, sample, world, run, player, wild);
       else director.update(dt, sample, world, run, player, wild, guests, claimers);
     }
+    if (trainer) trainer.watch = player;
     trainer?.update(dt, world, Math.random);
+    for (const s of shardFx) {
+      s.t += dt;
+      if (s.t < 0) continue;
+      s.x += s.vx * dt;
+      s.y += s.vy * dt;
+      s.vy -= 1.2 * dt;
+    }
+    while (shardFx.length && shardFx[0].t > SHARD_LIFE) shardFx.shift();
     if (trainerVanishT > 0) {
       trainerVanishT -= dt;
       if (trainerVanishT <= 0 && trainer) {

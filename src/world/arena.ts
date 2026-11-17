@@ -88,6 +88,10 @@ export function decorateArena(world: WorldMap, biome: BiomeId): void {
       place(CAMP_PROPS.torch, c.x + Math.cos(a) * RING_R, c.y + Math.sin(a) * RING_R * RING_Y);
     }
   }
+  // L'emblème Poké Ball de l'arène du Village (Essentials, 3 × 4 cases), au sol au centre (retour de
+  // test du 17 novembre 2026 : les Pokémon du champion y apparaissent ; « le même style de Poké Ball
+  // que sur l'arène, mais au sol »).
+  GYM.emblem.forEach((row, r) => row.forEach((tile, col) => world.decals.push({ tile, x: Math.floor(c.x) - 1 + col, y: Math.floor(c.y) - 2 + r })));
   ARENA_EXTRAS[biome]?.(world, place);
   world.objects.sort((a, b) => a.y - b.y);
 }

@@ -60,6 +60,8 @@ export class Trainer {
    * plus haut, sans ombre au sol.
    */
   perch = 0;
+  /** Perché : ce qu'il suit du regard (le Pokémon joué, posé par main.ts à chaque image). */
+  watch: { x: number; y: number } | null = null;
   /** Perché : il regarde autour de lui (prochain coup d'œil, s) ; bond en cours (s restantes). */
   private lookT = 1.5;
   private hopT = 0;
@@ -142,10 +144,15 @@ export class Trainer {
       this.hopT = Math.max(0, this.hopT - dt);
       this.lookT -= dt;
       if (this.lookT <= 0) {
-        const r = random();
-        this.row = r < 0.5 ? 0 : r < 0.75 ? 1 : 2;
         this.lookT = 1.2 + random() * 2.2;
         this.stepT = random() < 0.4 ? 0.6 : 0;
+      }
+      // Il suit le joueur du regard (retour de test : « qu'il nous suive du regard, toujours »).
+      const w = this.watch;
+      if (w) {
+        const dx = w.x - this.x;
+        const dy = w.y - this.y;
+        this.row = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 1 : 2) : dy < 0 ? 3 : 0;
       }
       this.stepT = Math.max(0, this.stepT - dt);
       this.moving = this.stepT > 0 || this.hopT > 0;
@@ -269,6 +276,13 @@ export class Trainer {
   /** Dessin trié avec les Pokémon et le décor (ligne de sol = pieds). */
   draw(b: CanvasRenderingContext2D, camX: number, camY: number, k: number): void {
     if (!this.image || this.gone) return;
+    // À l'arrêt, un champion suit le joueur du regard, même hors de son rocher (arène du Village).
+    const seen = this.watch;
+    if (seen && !this.moving && !this.fleeing) {
+      const dx = seen.x - this.x;
+      const dy = seen.y - this.y;
+      this.row = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 1 : 2) : dy < 0 ? 3 : 0;
+    }
     const col = this.moving ? Math.floor(this.animT * 6) % 4 : 0;
     const w = FRAME_W * SCALE * k;
     const h = FRAME_H * SCALE * k;

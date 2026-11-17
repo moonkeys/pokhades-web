@@ -651,8 +651,12 @@ jamais planté. Les Pokémon d'un champion ne nagent plus (au Lac, ils
 partaient au large, hors d'atteinte). Le champion se tient **sur un rocher**
 de l'anneau, au nord-est (`WorldMap.podium`), immobile et hors d'atteinte ;
 vaincu, il lâche une dernière phrase et disparaît dans un nuage. Sur son
-rocher, il regarde autour de lui et piétine ; il bondit quand il envoie un
-Pokémon ou appelle des renforts. Chaque Pokémon ennemi qui apparaît en run
+rocher, il suit le joueur du regard (à l'arrêt, au Village aussi) et
+piétine ; il bondit quand il envoie un Pokémon ou appelle des renforts. Au
+centre de chaque arène en plein air, l'emblème Poké Ball de l'arène du
+Village (Essentials, 3 × 4 cases) marque où sortent ses Pokémon. À la
+victoire, les Éclats de Champion gagnés jaillissent du centre et s'envolent
+en scintillant (`shardBurst`). Chaque Pokémon ennemi qui apparaît en run
 joue l'animation de son type à son arrivée (des vagues pour un Pokémon Eau…).
 Les Pokémon d'un champion ne reculent plus pour tirer, et frappent plus
 souvent (recharge ×0,7, ×0,55 pour l'as ; zones toutes les 4,8 s, 3,2 s pour

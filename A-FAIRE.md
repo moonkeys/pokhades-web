@@ -399,6 +399,9 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
   animé (coups d'œil, bond à chaque envoi) ; animation de type à
   l'apparition des ennemis ; plus d'anneau d'eau dans l'arène de la Prairie
   (enclos de bois, paille, champs) ; paillasses du Dortoir remises.
+- Quatrième passe : emblème Poké Ball au sol au centre des arènes, dresseur
+  qui suit le joueur du regard, Éclats de Champion qui s'envolent à la
+  victoire.
 - Arènes : Prairie (fleurs, tournesols) et Lac (nénuphars, roseaux)
   distinctes. Reste : les autres arènes (à voir en jeu), juger l'équilibre
   à six.
