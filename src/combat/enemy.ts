@@ -66,7 +66,7 @@ const ENRAGED_COOLDOWN = 0.75;
 const AREA_DELAY = { champion: 0.85, boss: 0.75 };
 /** L'as au centre : première prise de centre, durée, et attente entre deux (moins s'il enrage). */
 const STANCE_FIRST = 8;
-const STANCE_TIME = 6;
+const STANCE_TIME = 4.5;
 const STANCE_EVERY = 11;
 const STANCE_EVERY_ENRAGED = 7;
 /** Bond de l'as : préavis (s) et rayon de l'onde à l'atterrissage. */
@@ -669,6 +669,12 @@ export class EnemyBrain {
       a.steerVy = dir.y * v;
       return;
     }
+    // Qui se colle à lui prend un coup (retour de test : « je l'attaque en boucle, il ne réagit pas »).
+    const close = team.find((m) => m.pokemon && !m.pokemon.fainted && m.deathT < 0 && Math.hypot(m.x - a.x, m.y - a.y) <= ATTACK_RANGE);
+    if (close && this.attackT <= 0) {
+      this.doAttack(close, combat);
+      return;
+    }
     st.castT -= dt;
     if (st.castT > 0) return;
     const mon = a.pokemon!;
@@ -691,36 +697,43 @@ export class EnemyBrain {
     switch (pick) {
       case 3: {
         // Anneaux qui s'éloignent : trois couronnes l'une après l'autre.
-        for (let i = 0; i < 3; i++) combat.enemyArea(a, { kind: 'ring', r0: i * 2.4 * big, r: (i + 1) * 2.4 * big }, a.x, a.y, move, power, delay + i * 0.45);
+        // (Retour de test : « plus écartées, et plus nombreuses ».) Quatre couronnes, un peu d'écart entre elles.
+        for (let i = 0; i < 4; i++) combat.enemyArea(a, { kind: 'ring', r0: i * 2.6 * big + 0.4, r: (i * 2.6 + 2) * big + 0.4 }, a.x, a.y, move, power, delay + i * 0.4);
         break;
       }
       case 4: {
         // Pluie de frappes autour de lui.
-        for (let i = 0; i < 9; i++) {
-          const ang = Math.random() * Math.PI * 2;
-          const r = (1.5 + Math.random() * 5.5) * big;
-          combat.enemyArea(a, { kind: 'circle', r: 1.2 * big }, a.x + Math.cos(ang) * r, a.y + Math.sin(ang) * r * 0.8, move, power * 0.8, delay + i * 0.12);
+        // Quatorze frappes, réparties en couronnes (pas les unes sur les autres) jusqu'à 9 cases.
+        for (let i = 0; i < 14; i++) {
+          const ang = (i * 2.4) + Math.random() * 0.6;
+          const r = (2 + (i / 14) * 7) * big;
+          combat.enemyArea(a, { kind: 'circle', r: 1.3 * big }, a.x + Math.cos(ang) * r, a.y + Math.sin(ang) * r * 0.8, move, power * 0.8, delay + i * 0.1);
         }
         break;
       }
       case 0:
+        // Une onde au centre, puis deux couronnes qui s'éloignent.
         combat.enemyArea(a, { kind: 'circle', r: SHOCK_RADIUS * big }, a.x, a.y, move, power, delay);
-        combat.enemyArea(a, { kind: 'circle', r: SHOCK_RADIUS * 1.8 * big }, a.x, a.y, move, power * 0.8, delay + 0.6);
+        combat.enemyArea(a, { kind: 'ring', r0: SHOCK_RADIUS * 1.5 * big, r: SHOCK_RADIUS * 2.4 * big }, a.x, a.y, move, power * 0.85, delay + 0.5);
+        combat.enemyArea(a, { kind: 'ring', r0: SHOCK_RADIUS * 3 * big, r: SHOCK_RADIUS * 3.8 * big }, a.x, a.y, move, power * 0.7, delay + 1);
         break;
       case 1:
+        // Croix, diagonale, puis croix décalée : trois salves en étoile.
         for (let i = 0; i < 4; i++) ray((i * Math.PI) / 2, delay);
-        for (let i = 0; i < 4; i++) ray((i * Math.PI) / 2 + Math.PI / 4, delay + 0.7);
+        for (let i = 0; i < 4; i++) ray((i * Math.PI) / 2 + Math.PI / 4, delay + 0.6);
+        for (let i = 0; i < 8; i++) ray((i * Math.PI) / 4 + Math.PI / 8, delay + 1.2);
         break;
       default: {
         const base = Math.random() * Math.PI * 2;
-        for (let i = 0; i < 3; i++) {
-          const ang = base + (i * 2 * Math.PI) / 3;
+        // Quatre cônes (pas cinq : ils fermeraient le cercle), décalés dans le temps.
+        for (let i = 0; i < 4; i++) {
+          const ang = base + (i * 2 * Math.PI) / 4;
           combat.enemyArea(a, { kind: 'cone', r: CONE_RADIUS * big, half: CONE_HALF, dx: Math.cos(ang), dy: Math.sin(ang) }, a.x, a.y, move, power, delay + i * 0.35);
         }
       }
     }
     sfx('ability');
-    st.castT = a.enraged ? 1.5 : 2.1;
+    st.castT = a.enraged ? 1.1 : 1.6;
   }
 
   /** Le lanceur tient la pose (sans anneau : la zone au sol suffit) jusqu'à l'impact. */

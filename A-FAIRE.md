@@ -406,6 +406,10 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
   taille selon la puissance), sa grande attaque est sa plus forte, et chaque
   as a quatre attaques choisies pour son champion (`ACE_MOVES`). Reste : à
   juger en jeu, arène par arène.
+- Septième passe : Pokémon du champion sur la Poké Ball du centre ; l'as
+  riposte au corps à corps pendant ses figures, prises de centre plus
+  courtes et figures plus fréquentes, plus nombreuses et plus écartées ;
+  éclats qui flottent au centre et filent vers le joueur.
 - Quatrième passe : emblème Poké Ball au sol au centre des arènes, dresseur
   qui suit le joueur du regard, Éclats de Champion qui s'envolent à la
   victoire.

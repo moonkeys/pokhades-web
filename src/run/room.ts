@@ -555,7 +555,11 @@ export class RoomDirector {
     for (const mon of this.waves[this.wave] ?? []) {
       const g = mon.group !== undefined ? this.groups[mon.group] : undefined;
       const swims = SWIMMERS.has(mon.id);
-      const at = (g && this.spawnNear(world, g.trainer, player, swims)) ?? this.spawnPoint(world, player, swims);
+      // En salle de champion, ses Pokémon sortent sur la Poké Ball gravée au centre de l'arène (retour de
+      // test du 17 novembre 2026 : « l'as devrait apparaître sur la Poké Ball, pas dans les coins ») ;
+      // les sauvages de l'escorte, à leurs places habituelles.
+      const center = this.boss && mon.role !== 'wild' && world.podium ? { x: world.hub.x + 0.5, y: world.hub.y + 0.5 } : null;
+      const at = center ?? (g && this.spawnNear(world, g.trainer, player, swims)) ?? this.spawnPoint(world, player, swims);
       if (!at) continue;
       this.pending.push({ ...mon, ...at, t: -warn });
       // Toutes les balls d'une vague partent ensemble ; elles s'ouvrent quand le Pokémon apparaît (0,55 s).

@@ -200,20 +200,18 @@ async function boot(): Promise<void> {
   /** Dresseur du champion, en salle de boss. */
   let trainer: Trainer | null = null;
   /**
-   * Les Éclats de Champion, la récompense d'une arène (retour de test du 17 novembre 2026 : « faire
-   * voler les éclats en hauteur ») : à la victoire, ils jaillissent du centre de l'arène l'un après
-   * l'autre, montent en scintillant et s'effacent (l'icône COMETSHARD d'Essentials).
+   * Les Éclats de Champion, la récompense d'une arène (retours de test du 17 novembre 2026 : « qu'ils
+   * flottent à la place du don d'un Pokémon ») : à la victoire, ils apparaissent au centre de l'arène
+   * et y flottent en cercle, comme un don ; quand on s'en approche, ils filent vers le Pokémon joué
+   * et s'éteignent (déjà comptés : on ne peut pas les manquer). L'icône COMETSHARD d'Essentials.
    */
-  const SHARD_LIFE = 2.4;
-  const shardFx: { x: number; y: number; vx: number; vy: number; t: number }[] = [];
+  const SHARD_LIFE = 0.5;
+  const shardFx: { x: number; y: number; vx: number; vy: number; t: number; home: { x: number; y: number }; taken: boolean }[] = [];
   let shardIcon: HTMLImageElement | null = null;
   void loadImage(`/game/assets/essentials/items/${SHARDS.icon}.png`).then((img) => (shardIcon = img), () => {});
   const shardBurst = (x: number, y: number, k: number) => {
-    const n = Math.max(4, k * 3);
-    for (let i = 0; i < n; i++) {
-      const a = -Math.PI / 2 + (i / (n - 1) - 0.5) * 1.6;
-      shardFx.push({ x, y, vx: Math.cos(a) * 2.2, vy: Math.sin(a) * 4.2 - 1.5, t: -i * 0.09 });
-    }
+    const n = Math.min(6, Math.max(3, k));
+    for (let i = 0; i < n; i++) shardFx.push({ x, y: y - 1, vx: 0, vy: 0, t: -i * 0.15, home: { x, y: y - 1 }, taken: false });
     sfx('pkmnGet', -2);
   };
   /** La bulle du champion au bord du terrain (ses répliques de phase), et son temps restant. */
@@ -1309,6 +1307,8 @@ async function boot(): Promise<void> {
     boonOffer = null;
     skillOffer = null;
     trainer = null;
+    trainerVanishT = 0;
+    shardFx.length = 0;
     dialogue.close();
     director.start(world, run, opts.wild, first);
     // Le boss a sa musique (CombatArena.gd:1610) ; les autres salles, boutique comprise, la leur (écart voulu, sounds.ts).
@@ -2658,7 +2658,7 @@ async function boot(): Promise<void> {
       draw: (b: CanvasRenderingContext2D, camX: number, camY: number, k: number) => {
         const icon = shardIcon;
         if (!icon || s.t < 0) return;
-        const u = s.t / SHARD_LIFE;
+        const u = s.taken ? s.t / SHARD_LIFE : 0;
         const px = Math.round((s.x * TILE - camX) * k);
         const py = Math.round((s.y * TILE - camY) * k);
         b.save();
@@ -3410,14 +3410,26 @@ async function boot(): Promise<void> {
     }
     if (trainer) trainer.watch = player;
     trainer?.update(dt, world, Math.random);
-    for (const s of shardFx) {
+    shardFx.forEach((s, i) => {
+      if (!s.taken) {
+        s.t += dt;
+        // En cercle autour du centre, qui tourne doucement et respire.
+        const a = time * 0.8 + (i / shardFx.length) * Math.PI * 2;
+        s.x = s.home.x + Math.cos(a) * 1.1;
+        s.y = s.home.y + Math.sin(a) * 0.55 + Math.sin(time * 2.4 + i) * 0.12;
+        if (Math.hypot(player.x - s.home.x, player.y - s.home.y) < 1.8) {
+          s.taken = true;
+          s.t = 0;
+        }
+        return;
+      }
+      // Ramassé : il file vers le Pokémon joué et s'éteint.
       s.t += dt;
-      if (s.t < 0) continue;
-      s.x += s.vx * dt;
-      s.y += s.vy * dt;
-      s.vy -= 1.2 * dt;
-    }
-    while (shardFx.length && shardFx[0].t > SHARD_LIFE) shardFx.shift();
+      s.x += (player.x - s.x) * Math.min(1, dt * 9);
+      s.y += (player.y - 0.8 - s.y) * Math.min(1, dt * 9);
+      if (s.t >= SHARD_LIFE && s === shardFx[shardFx.length - 1]) sfx('claim');
+    });
+    for (let i = shardFx.length - 1; i >= 0; i--) if (shardFx[i].taken && shardFx[i].t > SHARD_LIFE) shardFx.splice(i, 1);
     if (trainerVanishT > 0) {
       trainerVanishT -= dt;
       if (trainerVanishT <= 0 && trainer) {

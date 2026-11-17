@@ -648,7 +648,8 @@ fréquentes, coups un quart plus rapprochés : `Actor.enraged`). Toutes les
 figures autour de lui : deux ondes de choc, une croix de rayons puis sa
 diagonale, trois cônes qui balaient, des anneaux qui s'éloignent ou une pluie
 de frappes — selon son type, deux fois sur trois (`STANCE_STYLE`) ; il ne
-reste jamais planté (`EnemyBrain.centerStance`). Une fois sur deux, au lieu
+reste jamais planté (`EnemyBrain.centerStance`, 4,5 s, une figure toutes les
+1,6 s, 1,1 s enragé) et frappe qui se colle à lui pendant ses figures. Une fois sur deux, au lieu
 du centre, il **bondit** sur le membre le plus éloigné : un cercle au sol, il
 disparaît dans les airs et retombe en onde de choc (`leap`). Enragé, toutes
 les 15 s, sa **plus forte attaque** sur toute l'arène (Séisme, Surf, Écrasement…,
@@ -669,9 +670,10 @@ piétine ; il bondit quand il envoie un Pokémon ou appelle des renforts. Au
 centre de chaque arène en plein air, une Poké Ball tracée dans le sol marque
 où sortent ses Pokémon : le liseré de l'emblème de l'arène du Village, changé
 par l'atlas en un trait sombre translucide et un reflet clair, comme gravé
-(`composeBall`, `ARENA_BALL`) ; il prend la teinte du sol de chaque biome. À la
-victoire, les Éclats de Champion gagnés jaillissent du centre et s'envolent
-en scintillant (`shardBurst`). Chaque Pokémon ennemi qui apparaît en run
+(`composeBall`, `ARENA_BALL`) ; il prend la teinte du sol de chaque biome ; les Pokémon du champion, son as compris, y sortent (les sauvages de
+l'escorte, à leurs places). À la victoire, les Éclats de Champion gagnés
+flottent en cercle au centre, comme un don, et filent vers le Pokémon joué
+quand il s'approche (`shardBurst` ; ils sont déjà comptés). Chaque Pokémon ennemi qui apparaît en run
 joue l'animation de son type à son arrivée (des vagues pour un Pokémon Eau…).
 Les Pokémon d'un champion ne reculent plus pour tirer, et frappent plus
 souvent (recharge ×0,7, ×0,55 pour l'as ; zones toutes les 4,8 s, 3,2 s pour
