@@ -233,11 +233,18 @@ export class Journal {
       parent.append(n);
       return n;
     };
-    // Les chemins sont peints sur le plan ; seule la traversée en mer (vers l'Océan) se pointille d'écume.
+    // Les chemins sont peints sur le plan ; ceux qu'on a déjà pris s'y pointillent d'encre (retour de
+    // test du 17 novembre 2026 : « une fois qu'on a fait les chemins, ils apparaissent en pointillé
+    // entre les zones ») ; la traversée en mer (vers l'Océan) se pointille d'écume, plus pâle tant
+    // qu'on ne l'a pas faite.
+    const walked = new Set(save.trails);
     for (const r of plan.roads) {
-      if (r.from !== 'ocean' && r.to !== 'ocean') continue;
+      const done = walked.has(`${r.from}>${r.to}`);
+      const sea = r.from === 'ocean' || r.to === 'ocean';
+      if (!done && !sea) continue;
       const d = `M ${r.pts.map((p) => `${(p.x * TILE).toFixed(1)} ${(p.y * TILE).toFixed(1)}`).join(' L ')}`;
-      add('path', { d, class: 'jr-trail sea' });
+      if (!sea) add('path', { d, class: 'jr-trail-under' });
+      add('path', { d, class: `jr-trail${sea ? ' sea' : ''}${sea && !done ? ' shut' : ''}` });
       if (r.cs) {
         const m = r.pts[Math.floor(r.pts.length / 2)];
         add('text', { x: m.x * TILE + 26, y: m.y * TILE, class: 'jr-cs' }).textContent = 'CS Surf';
@@ -252,7 +259,7 @@ export class Journal {
         n.id === 'victoire'
           ? open
             ? 'Le Conseil · le Maître'
-            : 'Bats les dix champions'
+            : 'Bats les onze champions'
           : (BIOME_CHAMPIONS[n.id] ?? []).map((c) => (save.beaten.includes(c) ? `${c} ✓` : c)).join(' · ');
       // Un biome pas encore atteint ne dit pas son nom (retour de test) : un « ? », à découvrir.
       const g2 = add('g', { class: `jr-place${known ? '' : ' fog'}${n.id === 'prairie' ? ' start' : ''}` });

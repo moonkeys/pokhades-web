@@ -97,15 +97,20 @@ Restent entrés par le bas : le Village (ses rues), la boutique, et le Lac
 quand on arrive du nord (le lac occuperait l'entrée). Une porte unique (vers
 la boutique ou le boss) est celle d'en face, tout droit.
 
-**Route Victoire** (ajout, la zone ultime) : une fois les dix champions des
-biomes vaincus au moins une fois, la run compte un cinquième acte. Au
-quatrième étage, le Conseil (Aldo aux Rocailleux, Agatha au Marais, Peter
-au Volcan, Olga en Montagne) peut garder le biome à la place du champion ; sa
-sortie mène à la Route Victoire (décor des Rocailleux, faune des quatre
-biomes du dernier étage, +6 niveaux), au bout de laquelle attend Régis, le
-Maître de la Ligue, et ses six Pokémon. Le
-champion de l'acte est tiré quand on choisit son biome, rangé par étage
-(`BIOME_CHAMPIONS` : Giovanni garde les Rocailleux, plus le Village). Chaque
+**Route Victoire** (ajout, la zone ultime) : une fois les onze champions des
+biomes vaincus au moins une fois, la run compte un cinquième acte : la sortie
+du quatrième étage mène à la Route Victoire (décor des Rocailleux, faune des
+quatre biomes du dernier étage, +6 niveaux). Au bout, le Conseil la garde, un
+membre par run dans l'ordre (Aldo, Agatha, Peter) tant qu'il n'est pas tombé
+en entier ; ensuite, Régis, le Maître de la Ligue, et ses six Pokémon. Le
+Conseil ne remplace plus le champion d'un biome. **Un seul champion par
+biome**, et un seul biome par champion (`BIOME_CHAMPIONS`, retour de test :
+Ondine était partout) : Blanche à la Prairie, Ondine à la Plage, Major Bob
+au Village, Erika à la Forêt, Morgane au Lac, Koga au Marais, Pierre à
+l'Automne, **Flora** à l'Océan (ajout : la dresseuse de Hoenn d'Essentials,
+Bekipan, Ludicolo et Lokhlass), Auguste au Volcan, Giovanni aux Rocailleux,
+Olga en Montagne glacée. Une sauvegarde qui était déjà montée sur la Route
+avant Flora la garde ouverte. Chaque
 salle lance ses vagues (plus ou moins fournies selon sa surface libre :
 ×0,75 pour une petite Arène, jusqu'à ×1,3 pour une grande Clairière,
 `crowdOf` dans room.ts), se libère (+₽), pose une récompense au centre et
@@ -926,7 +931,10 @@ coin du départ, à gauche de l'arche de Dracolosse.
   et ses géants moussus, le Lac cerné d'arbres, et son îlot boisé ; à l'est, les bois d'Automne puis
   la Forêt ; en bas, la Prairie et ses herbes hautes. Les positions des noms
   (`PLACES`) ne valent que pour le plan : le sens des portes en run suit
-  `world/worldmap.ts`. Les routes sont de petits chemins de terre peints, tracés
+  `world/worldmap.ts`. Les routes déjà prises en run (`Save.trails`, notées à
+  l'entrée de chaque biome : « plage>marais ») s'y tracent en pointillés
+  d'encre d'une zone à l'autre ; la traversée vers l'Océan, en pointillés
+  d'écume, reste pâle tant qu'on ne l'a pas faite. Les routes sont de petits chemins de terre peints, tracés
   à la main (`TRAILS`) : ils partent de la Prairie, se rejoignent comme des
   sentiers et finissent au pied des escaliers des falaises ; seuls ceux qui
   partent d'un biome déjà atteint apparaissent (la traversée vers l'Océan, en

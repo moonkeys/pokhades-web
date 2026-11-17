@@ -128,7 +128,7 @@ export const LORE: LoreChapter[] = [
       // run/run.ts:18-20, 36-47
       { title: 'Actes et salles', text: 'Un acte : sept salles de combat ou spéciales, une boutique, puis le champion. On part de la Prairie, au sud de la carte du monde, et chaque champion battu ouvre les biomes voisins.' },
       // world/worldmap.ts, meta/feats.ts
-      { title: 'La Route Victoire', text: 'Bats les dix champions des biomes, une fois chacun : au bout de la carte s’ouvre la Route Victoire, un cinquième acte plus dur encore. Le Conseil garde alors le dernier étage, et le Maître de la Ligue attend au bout.' },
+      { title: 'La Route Victoire', text: 'Bats les onze champions des biomes, une fois chacun (un seul par biome) : au bout de la carte s’ouvre la Route Victoire, un cinquième acte plus dur encore. Un membre du Conseil la garde à chaque run, jusqu’à ce que le Conseil entier soit tombé ; alors le Maître de la Ligue t’y attend.' },
       { title: 'Le carnet', text: 'Xatu, près de l’arche, tient la liste de tous les exploits — chaque champion à battre, chaque biome à atteindre, les victoires, la taille de la rébellion. Un exploit fait se réclame au Repaire, dans le carnet : des Baies et des Éclats de Champion.' },
       // run.ts:52-68, 251-256
       { title: 'Les portes', text: 'Une salle vidée ouvre jusqu’à trois portes ; chacune annonce sa récompense : un don, une attaque, ou un butin de ₽. La récompense laissée au centre est perdue si on part sans la prendre.' },

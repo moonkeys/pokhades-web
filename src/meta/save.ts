@@ -151,6 +151,12 @@ export interface Save {
    */
   beaten: string[];
   visited: string[];
+  /**
+   * Les routes de la carte du monde déjà prises (« plage>marais ») : le plan du Repaire les trace
+   * en pointillés (retour de test du 17 novembre 2026 : « une fois qu'on a fait les chemins, ils
+   * apparaissent en pointillé entre les zones »).
+   */
+  trails: string[];
   wins: number;
   feats: string[];
   /** Records (chez Xatu) : la salle la plus loin atteinte en run (1 à 35). */
@@ -211,6 +217,7 @@ const DEFAULTS: Save = {
   shared: [],
   beaten: [],
   visited: [],
+  trails: [],
   wins: 0,
   feats: [],
   bestRoom: 0,
@@ -298,6 +305,7 @@ export function migrate(save: Save): Save {
   const names = (v: unknown) => (Array.isArray(v) ? [...new Set(v.filter((x): x is string => typeof x === 'string'))] : []);
   save.beaten = names(save.beaten);
   save.visited = names(save.visited);
+  save.trails = names(save.trails);
   save.feats = names(save.feats);
   save.wins = Math.max(0, Math.floor(Number(save.wins) || 0));
   save.bestRoom = Math.max(0, Math.floor(Number(save.bestRoom) || 0));

@@ -36,11 +36,17 @@ export const ROOMS_PER_ACT = 9;
 export const ACTS = 4;
 export type { BiomeLink };
 /** Les champions qu'il faut avoir vaincus pour ouvrir la Route Victoire : tous ceux des biomes. */
-export const LEAGUE_GATE: readonly string[] = ['Blanche', 'Ondine', 'Major Bob', 'Erika', 'Pierre', 'Koga', 'Morgane', 'Auguste', 'Giovanni', 'Olga'];
+export const LEAGUE_GATE: readonly string[] = ['Blanche', 'Ondine', 'Major Bob', 'Erika', 'Pierre', 'Koga', 'Morgane', 'Flora', 'Auguste', 'Giovanni', 'Olga'];
+/** L'ancienne liste, sans Flora : une sauvegarde qui avait ouvert la Route Victoire la garde ouverte. */
+export const LEAGUE_GATE_V1: readonly string[] = LEAGUE_GATE.filter((n) => n !== 'Flora');
 /** Le Maître de la Ligue, au bout de la Route Victoire. */
 export const LEAGUE_MASTER = 'Régis';
-/** Le Conseil, qui rejoint les champions du dernier étage une fois la Route Victoire ouverte. */
-const ELITE_BY_BIOME: Partial<Record<BiomeId, string>> = { rocailleux: 'Aldo', marais: 'Agatha', volcan: 'Peter', glace: 'Olga' };
+/**
+ * Le Conseil : il garde la Route Victoire, un membre par run, dans l'ordre, tant qu'il n'est
+ * pas tombé en entier ; ensuite, le Maître. Il ne remplace plus le champion d'un biome (retour de
+ * test du 17 novembre 2026 : « un seul dresseur unique par biome »).
+ */
+export const ELITE: readonly string[] = ['Aldo', 'Agatha', 'Peter'];
 /** Taille minimale de l'équipe d'un champion selon l'acte : on complète par des Pokémon de son type. */
 const MIN_CHAMPION_TEAM = [2, 3, 4, 5, 6];
 /** Repli si l'on dépasse le graphe (salle forcée au panneau) : un biome de fin. */
@@ -145,6 +151,8 @@ export interface RunSetup {
   league?: boolean;
   /** Taille de l'équipe au départ : les salles et les boss en tiennent compte. */
   teamSize?: number;
+  /** Les champions déjà vaincus une fois : le Conseil envoie le premier membre pas encore tombé. */
+  beaten?: readonly string[];
 }
 
 export class Run {
@@ -162,6 +170,7 @@ export class Run {
   readonly champions: Champion[] = [];
   /** Champions déjà tirés dans la run. */
   private readonly faced = new Set<string>();
+  private readonly beaten: readonly string[];
   /** Salle spéciale en cours (la porte prise l'annonçait), sinon null. */
   special: SpecialId | null = null;
   /** Salles spéciales prises à chaque acte, et la dernière (jamais deux pareilles de suite). */
@@ -193,6 +202,7 @@ export class Run {
     this.acts = this.league ? ACTS + 1 : ACTS;
     this.victoryAct = this.league ? ACTS : -1;
     this.teamSize = Math.max(1, setup.teamSize ?? 1);
+    this.beaten = setup.beaten ?? [];
     this.pushAct(biomeOverride ?? 'prairie');
   }
 
@@ -216,12 +226,11 @@ export class Run {
     const act = this.biomes.length;
     if (act === this.victoryAct) {
       this.biomes.push(biome);
-      this.champions.push(this.reinforce(CHAMPIONS[LEAGUE_MASTER], act));
+      const guard = ELITE.find((n) => !this.beaten.includes(n)) ?? LEAGUE_MASTER;
+      this.champions.push(this.reinforce(CHAMPIONS[guard], act));
       return;
     }
-    // Route Victoire ouverte : au dernier étage, le Conseil peut garder le biome à la place du champion.
-    const elite = this.league && act === ACTS - 1 ? ELITE_BY_BIOME[biome] : undefined;
-    const pool = elite && !this.faced.has(elite) && this.rng.chance(0.5) ? [elite] : (BIOME_CHAMPIONS[biome] ?? ['Blanche']);
+    const pool = BIOME_CHAMPIONS[biome] ?? ['Blanche'];
     const fresh = pool.filter((n) => !this.faced.has(n));
     const others = Object.keys(CHAMPIONS).filter((n) => !this.faced.has(n));
     const name = this.rng.pick(fresh.length ? fresh : others.length ? others : pool);
@@ -342,7 +351,7 @@ export class Run {
     const name = this.placeName;
     const act = `Acte ${this.act + 1}`;
     if (this.isShop()) return `${name} — ${act} · Boutique`;
-    if (this.isBoss()) return `${name} — ${act} · ${this.onVictoryRoad ? 'MAÎTRE DE LA LIGUE' : this.isFinal ? 'DRESSEUR FINAL' : 'Boss'}`;
+    if (this.isBoss()) return `${name} — ${act} · ${this.onVictoryRoad ? (this.champion.name === LEAGUE_MASTER ? 'MAÎTRE DE LA LIGUE' : 'CONSEIL') : this.isFinal ? 'DRESSEUR FINAL' : 'Boss'}`;
     return `${name} — ${act} · Salle ${(this.room % ROOMS_PER_ACT) + 1}/${COMBATS_PER_ACT}`;
   }
 
@@ -400,7 +409,7 @@ export class Run {
       const boss = this.isBoss(this.room + 1);
       // Le donateur est tiré dès la porte, pour qu'elle porte son badge (aucun : la récompense part en ₽).
       const donor = reward === 'boon' && !boss ? (this.boons.pickDonor(this.rng) ?? undefined) : undefined;
-      const head = this.act === this.victoryAct ? '☠ MAÎTRE DE LA LIGUE' : this.act >= this.acts - 1 ? '☠ DRESSEUR FINAL' : '☠ BOSS';
+      const head = this.act === this.victoryAct ? (this.champion.name === LEAGUE_MASTER ? '☠ MAÎTRE DE LA LIGUE' : '☠ CONSEIL') : this.act >= this.acts - 1 ? '☠ DRESSEUR FINAL' : '☠ BOSS';
       const label = boss ? `${head} · ${this.champion.name}` : donor ? donorLabel(donor) : REWARD_LABEL[reward];
       const link = links[i];
       out.push({ reward, label, donor, biome: link?.to, locked: link && this.missingCs(link), exit: exits[i], victory: link && this.act + 1 === this.victoryAct ? true : undefined });

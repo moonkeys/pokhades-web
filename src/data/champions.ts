@@ -89,9 +89,19 @@ export const CHAMPIONS: Record<string, Champion> = {
     sprite: 'trainer_ELITEFOUR_Lorelei.png',
     intro: 'Tu as grimpé jusqu’ici pour parler de liberté ? Le froid fige tout, même les rêves. Tes Pokémon resteront pris dans la glace.',
   },
-  // Ajout : le Conseil de Kanto (Rouge Feu), qui garde le dernier étage une fois la Route
-  // Victoire ouverte (run.ts, ELITE_BY_BIOME), et le Maître de la Ligue qui l'attend au
-  // bout. Équipes des jeux, réduites aux espèces dont le dépôt a les planches (Ectoplasma
+  // Ajout (retour de test du 17 novembre 2026 : « d'autres dresseurs connus… toujours un seul
+  // dresseur unique par biome ») : Flora, la dresseuse de Hoenn d'Essentials
+  // (POKEMONTRAINER_May), garde l'Océan, qui n'avait plus de champion à lui. Une équipe de
+  // haute mer : Bekipan, Ludicolo, et Lokhlass en as.
+  Flora: {
+    name: 'Flora',
+    type: 'water',
+    team: [[279, 278], [272, 270], [131, 131]],
+    sprite: 'trainer_POKEMONTRAINER_May.png',
+    intro: 'J’ai traversé Hoenn de bout en bout, et la Ligue m’a confié l’Océan. Un sauvage qui veut sa liberté ? Le large n’appartient qu’à ceux qui savent le dompter.',
+  },
+  // Ajout : le Conseil de Kanto (Rouge Feu), qui garde la Route Victoire, un membre par run
+  // (run.ts, ELITE), et le Maître de la Ligue qui l'attend une fois le Conseil tombé. Équipes des jeux, réduites aux espèces dont le dépôt a les planches (Ectoplasma
   // devient Spectrum, Ptéra un Dracaufeu).
   Aldo: {
     name: 'Aldo',
@@ -135,7 +145,9 @@ export const CHAMPIONS: Record<string, Champion> = {
  * Écart voulu (retour de test : des Pokémon très forts dès le début) : rangés aussi par
  * étage de la carte du monde (world/worldmap.ts) — Giovanni et ses cinq Pokémon ne
  * gardent plus le Village, au deuxième acte, mais les Rocailleux, au dernier ; Major Bob
- * prend le Village, Morgane le Lac et l'Océan. Les petites équipes des premiers
+ * prend le Village, Morgane le Lac. Un seul champion par biome, et un seul biome par champion
+ * (retour de test du 17 novembre 2026 : « Ondine, elle va être un peu partout ») ; Flora garde
+ * l'Océan. Les petites équipes des premiers
  * champions sont complétées selon l'acte où on les croise (run.ts, reinforce).
  */
 export const BIOME_CHAMPIONS: Partial<Record<BiomeId, string[]>> = {
@@ -143,11 +155,11 @@ export const BIOME_CHAMPIONS: Partial<Record<BiomeId, string[]>> = {
   plage: ['Ondine'],
   village: ['Major Bob'],
   foret: ['Erika'],
-  ocean: ['Morgane', 'Ondine'],
+  ocean: ['Flora'],
   marais: ['Koga'],
-  lac: ['Ondine', 'Morgane'],
-  automne: ['Erika', 'Pierre'],
-  rocailleux: ['Giovanni', 'Pierre'],
+  lac: ['Morgane'],
+  automne: ['Pierre'],
+  rocailleux: ['Giovanni'],
   volcan: ['Auguste'],
   glace: ['Olga'],
 };
@@ -159,6 +171,9 @@ export const FINAL_BOSS_DEFEAT =
   'Impossible… le dernier verrou a cédé. Va, alors. Que les Pokémon choisissent : suivre un dresseur… ou vivre libres. La chaîne est brisée — et c’est toi qui l’as brisée.';
 
 /** Réplique du Maître de la Ligue vaincu, au bout de la Route Victoire. */
+/** Un membre du Conseil tombe sur la Route Victoire : le Maître attend la prochaine fois. */
+export const ELITE_DEFEAT =
+  'Le Conseil plie… pour cette fois. Mais au bout de la Route, Régis t’attend. Reviens quand le Conseil entier sera tombé.';
 export const MASTER_DEFEAT =
   'Battu… par un sauvage. Le titre est à toi, si tu en veux. Mais je crois que tu n’en veux pas : tu voulais seulement qu’on vous laisse choisir. Alors choisis.';
 
@@ -194,6 +209,7 @@ export const ACE_MOVES: Readonly<Record<string, readonly string[]>> = {
   Aldo: ['cross-chop', 'dynamic-punch', 'rock-slide', 'earthquake', 'close-combat', 'karate-chop', 'bullet-punch'],
   Agatha: ['shadow-ball', 'sludge-bomb', 'dark-pulse', 'thunderbolt', 'shadow-punch', 'lick', 'night-shade'],
   Peter: ['flare-blitz', 'dragon-claw', 'outrage', 'air-slash', 'flamethrower', 'dragon-breath', 'wing-attack'],
+  Flora: ['surf', 'ice-beam', 'body-slam', 'hydro-pump', 'psychic', 'thunderbolt', 'water-pulse'],
   Régis: ['psychic', 'shadow-ball', 'thunder-punch', 'dazzling-gleam', 'fire-punch', 'ice-punch', 'psybeam'],
   Blanche: ['body-slam', 'rollout', 'stomp', 'zen-headbutt', 'double-edge', 'headbutt', 'earthquake'],
 };
@@ -218,6 +234,7 @@ export const TWISTS: Readonly<Record<string, ChampionTwist>> = {
   Pierre: { weather: 'sand' },
   Giovanni: { weather: 'sand' },
   Ondine: { weather: 'rain' },
+  Flora: { weather: 'hail' },
   Olga: { weather: 'hail' },
   Auguste: { weather: 'sun' },
   Erika: { weather: 'sun' },

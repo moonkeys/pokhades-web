@@ -734,6 +734,19 @@ Si d'autres se voient en jeu, noter leur emplacement.
 - Reste : vérifier en jeu le tracé des allées (le dortoir, en briques
   beiges, n'a pas été vu en rendu hors ligne) et la lisibilité des bacs.
 
+### 2.10 Un champion par biome, routes du plan (fait, 17 novembre 2026)
+
+- Un seul champion par biome, et un seul biome par champion
+  (`BIOME_CHAMPIONS`) ; Flora (POKEMONTRAINER_May d'Essentials) garde
+  l'Océan ; onze champions ouvrent la Route Victoire (les sauvegardes déjà
+  montées la gardent ouverte).
+- Le Conseil ne remplace plus de champion de biome : il garde la Route
+  Victoire, un membre par run (Aldo, Agatha, Peter), puis le Maître.
+- Plan du Repaire : les routes déjà prises en pointillés (`Save.trails`).
+- Reste : d'autres dresseurs connus d'Essentials (Red, Leaf, Brendan) si l'on
+  ajoute des biomes ; vérifier le plan en jeu (les pointillés n'ont pas été vus
+  à l'écran).
+
 ---
 
 ## 3. Déjà notés, toujours en attente

@@ -12,7 +12,7 @@ import { buildAtlas } from './assets/atlas';
 import { PLAYER_ACTIONS, WILD_ACTIONS, loadImage, loadInfo, loadSheet } from './assets/pmd';
 import { sheetIdOf } from './data/forms';
 import { megaById, megaFormsOf, type MegaForm } from './data/megas';
-import { ACE_MOVES, TWISTS, FINAL_BOSS_DEFEAT, FINAL_BOSS_INTRO, MASTER_DEFEAT, type Champion } from './data/champions';
+import { ACE_MOVES, TWISTS, ELITE_DEFEAT, FINAL_BOSS_DEFEAT, FINAL_BOSS_INTRO, MASTER_DEFEAT, type Champion } from './data/champions';
 import { Trainer } from './entities/trainer';
 import { MERC_RETAINER, Shop } from './run/shop';
 import { Camp, CAMP_SEED, campPockets, STATIONS, stationId, type Station } from './run/camp';
@@ -752,7 +752,7 @@ async function boot(): Promise<void> {
   // Test de la grotte (panneau) : une run au Rocailleux, dont le biome GROTTE hérite (faune, falaises du dehors).
   // La Route Victoire s'ouvre une fois tous les champions vaincus (meta/feats.ts) ; la taille de l'équipe règle les effectifs.
   const newRunState = () =>
-    new Run(opts.seed, opts.biome === 'run' ? null : opts.biome === 'grotte' ? 'rocailleux' : opts.biome, { cs: [...save.cs], league: leagueOpen(save), teamSize: save.team.length });
+    new Run(opts.seed, opts.biome === 'run' ? null : opts.biome === 'grotte' ? 'rocailleux' : opts.biome, { cs: [...save.cs], league: leagueOpen(save), teamSize: save.team.length, beaten: save.beaten });
   let run = newRunState();
   /** Au Repaire entre deux runs, ou en run. */
   let mode: 'camp' | 'run' = 'camp';
@@ -1359,6 +1359,13 @@ async function boot(): Promise<void> {
       const where = run.onVictoryRoad ? 'victoire' : run.biome;
       if (!save.visited.includes(where)) {
         save.visited.push(where);
+        writeSave(save);
+      }
+      // La route prise depuis le biome de l'acte d'avant, pour le plan du Repaire.
+      const from = run.act > 0 ? run.biomes[run.act - 1] : null;
+      const trail = from && !run.onVictoryRoad ? `${from}>${run.biome}` : null;
+      if (trail && !save.trails.includes(trail)) {
+        save.trails.push(trail);
         writeSave(save);
       }
     }
@@ -2128,7 +2135,7 @@ async function boot(): Promise<void> {
       const podium = roomKey.kind === 'room' && roomKey.arena ? world.podium : undefined;
       trainer = exit ? (podium ? new Trainer(champ.sprite, podium, exit, 0) : Trainer.atExit(champ.sprite, exit)) : null;
       if (trainer && podium) trainer.perch = 22;
-      runHud.announce(champ.name, typeColor(champ.type), run.onVictoryRoad ? 'MAÎTRE DE LA LIGUE' : final ? 'DRESSEUR FINAL' : "CHAMPION D'ARÈNE");
+      runHud.announce(champ.name, typeColor(champ.type), run.onVictoryRoad ? (champ.name === LEAGUE_MASTER ? 'MAÎTRE DE LA LIGUE' : 'CONSEIL DE LA LIGUE') : final ? 'DRESSEUR FINAL' : "CHAMPION D'ARÈNE");
       // L'éclair du « VS » des combats de dresseur.
       sfx('vs');
       combat.addShake(0.15);
@@ -2149,7 +2156,7 @@ async function boot(): Promise<void> {
       endDelay = Math.max(VICTORY_TIME, Dialogue.duration(FINAL_BOSS_DEFEAT) + 0.5);
       combat.addShake(0.2);
       dialogue.show(speaker(run.champion, true), finalLines().defeat);
-      runHud.announce('Victoire !', '#ffd23f', run.onVictoryRoad ? 'NOUVEAU MAÎTRE' : 'LA CHAÎNE EST BRISÉE');
+      runHud.announce('Victoire !', '#ffd23f', run.onVictoryRoad ? (run.champion.name === LEAGUE_MASTER ? 'NOUVEAU MAÎTRE' : 'CONSEIL VAINCU') : 'LA CHAÎNE EST BRISÉE');
     },
   });
 
@@ -2168,7 +2175,7 @@ async function boot(): Promise<void> {
 
   /** Les répliques du dernier boss : le Dresseur final, ou le Maître au bout de la Route Victoire. */
   function finalLines(): { intro: string; defeat: string } {
-    if (run.onVictoryRoad) return { intro: run.champion.intro, defeat: MASTER_DEFEAT };
+    if (run.onVictoryRoad) return { intro: run.champion.intro, defeat: run.champion.name === LEAGUE_MASTER ? MASTER_DEFEAT : ELITE_DEFEAT };
     return { intro: FINAL_BOSS_INTRO, defeat: FINAL_BOSS_DEFEAT };
   }
 
