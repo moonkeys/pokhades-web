@@ -192,6 +192,7 @@ export const LORE: LoreChapter[] = [
       // enemy.ts:318-343
       { title: 'Ils visent ta faiblesse', text: 'Un sauvage choisit sa cible selon l’efficacité de son type : un Pokémon Feu dans une équipe attirera tous les sauvages Eau de la salle.' },
       // enemy.ts:56-81, main.ts
+      { title: 'Les phases du champion', text: 'Son as change de phase à chaque barre brisée : il appelle des sbires, méga-évolue, puis enrage à la dernière barre (lueur rouge, attaques plus fréquentes). Plus ton équipe est grande, plus il est coriace.' },
       { title: 'Les champions', text: 'Plusieurs barres de PV et de grandes attaques annoncées au sol. Battu, un champion te cède un Pokémon de son équipe : le plus faible d’abord, puis, victoire après victoire, jusqu’à son as.' },
       { title: 'L’as', text: 'Le dernier Pokémon du champion, et le plus coriace : cinq barres, des zones plus fréquentes, et parfois la pluie sur ses dernières barres. S’il a une forme Méga, il méga-évolue en perdant une barre.' },
       // combat/signatures.ts

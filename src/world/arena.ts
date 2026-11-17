@@ -1,7 +1,7 @@
 import type { BiomeId } from '../data/species';
 import { findExits, type WorldMap } from './generate';
 import type { Paving } from './town';
-import { CAMP_PROPS, GYM, LAMP, PROPS, TILE, TOWN_DECOR, TREES, type SpriteDef, type Tile } from './tiles';
+import { CAMP_PROPS, FLOWERS, GYM, LAMP, LILIES, PROPS, TILE, TOWN_DECOR, TREES, type SpriteDef, type Tile } from './tiles';
 
 // L'arène d'un champion (ajout, retour de test : « de vraies arènes, un endroit
 // précis pour chaque boss, toujours le même pour chaque biome… un cercle » ;
@@ -75,8 +75,63 @@ export function decorateArena(world: WorldMap, biome: BiomeId): void {
       place(CAMP_PROPS.torch, c.x + Math.cos(a) * RING_R, c.y + Math.sin(a) * RING_R * RING_Y);
     }
   }
+  ARENA_EXTRAS[biome]?.(world, place);
   world.objects.sort((a, b) => a.y - b.y);
 }
+
+type Place = (sp: SpriteDef, x: number, y: number) => boolean;
+
+/**
+ * Ce qui distingue une arène d'une autre au-delà de son anneau (retour de test du 17 novembre
+ * 2026 : « la même pour la Prairie et le Lac ») : la Prairie, un tapis de fleurs au bord du
+ * terrain et quatre massifs de tournesols ; le Lac, des nénuphars sur l'eau qui cerne l'arène et
+ * des roseaux sur la rive. Tout vient du tileset.
+ */
+const ARENA_EXTRAS: Partial<Record<BiomeId, (world: WorldMap, place: Place) => void>> = {
+  prairie: (world, place) => {
+    const c = world.hub;
+    for (let k = 0; k < 40; k++) {
+      const a = (k / 40) * Math.PI * 2;
+      const r = INNER_R + (k % 3) * 0.5;
+      const x = Math.floor(c.x + Math.cos(a) * r);
+      const y = Math.floor(c.y + Math.sin(a) * r * RING_Y);
+      const i = y * world.w + x;
+      if (world.blocked[i] || world.water[i] || world.path[i]) continue;
+      world.flat.push({ tile: FLOWERS[(k * 3) % FLOWERS.length], x, y });
+    }
+    for (const a of DIAGONALS) place(TOWN_DECOR.sunflowers, c.x + Math.cos(a) * (RING_R - 1.6), c.y + Math.sin(a) * (RING_R - 1.6) * RING_Y);
+  },
+  lac: (world, place) => {
+    // L'arène du Lac est cernée d'eau (generate.ts) : des nénuphars sur l'eau qui l'entoure, et des
+    // roseaux le long de la rive.
+    const c = world.hub;
+    for (let k = 0; k < 64; k++) {
+      const a = (k / 64) * Math.PI * 2;
+      for (const r of [RING_R + 1.5, RING_R + 3]) {
+        const x = Math.floor(c.x + Math.cos(a) * r);
+        const y = Math.floor(c.y + Math.sin(a) * r * RING_Y);
+        if (x < 1 || y < 1 || x >= world.w - 1 || y >= world.h - 1) continue;
+        const i = y * world.w + x;
+        if (world.water[i] && (k + Math.round(r)) % 3 === 0) world.lilies.push({ tile: LILIES.pond[k % LILIES.pond.length], x, y });
+      }
+      if (k % 4) continue;
+      // Un roseau sur la dernière case de terre avant l'eau, en partant du centre.
+      for (let r = INNER_R; r < RING_R + 4; r += 0.5) {
+        const x = c.x + Math.cos(a) * r;
+        const y = c.y + Math.sin(a) * r * RING_Y;
+        const i = Math.floor(y) * world.w + Math.floor(x);
+        if (!world.water[i]) continue;
+        const back = r - 0.8;
+        place(PROPS.reeds[k % 2], c.x + Math.cos(a) * back, c.y + Math.sin(a) * back * RING_Y);
+        break;
+      }
+    }
+  },
+};
+
+/** Rayon du bord du terrain (fleurs, roseaux) et les quatre diagonales (massifs de tournesols). */
+const INNER_R = 7.6;
+const DIAGONALS = [Math.PI / 4, (3 * Math.PI) / 4, (5 * Math.PI) / 4, (7 * Math.PI) / 4];
 
 /**
  * L'arène du Village (retour de test : « une vraie arène de dresseur, comme

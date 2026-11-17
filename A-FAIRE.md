@@ -385,6 +385,17 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
   (`COMBATS_PER_ACT`, `ROOMS_PER_ACT`) ; niveaux à la même pente par acte.
 - Reste : d'autres salles.
 
+### 1.9 bis Combats de champion plus épiques (17 novembre 2026)
+- Retour de test (« à six Pokémon, trop facile, les boss on les éclate ») :
+  phases de l'as (réplique du champion, « Phase n », sbires à la 4ᵉ et à la
+  dernière barre, Méga à la 2ᵉ, rage à la dernière), difficulté selon
+  l'équipe (PV +45 % et attaque +5 % par membre, 3 barres aux Pokémon du
+  champion dès 4 membres), champion visible au bord de son arène (il était
+  effacé par le chargement de salle, sa réplique d'entrée aussi).
+- Arènes : Prairie (fleurs, tournesols) et Lac (nénuphars, roseaux)
+  distinctes. Reste : les autres arènes (à voir en jeu), juger l'équilibre
+  à six.
+
 ### 1.10 Son (fait)
 - `src/audio/sounds.ts` (catalogue, repris de `Sfx.gd`) et `audio.ts`
   (Web Audio : bus musique / bruitages, fondu entre musiques, anti-rafale

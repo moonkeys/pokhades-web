@@ -136,6 +136,11 @@ export class Actor {
    * 1 avec la sienne). Le rendu l'entoure aussi de son aura.
    */
   mega = 0;
+  /**
+   * L'as d'un champion à sa dernière barre (main.ts, combat.phase) : attaques de zone deux fois
+   * plus fréquentes, coups plus rapprochés (enemy.ts), et une lueur rouge (renderer).
+   */
+  enraged = false;
   /** Caché dans l'herbe haute : ni dessiné, ni visé par les tirs. */
   hidden = false;
   /**

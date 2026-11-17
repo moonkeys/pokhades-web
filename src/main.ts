@@ -37,6 +37,8 @@ import { EnemyBrain } from './combat/enemy';
 import { BOONS, DONORS, RARITY_COLOR, RARITY_NAME, STAT_BOONS, type BoonOffer } from './combat/boons';
 import { tune, type Move } from './combat/moves';
 import { BASE_TEAM_LEVEL, Pokemon, xpForLevel } from './combat/pokemon';
+import { typeMates } from './data/trainers';
+import { preEvolutionOf } from './data/evolutions';
 import { STEP, startLoop } from './core/loop';
 import { Rng } from './core/rng';
 import { CAMP_NPCS, SWIMMERS } from './data/species';
@@ -128,7 +130,13 @@ const BOSS_BOOST = {
   champion: { atk: 1.15, def: 1.1, hp: 1.4 },
   boss: { atk: 1.45, def: 1.3, hp: 1.8 },
 };
-const BOSS_HP_PER_MEMBER = 0.3;
+const BOSS_HP_PER_MEMBER = 0.45;
+/**
+ * Retour de test du 17 novembre 2026 (« à six, on les éclate tous d'un coup ») : +45 % de PV par
+ * membre au lieu de +30 %, +5 % d'attaque par membre au-delà du premier, et une barre de plus aux
+ * Pokémon du champion dès quatre membres (main.ts, spawnEnemy).
+ */
+const BOSS_ATK_PER_MEMBER = 0.05;
 
 async function boot(): Promise<void> {
   const canvas = document.getElementById('screen') as HTMLCanvasElement;
@@ -191,6 +199,16 @@ async function boot(): Promise<void> {
   const dialogue = new Dialogue(document.body);
   /** Dresseur du champion, en salle de boss. */
   let trainer: Trainer | null = null;
+  /** La bulle du champion au bord du terrain (ses répliques de phase), et son temps restant. */
+  const trainerLayer = Object.assign(document.createElement('div'), { className: 'room-labels' });
+  const trainerBubble = Object.assign(document.createElement('div'), { className: 'room-label shop-bubble' });
+  trainerLayer.append(trainerBubble);
+  document.body.append(trainerLayer);
+  let trainerBubbleT = 0;
+  const trainerSay = (text: string) => {
+    trainerBubble.textContent = text;
+    trainerBubbleT = 3.5;
+  };
   const bossPreview = new BossPreview(document.body);
   const runSummary = new RunSummary(document.body);
   /** Bilan de la run en cours (dégâts, K.O., Baies…), montré à sa fin. */
@@ -784,7 +802,10 @@ async function boot(): Promise<void> {
         mon.mult.def *= boost.def;
         mon.mult.spDef *= boost.def;
         // PV de chaque barre, selon la taille de l'équipe sur le terrain (mercenaires compris).
-        mon.boostMaxHp(boost.hp * (1 + BOSS_HP_PER_MEMBER * Math.max(0, team.length - 1)));
+        const extra = Math.max(0, team.length - 1);
+        mon.boostMaxHp(boost.hp * (1 + BOSS_HP_PER_MEMBER * extra));
+        mon.mult.atk *= 1 + BOSS_ATK_PER_MEMBER * extra;
+        mon.mult.spAtk *= 1 + BOSS_ATK_PER_MEMBER * extra;
         mon.hp = mon.maxHp;
       }
       // L'archétype dépend des capacités : le cerveau naît avec la fiche.
@@ -1008,7 +1029,7 @@ async function boot(): Promise<void> {
     const a = new Actor(id, x, y);
     // Barres de PV : 2 pour un Pokémon de champion, 5 pour son as (EnemyAI.gd:200-206).
     a.role = role;
-    a.bars = a.barsLeft = role === 'boss' ? 5 : role === 'champion' ? 2 : 1;
+    a.bars = a.barsLeft = role === 'boss' ? 5 : role === 'champion' ? (team.length >= 4 ? 3 : 2) : 1;
     // Dans l'eau, seulement les espèces aquatiques, qui y nagent elles-mêmes.
     if (SWIMMERS.has(id)) a.canSwim = a.nativeSwimmer = true;
     const i = Math.floor(y - 0.05) * world.w + Math.floor(x);
@@ -1095,7 +1116,55 @@ async function boot(): Promise<void> {
    * nom annoncé au-dessus de lui. Le changement de forme est instantané : la
    * barre qui se remplit et l'éclat doré font déjà la mise en scène.
    */
+  /**
+   * Les phases de l'as d'un champion (retour de test du 17 novembre 2026 : « à six, les combats ne
+   * sont pas épiques… plusieurs phases, plusieurs types d'attaques, des invocations, des
+   * sous-fifres ») : à chaque barre brisée, le champion lance une réplique ; à la quatrième et à la
+   * dernière, il appelle des sbires de son type (plus nombreux si l'équipe est grande) ; à la
+   * deuxième, l'as méga-évolue s'il le peut (plus bas) ; à la dernière, il enrage (enemy.ts).
+   */
+  const BOSS_PHASE_LINES: Record<number, string> = {
+    4: 'Pas mal… Mais on ne fait que commencer ! Renforts !',
+    3: 'Montre-leur ce que tu vaux !',
+    2: 'Sens-tu cette puissance ?',
+    1: 'Tout ou rien ! Déchaîne-toi !',
+  };
+  /** Combien de sbires l'as appelle à la fois : 1, plus un par paire de membres de l'équipe. */
+  const minionCount = () => 1 + Math.floor(team.filter((m) => !m.runAlly).length / 2);
+  const summonMinions = (boss: Actor) => {
+    const champ = run.champion;
+    const pool = typeMates(champ.type).filter((id) => preEvolutionOf(id) === null && !SWIMMERS.has(id));
+    if (!pool.length) return;
+    const n = minionCount();
+    for (let i = 0; i < n; i++) {
+      const ang = (i / n) * Math.PI * 2 + Math.random();
+      let x = boss.x + Math.cos(ang) * 2.6;
+      let y = boss.y + Math.sin(ang) * 2;
+      const c = Math.floor(y - 0.05) * world.w + Math.floor(x);
+      if (world.blocked[c] || world.water[c]) {
+        x = boss.x;
+        y = boss.y + 1.5;
+      }
+      const id = pool[Math.floor(Math.random() * pool.length)];
+      const m = spawnEnemy(id, Math.max(2, run.roomLevel - 2), x, y, 'wild');
+      fx.ballSend(x, y);
+      m.brain?.provoke();
+    }
+    sfx('ballDrop');
+  };
   combat.phase = (e) => {
+    if (mode === 'run' && e.role === 'boss') {
+      const line = BOSS_PHASE_LINES[e.barsLeft];
+      if (line) trainerSay(line);
+      combat.callout(e, `Phase ${6 - e.barsLeft}`);
+      if (e.barsLeft === 4 || e.barsLeft === 1) summonMinions(e);
+      if (e.barsLeft === 1 && !e.enraged) {
+        e.enraged = true;
+        combat.addShake(0.25);
+        fx.impact(e.x, e.y, '#ff5040');
+        sfx('ability');
+      }
+    } else if (mode === 'run' && e.role === 'champion' && Math.random() < 0.5) trainerSay(['Tiens bon !', 'Ne lâche rien !', 'Encore un effort !'][Math.floor(Math.random() * 3)]);
     const mon = e.pokemon;
     const forms = mon && e.role === 'boss' && e.barsLeft === 2 && !e.mega ? megaFormsOf(mon.id) : [];
     const form = forms[Math.floor(Math.random() * forms.length)];
@@ -1190,6 +1259,13 @@ async function boot(): Promise<void> {
     setWeather(weatherNow());
     // Le ciel change : on dit ce que ça change au combat.
     if (roomWeather !== before && roomWeather !== 'clear') runHud.notify({ title: WEATHERS[roomWeather].name, text: WEATHERS[roomWeather].hint, icon: WEATHERS[roomWeather].icon });
+    // (Avant director.start, qui pose le champion au bord de son arène et lance sa réplique :
+    // remis à zéro après, ils disparaissaient aussitôt — retour de test du 17 novembre 2026,
+    // « on ne voit pas les dresseurs pendant les combats ».)
+    boonOffer = null;
+    skillOffer = null;
+    trainer = null;
+    dialogue.close();
     director.start(world, run, opts.wild, first);
     // Le boss a sa musique (CombatArena.gd:1610) ; les autres salles, boutique comprise, la leur (écart voulu, sounds.ts).
     audio.playMusic(roomMusic());
@@ -1208,10 +1284,6 @@ async function boot(): Promise<void> {
         writeSave(save);
       }
     }
-    boonOffer = null;
-    skillOffer = null;
-    trainer = null;
-    dialogue.close();
     // Boutique : le marchand derrière son comptoir, l'étal, l'affiche et les Pokémon de la place.
     shop.clear();
     if (run.isShop() && net.role !== 'client') payMercs();
@@ -1965,7 +2037,8 @@ async function boot(): Promise<void> {
       const champ = run.champion;
       const final = run.isFinal;
       // Dans son arène, le champion se tient au bord nord du terrain, face à l'entrée ; il fuira par la sortie.
-      trainer = exit ? (roomKey.kind === 'room' && roomKey.arena ? new Trainer(champ.sprite, { x: world.hub.x, y: world.hub.y - 7.5 }, exit) : Trainer.atExit(champ.sprite, exit)) : null;
+      // (Retour de test : « on ne voit pas les dresseurs » : plus près du terrain, 5 cases au lieu de 7,5.)
+      trainer = exit ? (roomKey.kind === 'room' && roomKey.arena ? new Trainer(champ.sprite, { x: world.hub.x, y: world.hub.y - 5 }, exit) : Trainer.atExit(champ.sprite, exit)) : null;
       runHud.announce(champ.name, typeColor(champ.type), run.onVictoryRoad ? 'MAÎTRE DE LA LIGUE' : final ? 'DRESSEUR FINAL' : "CHAMPION D'ARÈNE");
       // L'éclair du « VS » des combats de dresseur.
       sfx('vs');
@@ -3406,6 +3479,14 @@ async function boot(): Promise<void> {
     altar.placeLabels(proj);
     dojo.placeLabels(proj);
     pension.placeLabels(proj);
+    // La bulle du champion, au-dessus de sa tête (basculée seulement quand il le faut).
+    trainerBubbleT -= frameDt;
+    const say = Boolean(trainer) && trainerBubbleT > 0 && mode === 'run';
+    if (trainerBubble.classList.contains('open') !== say) trainerBubble.classList.toggle('open', say);
+    if (say && trainer) {
+      const at = proj.toCss(trainer.x, trainer.y - 2.3);
+      trainerBubble.style.transform = `translate(${at.x}px, ${at.y}px) translate(-50%, -100%)`;
+    }
     residents.placeLabels(proj);
     cave.placeLabels(proj);
     camp.placeLabels(proj);
@@ -3456,6 +3537,9 @@ async function boot(): Promise<void> {
         dojo,
         spring,
         residents,
+        get trainer() {
+          return trainer;
+        },
         camp,
         /** Jeu en ligne : la scène reçue (invité), le décor de la salle (hôte), la session. */
         netDebug: () => ({ scene: hostScene, extras: runExtras().length, net, field }),

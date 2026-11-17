@@ -1015,6 +1015,8 @@ export class Renderer {
         if (a.protectT > 0) layers.push(['140,217,255', 0.35 + 0.15 * Math.sin(time * 14)]);
         if (a.flash.t > 0) layers.push([hexRgb(a.flash.color), a.flash.alpha * (a.flash.t / a.flash.dur)]);
         // Entrée en puissance : il pulse à la couleur de son type, de plus en plus vite jusqu'à la libération.
+        // L'as enragé (dernière barre) : une lueur rouge qui bat.
+        if (a.enraged) layers.push(['255,70,60', 0.18 + 0.12 * Math.sin(time * 8)]);
         if (a.intro && a.pokemon) {
           const { t, burst, dur } = a.intro;
           const al = t < burst ? 0.25 + 0.35 * Math.abs(Math.sin(t * (8 + 14 * (t / burst)))) : 0.7 * Math.max(0, 1 - (t - burst) / Math.min(0.5, dur - burst));

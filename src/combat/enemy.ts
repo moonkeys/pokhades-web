@@ -57,6 +57,9 @@ const BOSS_COOLDOWN_MULT = 0.75;
 /** Première zone peu après l'entrée en scène, puis une toutes les AREA_COOLDOWN s. */
 const AREA_FIRST = 3.5;
 const AREA_COOLDOWN = { champion: 6, boss: 4.5 };
+/** L'as enragé (dernière barre) : zones deux fois plus fréquentes, coups un quart plus rapprochés. */
+const ENRAGED_AREA = 0.5;
+const ENRAGED_COOLDOWN = 0.75;
 /** Temps entre la pose de la zone et l'impact : plus long qu'un tir (0,45 s), la zone étant bien plus grande. */
 const AREA_DELAY = { champion: 0.85, boss: 0.75 };
 /** Puissance d'une zone (× celle de la capacité), et de chaque disque de la pluie. */
@@ -150,7 +153,8 @@ export class EnemyBrain {
 
   /** Recharge entre deux attaques, raccourcie pour un champion et son as. */
   private get cooldown(): number {
-    return this.actor.role === 'wild' ? ATTACK_COOLDOWN : ATTACK_COOLDOWN * BOSS_COOLDOWN_MULT;
+    const rage = this.actor.enraged ? ENRAGED_COOLDOWN : 1;
+    return this.actor.role === 'wild' ? ATTACK_COOLDOWN : ATTACK_COOLDOWN * BOSS_COOLDOWN_MULT * rage;
   }
 
   get attackRange(): number {
@@ -496,7 +500,7 @@ export class EnemyBrain {
   /** Le lanceur tient la pose (sans anneau : la zone au sol suffit) jusqu'à l'impact. */
   private castArea(target: Actor, delay: number): void {
     const a = this.actor;
-    this.areaT = AREA_COOLDOWN[a.role === 'boss' ? 'boss' : 'champion'];
+    this.areaT = AREA_COOLDOWN[a.role === 'boss' ? 'boss' : 'champion'] * (a.enraged ? ENRAGED_AREA : 1);
     // Une zone de type posée : la suivante sera la signature (tryArea la remet à faux après la sienne).
     this.signatureNext = true;
     this.attackT = Math.max(this.attackT, delay + 0.35);

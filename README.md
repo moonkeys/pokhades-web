@@ -637,7 +637,19 @@ Danse-Fleur d'Erika (deux spirales de pétales), Toxik de Koga (des flaques
 qui piquent quatre fois), Prémonition de Morgane (trois salves qui suivent
 l'équipe), Déflagration d'Auguste (un anneau de feu puis une explosion au
 centre), Séisme de Giovanni (des ondes qui s'éloignent) et Roulade de
-Blanche (trois charges visées). Le dresseur attend devant la sortie et s'enfuit
+Blanche (trois charges visées). **Phases de l'as** (retour de test du 17
+novembre 2026 : « à six, on les éclate tous d'un coup ») : à chaque barre
+brisée, « Phase n » au-dessus de lui et une réplique de son dresseur dans une
+bulle ; à la 4ᵉ et à la dernière barre, il appelle des sbires de son type (1,
+plus un par paire de membres de l'équipe) ; à la 2ᵉ, il méga-évolue s'il le
+peut ; à la dernière, il **enrage** (lueur rouge, zones deux fois plus
+fréquentes, coups un quart plus rapprochés : `Actor.enraged`). La difficulté
+suit l'équipe : +45 % de PV et +5 % d'attaque par membre au-delà du premier,
+une barre de plus aux Pokémon du champion dès quatre membres. Le dresseur
+se tient à cinq cases au nord du centre de son arène (il était effacé juste
+après son apparition, sa réplique d'entrée aussi : corrigé). Les arènes de
+la Prairie (tapis de fleurs, massifs de tournesols) et du Lac (nénuphars,
+roseaux sur la rive) ont leur décor à elles (`ARENA_EXTRAS`, arena.ts). Le dresseur attend devant la sortie et s'enfuit
 par elle à la fin. Les K.O. rapportent de l'XP (niveau³ par niveau, comme
 le jeu) : sans elle, le boss était hors de portée d'un Pokémon resté niveau 10.
 

@@ -20,8 +20,17 @@ export const PATCH_NOTES: readonly PatchNote[] = [
   {
     id: '2026-11-17',
     date: '17 novembre 2026',
-    title: 'De nouveaux talents',
+    title: 'Champions plus épiques et nouveaux talents',
     sections: [
+      {
+        title: 'Champions',
+        items: [
+          'L’as change de phase à chaque barre : son dresseur l’encourage, il appelle des sbires de son type, méga-évolue, puis enrage à la dernière barre.',
+          'Plus ton équipe est grande, plus il est coriace (PV, attaque, et une barre de plus à ses Pokémon dès quatre membres).',
+          'Le champion se voit au bord de son arène, et sa réplique d’entrée ne se coupe plus.',
+          'Les arènes de la Prairie et du Lac ont leur décor : fleurs et tournesols, nénuphars et roseaux.',
+        ],
+      },
       {
         title: 'Combat',
         items: [
