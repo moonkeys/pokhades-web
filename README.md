@@ -646,8 +646,14 @@ peut ; à la dernière, il **enrage** (lueur rouge, zones deux fois plus
 fréquentes, coups un quart plus rapprochés : `Actor.enraged`). Toutes les
 11 s (7 s enragé), l'as **prend le centre** de l'arène 6 s et y enchaîne des
 figures autour de lui : deux ondes de choc, une croix de rayons puis sa
-diagonale, trois cônes qui balaient (`EnemyBrain.centerStance`) ; il ne reste
-jamais planté. Les Pokémon d'un champion ne nagent plus (au Lac, ils
+diagonale, trois cônes qui balaient, des anneaux qui s'éloignent ou une pluie
+de frappes — selon son type, deux fois sur trois (`STANCE_STYLE`) ; il ne
+reste jamais planté (`EnemyBrain.centerStance`). Une fois sur deux, au lieu
+du centre, il **bondit** sur le membre le plus éloigné : un cercle au sol, il
+disparaît dans les airs et retombe en onde de choc (`leap`). Enragé, toutes
+les 15 s, son **ultime** : toute l'arène sous un voile rouge, sauf trois
+zones sûres cerclées de vert, 2,2 s pour s'y mettre (`ultimate`, forme
+`field`). Les Pokémon d'un champion ne nagent plus (au Lac, ils
 partaient au large, hors d'atteinte). Le champion se tient **sur un rocher**
 de l'anneau, au nord-est (`WorldMap.podium`), immobile et hors d'atteinte ;
 vaincu, il lâche une dernière phrase et disparaît dans un nuage. Sur son

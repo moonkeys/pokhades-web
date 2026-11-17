@@ -108,7 +108,12 @@ export type AreaShape =
   | { kind: 'line'; len: number; halfW: number; dx: number; dy: number }
   | { kind: 'cone'; r: number; half: number; dx: number; dy: number }
   /** Couronne entre r0 et r autour du centre : les ondes de Séisme, l'anneau de feu d'Auguste (signatures, enemy.ts). */
-  | { kind: 'ring'; r0: number; r: number };
+  | { kind: 'ring'; r0: number; r: number }
+  /**
+   * L'ultime de l'as (enemy.ts) : tout un disque de rayon r, sauf des zones sûres (coordonnées de
+   * la carte) où il faut courir se mettre.
+   */
+  | { kind: 'field'; r: number; safe: readonly { x: number; y: number; r: number }[] };
 /** Marge pour le corps du Pokémon : touché si le bord de la zone l'effleure. */
 const AREA_BODY = 0.3;
 
@@ -621,6 +626,11 @@ export class Combat {
       if (o.area) {
         if (!o.area.source?.pokemon || !this.inArea(o, o.area.shape, x, y)) continue;
         const sh = o.area.shape;
+        if (sh.kind === 'field') {
+          // Fuir le point symétrique de la zone sûre la plus proche : on court vers elle.
+          const z = sh.safe.reduce((a, b) => (Math.hypot(x - b.x, y - b.y) < Math.hypot(x - a.x, y - a.y) ? b : a), sh.safe[0]);
+          return z ? { x: 2 * x - z.x, y: 2 * y - z.y } : { x: o.x, y: o.y };
+        }
         if (sh.kind === 'line' || sh.kind === 'cone') {
           const along = Math.max(0, (x - o.x) * sh.dx + (y - o.y) * sh.dy);
           return { x: o.x + sh.dx * along, y: o.y + sh.dy * along };
@@ -655,6 +665,9 @@ export class Combat {
       }
       case 'ring':
         return d >= shape.r0 - AREA_BODY && d <= shape.r + AREA_BODY;
+      case 'field':
+        // (Les zones sûres pardonnent un peu : on y est dès que le centre du corps y entre.)
+        return d <= shape.r + AREA_BODY && !shape.safe.some((z) => Math.hypot(px - z.x, py - z.y) <= z.r);
     }
   }
 
@@ -1161,6 +1174,20 @@ function areaPoints(x: number, y: number, shape: AreaShape): [number, number][] 
     case 'line': {
       const pts: [number, number][] = [];
       for (let d = 1; d <= shape.len; d += 1.6) pts.push([x + shape.dx * d, y + shape.dy * d]);
+      return pts;
+    }
+    case 'field': {
+      // Une animation tous les ~2,6 cases dans le disque, hors des zones sûres, 18 au plus.
+      const pts: [number, number][] = [[x, y]];
+      for (let r = 2.6; r <= shape.r; r += 2.6) {
+        const n = Math.round((2 * Math.PI * r) / 2.6);
+        for (let i = 0; i < n && pts.length < 18; i++) {
+          const a = (i / n) * Math.PI * 2 + r;
+          const px = x + Math.cos(a) * r;
+          const py = y + Math.sin(a) * r;
+          if (!shape.safe.some((z) => Math.hypot(px - z.x, py - z.y) <= z.r)) pts.push([px, py]);
+        }
+      }
       return pts;
     }
     case 'ring': {

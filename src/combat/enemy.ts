@@ -69,6 +69,28 @@ const STANCE_FIRST = 8;
 const STANCE_TIME = 6;
 const STANCE_EVERY = 11;
 const STANCE_EVERY_ENRAGED = 7;
+/** Bond de l'as : préavis (s) et rayon de l'onde à l'atterrissage. */
+const LEAP_TIME = 1.1;
+const LEAP_RADIUS = 2.2;
+/** Ultime de l'as enragé : premier, intervalle, préavis (s), rayon, zones sûres (nombre, rayon), puissance. */
+const ULT_FIRST = 2.5;
+const ULT_EVERY = 15;
+const ULT_DELAY = 2.2;
+const ULT_RADIUS = 11;
+const ULT_SAFE = 3;
+const ULT_SAFE_R = 1.6;
+const ULT_POWER = 1.6;
+/**
+ * Les figures de l'as au centre selon son type (0 ondes de choc, 1 croix de rayons, 2 cônes,
+ * 3 anneaux qui s'éloignent, 4 pluie de frappes) ; les autres types alternent les trois premières.
+ */
+const STANCE_STYLE: Record<string, number> = {
+  fire: 3, dragon: 3, psychic: 3, fairy: 3,
+  water: 1, ice: 1, steel: 1, normal: 1,
+  electric: 4, flying: 4, ghost: 4, dark: 4,
+  ground: 0, rock: 0, fighting: 0,
+  grass: 2, bug: 2, poison: 2,
+};
 /** Puissance d'une zone (× celle de la capacité), et de chaque disque de la pluie. */
 const AREA_POWER = 1.25;
 const RAIN_POWER = 0.6;
@@ -131,6 +153,10 @@ export class EnemyBrain {
    */
   private stanceNext = STANCE_FIRST;
   private stance: { t: number; castT: number; k: number } | null = null;
+  /** Prises de centre et bonds alternent : combien il en a fait. */
+  private moves = 0;
+  /** L'ultime de l'as enragé : secondes avant le prochain. */
+  private ultT = ULT_FIRST;
   /** Suites d'une signature (salves de Prémonition, Roulades…), en s restantes. */
   private pending: { t: number; fn: () => void }[] = [];
   /** Anticipation en cours (s restantes), et cible verrouillée pendant ce temps. */
@@ -281,8 +307,15 @@ export class EnemyBrain {
     a.wander = false;
     // L'as prend le centre de temps en temps, même sans cible : il ne reste jamais planté.
     if (a.role === 'boss') {
+      // L'ultime, à la dernière barre : toute l'arène, sauf quelques zones sûres.
+      if (a.enraged) {
+        this.ultT -= dt;
+        if (this.ultT <= 0 && !this.stance) return this.ultimate(world, combat);
+      }
       if (!this.stance) {
         this.stanceNext -= dt;
+        // Une fois sur deux, il bondit sur le membre le plus éloigné au lieu de prendre le centre.
+        if (this.stanceNext <= 0 && this.moves++ % 2 === 1 && this.leap(team, world, combat)) return;
         if (this.stanceNext <= 0) this.stance = { t: STANCE_TIME, castT: 0.9, k: 0 };
       }
       if (this.stance) return this.centerStance(dt, team, world, combat);
@@ -522,6 +555,80 @@ export class EnemyBrain {
   }
 
   /**
+   * Le bond de l'as (retour de test : « il recule, et après il attaque ») : il marque au sol le
+   * membre le plus éloigné, se ramasse, disparaît dans les airs et retombe dessus en onde de choc.
+   * Faux s'il n'a personne à viser (il prendra le centre à la place).
+   */
+  private leap(team: readonly Actor[], world: WorldMap, combat: Combat): boolean {
+    const a = this.actor;
+    const alive = team.filter((m) => m.pokemon && !m.pokemon.fainted && m.deathT < 0);
+    const far = alive.reduce<Actor | null>((best, m) => (!best || Math.hypot(m.x - a.x, m.y - a.y) > Math.hypot(best.x - a.x, best.y - a.y) ? m : best), null);
+    if (!far) return false;
+    const tx = far.x;
+    const ty = far.y;
+    const c = Math.floor(ty - 0.05) * world.w + Math.floor(tx);
+    if (world.blocked[c] || world.water[c]) return false;
+    const mon = a.pokemon!;
+    const move = this.ranged ?? mon.moves.find((m) => m.power > 0) ?? null;
+    const power = Math.max(40, move?.power ?? 40) * AREA_POWER;
+    combat.enemyArea(a, { kind: 'circle', r: LEAP_RADIUS }, tx, ty, move, power, LEAP_TIME);
+    combat.callout(a, 'Bond !');
+    this.face(tx, ty);
+    a.playAction(['Charge', 'Attack'], 0.3);
+    this.pending.push({ t: 0.3, fn: () => (a.hidden = true) });
+    this.pending.push({
+      t: LEAP_TIME - 0.05,
+      fn: () => {
+        a.x = a.prevX = tx;
+        a.y = a.prevY = ty;
+        a.hidden = false;
+        combat.addShake(0.2);
+        sfx('quake');
+      },
+    });
+    this.stanceNext = a.enraged ? STANCE_EVERY_ENRAGED : STANCE_EVERY;
+    this.attackT = Math.max(this.attackT, LEAP_TIME + 0.4);
+    this.windup = LEAP_TIME;
+    this.windupTarget = null;
+    this.areaCasting = true;
+    a.windup = { t: 0, dur: LEAP_TIME, ring: 0 };
+    return true;
+  }
+
+  /**
+   * L'ultime de l'as enragé (toutes les ULT_EVERY s) : toute l'arène s'embrase après un long
+   * préavis, sauf deux ou trois zones sûres marquées au sol, où il faut courir se mettre.
+   */
+  private ultimate(world: WorldMap, combat: Combat): void {
+    const a = this.actor;
+    const mon = a.pokemon!;
+    const move = this.ranged ?? mon.moves.find((m) => m.power > 0) ?? null;
+    const power = Math.max(60, move?.power ?? 60) * ULT_POWER;
+    const hub = world.hub;
+    const safe: { x: number; y: number; r: number }[] = [];
+    for (let tries = 0; tries < 40 && safe.length < ULT_SAFE; tries++) {
+      const ang = Math.random() * Math.PI * 2;
+      const r = 2.5 + Math.random() * 4;
+      const x = hub.x + Math.cos(ang) * r;
+      const y = hub.y + Math.sin(ang) * r * 0.8;
+      const c = Math.floor(y - 0.05) * world.w + Math.floor(x);
+      if (world.blocked[c] || world.water[c] || safe.some((z) => Math.hypot(z.x - x, z.y - y) < 4)) continue;
+      safe.push({ x, y, r: ULT_SAFE_R });
+    }
+    combat.enemyArea(a, { kind: 'field', r: ULT_RADIUS, safe }, hub.x, hub.y, move, power, ULT_DELAY);
+    combat.callout(a, `Ultime : ${mon.name} !`);
+    combat.addShake(0.15);
+    sfx('ability');
+    a.playAction(['Charge', 'Rotate', 'Attack'], 0.5);
+    this.ultT = ULT_EVERY;
+    this.attackT = Math.max(this.attackT, ULT_DELAY + 0.5);
+    this.windup = ULT_DELAY;
+    this.windupTarget = null;
+    this.areaCasting = true;
+    a.windup = { t: 0, dur: ULT_DELAY, ring: 0 };
+  }
+
+  /**
    * L'as au centre de l'arène : il y court, puis enchaîne des figures autour de lui, annoncées au
    * sol — deux ondes de choc concentriques, une croix de rayons puis sa diagonale, trois cônes qui
    * balaient —, plus vite s'il enrage. Au bout de STANCE_TIME, il reprend la chasse.
@@ -554,7 +661,25 @@ export class EnemyBrain {
     if (alive) this.face(alive.x, alive.y);
     a.playAction(['Charge', 'Attack'], 0.4);
     const ray = (ang: number, t: number) => combat.enemyArea(a, { kind: 'line', len: BEAM_LEN, halfW: BEAM_HALF_WIDTH, dx: Math.cos(ang), dy: Math.sin(ang) }, a.x, a.y, move, power, t);
-    switch (st.k++ % 3) {
+    // Son type donne le ton (deux fois sur trois) : anneaux de feu, croix d'eau, pluie d'éclairs…
+    const style = STANCE_STYLE[mon.types[0]];
+    const pick = style !== undefined && st.k % 3 !== 2 ? style : st.k % 3;
+    st.k++;
+    switch (pick) {
+      case 3: {
+        // Anneaux qui s'éloignent : trois couronnes l'une après l'autre.
+        for (let i = 0; i < 3; i++) combat.enemyArea(a, { kind: 'ring', r0: i * 2.4, r: i * 2.4 + 2.4 }, a.x, a.y, move, power, delay + i * 0.45);
+        break;
+      }
+      case 4: {
+        // Pluie de frappes autour de lui.
+        for (let i = 0; i < 9; i++) {
+          const ang = Math.random() * Math.PI * 2;
+          const r = 1.5 + Math.random() * 5.5;
+          combat.enemyArea(a, { kind: 'circle', r: 1.2 }, a.x + Math.cos(ang) * r, a.y + Math.sin(ang) * r * 0.8, move, power * 0.8, delay + i * 0.12);
+        }
+        break;
+      }
       case 0:
         combat.enemyArea(a, { kind: 'circle', r: SHOCK_RADIUS }, a.x, a.y, move, power, delay);
         combat.enemyArea(a, { kind: 'circle', r: SHOCK_RADIUS * 1.8 }, a.x, a.y, move, power * 0.8, delay + 0.6);
