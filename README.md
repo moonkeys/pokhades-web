@@ -273,7 +273,13 @@ contact** (`CONTACT_TALENTS`) : qui frappe au corps à corps un Pokémon doté
 de Statik (Pikachu, Wattouat, Élektek…), Corps Ardent (Ponyta, Magmar,
 Limagma…) ou Point Poison (Nidoran, Qwilfish, Rosélia…) risque, 3 fois sur
 10, la paralysie, la brûlure ou le poison ; dans les deux camps
-(`Combat.contactTalent`). L'intimidateur se montre : il fait son geste d'attaque vers sa cible, avec
+(`Combat.contactTalent`). **Absorb Eau** (Ptitard, Lokhlass, Aquali,
+Axoloto…) et **Absorb Volt** (Voltali, Loupio, Lanturn) : le type absorbé ne
+blesse pas, il soigne d'un quart des PV. **Torche** (Goupix, Pyroli, Malosse,
+Démolosse) : le Feu ne blesse pas, et embrase ses propres attaques Feu
+(×1,5). **Engrais, Brasier, Torrent** (les starters de toutes les
+générations) : sous un tiers des PV, les attaques du type gagnent 50 %. Tout
+se joue dans `calculateDamage` (damage.ts). L'intimidateur se montre : il fait son geste d'attaque vers sa cible, avec
 l'animation de Rugissement et « Intimidation » au-dessus de lui (une fois
 par seconde au plus). Le talent est écrit sur la fiche de run (C), sur la
 fiche de l'équipe et dans le Pokédex au Repaire (celui d'une évolution aussi :

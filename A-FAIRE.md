@@ -312,7 +312,9 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
 - Lévitation et talents de contact (ajout, 17 novembre 2026) : immunité au
   Sol (`LEVITATE`, `calculateDamage`) ; Statik, Corps Ardent, Point Poison
   (`CONTACT_TALENTS`, 30 %, `Combat.contactTalent`, mêlée des deux camps).
-  Reste : d'autres talents (Absorb Eau, Torche, Engrais…).
+  Puis (même jour) : Absorb Eau, Absorb Volt, Torche, Engrais / Brasier /
+  Torrent (`ABSORB`, `FLASH_FIRE`, `PINCH`, `calculateDamage`). Reste :
+  d'autres talents (Glissade, Chlorophylle, Isograisse…).
 
 ### 1.9 Salles spéciales (fait)
 - Une porte sur plusieurs peut mener à une salle spéciale (`Run.offers`,

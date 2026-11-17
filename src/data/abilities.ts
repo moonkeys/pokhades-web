@@ -93,6 +93,29 @@ const CONTACT_DESC: Record<ContactStatus, string> = {
   poison: 'qui le frappe au contact risque l’empoisonnement',
 };
 
+// Absorption, Torche et talents de détresse (ajout, 17 novembre 2026).
+
+/** Absorb Eau, Absorb Volt : le type absorbé ne le blesse pas, il le soigne d'un quart de ses PV. */
+export const ABSORB: Readonly<Record<number, { name: string; type: string }>> = {
+  ...Object.fromEntries([60, 61, 62, 131, 134, 194, 195].map((id) => [id, { name: 'Absorb Eau', type: 'water' }])),
+  ...Object.fromEntries([135, 170, 171].map((id) => [id, { name: 'Absorb Volt', type: 'electric' }])),
+};
+/** Torche : le Feu ne le blesse pas, et ses propres attaques Feu en sortent renforcées (×1,5). */
+export const FLASH_FIRE: ReadonlySet<number> = new Set([37, 136, 228, 229]);
+/**
+ * Engrais, Brasier, Torrent : sous un tiers de ses PV, les attaques de son type gagnent 50 %.
+ * Les starters de toutes les générations (Plante, Feu, Eau, dans cet ordre, trois stades).
+ */
+export const PINCH: Readonly<Record<number, { name: string; type: string }>> = Object.fromEntries(
+  [1, 152, 252, 387, 495, 650, 722, 810, 906].flatMap((first) =>
+    [0, 1, 2, 3, 4, 5, 6, 7, 8].map((k) => {
+      const kind = Math.floor(k / 3);
+      return [first + k, [{ name: 'Engrais', type: 'grass' }, { name: 'Brasier', type: 'fire' }, { name: 'Torrent', type: 'water' }][kind]];
+    }),
+  ),
+);
+const TYPE_FR: Record<string, string> = { water: 'Eau', electric: 'Électrik', grass: 'Plante', fire: 'Feu' };
+
 /** Ce que fait un talent, en une phrase (fiches de run et du Repaire). */
 const WEATHER_DESC: Record<WeatherAbility['weather'], string> = {
   rain: 'fait pleuvoir sur la salle en y entrant',
@@ -112,6 +135,11 @@ export function talentOf(id: number): Talent | null {
   if (w) return { name: w.name, desc: WEATHER_DESC[w.weather] };
   if (INTIMIDATE.has(id)) return { name: 'Intimidation', desc: 'baisse l’Attaque des adversaires qui s’approchent' };
   if (LEVITATE.has(id)) return { name: 'Lévitation', desc: 'les attaques Sol ne le touchent pas' };
+  const ab = ABSORB[id];
+  if (ab) return { name: ab.name, desc: `les attaques ${TYPE_FR[ab.type]} le soignent au lieu de le blesser` };
+  if (FLASH_FIRE.has(id)) return { name: 'Torche', desc: 'le Feu ne le blesse pas, et renforce ses attaques Feu' };
+  const pinch = PINCH[id];
+  if (pinch) return { name: pinch.name, desc: `sous un tiers de ses PV, ses attaques ${TYPE_FR[pinch.type]} gagnent 50 %` };
   const c = CONTACT_TALENTS[id];
   if (c) return { name: c.name, desc: CONTACT_DESC[c.status] };
   return null;

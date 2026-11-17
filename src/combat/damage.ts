@@ -1,4 +1,4 @@
-import { LEVITATE } from '../data/abilities';
+import { ABSORB, FLASH_FIRE, LEVITATE, PINCH } from '../data/abilities';
 // Table des types Gen 6 et formule de dégâts Gen 5+, reprises telles quelles
 // de scripts/combat/DamageCalculator.gd (sans STAB, comme le jeu). Seule
 // différence : le tirage aléatoire est injecté, pour des combats rejouables.
@@ -47,6 +47,9 @@ export function typeMultiplier(attackType: string, defenderTypes: readonly strin
 export interface Fighter {
   /** Espèce (n° national) : ses talents (data/abilities.ts). */
   id?: number;
+  /** PV (Engrais, Brasier, Torrent ; Absorb soigne). */
+  hp?: number;
+  maxHp?: number;
   level: number;
   types: readonly string[];
   attack: number;
@@ -67,6 +70,9 @@ export interface DamageResult {
  * Formule Gen 5+. Une attaque spéciale oppose Atq. Spé à Déf. Spé, toute
  * autre classe Attaque à Défense (DamageCalculator.gd:58-71).
  */
+/** Les Pokémon dont la Torche s'est embrasée (un Feu reçu) : leurs attaques Feu sont renforcées. */
+const flashed = new WeakSet<Fighter>();
+
 export function calculateDamage(
   attacker: Fighter,
   defender: Fighter,
@@ -79,9 +85,21 @@ export function calculateDamage(
   const atk = special ? attacker.spAttack : attacker.attack;
   const def = Math.max(1, special ? defender.spDefense : defender.defense);
   const base = (((2 * attacker.level) / 5 + 2) * power * atk) / def / 50 + 2;
+  const did = defender.id ?? -1;
+  const aid = attacker.id ?? -1;
+  // Absorb Eau / Volt : il boit le coup (un quart de ses PV). Torche : le Feu l'embrase.
+  const absorb = ABSORB[did]?.type === type;
+  const flash = type === 'fire' && FLASH_FIRE.has(did);
+  if (absorb && defender.hp !== undefined && defender.maxHp) defender.hp = Math.min(defender.maxHp, defender.hp + Math.round(defender.maxHp / 4));
+  if (flash) flashed.add(defender);
   // Lévitation : les attaques Sol passent sous lui, comme une immunité de type.
-  const effectiveness = type === 'ground' && defender.id !== undefined && LEVITATE.has(defender.id) ? 0 : typeMultiplier(type, defender.types);
+  const immune = absorb || flash || (type === 'ground' && LEVITATE.has(did));
+  const effectiveness = immune ? 0 : typeMultiplier(type, defender.types);
   let modifier = effectiveness * weatherMultiplier(weather, type);
+  // Torche embrasée, et Engrais / Brasier / Torrent sous un tiers des PV.
+  if (type === 'fire' && flashed.has(attacker)) modifier *= 1.5;
+  const pinch = PINCH[aid];
+  if (pinch?.type === type && attacker.hp !== undefined && attacker.maxHp && attacker.hp <= attacker.maxHp / 3) modifier *= 1.5;
   const roll = 0.85 + random() * 0.15;
   const crit = random() < attacker.critChance;
   if (crit) modifier *= 1.5;
