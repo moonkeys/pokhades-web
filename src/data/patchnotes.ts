@@ -18,6 +18,20 @@ export interface PatchNote {
 
 export const PATCH_NOTES: readonly PatchNote[] = [
   {
+    id: '2026-11-17',
+    date: '17 novembre 2026',
+    title: 'Lévitation, Statik et compagnie',
+    sections: [
+      {
+        title: 'Combat',
+        items: [
+          'Talent Lévitation (Fantominus, Smogo, Séléroc, Motisma…) : les attaques Sol ne le touchent pas.',
+          'Talents de contact : frapper au corps à corps un Pokémon à Statik, Corps Ardent ou Point Poison risque la paralysie, la brûlure ou le poison (3 fois sur 10). Dans les deux camps.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-11-16-b',
     date: '16 novembre 2026',
     title: 'Retours de test : biomes plus longs, salles calmes refaites, échanges',

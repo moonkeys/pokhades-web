@@ -1,3 +1,4 @@
+import { LEVITATE } from '../data/abilities';
 // Table des types Gen 6 et formule de dégâts Gen 5+, reprises telles quelles
 // de scripts/combat/DamageCalculator.gd (sans STAB, comme le jeu). Seule
 // différence : le tirage aléatoire est injecté, pour des combats rejouables.
@@ -44,6 +45,8 @@ export function typeMultiplier(attackType: string, defenderTypes: readonly strin
 
 /** Ce que la formule lit d'un combattant (cf. PokemonInstance.get_effective_*). */
 export interface Fighter {
+  /** Espèce (n° national) : ses talents (data/abilities.ts). */
+  id?: number;
   level: number;
   types: readonly string[];
   attack: number;
@@ -76,7 +79,8 @@ export function calculateDamage(
   const atk = special ? attacker.spAttack : attacker.attack;
   const def = Math.max(1, special ? defender.spDefense : defender.defense);
   const base = (((2 * attacker.level) / 5 + 2) * power * atk) / def / 50 + 2;
-  const effectiveness = typeMultiplier(type, defender.types);
+  // Lévitation : les attaques Sol passent sous lui, comme une immunité de type.
+  const effectiveness = type === 'ground' && defender.id !== undefined && LEVITATE.has(defender.id) ? 0 : typeMultiplier(type, defender.types);
   let modifier = effectiveness * weatherMultiplier(weather, type);
   const roll = 0.85 + random() * 0.15;
   const crit = random() < attacker.critChance;

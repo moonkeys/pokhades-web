@@ -309,6 +309,10 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
   sens (`entryTalents`, main.ts). Écart voulu : pas seulement à l'entrée
   (vagues). Talents lus sur `speciesId` (`baseId` est l'uid au Repaire).
   Reste : d'autres talents.
+- Lévitation et talents de contact (ajout, 17 novembre 2026) : immunité au
+  Sol (`LEVITATE`, `calculateDamage`) ; Statik, Corps Ardent, Point Poison
+  (`CONTACT_TALENTS`, 30 %, `Combat.contactTalent`, mêlée des deux camps).
+  Reste : d'autres talents (Absorb Eau, Torche, Engrais…).
 
 ### 1.9 Salles spéciales (fait)
 - Une porte sur plusieurs peut mener à une salle spéciale (`Run.offers`,

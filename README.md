@@ -267,7 +267,13 @@ debout qui passe à 9 cases d'un intimidateur debout perd un quart de son
 Attaque pendant 10 s (comme Rugissement), une fois par salle, dans les deux
 sens. Écart voulu : les jeux n'intimident qu'à l'entrée, mais ici les
 sauvages arrivent par vagues. Les talents se lisent sur l'espèce dessinée.
-L'intimidateur se montre : il fait son geste d'attaque vers sa cible, avec
+**Lévitation** (Fantominus, Smogo, Séléroc, Motisma…) : les attaques Sol ne
+le touchent pas (`damage.ts`, comme une immunité de type). **Talents de
+contact** (`CONTACT_TALENTS`) : qui frappe au corps à corps un Pokémon doté
+de Statik (Pikachu, Wattouat, Élektek…), Corps Ardent (Ponyta, Magmar,
+Limagma…) ou Point Poison (Nidoran, Qwilfish, Rosélia…) risque, 3 fois sur
+10, la paralysie, la brûlure ou le poison ; dans les deux camps
+(`Combat.contactTalent`). L'intimidateur se montre : il fait son geste d'attaque vers sa cible, avec
 l'animation de Rugissement et « Intimidation » au-dessus de lui (une fois
 par seconde au plus). Le talent est écrit sur la fiche de run (C), sur la
 fiche de l'équipe et dans le Pokédex au Repaire (celui d'une évolution aussi :

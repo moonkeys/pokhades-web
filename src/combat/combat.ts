@@ -4,13 +4,14 @@ import type { InputSample } from '../input/input';
 import { CombatFx, kindFromMultiplier, typeColor, type NumberKind } from '../render/combatfx';
 import type { WorldMap } from '../world/generate';
 import { calculateDamage, currentWeather } from './damage';
+import { CONTACT_CHANCE, CONTACT_TALENTS } from '../data/abilities';
 import { CHIP, chips } from '../world/weather';
 import type { Run } from '../run/run';
 import { AttackState } from './attackstate';
 import { BoonHooks } from './boonhooks';
 import { forcedStatus } from './boons';
 import { BUFF_TIME, type Move, type MoveEffect } from './moves';
-import { BUFF_LABEL, XP_MULTIPLIER } from './pokemon';
+import { BUFF_LABEL, STATUS, XP_MULTIPLIER } from './pokemon';
 import { PowerUps } from '../render/powerup';
 import type { Status } from './pokemon';
 import type { StrikeSnap } from '../net/net';
@@ -529,6 +530,21 @@ export class Combat {
     }
     const res = calculateDamage(e.pokemon, target.pokemon, power, type, cls, this.random);
     this.hitPlayer(target, res.damage, e.x, e.y, type, res.crit ? 'crit' : 'player');
+    if (cls !== 'special') this.contactTalent(e, target);
+  }
+
+  /**
+   * Talents de contact (data/abilities.ts : Statik, Corps Ardent, Point Poison) : qui frappe au
+   * corps à corps un Pokémon qui en a un risque le statut, dans les deux camps.
+   */
+  private contactTalent(attacker: Actor, defender: Actor): void {
+    const t = CONTACT_TALENTS[defender.speciesId];
+    const mon = attacker.pokemon;
+    if (!t || !mon || mon.fainted || mon.status || this.random() >= CONTACT_CHANCE) return;
+    if (!mon.applyStatus(t.status)) return;
+    this.fx.number('debuff', defender.x, defender.y, 0, t.name);
+    this.fx.number('debuff', attacker.x, attacker.y, 0, STATUS[t.status].label);
+    sfx('statDown');
   }
 
   /** Tir d'un sauvage : une marque fixe sous sa cible, dégâts figés au tir. */
@@ -831,6 +847,7 @@ export class Combat {
         const dmg = Math.max(1, Math.round(res.damage * this.hooks.dmgOut(player, e)));
         if (!first) first = dmg;
         this.hitEnemy(e, dmg, player.x, player.y, t, t === type ? color : typeColor(t), finisher, res.crit ? 'crit' : kindFromMultiplier(res.effectiveness), false, t === type ? moveApi : undefined, player);
+        if (cls !== 'special') this.contactTalent(player, e);
         // L'effet de la capacité sur chaque cible : crocs, griffes, poing…
         this.fx.moveCast(t === type ? moveApi : undefined, t, false, () => player, () => e, 0, power);
       }

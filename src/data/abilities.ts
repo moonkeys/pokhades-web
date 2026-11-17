@@ -60,6 +60,39 @@ export const INTIMIDATE: ReadonlySet<number> = new Set([
   559, 560, // Baggiguane, Baggaïd (talent caché)
 ]);
 
+// Lévitation et talents de contact (ajout, 17 novembre 2026, A-FAIRE 1.8 :
+// « d'autres talents »). Même table à la main.
+
+/** Lévitation : les attaques Sol ne le touchent pas. */
+export const LEVITATE: ReadonlySet<number> = new Set([
+  92, 93, // Fantominus, Spectrum (Ectoplasma l'a perdu en 7ᵉ génération)
+  109, 110, // Smogo, Smogogo
+  200, 429, // Feuforêve, Magirêve
+  337, 338, // Séléroc, Solaroc
+  355, // Skelénox
+  380, 381, // Latias, Latios
+  436, 437, // Archéomire, Archéodong
+  479, // Motisma
+  480, 481, 482, // Créhelf, Créfollet, Créfadet
+]);
+
+export type ContactStatus = 'paralysis' | 'burn' | 'poison';
+
+/** Talents de contact : qui le frappe au corps à corps risque un statut (30 %). */
+export const CONTACT_TALENTS: Readonly<Record<number, { name: string; status: ContactStatus }>> = {
+  ...Object.fromEntries([25, 26, 172, 125, 239, 179, 180, 181, 309, 310, 587].map((id) => [id, { name: 'Statik', status: 'paralysis' as const }])),
+  ...Object.fromEntries([77, 78, 126, 240, 218, 219, 467].map((id) => [id, { name: 'Corps Ardent', status: 'burn' as const }])),
+  ...Object.fromEntries([29, 30, 31, 32, 33, 34, 211, 315, 406, 407].map((id) => [id, { name: 'Point Poison', status: 'poison' as const }])),
+};
+/** Chance qu'un talent de contact joue. */
+export const CONTACT_CHANCE = 0.3;
+
+const CONTACT_DESC: Record<ContactStatus, string> = {
+  paralysis: 'qui le frappe au contact risque la paralysie',
+  burn: 'qui le frappe au contact risque la brûlure',
+  poison: 'qui le frappe au contact risque l’empoisonnement',
+};
+
 /** Ce que fait un talent, en une phrase (fiches de run et du Repaire). */
 const WEATHER_DESC: Record<WeatherAbility['weather'], string> = {
   rain: 'fait pleuvoir sur la salle en y entrant',
@@ -78,6 +111,9 @@ export function talentOf(id: number): Talent | null {
   const w = WEATHER_ABILITIES[id];
   if (w) return { name: w.name, desc: WEATHER_DESC[w.weather] };
   if (INTIMIDATE.has(id)) return { name: 'Intimidation', desc: 'baisse l’Attaque des adversaires qui s’approchent' };
+  if (LEVITATE.has(id)) return { name: 'Lévitation', desc: 'les attaques Sol ne le touchent pas' };
+  const c = CONTACT_TALENTS[id];
+  if (c) return { name: c.name, desc: CONTACT_DESC[c.status] };
   return null;
 }
 
