@@ -37,6 +37,8 @@ export const PATCH_NOTES: readonly PatchNote[] = [
           'L’as riposte quand on le frappe pendant ses figures ; elles sont plus nombreuses, plus écartées et plus rapprochées dans le temps.',
           'Les Pokémon des champions frappent avec leurs meilleures attaques (Léviator ne reste plus à ne rien faire).',
           'Seules les Méga dont on a les sprites restent : Ondine, Peter et Régis changent d’as (Flagadoss, Dracaufeu, Alakazam).',
+          'Les Pokémon des champions ont plus d’attaques et en changent à chaque coup.',
+          'Surprises : à sa Méga, le Dracaufeu de Peter appelle son jumeau chromatique, qui partage sa barre de vie ; Ondine, Pierre, Giovanni, Olga, Auguste et Erika font changer le temps.',
           'L’arène de la Prairie n’a plus d’eau : un enclos de bois, de la paille, des petits champs, des tournesols. Celle du Lac a ses nénuphars et ses roseaux.',
         ],
       },

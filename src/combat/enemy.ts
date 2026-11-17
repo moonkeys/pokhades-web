@@ -495,7 +495,8 @@ export class EnemyBrain {
     const a = this.actor;
     const mon = a.pokemon!;
     const role = a.role === 'boss' ? 'boss' : 'champion';
-    const move = this.ranged ?? mon.moves.find((m) => m.power > 0) ?? null;
+    const offense = this.offense();
+    const move = offense[Math.floor(Math.random() * offense.length)] ?? this.ranged ?? null;
     const type = move?.type ?? mon.types[0];
     const power = Math.max(40, move?.power ?? 40);
     const delay = AREA_DELAY[role];
@@ -564,6 +565,24 @@ export class EnemyBrain {
     const list = mon.moves.filter((m) => m.power > 0);
     return list.length ? list : this.ranged ? [this.ranged] : [];
   }
+
+  /**
+   * L'attaque d'un Pokémon de champion pour ce coup-ci (retour de test du 17 novembre 2026 : « un
+   * plus grand choix d'attaques, pour varier et ne pas avoir toujours les mêmes ») : une de ses
+   * attaques offensives au hasard, jamais deux fois la même d'affilée ; de loin, seulement celles
+   * qui portent (spéciales). Un sauvage garde la sienne (null).
+   */
+  private choose(dist: number): Move | null {
+    if (this.actor.role === 'wild') return null;
+    const near = dist <= ATTACK_RANGE * RANGE_SLACK;
+    const ok = this.offense().filter((m) => near || m.damageClass === 'special');
+    if (!ok.length) return null;
+    let m = ok[Math.floor(Math.random() * ok.length)];
+    if (m === this.lastMove && ok.length > 1) m = ok[(ok.indexOf(m) + 1) % ok.length];
+    this.lastMove = m;
+    return m;
+  }
+  private lastMove: Move | null = null;
 
   /** Taille des zones selon la puissance de l'attaque : ×1 à 60 de puissance, jusqu'à ×1,5. */
   private static scale(power: number): number {
@@ -761,6 +780,18 @@ export class EnemyBrain {
     this.revealed = true;
     a.hidden = false;
     this.face(target.x, target.y);
+    const pick = this.choose(Math.hypot(target.x - a.x, target.y - a.y));
+    if (pick?.damageClass === 'special') {
+      combat.enemyShot(a, target, pick);
+      a.playAction(['Shoot', 'Charge', 'Attack'], 0.4);
+      return;
+    }
+    if (pick) {
+      combat.enemyMelee(a, target, pick.power, pick.type, pick.damageClass, pick.api);
+      this.lunge(target.x, target.y);
+      a.playAction(['Attack'], 0.4);
+      return;
+    }
     if (this.ranged) {
       combat.enemyShot(a, target, this.ranged);
       a.playAction(['Shoot', 'Charge', 'Attack'], 0.4);

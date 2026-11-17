@@ -12,7 +12,7 @@ import { buildAtlas } from './assets/atlas';
 import { PLAYER_ACTIONS, WILD_ACTIONS, loadImage, loadInfo, loadSheet } from './assets/pmd';
 import { sheetIdOf } from './data/forms';
 import { megaById, megaFormsOf, type MegaForm } from './data/megas';
-import { ACE_MOVES, FINAL_BOSS_DEFEAT, FINAL_BOSS_INTRO, MASTER_DEFEAT, type Champion } from './data/champions';
+import { ACE_MOVES, TWISTS, FINAL_BOSS_DEFEAT, FINAL_BOSS_INTRO, MASTER_DEFEAT, type Champion } from './data/champions';
 import { Trainer } from './entities/trainer';
 import { MERC_RETAINER, Shop } from './run/shop';
 import { Camp, CAMP_SEED, campPockets, STATIONS, stationId, type Station } from './run/camp';
@@ -131,6 +131,8 @@ const BOSS_BOOST = {
   boss: { atk: 1.45, def: 1.3, hp: 1.8 },
 };
 const BOSS_HP_PER_MEMBER = 0.45;
+/** Attaques d'un Pokémon de champion (hors as) : ses plus fortes, tirées à chaque coup. */
+const CHAMPION_MON_MOVES = 6;
 /**
  * Retour de test du 17 novembre 2026 (« à six, on les éclate tous d'un coup ») : +45 % de PV par
  * membre au lieu de +30 %, +5 % d'attaque par membre au-delà du premier, et une barre de plus aux
@@ -783,7 +785,7 @@ async function boot(): Promise<void> {
   /** Planches, fiche d'espèce et fiche de combat, chargées en différé. */
   const attach = (a: Actor, isPlayer: boolean, level: number, outfit = false, nick?: string) => {
     void loadInfo(a.speciesId).then((i) => (a.info = i));
-    void Promise.all([loadSheet(a.speciesId, isPlayer ? PLAYER_ACTIONS : WILD_ACTIONS), Pokemon.load(a.speciesId, level)]).then(([sheet, mon]) => {
+    void Promise.all([loadSheet(a.sheetId ?? a.speciesId, isPlayer ? PLAYER_ACTIONS : WILD_ACTIONS), Pokemon.load(a.speciesId, level)]).then(([sheet, mon]) => {
       a.sheet = sheet;
       a.pokemon = mon;
       // Surnom : celui de la sauvegarde pour l'équipe du Repaire, celui choisi à la libération pour une recrue de grotte.
@@ -826,9 +828,9 @@ async function boot(): Promise<void> {
           a.brain.provoke();
         });
       }
-      // Un Pokémon de champion prend ses attaques les plus fortes, pas le kit des sauvages.
+      // Un Pokémon de champion prend ses attaques les plus fortes (six : il en change à chaque coup), pas le kit des sauvages.
       if (a.role === 'champion' && mode === 'run') {
-        void mon.strongestMoves().then((got) => {
+        void mon.strongestMoves(CHAMPION_MON_MOVES).then((got) => {
           if (got.length < 2 || a.pokemon !== mon || a.deathT >= 0) return;
           mon.moves.splice(0, mon.moves.length, ...got);
           mon.movesVersion++;
@@ -1189,6 +1191,43 @@ async function boot(): Promise<void> {
     }
     sfx('ballDrop');
   };
+  /** La surprise du champion (data/champions.ts, TWISTS), quand son as entame ses deux dernières barres. */
+  const championTwist = (boss: Actor) => {
+    const tw = TWISTS[run.champion.name];
+    if (!tw) return;
+    if (tw.weather) {
+      combat.weatherMove(tw.weather, boss);
+      combat.addShake(0.12);
+    }
+    const twin = tw.twin;
+    if (!twin || boss.partner) return;
+    // Il sort d'une Poké Ball à côté de l'as, sous sa forme Méga d'emblée ; ses PV sont ceux de l'as.
+    const forms = megaFormsOf(boss.speciesId);
+    const id = forms[0]?.id ?? boss.speciesId;
+    const x = boss.x + 2;
+    const y = boss.y;
+    const c = Math.floor(y - 0.05) * world.w + Math.floor(x);
+    const at = world.blocked[c] || world.water[c] ? { x: boss.x - 2, y: boss.y } : { x, y };
+    const a = new Actor(id, at.x, at.y);
+    a.role = 'boss';
+    a.sheetId = twin.sheet;
+    a.partner = boss;
+    a.sharesHp = true;
+    a.mega = 1;
+    boss.partner = a;
+    attach(a, false, boss.pokemon?.level ?? run.roomLevel);
+    wild.push(a);
+    fx.ballSend(at.x, at.y);
+    trainer?.cheer();
+    trainerSay('Un dragon ne vole jamais seul !');
+    window.setTimeout(() => {
+      if (a.deathT >= 0 || !a.pokemon) return;
+      combat.mirror(a);
+      a.pokemon.rename(twin.name);
+      combat.callout(a, twin.name);
+      a.brain?.provoke();
+    }, 900);
+  };
   combat.phase = (e) => {
     if (mode === 'run' && e.role === 'boss') {
       const line = BOSS_PHASE_LINES[e.barsLeft];
@@ -1202,8 +1241,9 @@ async function boot(): Promise<void> {
         sfx('ability');
       }
     } else if (mode === 'run' && e.role === 'champion' && Math.random() < 0.5) trainerSay(['Tiens bon !', 'Ne lâche rien !', 'Encore un effort !'][Math.floor(Math.random() * 3)]);
+    if (mode === 'run' && e.role === 'boss' && e.barsLeft === 2 && !e.sharesHp) championTwist(e);
     const mon = e.pokemon;
-    const forms = mon && e.role === 'boss' && e.barsLeft === 2 && !e.mega ? megaFormsOf(mon.id) : [];
+    const forms = mon && e.role === 'boss' && e.barsLeft === 2 && !e.mega && !e.sharesHp ? megaFormsOf(mon.id) : [];
     const form = forms[Math.floor(Math.random() * forms.length)];
     if (!mon || !form) return;
     e.mega = form.collab ? 1 : 1.2;
@@ -2888,7 +2928,8 @@ async function boot(): Promise<void> {
     const champ = wild.find((a) => a.role !== 'wild' && a.pokemon && a.deathT < 0);
     return champ?.pokemon
       ? {
-          name: champ.pokemon.name,
+          // Un as et son jumeau : une barre pour deux.
+          name: champ.partner && champ.partner.deathT < 0 ? `${champ.pokemon.name} ×2` : champ.pokemon.name,
           sub: cave.active ? cave.guardianTitle : `${champ.role === 'boss' ? 'As' : 'Équipe'} de ${run.champion.name}`,
           ace: champ.role === 'boss',
           bars: champ.bars,

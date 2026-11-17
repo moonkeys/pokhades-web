@@ -100,6 +100,14 @@ export class Actor {
   /** Barres de PV : à 0 PV, s'il en reste, le Pokémon remonte au maximum (changement de phase). */
   bars = 1;
   barsLeft = 1;
+  /**
+   * Jumeau d'un as (data/champions.ts, TWISTS) : les deux tombent ensemble. Chez le jumeau
+   * (`sharesHp`), les coups vont aux PV de l'as : une seule barre pour deux.
+   */
+  partner: Actor | null = null;
+  sharesHp = false;
+  /** Planches à charger à la place de celles de l'espèce (le jumeau chromatique). */
+  sheetId: number | null = null;
   /** Barre de vie affichée : elle rattrape les PV réels (la part perdue s'efface en clair). */
   hpShown = 1;
   /** IA de combat d'un sauvage (null : simple flânerie, ou un membre de l'équipe). */

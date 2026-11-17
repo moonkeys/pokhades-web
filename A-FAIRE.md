@@ -414,6 +414,10 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
   l'arène, à prendre avec [E] ; Pokémon de champion avec leurs attaques les
   plus fortes (Léviator inactif) ; Méga sans planches retirées, et as de
   rechange (Flagadoss, Dracaufeu, Alakazam).
+- Neuvième passe : plus d'attaques (sept pour l'as, six pour les autres),
+  tirées à chaque coup ; surprises des champions (`TWISTS`) : jumeau à vie
+  partagée chez Peter, temps qui change chez six autres. Reste : d'autres
+  surprises (Koga, Agatha, Morgane, Major Bob, Aldo, Blanche, Régis).
 - Quatrième passe : emblème Poké Ball au sol au centre des arènes, dresseur
   qui suit le joueur du regard, Éclats de Champion qui s'envolent à la
   victoire.

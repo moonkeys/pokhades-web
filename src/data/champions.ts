@@ -172,7 +172,8 @@ export function championSpecies(): number[] {
 /**
  * Les attaques de l'as de chaque champion (retour de test du 17 novembre 2026 : « que chaque
  * Pokémon ait vraiment ses attaques à lui dans le boss » ; son jeu appris au niveau était souvent
- * faible, ou de statut). Quatre attaques fidèles à l'espèce et au champion, de types variés : ses
+ * faible, ou de statut). Sept attaques (même jour : « un plus grand choix d'attaques, pour varier » ;
+ * il en tire une à chaque coup, combat/enemy.ts), fidèles à l'espèce et au champion, de types variés : ses
  * figures, son bond et sa grande attaque les reprennent (combat/enemy.ts), d'où un combat
  * différent dans chaque arène. Noms d'API PokéAPI.
  *
@@ -181,18 +182,43 @@ export function championSpecies(): number[] {
  * Alakazam chez Régis.
  */
 export const ACE_MOVES: Readonly<Record<string, readonly string[]>> = {
-  Pierre: ['rock-slide', 'earthquake', 'stone-edge', 'iron-tail'],
-  Ondine: ['surf', 'psychic', 'ice-beam', 'zen-headbutt'],
-  'Major Bob': ['thunderbolt', 'thunder', 'iron-tail', 'quick-attack'],
-  Erika: ['petal-dance', 'sludge-bomb', 'giga-drain', 'moonblast'],
-  Koga: ['sludge-bomb', 'flamethrower', 'shadow-ball', 'dark-pulse'],
-  Morgane: ['psychic', 'shadow-ball', 'dazzling-gleam', 'psybeam'],
-  Auguste: ['flamethrower', 'fire-blast', 'extreme-speed', 'crunch'],
-  Giovanni: ['earthquake', 'rock-slide', 'megahorn', 'stone-edge'],
-  Olga: ['blizzard', 'ice-beam', 'psychic', 'ice-punch'],
-  Aldo: ['cross-chop', 'dynamic-punch', 'rock-slide', 'earthquake'],
-  Agatha: ['shadow-ball', 'sludge-bomb', 'dark-pulse', 'thunderbolt'],
-  Peter: ['flare-blitz', 'dragon-claw', 'outrage', 'air-slash'],
-  Régis: ['psychic', 'shadow-ball', 'thunder-punch', 'dazzling-gleam'],
-  Blanche: ['body-slam', 'rollout', 'stomp', 'zen-headbutt'],
+  Pierre: ['rock-slide', 'earthquake', 'stone-edge', 'iron-tail', 'rock-tomb', 'dig', 'rock-throw'],
+  Ondine: ['surf', 'psychic', 'ice-beam', 'zen-headbutt', 'water-pulse', 'psybeam', 'hydro-pump'],
+  'Major Bob': ['thunderbolt', 'thunder', 'iron-tail', 'quick-attack', 'thunder-punch', 'spark', 'brick-break'],
+  Erika: ['petal-dance', 'sludge-bomb', 'giga-drain', 'moonblast', 'energy-ball', 'acid', 'mega-drain'],
+  Koga: ['sludge-bomb', 'flamethrower', 'shadow-ball', 'dark-pulse', 'sludge', 'fire-blast', 'thunderbolt'],
+  Morgane: ['psychic', 'shadow-ball', 'dazzling-gleam', 'psybeam', 'confusion', 'energy-ball', 'thunder-punch'],
+  Auguste: ['flamethrower', 'fire-blast', 'extreme-speed', 'crunch', 'fire-fang', 'flame-wheel', 'wild-charge'],
+  Giovanni: ['earthquake', 'rock-slide', 'megahorn', 'stone-edge', 'drill-run', 'hammer-arm', 'crunch'],
+  Olga: ['blizzard', 'ice-beam', 'psychic', 'ice-punch', 'psyshock', 'draining-kiss', 'ice-shard'],
+  Aldo: ['cross-chop', 'dynamic-punch', 'rock-slide', 'earthquake', 'close-combat', 'karate-chop', 'bullet-punch'],
+  Agatha: ['shadow-ball', 'sludge-bomb', 'dark-pulse', 'thunderbolt', 'shadow-punch', 'lick', 'night-shade'],
+  Peter: ['flare-blitz', 'dragon-claw', 'outrage', 'air-slash', 'flamethrower', 'dragon-breath', 'wing-attack'],
+  Régis: ['psychic', 'shadow-ball', 'thunder-punch', 'dazzling-gleam', 'fire-punch', 'ice-punch', 'psybeam'],
+  Blanche: ['body-slam', 'rollout', 'stomp', 'zen-headbutt', 'double-edge', 'headbutt', 'earthquake'],
+};
+
+/**
+ * Les surprises des champions (retour de test du 17 novembre 2026 : « quand Peter invoque son
+ * Méga-Dracaufeu X, il invoque aussi un Méga-Dracaufeu Y… ils partagent la même barre de vie ;
+ * d'autres petites surprises comme ça sur d'autres dresseurs »). Elles tombent quand l'as entame
+ * ses deux dernières barres, en même temps que sa Méga :
+ *   - `twin` : un jumeau de l'as méga-évolué, sous ces planches, qui partage sa vie (une barre
+ *     pour deux, ils tombent ensemble). SpriteCollab n'a pas Méga-Dracaufeu Y : c'est son X
+ *     chromatique (0006/0001/0001, recopié en data/pmd/20034), au choix du testeur ;
+ *   - `weather` : le temps de l'arène change (Danse Pluie d'Ondine, Tempête de Sable de Pierre…),
+ *     jusqu'à la fin du combat.
+ */
+export interface ChampionTwist {
+  twin?: { sheet: number; name: string };
+  weather?: 'rain' | 'sun' | 'sand' | 'hail';
+}
+export const TWISTS: Readonly<Record<string, ChampionTwist>> = {
+  Peter: { twin: { sheet: 20034, name: 'Méga-Dracaufeu X chromatique' } },
+  Pierre: { weather: 'sand' },
+  Giovanni: { weather: 'sand' },
+  Ondine: { weather: 'rain' },
+  Olga: { weather: 'hail' },
+  Auguste: { weather: 'sun' },
+  Erika: { weather: 'sun' },
 };

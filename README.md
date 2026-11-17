@@ -664,9 +664,18 @@ Surf, Psyko, Laser Glace et Psykoud'Boul pour le Flagadoss d'Ondine ;
 Boutefeu, Draco-Griffe, Colère et Lame d'Air pour le Dracaufeu de Peter…
 Un as dont la Méga n'a pas de planches a cédé la place à un Pokémon dont la
 Méga en a (Flagadoss chez Ondine, Dracaufeu chez Peter, Alakazam chez Régis).
-Les autres Pokémon d'un champion prennent leurs quatre attaques les plus
+Les autres Pokémon d'un champion prennent leurs six attaques les plus
 fortes apprises à leur niveau (`Pokemon.strongestMoves`), plus le kit faible
 des sauvages : Léviator n'avait que Ligotage, Frénésie, Siphon et Charge.
+L'as en a sept (`ACE_MOVES`), et tous en tirent une au hasard à chaque coup et
+à chaque zone, jamais deux fois la même d'affilée (`EnemyBrain.choose`) ; de
+loin, seulement celles qui portent. **Surprises** (`TWISTS`) quand l'as
+entame ses deux dernières barres : Peter envoie un jumeau, un Méga-Dracaufeu
+X chromatique (SpriteCollab n'a pas le Y ; planches en data/pmd/20034), qui
+partage la vie de l'as (une barre « ×2 », les coups sur l'un usent l'autre,
+ils tombent ensemble : `Actor.partner`, `sharesHp`) ; d'autres changent le
+temps de l'arène (pluie d'Ondine, sable de Pierre et Giovanni, grêle d'Olga,
+soleil d'Auguste et d'Erika).
 Après un champion, pas de don : ses Éclats de Champion attendent au centre,
 à prendre avec [E] comme une récompense de salle (perdus si l'on part sans). Les Pokémon d'un champion ne nagent plus (au Lac, ils
 partaient au large, hors d'atteinte). Le champion se tient **sur un rocher**

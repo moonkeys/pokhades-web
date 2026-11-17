@@ -245,6 +245,12 @@ export class Combat {
    * c'est le changement de phase d'EnemyAI.take_damage. Rend vrai si le coup achève.
    */
   private dealt(e: Actor, damage: number): boolean {
+    const host = e.sharesHp ? e.partner : null;
+    if (host?.pokemon && host.deathT < 0) {
+      const fatal = this.dealt(host, damage);
+      this.mirror(e);
+      return fatal;
+    }
     const mon = e.pokemon!;
     mon.hp = Math.max(0, mon.hp - damage);
     if (mon.hp > 0) return false;
@@ -258,6 +264,17 @@ export class Combat {
       return false;
     }
     return true;
+  }
+
+  /** Le jumeau reprend les PV (en part), les barres et la rage de l'as dont il partage la vie. */
+  mirror(e: Actor): void {
+    const host = e.partner;
+    if (!host?.pokemon || !e.pokemon) return;
+    e.bars = host.bars;
+    e.barsLeft = host.barsLeft;
+    e.enraged = host.enraged;
+    const ratio = host.pokemon.hp / host.pokemon.maxHp;
+    e.pokemon.hp = host.pokemon.hp > 0 ? Math.max(1, Math.round(e.pokemon.maxHp * ratio)) : 0;
   }
 
   /**
@@ -1060,6 +1077,8 @@ export class Combat {
     e.hidden = false;
     e.deathT = 0;
     e.kbT = 0;
+    // Le jumeau et son as tombent ensemble.
+    if (e.partner && e.partner.deathT < 0) this.kill(e.partner, by);
     this.fx.poof(e.x, e.y);
     this.addShake(0.05);
     // Écart voulu : le cri du Pokémon qui tombe, plus grave (les jeux) ; un
@@ -1142,6 +1161,8 @@ export class Combat {
   private updateEnemy(dt: number, e: Actor): void {
     const mon = e.pokemon;
     if (!mon || e.deathT >= 0) return;
+    // Le jumeau n'a pas de vie à lui : ses statuts ne l'usent pas, il suit celle de l'as.
+    if (e.sharesHp) return this.mirror(e);
     const dmg = mon.tickStatus(dt);
     if (dmg > 0) {
       this.fx.number('normal', e.x, e.y, dmg);

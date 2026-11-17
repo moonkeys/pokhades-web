@@ -282,16 +282,16 @@ export class Pokemon implements Fighter {
    * `withMoves` : faux pour les sauvages, dont les fiches de capacités ne sont pas embarquées.
    */
   /**
-   * Les quatre attaques offensives les plus fortes qu'il a apprises jusqu'à son niveau (celles de
+   * Les `count` attaques offensives les plus fortes qu'il a apprises jusqu'à son niveau (celles de
    * son type comptées ×1,5) : le jeu d'un Pokémon de champion. Le kit par défaut garde les plus
    * faibles d'abord (pensé pour les sauvages) : Léviator n'avait que Ligotage, Frénésie, Siphon et
    * Charge (retour de test du 17 novembre 2026 : « le Léviator, toujours aussi inactif »).
    */
-  async strongestMoves(): Promise<Move[]> {
+  async strongestMoves(count = MOVE_SLOTS): Promise<Move[]> {
     const names = [...new Set(this.levelUpMoves.filter((m) => m.level <= this.level).map((m) => m.name))];
     const all = (await Promise.all(names.map((n) => loadMove(n)))).filter((m): m is Move => !!m && m.power > 0);
     const score = (m: Move) => m.power * (this.types.includes(m.type) ? 1.5 : 1);
-    return all.sort((x, y) => score(y) - score(x)).slice(0, MOVE_SLOTS);
+    return all.sort((x, y) => score(y) - score(x)).slice(0, count);
   }
 
   static async load(id: number, level: number = BASE_TEAM_LEVEL, withMoves = true): Promise<Pokemon> {
