@@ -755,6 +755,9 @@ Si d'autres se voient en jeu, noter leur emplacement.
 - Plan du Repaire : les routes déjà prises en pointillés (`Save.trails`).
 - Le nom d'un champion n'apparaît au plan et au carnet qu'une fois rencontré
   (`Save.met`), pas dès son biome atteint.
+- Recrues en attente chez Dracolosse (18 novembre 2026) : plus sur la place,
+  une liste avec « Recruter » et « Renvoyer », un « ! » quand une nouvelle
+  arrive (`ui/recruitlist.ts`).
 - Reste : d'autres dresseurs connus d'Essentials (Red, Leaf, Brendan) si l'on
   ajoute des biomes ; vérifier le plan en jeu (les pointillés n'ont pas été vus
   à l'écran).

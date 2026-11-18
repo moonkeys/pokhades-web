@@ -997,9 +997,14 @@ du joueur, et reculent s'il fonce sur eux.
 
 - La jauge des places est en haut à gauche : « Le Repaire · 5/6 Pokémon · 2 en
   attente ».
-- Toutes les recrues en attente (dix au plus) flânent autour du feu, chacune
-  avec son « ! » ; on parle à celle qu'on veut. Repaire plein : « Plus tard » (ou
-  Échap) referme sans renvoyer personne.
+- Les recrues en attente ne sont plus sur la place (retour de test du 18
+  novembre 2026 : elles encombraient le terrain) : **Dracolosse** en tient la
+  liste (`src/ui/recruitlist.ts`), un « ! » au-dessus de lui quand une nouvelle
+  arrive (`meta/news.ts`, poste `start`). Une carte par recrue (illustration,
+  nom, d'où elle vient, « Nouveau » si on ne l'a pas encore vue) : « Recruter »
+  ouvre sa fiche (surnom, équipe ou Repaire, exil si le Repaire est plein),
+  « Renvoyer » la laisse partir ; la liste se rouvre après chaque fiche tant
+  qu'il en reste. Sans recrue, Dracolosse rappelle qu'on part par l'arche.
 - Les poches de l'atelier du bâtisseur et de l'Étude d'Alakazam sont plus larges,
   et une trouée sur leur allée les relie à la place (`yardWay`, `studyWay` dans
   `src/run/camp.ts`).
@@ -1139,7 +1144,7 @@ au Repaire une fois le starter choisi.
 
 ## Jouer en ligne : ce que fait un invité
 
-- **Au Repaire de l'hôte**, il voit les recrues qui attendent (sans pouvoir leur parler) et peut
+- **Au Repaire de l'hôte**, il ne voit plus les recrues qui attendent (elles sont chez Dracolosse) et peut
   acheter chez Monsieur Mime (attaques), Alakazam (améliorations) et Miaouss (objets), avec **sa**
   sauvegarde. Démolosse (missions) et le Charpentier restent ceux de l'hôte.
 - **En run**, n'importe quel joueur debout qui franchit une porte (ou une bouche de grotte) lance

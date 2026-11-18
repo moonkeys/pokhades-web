@@ -5299,3 +5299,31 @@ body.net-on .hud-team {
 .stats-errands .errand.done b {
   color: #2f8a3a;
 }
+
+/* Recrues chez Dracolosse (ui/recruitlist.ts) : les cartes de l'échange, « Nouveau » en
+ * pastille jaune, et deux boutons pleine largeur (les + / − de l'entraînement sont trop étroits). */
+.recruit-card {
+  position: relative;
+  cursor: default;
+}
+.recruit-card.fresh {
+  border-color: var(--yel);
+}
+.recruit-new {
+  position: absolute;
+  top: calc(0.3 * var(--u));
+  right: calc(0.3 * var(--u));
+  padding: 0 calc(0.4 * var(--u));
+  font: calc(0.9 * var(--u)) var(--head);
+  font-style: normal;
+  color: var(--ink);
+  background: var(--yel);
+}
+.recruit-card .train-btns {
+  width: 100%;
+}
+.recruit-card .train-btns button {
+  flex: 1;
+  width: auto;
+  font-size: calc(1 * var(--u));
+}

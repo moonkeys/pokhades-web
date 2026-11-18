@@ -163,13 +163,17 @@ const art = (id: number, parent: HTMLElement, cls = '') => {
 
 /** D'où vient un individu, en un mot (Mon.origin) ; '' si on ne l'a pas noté. */
 function originShort(save: Save, uid: number): string {
-  const o = save.mons[uid]?.origin ?? '';
+  return originLabel(save.mons[uid]?.origin ?? '');
+}
+
+/** Une origine (Mon.origin, Save.candidates) en un mot : « Équipe de Pierre », « Recruté · Marais »… */
+export function originLabel(o: string): string {
   if (o === 'starter') return 'Partenaire de départ';
   if (o === 'quest') return 'Gagné en quête';
   if (o === 'nectar') return 'Attiré par un nectar';
   if (o === 'ally') return 'Rencontré en ligne';
   if (o === 'test') return '';
-  if (o.startsWith('champion:')) return `Équipe de ${o.slice(9)}`;
+  if (o.startsWith('champion:')) return `Équipe ${/^[AEIOUÉÈÊ]/.test(o.slice(9)) ? 'd’' : 'de '}${o.slice(9)}`;
   const cave = o.startsWith('cave:');
   const b = cave ? o.slice(5) : o;
   const biome = b in BIOMES ? BIOMES[b as BiomeId].name : '';

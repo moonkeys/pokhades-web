@@ -46,6 +46,7 @@ export const PATCH_NOTES: readonly PatchNote[] = [
           'Nouveaux sbires dans les grottes : Motards, Loubards, Parieurs, Scientifiques, Nageurs… et des Archéologues avec leurs Pokémon Sol.',
           'Poids d’équipe : un Pokémon pèse selon sa force (Ronflex ne pèse plus comme un Pichu), un objet tenu selon sa puissance (de 1 à 3).',
           'Les leçons de Bouldeneu sont plus courtes.',
+          'Les Pokémon qui veulent te rejoindre n’encombrent plus le Repaire : Dracolosse en tient la liste, avec un « ! » quand un nouveau arrive. Recrute-les ou renvoie-les d’un clic.',
           'Surprises : à sa Méga, le Dracaufeu de Peter appelle son jumeau chromatique, qui partage sa barre de vie ; Ondine, Pierre, Giovanni, Olga, Auguste et Erika font changer le temps.',
           'L’arène de la Prairie n’a plus d’eau : un enclos de bois, de la paille, des petits champs, des tournesols. Celle du Lac a ses nénuphars et ses roseaux.',
         ],

@@ -16,7 +16,7 @@ import { ACE_MOVES, TWISTS, ELITE_DEFEAT, FINAL_BOSS_DEFEAT, FINAL_BOSS_INTRO, M
 import { Trainer } from './entities/trainer';
 import { MERC_RETAINER, Shop } from './run/shop';
 import { Camp, CAMP_SEED, campPockets, STATIONS, stationId, type Station } from './run/camp';
-import { CampScreen, movePool, teamWeight, type CampCtx } from './ui/campscreen';
+import { CampScreen, movePool, originLabel, teamWeight, type CampCtx } from './ui/campscreen';
 import { NetBadge } from './ui/netbadge';
 import { BAIES, FIELD_FOOD, QUARRY_STONE, RESOURCES, RESOURCE_IDS, ROOM_RES, SHARDS, UPGRADES, applyHeld, heldItem, teamSlots, type ResourceId } from './meta/catalog';
 import { addMon, capacity, exile, grantAlly, grantChampion, isFull, level, loadSave, markSeen, monName, ownedSpecies, ownsSpecies, recordDefeat, resetSave, roster, speciesOf, startLevel, welcomeMon, writeSave } from './meta/save';
@@ -81,6 +81,7 @@ import { RunHud } from './ui/runhud';
 import { RecruitScreen } from './ui/recruitscreen';
 import { SwapScreen } from './ui/swapscreen';
 import { TalkScreen } from './ui/talkscreen';
+import { RecruitList } from './ui/recruitlist';
 import { TrainScreen } from './ui/trainscreen';
 import { StarterScreen } from './ui/starterscreen';
 import { QuizScreen, STARTER_NATURE } from './ui/quizscreen';
@@ -193,6 +194,8 @@ async function boot(): Promise<void> {
   const recruitScreen = new RecruitScreen(document.body);
   const swapScreen = new SwapScreen(document.body);
   const talkScreen = new TalkScreen(document.body);
+  /** Les recrues qui attendent, chez Dracolosse (ui/recruitlist.ts). */
+  const recruitList = new RecruitList(document.body);
   const trainScreen = new TrainScreen(document.body);
   const starterScreen = new StarterScreen(document.body);
   const quizScreen = new QuizScreen(document.body);
@@ -987,7 +990,7 @@ async function boot(): Promise<void> {
     cry(player.speciesId, -4);
   };
   /** Un écran ouvert par-dessus le jeu : la simulation se fige. */
-  const paused = () => rewardScreen.open || evolutionScreen.open || bossPreview.open || runSummary.open || settingsMenu.open || campScreen.open || statSheet.open || recruitScreen.open || swapScreen.open || talkScreen.open || trainScreen.open || starterScreen.open || quizScreen.open || journal.open || titleScreen.open;
+  const paused = () => rewardScreen.open || evolutionScreen.open || bossPreview.open || runSummary.open || settingsMenu.open || campScreen.open || statSheet.open || recruitScreen.open || swapScreen.open || talkScreen.open || recruitList.open || trainScreen.open || starterScreen.open || quizScreen.open || journal.open || titleScreen.open;
   /** Clic sur un membre du HUD : comme Tab, mais vers celui-là, s'il est debout et qu'on l'est aussi. */
   const pickMember = (i: number) => {
     const m = team[i];
@@ -1773,7 +1776,8 @@ async function boot(): Promise<void> {
    * nom »). Repaire plein : on choisit d'abord qui s'en va — l'exil —, ou on la renvoie.
    * Échap : elle attend encore.
    */
-  const meetCandidate = async (idx = 0) => {
+  /** `after` : la fiche refermée (recrue accueillie, renvoyée ou qui attend encore) — la liste de Dracolosse se rouvre. */
+  const meetCandidate = async (idx = 0, after?: () => void) => {
     const c = save.candidates[idx];
     if (!c || recruitScreen.open || starterScreen.open || dialogue.open) return;
     const mon = await Pokemon.load(c.species, BASE_TEAM_LEVEL);
@@ -1800,7 +1804,7 @@ async function boot(): Promise<void> {
         },
         (choice, nick) => {
           input.flush();
-          if (!choice) return;
+          if (!choice) return after?.();
           const named = nick && nick !== mon.name ? nick : c.name;
           const fresh = !ownsSpecies(save, c.species);
           dequeue();
@@ -1808,9 +1812,9 @@ async function boot(): Promise<void> {
           if (choice === 'team' && !full) save.team.push(m.uid);
           writeSave(save);
           if (fresh) welcome(c.species);
-          // Le camp se recompose : les autres recrues, s'il y en a, restent autour du feu.
           if (choice === 'team') campCtx.teamChanged();
           else enterCampKeep({ x: player.x, y: player.y, dir: player.dir });
+          after?.();
         },
       );
     };
@@ -1822,14 +1826,14 @@ async function boot(): Promise<void> {
       starterScreen.show(
         (_, k) => {
           input.flush();
-          // « Plus tard » (ou Échap) : rien ne change, la recrue attend encore au feu.
-          if (k === -2) return;
+          // « Plus tard » (ou Échap) : rien ne change, la recrue attend encore.
+          if (k === -2) return after?.();
           if (k < 0) {
             dequeue();
             writeSave(save);
             runHud.notify({ title: 'Au revoir', text: `${mon.name} repart, le cœur gros. Il reviendra peut-être.`, art: c.species, color: 'var(--ink)' });
             enterCampKeep({ x: player.x, y: player.y, dir: player.dir });
-            return;
+            return after?.();
           }
           const uid = uids[k];
           const sp = speciesOf(save, uid);
@@ -1863,6 +1867,37 @@ async function boot(): Promise<void> {
       return;
     }
     await proceed();
+  };
+
+  /**
+   * La liste des recrues, chez Dracolosse (ui/recruitlist.ts) : « Nouveau » sur celles qu'on n'a
+   * pas encore vues, puis elles le sont (son « ! » s'éteint). Après chaque fiche, la liste se
+   * rouvre tant qu'il en reste.
+   */
+  const openRecruits = async () => {
+    if (!save.candidates.length) return;
+    const seen = freshNews(save, 'start');
+    const infos = await Promise.all(save.candidates.map((c) => loadInfo(c.species)));
+    const list = save.candidates.map((c, idx) => ({ idx, species: c.species, name: c.name ?? infos[idx].name, origin: originLabel(c.origin ?? ''), fresh: seen.has(String(c.species)) }));
+    markNewsSeen(save, 'start');
+    writeSave(save);
+    refreshNews();
+    const again = () => window.setTimeout(() => void openRecruits(), 250);
+    recruitList.show(
+      list,
+      `Le Repaire loge ${roster(save).length}/${capacity(save)} libérés. Recrute-les dans l’équipe ou au Repaire, ou renvoie-les.`,
+      (idx) => void meetCandidate(idx, again),
+      (idx) => {
+        const c = save.candidates[idx];
+        if (!c) return;
+        save.candidates.splice(idx, 1);
+        writeSave(save);
+        runHud.notify({ title: 'Au revoir', text: `${list.find((e) => e.idx === idx)?.name ?? 'La recrue'} repart, le cœur gros. Il reviendra peut-être.`, art: c.species, color: 'var(--ink)' });
+        refreshNews();
+        again();
+      },
+      () => input.flush(),
+    );
   };
 
   /**
@@ -1953,8 +1988,10 @@ async function boot(): Promise<void> {
       return;
     }
     if (station === 'map') return openJournal('map');
-    // Dracolosse ne lance plus la run (on part en passant l'arche) : il le rappelle.
+    // Dracolosse ne lance plus la run (on part en passant l'arche) : il le rappelle. Il tient
+    // aussi la liste des recrues qui attendent : il l'ouvre s'il y en a.
     if (station === 'start' && !(net.role === 'host' && net.guests.length)) {
+      if (save.candidates.length) return void openRecruits();
       const g = STATIONS.start;
       dialogue.show({ name: camp.npcs.find((n) => n.speciesId === g.id)?.info?.name ?? g.title, role: `Le Repaire · ${g.title}`, type: g.type, sprite: `/game/artwork/${g.id}.png` }, 'Quand tu es prêt, passe l’arche, au nord. Ton équipe te suit : compose-la chez Porygon avant de partir.');
       return;
