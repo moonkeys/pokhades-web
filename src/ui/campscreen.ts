@@ -448,7 +448,38 @@ export class CampScreen {
     const scroll = root.querySelector('.cs-main')?.scrollTop ?? 0;
     root.replaceChildren(page);
     main.scrollTop = scroll;
+    this.scrollRail(page, main);
     this.showFocus();
+  }
+
+  /**
+   * Retour de test : « on ne sait pas qu'on peut scroller ». Sur Mac (et dans l'appli), la barre
+   * du navigateur se cache tant qu'on ne défile pas : un rail jaune, dessiné par le jeu à droite
+   * de la colonne, dit qu'il y a une suite et où l'on en est ; le bas de la colonne s'estompe
+   * (.more) tant qu'il reste à lire. Le rail ne se clique pas : on défile à la molette ou au doigt.
+   */
+  private railObs: ResizeObserver | null = null;
+  private scrollRail(page: HTMLElement, main: HTMLElement): void {
+    const rail = el('div', 'cs-rail', page);
+    const thumb = el('i', '', rail);
+    const sync = () => {
+      const over = main.scrollHeight - main.clientHeight > 4;
+      rail.hidden = !over;
+      main.classList.toggle('more', over && main.scrollTop + main.clientHeight < main.scrollHeight - 4);
+      if (!over) return;
+      // Par les offsets (la page est son parent positionné) : l'entrée animée décale le rectangle à l'écran.
+      rail.style.top = `${main.offsetTop + 8}px`;
+      rail.style.height = `${main.offsetHeight - 16}px`;
+      // Au milieu de la marge de droite de la colonne, pas collé au bord de l'écran.
+      rail.style.left = `${main.offsetLeft + main.offsetWidth - parseFloat(getComputedStyle(main).paddingRight) / 2 - 4}px`;
+      thumb.style.height = `${(main.clientHeight / main.scrollHeight) * 100}%`;
+      thumb.style.top = `${(main.scrollTop / main.scrollHeight) * 100}%`;
+    };
+    main.addEventListener('scroll', sync, { passive: true });
+    this.railObs?.disconnect();
+    this.railObs = new ResizeObserver(sync);
+    this.railObs.observe(main);
+    requestAnimationFrame(sync);
   }
 
   // ── Clavier ──────────────────────────────────────────────────────────
@@ -2020,7 +2051,9 @@ export class CampScreen {
     };
     const ready = FEATS.filter((f) => featState(save, f) === 'ready');
     if (ready.length > 1) {
-      const all = el('button', 'cs-claim all', main, `Tout réclamer (${ready.length})`);
+      const all = el('button', 'cs-claim all', main);
+      el('i', '', all, '✦');
+      all.append(`Tout réclamer · ${ready.length} exploits`);
       all.addEventListener('click', () => {
         for (const f of ready) claimFeat(save, f.id);
         claimed(`${ready.length} exploits réclamés.`);
@@ -2033,8 +2066,9 @@ export class CampScreen {
       if (!feats.length) continue;
       const done = feats.filter((f) => featState(save, f) === 'done').length;
       const box = el('div', 'cs-feat-group da-paper', list);
-      const h = el('div', 'cs-label', box, FEAT_GROUPS[group]);
-      el('small', '', h, ` · ${done} / ${feats.length}`);
+      // Le titre à l'encre sur le papier (retour de test : le jaune du feutre ne s'y lisait pas).
+      const h = el('div', `cs-feat-head g-${group}`, box, FEAT_GROUPS[group]);
+      el('small', '', h, `${done} / ${feats.length}`);
       const shown = [...feats.filter((f) => featState(save, f) === 'ready'), ...feats.filter((f) => featState(save, f) === 'todo').slice(0, 2)];
       if (!shown.length) el('small', 'cs-info', box, 'Tout est fait.');
       for (const f of shown) {

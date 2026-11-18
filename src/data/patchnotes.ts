@@ -49,6 +49,7 @@ export const PATCH_NOTES: readonly PatchNote[] = [
           'Les Pokémon qui veulent te rejoindre n’encombrent plus le Repaire : Dracolosse en tient la liste, avec un « ! » quand un nouveau arrive. Recrute-les ou renvoie-les d’un clic.',
           'Chez Dracolosse, chaque recrue a sa fiche : stats, attaques, talent et poids, avant de l’accueillir. Xatu et Dracolosse ont leur portrait sur le côté, comme les autres gardiens.',
           'Les écrans du Repaire s’adaptent aux petits écrans : le gardien en bandeau, tout sur une colonne.',
+          'Le carnet de Xatu range ses exploits côte à côte, avec un gros bouton « Tout réclamer ». Une barre jaune montre quand un écran du Repaire a une suite plus bas.',
           'Surprises : à sa Méga, le Dracaufeu de Peter appelle son jumeau chromatique, qui partage sa barre de vie ; Ondine, Pierre, Giovanni, Olga, Auguste et Erika font changer le temps.',
           'L’arène de la Prairie n’a plus d’eau : un enclos de bois, de la paille, des petits champs, des tournesols. Celle du Lac a ses nénuphars et ses roseaux.',
         ],

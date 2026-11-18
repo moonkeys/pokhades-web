@@ -2278,7 +2278,29 @@
   max-height: 82vh;
   overflow-y: auto;
   padding: calc(2 * var(--u)) calc(4 * var(--u)) calc(2 * var(--u)) calc(3 * var(--u));
-  scrollbar-width: thin;
+  /* La barre du navigateur cède la place au rail du jeu (.cs-rail, campscreen.ts scrollRail),
+   * visible même là où le système cache les barres (retour de test : « on ne sait pas qu'on
+   * peut scroller ») ; le bas de la colonne s'estompe tant qu'il reste à lire (.more). */
+  scrollbar-width: none;
+}
+.cs-main.more {
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 6 * var(--u)), #0003);
+}
+.cs-rail {
+  position: absolute;
+  width: 8px;
+  background: #ffffff2e;
+  border-radius: 4px;
+  pointer-events: none;
+}
+.cs-rail i {
+  position: absolute;
+  left: 0;
+  right: 0;
+  min-height: 24px;
+  background: var(--yel);
+  border-radius: 4px;
+  box-shadow: 0 0 8px #ffd23faa;
 }
 .play .cs-main {
   animation: cs-in 0.35s ease-out 0.15s both;
@@ -5345,14 +5367,36 @@ body.net-on .hud-team {
   font-size: calc(0.95 * var(--u));
   color: var(--muted);
 }
+/* En bento (retour de test : « en colonne, la Rébellion est tout en bas ») : les groupes côte à
+ * côte, trois par rangée, pour qu'on les voie tous d'un coup d'œil. */
 .cs-feats {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(calc(30 * var(--u)), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(calc(20 * var(--u)), 1fr));
   gap: calc(1 * var(--u));
-  align-items: start;
+  align-items: stretch;
+}
+.cs-feat-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--u);
+  padding-bottom: calc(0.3 * var(--u));
+  margin-bottom: calc(0.2 * var(--u));
+  font: normal calc(1.7 * var(--u)) / 1 var(--head);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink);
+  border-bottom: calc(0.2 * var(--u)) solid var(--ink);
+}
+.cs-feat-head small {
+  padding: calc(0.1 * var(--u)) calc(0.5 * var(--u));
+  font: normal calc(1.1 * var(--u)) / 1.2 var(--head);
+  color: var(--paper);
+  background: var(--ink);
 }
 .cs-feat-group {
   display: grid;
+  align-content: start;
   gap: calc(0.4 * var(--u));
   padding: calc(0.8 * var(--u)) calc(1.2 * var(--u));
   color: var(--ink);
@@ -5361,10 +5405,10 @@ body.net-on .hud-team {
   color: var(--muted);
 }
 .cs-feat {
+  /* Le texte, puis la récompense dessous, à droite : les cases du bento sont étroites. */
   display: grid;
-  grid-template-columns: 1fr auto;
-  gap: calc(0.8 * var(--u));
-  align-items: center;
+  gap: calc(0.4 * var(--u));
+  justify-items: start;
   padding: calc(0.3 * var(--u)) calc(0.7 * var(--u));
   border-left: calc(0.35 * var(--u)) solid var(--muted);
 }
@@ -5385,9 +5429,13 @@ body.net-on .hud-team {
   background: rgba(255, 210, 63, 0.28);
 }
 .cs-feat-reward {
+  justify-self: end;
   font: normal calc(1.1 * var(--u)) / 1.2 var(--head);
   color: var(--muted);
   text-align: right;
+}
+.cs-feat .cs-claim {
+  justify-self: end;
 }
 .cs-claim {
   padding: calc(0.2 * var(--u)) calc(0.9 * var(--u));
@@ -5398,11 +5446,37 @@ body.net-on .hud-team {
   border: calc(0.15 * var(--u)) solid var(--ink);
   cursor: pointer;
 }
+.cs-claim:hover {
+  filter: brightness(1.08);
+}
+/* « Tout réclamer » : le gros bouton qu'on ne rate pas — rouge bombe, ombre d'encre, qui bat
+ * doucement (retour de test : « plus évident, plus gros, d'autres couleurs »). */
 .cs-claim.all {
-  margin-bottom: calc(1 * var(--u));
-  font-size: calc(1.5 * var(--u));
-  color: var(--paper);
-  background: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: calc(0.8 * var(--u));
+  margin-bottom: calc(1.2 * var(--u));
+  padding: calc(0.6 * var(--u)) calc(2 * var(--u));
+  font-size: calc(2.2 * var(--u));
+  color: #fff;
+  background: var(--spray);
+  border: calc(0.25 * var(--u)) solid var(--ink);
+  box-shadow: calc(0.5 * var(--u)) calc(0.5 * var(--u)) 0 var(--ink);
+  rotate: -1deg;
+  animation: cs-claim-beat 1.6s ease-in-out infinite;
+}
+.cs-claim.all i {
+  font-style: normal;
+  color: var(--yel);
+}
+.cs-claim.all:active {
+  translate: calc(0.3 * var(--u)) calc(0.3 * var(--u));
+  box-shadow: calc(0.2 * var(--u)) calc(0.2 * var(--u)) 0 var(--ink);
+}
+@keyframes cs-claim-beat {
+  50% {
+    scale: 1.04;
+  }
 }
 
 /* Écrans du Repaire en petit écran, portrait (retour de test du 18 novembre 2026 : « en petit

@@ -960,8 +960,10 @@ coin du départ, à gauche de l'arche de Dracolosse.
 - **Xatu, le chroniqueur** (poste `feats`) : le carnet des exploits, « à la
   Hades » — chaque champion à battre une fois, le Conseil et le Maître, chaque
   biome à atteindre, les runs gagnées, la taille de la rébellion. Une ligne par
-  exploit (nom, avancée, récompense), un papier par groupe ; ceux qui sont faits
-  se réclament d'un clic ou tous ensemble, les réclamés ne restent qu'au compte.
+  exploit (nom, avancée, récompense), un papier par groupe, les groupes côte à
+  côte en bento (titres à l'encre, compte en étiquette) ; ceux qui sont faits se
+  réclament d'un clic ou tous ensemble (gros bouton rose bombe qui bat), les
+  réclamés ne restent qu'au compte.
   Écran du Repaire comme les autres, Xatu dans le volet de gauche
   (`CampScreen.renderFeats`) ; le panneau du plan garde sa feuille volante
   (`src/ui/journal.ts`). Les exploits
@@ -1016,6 +1018,9 @@ du joueur, et reculent s'il fonce sur eux.
   du Repaire passent sur une colonne : le gardien en bandeau en haut, la
   colonne qui défile dessous, la fiche sous les cartes (Pokédex, équipe,
   recrues), et l'unité de taille (`--u`) relevée pour rester lisible.
+- Quand la colonne d'un écran du Repaire déborde, un rail jaune dessiné par le
+  jeu (`CampScreen.scrollRail`) dit qu'il y a une suite et où l'on en est (le Mac
+  cache sa barre tant qu'on ne défile pas), et le bas de la colonne s'estompe.
 - Les poches de l'atelier du bâtisseur et de l'Étude d'Alakazam sont plus larges,
   et une trouée sur leur allée les relie à la place (`yardWay`, `studyWay` dans
   `src/run/camp.ts`).
