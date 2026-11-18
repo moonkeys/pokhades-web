@@ -1009,7 +1009,7 @@ export class CampScreen {
     const col = el('div', 'cs-roster', wrap);
     const label = el('div', 'cs-label', col, `Équipe ${save.team.length}/${slots} · `);
     const gauge = el('span', `cs-weight${load > cap ? ' over' : ''}`, label, `⚖ ${load} / ${cap}`);
-    gauge.title = load > cap ? 'Trop lourd pour partir : retire un Pokémon, un objet ou une grosse attaque.' : 'Poids d’équipe : Pokémon (selon le stade), objets tenus et grosses attaques.';
+    gauge.title = load > cap ? 'Trop lourd pour partir : retire un Pokémon, un objet ou une grosse attaque.' : 'Poids d’équipe : Pokémon (selon le stade et la force), objets tenus (selon leur puissance) et grosses attaques.';
     for (let i = 0; i < slots; i++) {
       const sid = save.team[i];
       const row = el('div', sid === undefined ? 'cs-slot empty' : `cs-slot da-paper${sid === id ? ' sel' : ''}`, col);

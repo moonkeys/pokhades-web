@@ -300,7 +300,10 @@ coffre), dans le noir, éclairé par des torches et des cristaux qui luisent.
 Un **sbire** de la Ligue attend au milieu de l'arène (`src/data/grunts.ts`) :
 son métier et sa planche Essentials suivent le type de son équipe, tiré du
 biome (Montagnard en Rocailleux, Cambrioleur au Volcan, Pêcheur ou Marin au
-bord de l'eau, Scout en forêt, Sbire Rocket ailleurs…). On l'approche, il
+bord de l'eau, Scout en forêt, Sbire Rocket ailleurs… ; et, faute de Team
+Aqua ou Magma chez Essentials, Motard, Loubard, Parieur, Gentleman,
+Scientifique, Dompteur, Nageurs, Intello, Jongleur, Pokémaniac, ou un
+Archéologue et ses Pokémon Sol au Volcan, aux Rocailleux et à la Plage). On l'approche, il
 parle (son portrait, une réplique), puis envoie d'un jet de Poké Ball son
 Pokémon fort, le gardien (trois barres de PV), et une escorte de sauvages
 du biome. Pendant le combat, il lance des **Poké Balls** sur le Pokémon joué
@@ -551,7 +554,10 @@ courbe lissée ; un anneau d'herbe déchiquetée les borde (`WorldMap.lanes`).
 
 Poids d'équipe (GameManager `compute_team_weight`, `src/meta/weight.ts`) :
 chaque Pokémon emmené pèse selon le stade avec lequel il part (3, 5, 8 ;
-Super Bonbon compris), un légendaire 10 ; un objet tenu 2 ; une attaque
+Super Bonbon compris), et au moins selon sa force (total des stats de base,
+`src/data/bst.json` tiré des fiches par `scripts/build-bst.ts` : 5 dès 400, 8
+dès 480 ; Ronflex pèse 8), un légendaire 10 ; un objet tenu 1 à 3 selon ce
+qu'il apporte en tout (+20 %, +35 %, au-delà : `itemWeight`) ; une attaque
 équipée 0 à 3 selon sa puissance (≤ 40, ≤ 70, ≤ 90, au-delà). Au-delà du
 plafond (24), on compose librement mais « Partir » refuse. Le plafond monte
 de 4 par palier, jusqu'à 40, avec le Bracelet de charge d'Alakazam, payé en

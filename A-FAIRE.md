@@ -241,8 +241,12 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
 - Grotte agrandie à 54 × 36 (arène 12 × 7), pour avoir la place d'esquiver.
 - **Mode Nuzlocke** (fait : Échap → Réglages, `Options.nuzlocke`, `nuzlockeToll`
   de main.ts) : en fin de run, un Pokémon encore K.O. ou resté capturé est
-  relâché pour de bon (jamais le dernier de l'équipe). Reste : d'autres sbires (Team Aqua, Magma…) si le
-  dépôt en a les planches (Essentials n'a que la Team Rocket).
+  relâché pour de bon (jamais le dernier de l'équipe). Autres sbires (fait,
+  18 novembre 2026) : Essentials n'a ni la Team Aqua ni la Team Magma ;
+  Motard, Loubard, Parieur, Gentleman, Scientifique, Dompteur, Nageurs,
+  Intello, Jongleur, Pokémaniac rejoignent les thèmes, et un thème Sol
+  (Archéologue, Montagnard ; Triopikeur, Rhinoféros, Grolem) garde les
+  grottes du Volcan, des Rocailleux et de la Plage.
   Changer de place en lançant (fait, 14 novembre 2026) : après un lancer, six
   fois sur dix, le sbire court se poster ailleurs dans l'arène, le plus loin
   possible du joueur (`CaveDirector.relocate`, `Trainer.dashTo`).
@@ -641,8 +645,9 @@ Si d'autres se voient en jeu, noter leur emplacement.
   vignette au seul panneau de test.
 - À vérifier en jeu : le vent sur les tournesols, les icônes des étals et de
   la buvette, la portée des postes déplacés (Kangourex, Roucarnage, Miaouss).
-- Reste : Leçons de Bouldeneu plus courtes (pas prioritaire) ; poids des
-  améliorations (à voir) ; potager et artisanat (fait, voir 2.8).
+- Leçons de Bouldeneu plus courtes (fait, 18 novembre 2026 : les 25 fiches
+  les plus longues réécrites, 230 signes au plus) ; potager et artisanat
+  (fait, voir 2.8).
 
 ### 2.4 Terrain d'entraînement et missions (fait)
 - **Démolosse**, le pisteur, au camp dès le départ (à l'est, sous le terrain
@@ -687,8 +692,10 @@ Si d'autres se voient en jeu, noter leur emplacement.
 - Affiché à l'équipe (jauge, poids de chacun, détail dans la fiche, ⚖ des
   grosses attaques) et au départ ; « Partir » bloqué au-delà du plafond
   (`CampScreen.depart`). Le panneau de test compose sans limite.
-- Reste : à équilibrer en jeu (plafond, poids des CT) ; Rappels et bourse
-  pesants comme dans Godot, si on veut en faire des choix de build.
+- Réglages (18 novembre 2026) : un Pokémon pèse au moins selon sa force
+  (total des stats, `src/data/bst.json`, `scripts/build-bst.ts`) : 5 dès 400,
+  8 dès 480 (Ronflex pesait 3, comme Pichu) ; un objet tenu pèse 1 à 3 selon
+  ce qu'il apporte (`itemWeight`), plus 2 pour tous. Reste : juger en jeu.
 
 ### 2.7 Leçons de Bouldeneu (fait)
 - Bouldeneu (465), le savant, au camp dès le départ, au sud du feu avec un
@@ -763,12 +770,12 @@ Si d'autres se voient en jeu, noter leur emplacement.
   un obstacle coupé restent dessinés intacts chez l'invité (décor « cuit »
   dans la carte) ; pas de reconnexion en cours de run ; à tester entre deux
   machines (NAT strict : il faudrait un serveur TURN).
-- **Revente** à la boutique de run (il faut d'abord un inventaire en run). Les
-  lots de Baies de `ShopStock.gd` sont faits (un par étal).
-- **Surf en run** : au Repaire, on ne nage qu'avec Surf ; en run, on nage
-  toujours (certaines cartes risqueraient de bloquer leurs sorties
-  autrement). Le graphe de biomes (1.2) ne laisse entrer à l'Océan qu'avec
-  Surf ; ailleurs, le Lac et la Plage se nagent encore sans. À trancher.
+- ~~Revente à la boutique de run~~ : abandonnée (18 novembre 2026 : pas
+  d'inventaire en run).
+- **Surf en run** (tranché le 18 novembre 2026 : on garde) : au Repaire, on ne
+  nage qu'avec Surf ; en run, on nage toujours ; seul l'Océan demande Surf.
+- **Contenu en plus** (plus tard, 18 novembre 2026) : d'autres talents,
+  salles spéciales, visiteurs par zone, récoltes, dresseurs connus.
 - Le graphe de biomes est un premier jet (`BIOME_LINKS`) : à rééquilibrer
   au fil des tests, et d'autres CS pourront y garder des branches (Coupe,
   Éclate-Roc). (Un champion par biome depuis le 17 novembre 2026 : voir 2.10.)

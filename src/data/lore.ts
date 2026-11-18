@@ -45,15 +45,15 @@ export const LORE: LoreChapter[] = [
       // combat.ts:33-43
       { title: 'Le combo', text: 'Trois coups enchaînés en moins de 1,5 s : le 2ᵉ frappe à ×1,18, le 3ᵉ, le coup final, à ×1,55 et fait vaciller la cible. Pendant un combo, les recharges fondent (×0,42) ; le coup final, lui, recharge un peu plus lentement.' },
       // moves.ts:111-128, combat.ts:736-888
-      { title: 'Physique ou spécial', text: 'Une attaque physique frappe tout ce qui est autour de toi, à courte portée (3 à 5 cases). Une attaque spéciale part de loin (7 à 11 cases) vers l’ennemi visible le plus proche, mais les murs et les rochers l’arrêtent. Plus une attaque est puissante, plus elle porte loin… et plus elle recharge lentement.' },
+      { title: 'Physique ou spécial', text: 'Physique : tout autour de toi, de près (3 à 5 cases). Spécial : de loin (7 à 11 cases), sur l’ennemi visible le plus proche ; les murs l’arrêtent. Plus c’est puissant, plus ça porte et recharge lentement.' },
       // actor.ts:15-18, combat.ts:69
-      { title: 'Le dash', text: 'Un bond rapide pendant lequel rien ne te touche : on traverse les coups et les ennemis. Il faut être en mouvement. Une charge au départ (1,6 s pour revenir), d’autres s’achètent chez Alakazam, et certains dons en ajoutent ou y greffent des effets.' },
+      { title: 'Le dash', text: 'Un bond où rien ne te touche : on traverse coups et ennemis, en mouvement seulement. Une charge au départ (1,6 s) ; Alakazam en vend d’autres, certains dons y ajoutent des effets.' },
       // combat.ts:56-59
       { title: 'Lire les coups ennemis', text: 'Un sauvage prépare son coup une demi-seconde avant de frapper, sur une petite zone : sors-en à pied ou d’un dash. Les champions préparent plus longtemps, mais frappent plus large.' },
       // damage.ts:71-85, pokemon.ts:175-199
-      { title: 'Les dégâts', text: 'Ils dépendent du niveau, de la puissance de l’attaque et du rapport Attaque / Défense (Attaque Spé. / Défense Spé. pour le spécial), puis du type, de la météo et d’un peu de hasard. Un critique frappe à ×1,5 (60 % de chances au plus). L’Esquive fait rater un coup sur deux au mieux.' },
+      { title: 'Les dégâts', text: 'Niveau, puissance, Attaque contre Défense (ou leurs versions Spé.), puis type, météo et un peu de hasard. Critique : ×1,5 (60 % de chances au plus). L’Esquive fait rater un coup sur deux, au mieux.' },
       // pokemon.ts:8-11, 115-117
-      { title: 'Les niveaux', text: 'Monter de niveau donne des PV et frappe plus fort, mais l’Attaque, la Défense ou la Vitesse sont celles de l’espèce : ce sont les objets, les dons et les capacités de statut qui les font grimper. L’XP va à chaque membre qui a frappé l’ennemi.' },
+      { title: 'Les niveaux', text: 'Un niveau donne des PV et frappe plus fort. Attaque, Défense et Vitesse viennent de l’espèce : objets, dons et capacités de statut les font monter. L’XP va à chaque membre qui a frappé.' },
       // main.ts:405-436, companion.ts
       { title: 'L’équipe et les compagnons', text: 'Tab passe au membre suivant. Ceux que tu ne joues pas se battent seuls à tes côtés : ils te protègent, visent les ennemis affaiblis et esquivent les attaques annoncées au sol.' },
       // main.ts (megaEvolve), data/megas.ts, catalog.ts (mega)
@@ -85,7 +85,7 @@ export const LORE: LoreChapter[] = [
     intro: 'Une attaque sans puissance n’est pas une attaque inutile. Un bon Danse-Lames vaut trois Charge.',
     cards: [
       // moves.ts:25-75, pokemon.ts:60-67, 207-218
-      { title: 'Renforcements', text: 'Sur toi, pendant 8 s : Danse-Lames et Machination (Attaque ×1,5), Cognobidon (×2), Croissance et Plénitude (×1,4), Repli (Défense ×1,5), Mur de Fer (×2), Amnésie (Défense Spé. ×1,6), Hâte et Poliroche (Vitesse ×1,5), Reflet (Esquive), Puissance (critiques)… Relancé, un renforcement repart pour 8 s mais ne se cumule pas.' },
+      { title: 'Renforcements', text: '8 s sur toi, sans cumul : Danse-Lames et Machination (Attaque ×1,5), Cognobidon (×2), Repli (Défense ×1,5), Mur de Fer (×2), Amnésie (Déf. Spé. ×1,6), Hâte (Vitesse ×1,5), Reflet (Esquive)…' },
       { title: 'Affaiblissements', text: 'Sur les ennemis à portée, pendant 8 s : Rugissement et Charme baissent leur Attaque, Mimi-Queue, Groz’Yeux et Grincement leur Défense, Grimace leur Vitesse, Jet de Sable et Brouillard leur précision (ils ratent plus souvent).' },
       { title: 'Soins et protection', text: 'Soin et Synthèse rendent la moitié des PV, Repos tout, Avale un quart. Abri rend intouchable pendant 1,5 s.' },
       { title: 'États garantis', text: 'Cage-Éclair, Toxik, Feu Follet, Poudre Dodo et leurs cousines frappent l’ennemi le plus proche d’un état à coup sûr (voir le chapitre États).' },
@@ -96,14 +96,14 @@ export const LORE: LoreChapter[] = [
       // combat/combat.ts (weatherMove)
       { title: 'Les attaques de météo', text: 'Danse Pluie, Zénith, Tempête de Sable et Grêle changent le temps de la salle jusqu’à son éclaircie (voir le chapitre États). Danse Pluie et Zénith se vendent chez M. Mime.' },
       // data/abilities.ts
-      { title: 'Les talents météo', text: 'Certains Pokémon changent le temps rien qu’en arrivant : Tarpaud et Kyogre font pleuvoir (Crachin), Chartor et Groudon allument le soleil (Sécheresse), Tyranocif et Hippodocus lèvent le sable (Sable Volant), Blizzaroi fait tomber la grêle (Alerte Neige). Dans ton équipe comme en face : le dernier arrivé l’emporte. La fiche du Pokémon (C, ou Porygon au Repaire) dit s’il a un talent.' },
-      { title: 'Lévitation et contact', text: 'Les Pokémon à Lévitation (Fantominus, Smogo…) flottent : les attaques Sol ne les touchent pas. Frappe au corps à corps un Pokémon à Statik, Corps Ardent ou Point Poison, et tu risques la paralysie, la brûlure ou le poison. La fiche (C) dit qui a quoi.' },
+      { title: 'Les talents météo', text: 'Certains Pokémon changent le temps en arrivant : Tarpaud et Kyogre la pluie, Chartor et Groudon le soleil, Tyranocif le sable, Blizzaroi la grêle. Le dernier arrivé l’emporte. La fiche (C) dit qui.' },
+      { title: 'Lévitation et contact', text: 'Lévitation (Fantominus, Smogo…) : les attaques Sol ne touchent pas. Frapper au contact un Pokémon à Statik, Corps Ardent ou Point Poison peut paralyser, brûler ou empoisonner. La fiche (C) dit qui.' },
       { title: 'Absorber et se surpasser', text: 'Absorb Eau et Absorb Volt soignent au lieu de blesser ; Torche avale le Feu et renforce ses propres flammes. Les starters (Engrais, Brasier, Torrent) frappent plus fort quand ils sont à bout de forces.' },
       { title: 'Intimidation', text: 'Arcanin, Léviator, Luxray, Crocorible, et même Baggiguane font peur : tout adversaire qui s’en approche perd un quart de son Attaque pendant dix secondes, une fois par salle. Méfie-toi des Grahyèna : ça marche aussi contre toi.' },
       // catalog.ts:111-135, meta/weight.ts
       { title: 'CT du tuteur', text: 'M. Mime vend des CT au Repaire, une fois pour toutes : l’attaque s’équipe ensuite à la hutte de Porygon. Gare au poids : une attaque de plus de 40 de puissance pèse dans l’équipe.' },
       // boons.ts:345-348, boonhooks.ts:501-576
-      { title: 'L’ultime', text: 'Une attaque dévastatrice, offerte par un légendaire (à partir de l’acte 2, en 3ᵉ carte de ses dons). Sa jauge se remplit quand tu frappes, et quatre fois plus vite quand tu es frappé. Pleine : R. Chaque légendaire a la sienne : foudre paralysante, déflagration, blizzard qui gèle, trou noir qui attire et endort, ralenti du temps…' },
+      { title: 'L’ultime', text: 'Offerte par un légendaire (dès l’acte 2, 3ᵉ carte de ses dons). La jauge monte quand tu frappes, quatre fois plus vite quand on te frappe. Pleine : R. Foudre, déflagration, blizzard, trou noir…' },
     ],
   },
   {
@@ -114,9 +114,9 @@ export const LORE: LoreChapter[] = [
       // boons.ts:294-313
       { title: 'Choisir un don', text: 'Une porte « don » mène à un légendaire : il propose trois dons, tu en gardes un jusqu’à la fin de la run. Chaque légendaire a son style : foudre, feu, glace, ombre, chance…' },
       // boons.ts:163-174
-      { title: 'Dons de stats et d’effets', text: 'Certains montent une stat (+25 % de PV, d’Attaque, de Vitesse…, des critiques, de la portée, une cadence plus vive). D’autres changent ta façon de te battre : coups qui rebondissent, dash qui laisse une traînée, armure de givre, racines quand on reste immobile, retour trois secondes en arrière…' },
+      { title: 'Dons de stats et d’effets', text: 'Certains montent une stat (PV, Attaque, Vitesse, critiques, portée, cadence). D’autres changent ta façon de te battre : coups qui rebondissent, dash qui laisse une traînée, armure de givre, retour en arrière…' },
       // boons.ts:177-179, 256-285
-      { title: 'Raretés', text: 'Commun, Rare (×1,4), Épique (×1,85), Prismatique (×2,4) : le même don, en plus fort. Les raretés montent au fil des salles, d’un cran si tu as fini la salle sans prendre un coup, et reprendre un don qu’on a déjà le fait monter d’un cran.' },
+      { title: 'Raretés', text: 'Commun, Rare (×1,4), Épique (×1,85), Prismatique (×2,4). Elles montent au fil des salles, d’un cran après une salle sans coup reçu, et reprendre un don déjà pris le fait monter.' },
       { title: 'Dons duo', text: 'Garde un don de deux légendaires différents : leurs dons croisés, les duos, peuvent apparaître en première carte. Les plus puissants du jeu.' },
     ],
   },
@@ -128,8 +128,8 @@ export const LORE: LoreChapter[] = [
       // run/run.ts:18-20, 36-47
       { title: 'Actes et salles', text: 'Un acte : sept salles de combat ou spéciales, une boutique, puis le champion. On part de la Prairie, au sud de la carte du monde, et chaque champion battu ouvre les biomes voisins.' },
       // world/worldmap.ts, meta/feats.ts
-      { title: 'La Route Victoire', text: 'Bats les onze champions des biomes, une fois chacun (un seul par biome) : au bout de la carte s’ouvre la Route Victoire, un cinquième acte plus dur encore. Un membre du Conseil la garde à chaque run, jusqu’à ce que le Conseil entier soit tombé ; alors le Maître de la Ligue t’y attend.' },
-      { title: 'Le carnet', text: 'Xatu, près de l’arche, tient la liste de tous les exploits — chaque champion à battre, chaque biome à atteindre, les victoires, la taille de la rébellion. Un exploit fait se réclame au Repaire, dans le carnet : des Baies et des Éclats de Champion.' },
+      { title: 'La Route Victoire', text: 'Bats les onze champions une fois : la Route Victoire s’ouvre au bout de la carte, un cinquième acte plus dur. Le Conseil la garde, un membre par run ; ensuite, le Maître t’y attend.' },
+      { title: 'Le carnet', text: 'Xatu, près de l’arche, tient la liste des exploits : champions, biomes, victoires, taille de la rébellion. Un exploit fait se réclame dans le carnet, contre des Baies et des Éclats.' },
       // run.ts:52-68, 251-256
       { title: 'Les portes', text: 'Une salle vidée ouvre jusqu’à trois portes ; chacune annonce sa récompense : un don, une attaque, ou un butin de ₽. La récompense laissée au centre est perdue si on part sans la prendre.' },
       // run.ts:333-360, room.ts
@@ -141,7 +141,7 @@ export const LORE: LoreChapter[] = [
       // run/berries.ts, run/chests.ts
       { title: 'Baies et coffres', text: 'Frappe deux fois un arbre à baies pour en faire tomber. Beaucoup de salles cachent un coffre (E) : Baies, Bois, Pierre, Nourriture. Les plus riches demandent une CS : Coupe, Éclate-Roc ou Force.' },
       // data/forms.ts, data/evolutions.ts (REGIONAL_EVOLUTIONS)
-      { title: 'Les formes régionales', text: 'Certains sauvages portent la forme d’une autre région : Rattata d’Alola, Miaouss de Galar, Caninos de Hisui… avec leurs propres types. Et certains Pokémon évoluent autrement selon le biome : Pikachu devient Raichu d’Alola à la Plage, Noeunoeuf Noadkoko d’Alola, Osselait Ossatueur d’Alola au Volcan.' },
+      { title: 'Les formes régionales', text: 'Des sauvages d’autres régions : Rattata d’Alola, Miaouss de Galar, Caninos de Hisui… Et certains évoluent selon le biome : Pikachu en Raichu d’Alola à la Plage, Osselait en Ossatueur d’Alola au Volcan.' },
       // main.ts (nuzlockeToll), ui/options.ts
       { title: 'Le mode Nuzlocke', text: 'À cocher dans Échap → Réglages, pour la run suivante : en fin de run, un Pokémon encore K.O. ou resté capturé est relâché pour de bon. Un Rappel ou la Source le sauvent ; le dernier de l’équipe n’est jamais relâché. Pas en ligne.' },
       // enemy.ts:84-86, 218-220
@@ -158,7 +158,7 @@ export const LORE: LoreChapter[] = [
     intro: 'Toutes les clairières ne se ressemblent pas. Certaines cachent un piège, d’autres un trésor, et quelques-unes les deux.',
     cards: [
       // world/layouts.ts
-      { title: 'Formes des salles', text: 'Clairières, arènes rondes, couloirs, deux clairières reliées par un goulet, carrefours, boucles autour d’un lac ou d’un bosquet, sentiers en lacets, au Lac une île reliée à la rive par deux gués, au Rocailleux des terrasses : chaque biome a ses préférées, en plusieurs tailles.' },
+      { title: 'Formes des salles', text: 'Clairières, arènes, couloirs, goulets, carrefours, boucles, lacets, l’île du Lac et ses gués, les terrasses des Rocailleux : chaque biome a ses formes préférées, en plusieurs tailles.' },
       // layouts.ts (front), room.ts (announce)
       { title: 'Ligne de front', color: '#f259bf', text: 'Un long couloir : chaque vague surgit au bout le plus éloigné de toi et charge en masse. Le sol gronde et une flèche magenta montre d’où elle vient un peu avant. Moins de vagues, mais plus fournies. En Forêt, c’est un sentier étroit entre les arbres ; en Prairie, un chemin au milieu des champs d’herbe haute.' },
       // run.ts:79-87, 291-298, room.ts
@@ -169,7 +169,7 @@ export const LORE: LoreChapter[] = [
       // run/altar.ts, run/run.ts (CURSES)
       { title: 'L’Autel maudit', color: '#b48ce8', text: 'De nuit, Feuforêve garde un cercle magique entre deux torches. Signe le pacte (E) : un don plus rare, contre une malédiction jusqu’à la fin de l’acte, lisible avant de signer.' },
       // run/residents.ts, meta/errands.ts
-      { title: 'Les habitants', text: 'Des Pokémon vivent dans les salles calmes : parle-leur (E). Certains te demandent un service ; une fois rendu, retrouve-les dans une salle du même genre pour être payé. Ils y reviennent souvent. Tes services en cours sont dans la fiche de l’équipe (C).' },
+      { title: 'Les habitants', text: 'Des Pokémon vivent dans les salles calmes : parle-leur (E). Certains demandent un service ; fais-le, puis retrouve-les dans une salle du même genre pour être payé. En cours : fiche (C).' },
       // run/dojo.ts
       { title: 'Le Dojo', color: '#e08a4c', text: 'Machopeur tient un dojo au toit rouge. Monte sur son tatami (E) : une leçon gratuite, apprendre une attaque forte ou en renforcer une, pour le Pokémon de ton choix. Deux leçons par dojo ; refermer le parchemin sans rien prendre ne compte pas.' },
       // run/pension.ts
@@ -188,15 +188,15 @@ export const LORE: LoreChapter[] = [
     intro: 'Un sauvage n’est pas un idiot. Il sait ce qui te fait mal, et il ira le chercher.',
     cards: [
       // enemy.ts:27, 89-93, 30-49
-      { title: 'Les comportements', text: 'Les poursuivants foncent au contact. Les tireurs (ceux qui ont une attaque spéciale) gardent leurs distances. Les chargeurs préparent une longue ruée en ligne droite : écarte-toi. Les escarmoucheurs frappent et reculent. Les soutiens chantent pour renforcer leurs alliés : abats-les d’abord.' },
+      { title: 'Les comportements', text: 'Poursuivants : au contact. Tireurs : à distance. Chargeurs : une ruée en ligne droite, écarte-toi. Escarmoucheurs : frappent et reculent. Soutiens : renforcent leurs alliés, abats-les d’abord.' },
       // enemy.ts:318-343
       { title: 'Ils visent ta faiblesse', text: 'Un sauvage choisit sa cible selon l’efficacité de son type : un Pokémon Feu dans une équipe attirera tous les sauvages Eau de la salle.' },
       // enemy.ts:56-81, main.ts
-      { title: 'Les phases du champion', text: 'Son as change de phase à chaque barre brisée : il appelle des sbires, méga-évolue, puis enrage à la dernière barre (lueur rouge, attaques plus fréquentes). De temps en temps, il prend le centre de l’arène et frappe tout autour de lui, ou bondit sur toi. À sa dernière barre, sa plus forte attaque frappe toute l’arène : cours dans un cercle vert. Plus ton équipe est grande, plus il est coriace.' },
-      { title: 'Les champions', text: 'Plusieurs barres de PV et de grandes attaques annoncées au sol. Battu, un champion te cède un Pokémon de son équipe : le plus faible d’abord, puis, victoire après victoire, jusqu’à son as. Pas de don après lui : ses Éclats de Champion t’attendent au centre de l’arène, [E] pour les prendre, avant de franchir la porte.' },
-      { title: 'L’as', text: 'Le dernier Pokémon du champion, et le plus coriace : cinq barres, des zones plus fréquentes, et parfois la pluie sur ses dernières barres. S’il a une forme Méga, il méga-évolue en perdant une barre. Chaque champion garde une surprise pour ce moment-là : un jumeau qui partage sa vie, le temps qui tourne, une barre regagnée, une rage précoce ou des renforts.' },
+      { title: 'Les phases du champion', text: 'Chaque barre brisée, une phase : sbires, Méga, puis rage à la dernière (lueur rouge). Il prend le centre et frappe autour, ou bondit sur toi. À la fin, sa plus forte attaque couvre l’arène : file dans un cercle vert.' },
+      { title: 'Les champions', text: 'Plusieurs barres et de grandes attaques annoncées au sol. Battu, il te cède un Pokémon, du plus faible à son as. Ses Éclats de Champion t’attendent au centre : [E], avant de passer la porte.' },
+      { title: 'L’as', text: 'Le dernier Pokémon du champion : cinq barres, sept attaques, des zones plus fréquentes. Aux deux dernières barres, il méga-évolue s’il le peut, et son champion sort sa surprise : jumeau, temps, renforts…' },
       // combat/signatures.ts
-      { title: 'Les signatures', text: 'Chaque champion a son attaque fétiche, qui ouvre le bal : la cage de rochers de Pierre, les vagues d’Ondine, la croix électrique de Major Bob, la spirale de fleurs d’Erika, les flaques de Koga, les salves de Morgane, l’anneau de feu d’Auguste, le séisme de Giovanni, les roulades de Blanche. Apprends-les.' },
+      { title: 'Les signatures', text: 'Chaque champion ouvre le bal avec son attaque fétiche : cage de rochers de Pierre, vagues d’Ondine, croix électrique de Major Bob, flaques de Koga, anneau de feu d’Auguste… Apprends-les.' },
     ],
   },
   {
@@ -208,22 +208,22 @@ export const LORE: LoreChapter[] = [
       { title: 'Baies, ressources, Éclats', text: 'Les Baies paient presque tout au Repaire. Bois, Pierre et Nourriture paient les chantiers de Charpenti. Les Éclats de Champion paient le Bracelet de charge.' },
       { title: 'Les postes', text: 'Dracolosse : le départ. Porygon : l’équipe et le Pokédex. Charpenti : les chantiers. Les autres gardiens arrivent avec leurs bâtiments : missions, quêtes, CT, objets, améliorations, potager, atelier.' },
       // meta/weight.ts
-      { title: 'Le poids d’équipe', text: 'Une équipe ne part pas trop lourde : 24 au départ. Un Pokémon pèse 3, 5 ou 8 selon son stade d’évolution (10 pour un légendaire), un objet tenu 2, une attaque de 0 à 3 selon sa puissance. Le Bracelet de charge monte le plafond.' },
+      { title: 'Le poids d’équipe', text: 'Plafond : 24 au départ, le Bracelet de charge le monte. Un Pokémon pèse 3, 5 ou 8 selon son stade et sa force (Ronflex 8 ; légendaire 10), un objet tenu 1 à 3 selon sa puissance, une attaque 0 à 3.' },
       // catalog.ts:21-102
-      { title: 'Améliorations', text: 'Chez Alakazam : des places dans l’équipe (on part seul, jusqu’à six), le Partage d’XP, une bourse de ₽ au départ, des charges de dash, la Ceinture de Rappels, de la Vitalité, l’Aimant à Baies, le Méga-Anneau, et les CS (Surf, Coupe, Éclate-Roc, Force).' },
+      { title: 'Améliorations', text: 'Chez Alakazam : places dans l’équipe (jusqu’à six), Partage d’XP, bourse de départ, charges de dash, Rappels, Vitalité, Aimant à Baies, Méga-Anneau, et les CS (Surf, Coupe, Éclate-Roc, Force).' },
       // catalog.ts:151-164
-      { title: 'Objets tenus', text: 'Achetés chez Miaouss, au marché, donnés à un Pokémon à la hutte de Porygon, gardés d’une run à l’autre. Chacun multiplie une stat (ceux de l’atelier, souvent deux) : Bandeau Muscle l’Attaque, Peau Métal la Défense, Vive Griffe la Vitesse, Restes les PV… sans autre effet.' },
+      { title: 'Objets tenus', text: 'Chez Miaouss, donnés à la hutte de Porygon, gardés d’une run à l’autre. Chacun multiplie une stat (ceux de l’atelier, souvent deux) : Bandeau Muscle l’Attaque, Peau Métal la Défense, Restes les PV…' },
       // catalog.ts:172-177, data/evolutions.ts
       { title: 'Évolution et Super Bonbon', text: 'On évolue en pleine run, au bon niveau, avec tous ses PV rendus. Un Super Bonbon donne +5 niveaux de départ (20 au plus) : assez haut, le Pokémon part déjà évolué.' },
       // meta/save.ts:166-194
       { title: 'Recruter des Pokémon', text: 'Bats dix fois une espèce : l’un d’eux t’attendra près du feu, parle-lui. Les suivants en demandent plus. Le Repaire a des places limitées : bâtis pour en loger davantage.' },
       // meta/quests.ts (contrats)
-      { title: 'Quêtes et contrats', text: 'Kangourex propose des quêtes au long cours, chacune promettant un Pokémon introuvable ailleurs, et trois contrats toujours renouvelés : de petits objectifs de run payés en Baies, en ressources ou en Éclat, parfois avec un Super Bonbon ou un objet tenu en prime.' },
+      { title: 'Quêtes et contrats', text: 'Kangourex propose des quêtes au long cours, chacune promettant un Pokémon introuvable ailleurs, et trois contrats de run renouvelés, payés en Baies, ressources ou Éclat, parfois un objet en prime.' },
       // catalog.ts:216-228, meta/missions.ts
-      { title: 'Aménagements et missions', text: 'Charpenti bâtit, au fil des runs : bâtiments des gardiens, dortoir, terrain d’entraînement, champ, maisons, bourg, carrière… Chaque chantier fait de la place aux libérés. Démolosse envoie des libérés en mission chercher des ressources.' },
+      { title: 'Aménagements et missions', text: 'Charpenti bâtit au fil des runs : bâtiments, dortoir, terrain, champ, maisons, carrière… Chaque chantier fait de la place aux libérés. Démolosse les envoie en mission chercher des ressources.' },
       // meta/crafting.ts
       { title: 'Potager et matériaux', text: 'Chaque coffre rapporte le matériau de son biome. Au Potager, Héliatronc plante ce que tu veux : ça pousse à chaque salle franchie, et se récolte en herbes et en racines.' },
-      { title: 'L’atelier et les nectars', text: 'Queulorior mêle matériaux et herbes en objets tenus qu’on ne trouve nulle part ailleurs (souvent deux stats à la fois), et en nectars. Posé sur la coupelle devant l’atelier, un nectar attire en 5 salles un Pokémon pas encore libéré, d’un type qu’il aime : parle-lui, il reste.' },
+      { title: 'L’atelier et les nectars', text: 'Queulorior façonne des objets tenus introuvables ailleurs (souvent deux stats) et des nectars. Posé sur la coupelle, un nectar attire en 5 salles un Pokémon pas encore libéré : parle-lui, il reste.' },
     ],
   },
 ];
