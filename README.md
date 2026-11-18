@@ -960,8 +960,10 @@ coin du départ, à gauche de l'arche de Dracolosse.
 - **Xatu, le chroniqueur** (poste `feats`) : le carnet des exploits, « à la
   Hades » — chaque champion à battre une fois, le Conseil et le Maître, chaque
   biome à atteindre, les runs gagnées, la taille de la rébellion. Une ligne par
-  exploit (nom, avancée, récompense), un papier par groupe, les groupes côte à
-  côte en bento (titres à l'encre, compte en étiquette) ; ceux qui sont faits se
+  exploit (nom, avancée, récompense), un papier par groupe, en bento à cases
+  inégales — la Carte du monde en grande case à gauche sur deux colonnes, les
+  Champions et la Rébellion empilés à droite, la Route Victoire en bandeau
+  dessous (titres à l'encre, compte en étiquette) ; ceux qui sont faits se
   réclament d'un clic ou tous ensemble (gros bouton rose bombe qui bat), les
   réclamés ne restent qu'au compte.
   Écran du Repaire comme les autres, Xatu dans le volet de gauche

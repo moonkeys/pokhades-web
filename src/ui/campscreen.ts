@@ -2065,15 +2065,17 @@ export class CampScreen {
       const feats = FEATS.filter((f) => f.group === group && featShown(save, f));
       if (!feats.length) continue;
       const done = feats.filter((f) => featState(save, f) === 'done').length;
-      const box = el('div', 'cs-feat-group da-paper', list);
+      // `g-…` place la case dans le bento (da.css, .cs-feats).
+      const box = el('div', `cs-feat-group g-${group} da-paper`, list);
       // Le titre à l'encre sur le papier (retour de test : le jaune du feutre ne s'y lisait pas).
       const h = el('div', `cs-feat-head g-${group}`, box, FEAT_GROUPS[group]);
       el('small', '', h, `${done} / ${feats.length}`);
       const shown = [...feats.filter((f) => featState(save, f) === 'ready'), ...feats.filter((f) => featState(save, f) === 'todo').slice(0, 2)];
       if (!shown.length) el('small', 'cs-info', box, 'Tout est fait.');
+      const rows = el('div', 'cs-feat-rows', box);
       for (const f of shown) {
         const state = featState(save, f);
-        const row = el('div', `cs-feat ${state}`, box);
+        const row = el('div', `cs-feat ${state}`, rows);
         const text = el('div', '', row);
         el('b', '', text, f.name);
         const [n, goal] = f.progress(save);

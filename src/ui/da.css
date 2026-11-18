@@ -5367,13 +5367,40 @@ body.net-on .hud-team {
   font-size: calc(0.95 * var(--u));
   color: var(--muted);
 }
-/* En bento (retour de test : « en colonne, la Rébellion est tout en bas ») : les groupes côte à
- * côte, trois par rangée, pour qu'on les voie tous d'un coup d'œil. */
+/* En bento, des cases inégales (retour de test : « en colonne, la Rébellion est tout en bas » ;
+ * puis « un vrai bento ») : la Carte du monde, la plus longue, en grande case à gauche, ses
+ * exploits sur deux colonnes ; les Champions et la Rébellion empilés à droite ; la Route
+ * Victoire, quand elle se dévoile, en bandeau dessous. Tout se voit d'un coup d'œil. */
 .cs-feats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(calc(20 * var(--u)), 1fr));
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  grid-template-areas:
+    'monde champions'
+    'monde rebellion'
+    'conseil conseil';
   gap: calc(1 * var(--u));
   align-items: stretch;
+}
+.cs-feat-group.g-monde {
+  grid-area: monde;
+}
+.cs-feat-group.g-champions {
+  grid-area: champions;
+}
+.cs-feat-group.g-rebellion {
+  grid-area: rebellion;
+}
+.cs-feat-group.g-conseil {
+  grid-area: conseil;
+}
+.cs-feat-rows {
+  display: grid;
+  gap: calc(0.4 * var(--u));
+  align-content: start;
+}
+.g-monde .cs-feat-rows,
+.g-conseil .cs-feat-rows {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 .cs-feat-head {
   display: flex;
@@ -5553,6 +5580,13 @@ body.net-on .hud-team {
   }
   .cs-feats {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: none;
+  }
+  .cs-feat-group.g-monde,
+  .cs-feat-group.g-champions,
+  .cs-feat-group.g-rebellion,
+  .cs-feat-group.g-conseil {
+    grid-area: auto;
   }
   .cs-quote {
     font-size: calc(1.6 * var(--u));
