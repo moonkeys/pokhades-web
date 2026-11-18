@@ -216,8 +216,6 @@ const LINES = {
   trainer: ['Encore une série. Le champion, lui, ne se repose pas.', 'Ce mannequin a la tête de {champion}. Enfin, je l’imagine.', 'Frappe, esquive, recommence. C’est tout.'],
 };
 
-/** Recrues montrées au Repaire à la fois (les suivantes attendent leur tour, hors champ). */
-const MAX_CANDIDATES_SHOWN = 10;
 /** Portée d'un poste (on parle à son gardien ou on s'approche de l'arche) et d'un Pokémon à qui parler. */
 const POST_REACH = 2.4;
 const TALK_REACH = 2;
@@ -730,10 +728,9 @@ export class Camp {
     // Écart voulu (retour de test : « il faudrait que tous les Pokémon que je débloque et qui
     // attendent apparaissent et se baladent dans le hub, sinon je ne vois pas qui j'ai ») :
     // avant, seule la première de la file se montrait.
-    craft.candidates.slice(0, MAX_CANDIDATES_SHOWN).forEach((_, k) => {
-      const a = (k / Math.max(1, Math.min(MAX_CANDIDATES_SHOWN, craft.candidates.length))) * Math.PI * 2 + 0.4;
-      posts.push(['recruit', place.freeSpot(Math.floor(hx + Math.cos(a) * 5.5), Math.floor(hy + 1 + Math.sin(a) * 4), 2), 0, k]);
-    });
+    // Elles ne sont plus sur la place (retour de test du 18 novembre 2026 : « quand il y en a
+    // beaucoup, ça pollue le terrain ») : Dracolosse en tient la liste (ui/recruitlist.ts), avec
+    // un « ! » quand une nouvelle arrive (meta/news.ts).
 
     // La hutte de l'équipe, à l'est : le registre des libérés est épinglé au panneau d'à côté.
     put(CAMP_PROPS.thatchHut, hut.x, hut.y);

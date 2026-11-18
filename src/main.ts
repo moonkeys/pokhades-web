@@ -12,7 +12,7 @@ import { buildAtlas } from './assets/atlas';
 import { PLAYER_ACTIONS, WILD_ACTIONS, loadImage, loadInfo, loadSheet } from './assets/pmd';
 import { sheetIdOf } from './data/forms';
 import { megaById, megaFormsOf, type MegaForm } from './data/megas';
-import { FINAL_BOSS_DEFEAT, FINAL_BOSS_INTRO, MASTER_DEFEAT, type Champion } from './data/champions';
+import { ACE_MOVES, TWISTS, ELITE_DEFEAT, FINAL_BOSS_DEFEAT, FINAL_BOSS_INTRO, MASTER_DEFEAT, type Champion } from './data/champions';
 import { Trainer } from './entities/trainer';
 import { MERC_RETAINER, Shop } from './run/shop';
 import { Camp, CAMP_SEED, campPockets, STATIONS, stationId, type Station } from './run/camp';
@@ -35,8 +35,10 @@ import { Combat, DEATH_TIME } from './combat/combat';
 import { CompanionBrain } from './combat/companion';
 import { EnemyBrain } from './combat/enemy';
 import { BOONS, DONORS, RARITY_COLOR, RARITY_NAME, STAT_BOONS, type BoonOffer } from './combat/boons';
-import { tune, type Move } from './combat/moves';
+import { loadMove, tune, type Move } from './combat/moves';
 import { BASE_TEAM_LEVEL, Pokemon, xpForLevel } from './combat/pokemon';
+import { typeMates } from './data/trainers';
+import { preEvolutionOf } from './data/evolutions';
 import { STEP, startLoop } from './core/loop';
 import { Rng } from './core/rng';
 import { CAMP_NPCS, SWIMMERS } from './data/species';
@@ -128,7 +130,15 @@ const BOSS_BOOST = {
   champion: { atk: 1.15, def: 1.1, hp: 1.4 },
   boss: { atk: 1.45, def: 1.3, hp: 1.8 },
 };
-const BOSS_HP_PER_MEMBER = 0.3;
+const BOSS_HP_PER_MEMBER = 0.45;
+/** Attaques d'un Pokémon de champion (hors as) : ses plus fortes, tirées à chaque coup. */
+const CHAMPION_MON_MOVES = 6;
+/**
+ * Retour de test du 17 novembre 2026 (« à six, on les éclate tous d'un coup ») : +45 % de PV par
+ * membre au lieu de +30 %, +5 % d'attaque par membre au-delà du premier, et une barre de plus aux
+ * Pokémon du champion dès quatre membres (main.ts, spawnEnemy).
+ */
+const BOSS_ATK_PER_MEMBER = 0.05;
 
 async function boot(): Promise<void> {
   const canvas = document.getElementById('screen') as HTMLCanvasElement;
@@ -183,6 +193,7 @@ async function boot(): Promise<void> {
   const recruitScreen = new RecruitScreen(document.body);
   const swapScreen = new SwapScreen(document.body);
   const talkScreen = new TalkScreen(document.body);
+  /** Les recrues qui attendent, chez Dracolosse (ui/recruitlist.ts). */
   const trainScreen = new TrainScreen(document.body);
   const starterScreen = new StarterScreen(document.body);
   const quizScreen = new QuizScreen(document.body);
@@ -191,6 +202,19 @@ async function boot(): Promise<void> {
   const dialogue = new Dialogue(document.body);
   /** Dresseur du champion, en salle de boss. */
   let trainer: Trainer | null = null;
+  /** La bulle du champion au bord du terrain (ses répliques de phase), et son temps restant. */
+  const trainerLayer = Object.assign(document.createElement('div'), { className: 'room-labels' });
+  const trainerBubble = Object.assign(document.createElement('div'), { className: 'room-label shop-bubble' });
+  trainerLayer.append(trainerBubble);
+  document.body.append(trainerLayer);
+  let trainerBubbleT = 0;
+  /** Le champion vaincu disparaît dans ce délai (s), après sa dernière phrase ; ≤ 0 : rien en cours. */
+  let trainerVanishT = 0;
+  const CHAMPION_DEFEATS = ['Tch… Tu as gagné, cette fois.', 'Impressionnant… On se reverra !', 'Ta rébellion a du cran. Mais la Ligue est vaste.', 'Je me suis trompé sur ton compte…'];
+  const trainerSay = (text: string) => {
+    trainerBubble.textContent = text;
+    trainerBubbleT = 3.5;
+  };
   const bossPreview = new BossPreview(document.body);
   const runSummary = new RunSummary(document.body);
   /** Bilan de la run en cours (dégâts, K.O., Baies…), montré à sa fin. */
@@ -729,7 +753,7 @@ async function boot(): Promise<void> {
   // Test de la grotte (panneau) : une run au Rocailleux, dont le biome GROTTE hérite (faune, falaises du dehors).
   // La Route Victoire s'ouvre une fois tous les champions vaincus (meta/feats.ts) ; la taille de l'équipe règle les effectifs.
   const newRunState = () =>
-    new Run(opts.seed, opts.biome === 'run' ? null : opts.biome === 'grotte' ? 'rocailleux' : opts.biome, { cs: [...save.cs], league: leagueOpen(save), teamSize: save.team.length });
+    new Run(opts.seed, opts.biome === 'run' ? null : opts.biome === 'grotte' ? 'rocailleux' : opts.biome, { cs: [...save.cs], league: leagueOpen(save), teamSize: save.team.length, beaten: save.beaten });
   let run = newRunState();
   /** Au Repaire entre deux runs, ou en run. */
   let mode: 'camp' | 'run' = 'camp';
@@ -762,7 +786,7 @@ async function boot(): Promise<void> {
   /** Planches, fiche d'espèce et fiche de combat, chargées en différé. */
   const attach = (a: Actor, isPlayer: boolean, level: number, outfit = false, nick?: string) => {
     void loadInfo(a.speciesId).then((i) => (a.info = i));
-    void Promise.all([loadSheet(a.speciesId, isPlayer ? PLAYER_ACTIONS : WILD_ACTIONS), Pokemon.load(a.speciesId, level)]).then(([sheet, mon]) => {
+    void Promise.all([loadSheet(a.sheetId ?? a.speciesId, isPlayer ? PLAYER_ACTIONS : WILD_ACTIONS), Pokemon.load(a.speciesId, level)]).then(([sheet, mon]) => {
       a.sheet = sheet;
       a.pokemon = mon;
       // Surnom : celui de la sauvegarde pour l'équipe du Repaire, celui choisi à la libération pour une recrue de grotte.
@@ -784,11 +808,42 @@ async function boot(): Promise<void> {
         mon.mult.def *= boost.def;
         mon.mult.spDef *= boost.def;
         // PV de chaque barre, selon la taille de l'équipe sur le terrain (mercenaires compris).
-        mon.boostMaxHp(boost.hp * (1 + BOSS_HP_PER_MEMBER * Math.max(0, team.length - 1)));
+        const extra = Math.max(0, team.length - 1);
+        mon.boostMaxHp(boost.hp * (1 + BOSS_HP_PER_MEMBER * extra));
+        mon.mult.atk *= 1 + BOSS_ATK_PER_MEMBER * extra;
+        mon.mult.spAtk *= 1 + BOSS_ATK_PER_MEMBER * extra;
         mon.hp = mon.maxHp;
       }
       // L'archétype dépend des capacités : le cerveau naît avec la fiche.
       a.brain = new EnemyBrain(a);
+      // L'as d'un champion prend le jeu d'attaques choisi pour lui (data/champions.ts, ACE_MOVES) ;
+      // son cerveau renaît avec (l'archétype en dépend).
+      const ace = a.role === 'boss' && mode === 'run' ? ACE_MOVES[run.champion.name] : undefined;
+      if (ace) {
+        void Promise.all(ace.map((api) => loadMove(api, mon.level))).then((ms) => {
+          const got = ms.filter((m): m is NonNullable<typeof m> => Boolean(m));
+          if (!got.length || a.pokemon !== mon || a.deathT >= 0) return;
+          mon.moves.splice(0, mon.moves.length, ...got);
+          mon.movesVersion++;
+          a.brain = new EnemyBrain(a);
+          a.brain.provoke();
+        });
+      }
+      // Un Pokémon de champion prend ses attaques les plus fortes (six : il en change à chaque coup), pas le kit des sauvages.
+      if (a.role === 'champion' && mode === 'run') {
+        void mon.strongestMoves(CHAMPION_MON_MOVES).then((got) => {
+          if (got.length < 2 || a.pokemon !== mon || a.deathT >= 0) return;
+          mon.moves.splice(0, mon.moves.length, ...got);
+          mon.movesVersion++;
+          a.brain = new EnemyBrain(a);
+          a.brain.provoke();
+        });
+      }
+      // Son apparition se voit (retour de test : « un petit truc pour montrer qu'il est apparu…
+      // des petites vagues ») : l'animation de son type là où il arrive ; un Pokémon de champion,
+      // son dresseur bondit sur son rocher.
+      if (mode === 'run') fx.attackAnim(mon.types[0], a.x, a.y, undefined, true);
+      if (a.role !== 'wild') trainer?.cheer();
       // Une vague attaque d'emblée : le sauvage est déjà provoqué.
       a.brain.provoke();
       // Un Pokémon de champion entre en puissance avant d'agir.
@@ -989,30 +1044,26 @@ async function boot(): Promise<void> {
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement) return;
     void openStats();
   });
-  /** Le plan du monde (panneau de l'arche) ou le carnet des exploits (Xatu) : au Repaire seulement. */
-  const openJournal = (page: 'map' | 'feats', fromDialogue = false) => {
-    if (paused() || (dialogue.open && !fromDialogue)) return;
-    journal.show(
-      page,
-      save,
-      (text) => {
-        writeSave(save);
-        refreshNews();
-        runHud.notify({ title: 'Exploit', text, icon: '✦', color: 'var(--yel)' });
-      },
-      () => input.flush(),
-    );
+  /** Le plan du monde (panneau de l'arche) : au Repaire seulement. Le carnet de Xatu est un écran de poste (campscreen.ts). */
+  const openJournal = () => {
+    if (paused() || dialogue.open) return;
+    journal.show(save, () => input.flush());
   };
 
   const spawnEnemy = (id: number, level: number, x: number, y: number, role: Actor['role'] = 'wild') => {
     const a = new Actor(id, x, y);
     // Barres de PV : 2 pour un Pokémon de champion, 5 pour son as (EnemyAI.gd:200-206).
     a.role = role;
-    a.bars = a.barsLeft = role === 'boss' ? 5 : role === 'champion' ? 2 : 1;
-    // Dans l'eau, seulement les espèces aquatiques, qui y nagent elles-mêmes.
-    if (SWIMMERS.has(id)) a.canSwim = a.nativeSwimmer = true;
+    a.bars = a.barsLeft = role === 'boss' ? 5 : role === 'champion' ? (team.length >= 4 ? 3 : 2) : 1;
+    // Dans l'eau, seulement les espèces aquatiques, qui y nagent elles-mêmes. Pas les Pokémon d'un
+    // champion (retour de test : au Lac, ils nageaient au large, hors d'atteinte, et la salle restait
+    // bloquée) : ils restent sur la terre ferme, et celui qui apparaîtrait dans l'eau va au centre.
+    if (SWIMMERS.has(id) && role === 'wild') a.canSwim = a.nativeSwimmer = true;
     const i = Math.floor(y - 0.05) * world.w + Math.floor(x);
-    if (world.water[i]) {
+    if (world.water[i] && role !== 'wild') {
+      a.x = a.prevX = world.hub.x;
+      a.y = a.prevY = world.hub.y;
+    } else if (world.water[i]) {
       a.swimming = true;
       a.swimBlend = 1;
     }
@@ -1095,9 +1146,116 @@ async function boot(): Promise<void> {
    * nom annoncé au-dessus de lui. Le changement de forme est instantané : la
    * barre qui se remplit et l'éclat doré font déjà la mise en scène.
    */
+  /**
+   * Les phases de l'as d'un champion (retour de test du 17 novembre 2026 : « à six, les combats ne
+   * sont pas épiques… plusieurs phases, plusieurs types d'attaques, des invocations, des
+   * sous-fifres ») : à chaque barre brisée, le champion lance une réplique ; à la quatrième et à la
+   * dernière, il appelle des sbires de son type (plus nombreux si l'équipe est grande) ; à la
+   * deuxième, l'as méga-évolue s'il le peut (plus bas) ; à la dernière, il enrage (enemy.ts).
+   */
+  const BOSS_PHASE_LINES: Record<number, string> = {
+    4: 'Pas mal… Mais on ne fait que commencer ! Renforts !',
+    3: 'Montre-leur ce que tu vaux !',
+    2: 'Sens-tu cette puissance ?',
+    1: 'Tout ou rien ! Déchaîne-toi !',
+  };
+  /** Combien de sbires l'as appelle à la fois : 1, plus un par paire de membres de l'équipe. */
+  const minionCount = () => 1 + Math.floor(team.filter((m) => !m.runAlly).length / 2);
+  const summonMinions = (boss: Actor) => {
+    const champ = run.champion;
+    const pool = typeMates(champ.type).filter((id) => preEvolutionOf(id) === null && !SWIMMERS.has(id));
+    if (!pool.length) return;
+    const n = minionCount();
+    for (let i = 0; i < n; i++) {
+      const ang = (i / n) * Math.PI * 2 + Math.random();
+      let x = boss.x + Math.cos(ang) * 2.6;
+      let y = boss.y + Math.sin(ang) * 2;
+      const c = Math.floor(y - 0.05) * world.w + Math.floor(x);
+      if (world.blocked[c] || world.water[c]) {
+        x = boss.x;
+        y = boss.y + 1.5;
+      }
+      const id = pool[Math.floor(Math.random() * pool.length)];
+      const m = spawnEnemy(id, Math.max(2, run.roomLevel - 2), x, y, 'wild');
+      fx.ballSend(x, y);
+      trainer?.cheer();
+      m.brain?.provoke();
+    }
+    sfx('ballDrop');
+  };
+  /** La surprise du champion (data/champions.ts, TWISTS), quand son as entame ses deux dernières barres. */
+  /** Les as qui ont déjà eu leur surprise : une seule par combat (Lait à Boire lui rend une barre, il repasserait par là). */
+  const twisted = new WeakSet<Actor>();
+  const championTwist = (boss: Actor) => {
+    const tw = TWISTS[run.champion.name];
+    if (!tw || twisted.has(boss)) return;
+    twisted.add(boss);
+    // Sa réplique couvre celle de la phase : c'est le moment fort du combat.
+    if (tw.line) trainerSay(tw.line);
+    if (tw.move) combat.callout(boss, `${tw.move} !`);
+    if (tw.weather) {
+      combat.weatherMove(tw.weather, boss);
+      combat.addShake(0.12);
+    }
+    // (La barre qui vient de casser remonte déjà au plein : le soin lui rend une barre entière de plus.)
+    if (tw.heal && boss.pokemon && boss.barsLeft < boss.bars) {
+      boss.barsLeft++;
+      boss.pokemon.hp = boss.pokemon.maxHp;
+      fx.attackAnim('fx_boost', boss.x, boss.y);
+      boss.flash = { color: '#fff6d0', t: 0.4, dur: 0.4, alpha: 0.8 };
+      sfx('heal');
+    }
+    if (tw.rage && !boss.enraged) {
+      boss.enraged = true;
+      combat.addShake(0.25);
+      fx.impact(boss.x, boss.y, '#ff5040');
+      sfx('ability');
+    }
+    if (tw.minions) summonMinions(boss);
+    const twin = tw.twin;
+    if (!twin || boss.partner) return;
+    // Il sort d'une Poké Ball à côté de l'as, sous sa forme Méga d'emblée s'il en a une ; ses PV sont ceux de l'as.
+    const form = megaFormsOf(boss.speciesId)[0];
+    const id = form?.id ?? boss.speciesId;
+    const x = boss.x + 2;
+    const y = boss.y;
+    const c = Math.floor(y - 0.05) * world.w + Math.floor(x);
+    const at = world.blocked[c] || world.water[c] ? { x: boss.x - 2, y: boss.y } : { x, y };
+    const a = new Actor(id, at.x, at.y);
+    a.role = 'boss';
+    a.sheetId = twin.sheet ?? null;
+    a.partner = boss;
+    a.sharesHp = true;
+    if (form) a.mega = 1;
+    boss.partner = a;
+    attach(a, false, boss.pokemon?.level ?? run.roomLevel);
+    wild.push(a);
+    fx.ballSend(at.x, at.y);
+    trainer?.cheer();
+    window.setTimeout(() => {
+      if (a.deathT >= 0 || !a.pokemon) return;
+      combat.mirror(a);
+      a.pokemon.rename(twin.name);
+      combat.callout(a, twin.name);
+      a.brain?.provoke();
+    }, 900);
+  };
   combat.phase = (e) => {
+    if (mode === 'run' && e.role === 'boss') {
+      const line = BOSS_PHASE_LINES[e.barsLeft];
+      if (line) trainerSay(line);
+      combat.callout(e, `Phase ${6 - e.barsLeft}`);
+      if (e.barsLeft === 4 || e.barsLeft === 1) summonMinions(e);
+      if (e.barsLeft === 1 && !e.enraged) {
+        e.enraged = true;
+        combat.addShake(0.25);
+        fx.impact(e.x, e.y, '#ff5040');
+        sfx('ability');
+      }
+    } else if (mode === 'run' && e.role === 'champion' && Math.random() < 0.5) trainerSay(['Tiens bon !', 'Ne lâche rien !', 'Encore un effort !'][Math.floor(Math.random() * 3)]);
+    if (mode === 'run' && e.role === 'boss' && e.barsLeft === 2 && !e.sharesHp) championTwist(e);
     const mon = e.pokemon;
-    const forms = mon && e.role === 'boss' && e.barsLeft === 2 && !e.mega ? megaFormsOf(mon.id) : [];
+    const forms = mon && e.role === 'boss' && e.barsLeft === 2 && !e.mega && !e.sharesHp ? megaFormsOf(mon.id) : [];
     const form = forms[Math.floor(Math.random() * forms.length)];
     if (!mon || !form) return;
     e.mega = form.collab ? 1 : 1.2;
@@ -1190,6 +1348,14 @@ async function boot(): Promise<void> {
     setWeather(weatherNow());
     // Le ciel change : on dit ce que ça change au combat.
     if (roomWeather !== before && roomWeather !== 'clear') runHud.notify({ title: WEATHERS[roomWeather].name, text: WEATHERS[roomWeather].hint, icon: WEATHERS[roomWeather].icon });
+    // (Avant director.start, qui pose le champion au bord de son arène et lance sa réplique :
+    // remis à zéro après, ils disparaissaient aussitôt — retour de test du 17 novembre 2026,
+    // « on ne voit pas les dresseurs pendant les combats ».)
+    boonOffer = null;
+    skillOffer = null;
+    trainer = null;
+    trainerVanishT = 0;
+    dialogue.close();
     director.start(world, run, opts.wild, first);
     // Le boss a sa musique (CombatArena.gd:1610) ; les autres salles, boutique comprise, la leur (écart voulu, sounds.ts).
     audio.playMusic(roomMusic());
@@ -1207,11 +1373,14 @@ async function boot(): Promise<void> {
         save.visited.push(where);
         writeSave(save);
       }
+      // La route prise depuis le biome de l'acte d'avant, pour le plan du Repaire.
+      const from = run.act > 0 ? run.biomes[run.act - 1] : null;
+      const trail = from && !run.onVictoryRoad ? `${from}>${run.biome}` : null;
+      if (trail && !save.trails.includes(trail)) {
+        save.trails.push(trail);
+        writeSave(save);
+      }
     }
-    boonOffer = null;
-    skillOffer = null;
-    trainer = null;
-    dialogue.close();
     // Boutique : le marchand derrière son comptoir, l'étal, l'affiche et les Pokémon de la place.
     shop.clear();
     if (run.isShop() && net.role !== 'client') payMercs();
@@ -1537,6 +1706,10 @@ async function boot(): Promise<void> {
         newRun();
       },
     },
+    recruit: (idx) => {
+      campScreen.close();
+      void meetCandidate(idx, () => window.setTimeout(openRecruits, 250));
+    },
     preview: () => {
       // La même graine que la run que Dracolosse lancera.
       const next = newRunState();
@@ -1596,7 +1769,8 @@ async function boot(): Promise<void> {
    * nom »). Repaire plein : on choisit d'abord qui s'en va — l'exil —, ou on la renvoie.
    * Échap : elle attend encore.
    */
-  const meetCandidate = async (idx = 0) => {
+  /** `after` : la fiche refermée (recrue accueillie, renvoyée ou qui attend encore) — la liste de Dracolosse se rouvre. */
+  const meetCandidate = async (idx = 0, after?: () => void) => {
     const c = save.candidates[idx];
     if (!c || recruitScreen.open || starterScreen.open || dialogue.open) return;
     const mon = await Pokemon.load(c.species, BASE_TEAM_LEVEL);
@@ -1623,7 +1797,7 @@ async function boot(): Promise<void> {
         },
         (choice, nick) => {
           input.flush();
-          if (!choice) return;
+          if (!choice) return after?.();
           const named = nick && nick !== mon.name ? nick : c.name;
           const fresh = !ownsSpecies(save, c.species);
           dequeue();
@@ -1631,9 +1805,9 @@ async function boot(): Promise<void> {
           if (choice === 'team' && !full) save.team.push(m.uid);
           writeSave(save);
           if (fresh) welcome(c.species);
-          // Le camp se recompose : les autres recrues, s'il y en a, restent autour du feu.
           if (choice === 'team') campCtx.teamChanged();
           else enterCampKeep({ x: player.x, y: player.y, dir: player.dir });
+          after?.();
         },
       );
     };
@@ -1645,14 +1819,14 @@ async function boot(): Promise<void> {
       starterScreen.show(
         (_, k) => {
           input.flush();
-          // « Plus tard » (ou Échap) : rien ne change, la recrue attend encore au feu.
-          if (k === -2) return;
+          // « Plus tard » (ou Échap) : rien ne change, la recrue attend encore.
+          if (k === -2) return after?.();
           if (k < 0) {
             dequeue();
             writeSave(save);
             runHud.notify({ title: 'Au revoir', text: `${mon.name} repart, le cœur gros. Il reviendra peut-être.`, art: c.species, color: 'var(--ink)' });
             enterCampKeep({ x: player.x, y: player.y, dir: player.dir });
-            return;
+            return after?.();
           }
           const uid = uids[k];
           const sp = speciesOf(save, uid);
@@ -1686,6 +1860,30 @@ async function boot(): Promise<void> {
       return;
     }
     await proceed();
+  };
+
+  /**
+   * La liste des recrues, chez Dracolosse : un écran du Repaire comme les autres (ui/campscreen.ts,
+   * renderRecruits), le portrait du gardien à gauche, les fiches à droite. « ! » sur celles qu'on
+   * n'avait pas encore vues, puis elles le sont (son « ! » s'éteint). Après chaque fiche d'accueil
+   * (campCtx.recruit), la liste se rouvre tant qu'il en reste.
+   */
+  const openRecruits = () => {
+    if (!save.candidates.length || campScreen.open) return;
+    const news = freshNews(save, 'start');
+    markNewsSeen(save, 'start');
+    writeSave(save);
+    refreshNews();
+    campScreen.show(
+      'start',
+      campCtx,
+      () => {
+        input.flush();
+        refreshNews();
+      },
+      news,
+      { recruits: true },
+    );
   };
 
   /**
@@ -1749,8 +1947,6 @@ async function boot(): Promise<void> {
   const talkTo = (station: Station, arg?: number) => {
     if (dialogue.open || campScreen.open) return;
     const openScreen = () => {
-      // Xatu : le carnet des exploits, pas un écran de poste.
-      if (station === 'feats') return openJournal('feats', true);
       // Ce qui y est apparu est vu (l'écran le marque d'un « ! » cette fois-ci encore) ; ce qui
       // attend un geste (récolter, réclamer) se revérifie à la fermeture.
       const news = freshNews(save, station);
@@ -1775,9 +1971,11 @@ async function boot(): Promise<void> {
       runHud.notify({ title: 'Repaire de l’hôte', text: station === 'start' ? 'C’est l’hôte qui lance la run, chez Dracolosse.' : 'Ce gardien sert l’hôte : ici, tu peux parler à Roucarnage, Porygon et aux boutiques.', art: CAMP_NPCS.online, color: '#7ac0e8' });
       return;
     }
-    if (station === 'map') return openJournal('map');
-    // Dracolosse ne lance plus la run (on part en passant l'arche) : il le rappelle.
+    if (station === 'map') return openJournal();
+    // Dracolosse ne lance plus la run (on part en passant l'arche) : il le rappelle. Il tient
+    // aussi la liste des recrues qui attendent : il l'ouvre s'il y en a.
     if (station === 'start' && !(net.role === 'host' && net.guests.length)) {
+      if (save.candidates.length) return openRecruits();
       const g = STATIONS.start;
       dialogue.show({ name: camp.npcs.find((n) => n.speciesId === g.id)?.info?.name ?? g.title, role: `Le Repaire · ${g.title}`, type: g.type, sprite: `/game/artwork/${g.id}.png` }, 'Quand tu es prêt, passe l’arche, au nord. Ton équipe te suit : compose-la chez Porygon avant de partir.');
       return;
@@ -1867,10 +2065,6 @@ async function boot(): Promise<void> {
       // Un champion tombé rapporte des Baies et des Éclats de Champion (CombatArena.gd:1899) ; le Dresseur final, davantage.
       if (run.isBoss()) {
         const n = BAIES.boss(run.act) + (run.isFinal ? BAIES.finalBonus : 0);
-        const k = SHARDS.boss(run.act) + (run.isFinal ? SHARDS.finalBonus : 0);
-        save.shards += k;
-        shareLoot({ shards: k, text: `Champion vaincu : +${k} Éclat${k > 1 ? 's' : ''} de Champion` });
-        stats.shards += k;
         stats.champions.push(run.champion.name);
         // Le carnet des exploits (meta/feats.ts) : un champion de plus vaincu au moins une fois.
         beatChampion(run.champion.name);
@@ -1889,13 +2083,25 @@ async function boot(): Promise<void> {
             );
           }
         }
-        runHud.notifyAll([
-          { title: 'Baies', text: 'Pour le Repaire', item: 'ORANBERRY', qty: `+${n}`, color: 'var(--yel)' },
-          { title: `Éclat${k > 1 ? 's' : ''} de Champion`, text: 'Pour le Repaire', item: SHARDS.icon, qty: `+${k}`, color: 'var(--yel)' },
-        ]);
+        runHud.notify({ title: 'Baies', text: 'Pour le Repaire', item: 'ORANBERRY', qty: `+${n}`, color: 'var(--yel)' });
       }
       // Son équipe vaincue, le champion quitte la salle par la sortie.
-      if (run.isBoss()) trainer?.flee(world);
+      // Sur son rocher, il lâche une dernière phrase, puis disparaît dans un nuage (retour de test :
+      // « il fait un petit truc, une petite phrase, et il disparaît ») ; ailleurs, il s'enfuit.
+      if (run.isBoss() && trainer?.perch) {
+        trainerSay(CHAMPION_DEFEATS[Math.floor(Math.random() * CHAMPION_DEFEATS.length)]);
+        trainerVanishT = 2.2;
+      } else if (run.isBoss()) trainer?.flee(world);
+    },
+    // Les Éclats de Champion attendent au centre de l'arène, à la place du don (room.ts) : comptés quand on les prend.
+    claimShards: () => {
+      const k = SHARDS.boss(run.act) + (run.isFinal ? SHARDS.finalBonus : 0);
+      save.shards += k;
+      writeSave(save);
+      stats.shards += k;
+      sfx('pkmnGet', -2);
+      shareLoot({ shards: k, text: `Champion vaincu : +${k} Éclat${k > 1 ? 's' : ''} de Champion` });
+      runHud.notify({ title: `Éclat${k > 1 ? 's' : ''} de Champion`, text: 'Pour le Repaire', item: SHARDS.icon, qty: `+${k}`, color: 'var(--yel)' });
     },
     prepareReward: (reward) => {
       if (reward === 'boon') boonOffer = run.boons.offer(run.rng, run.room, run.act, run.donor);
@@ -1963,10 +2169,18 @@ async function boot(): Promise<void> {
     canBeCaptured: () => true,
     bossIntro: (exit) => {
       const champ = run.champion;
+      if (!save.met.includes(champ.name)) {
+        save.met.push(champ.name);
+        writeSave(save);
+      }
       const final = run.isFinal;
       // Dans son arène, le champion se tient au bord nord du terrain, face à l'entrée ; il fuira par la sortie.
-      trainer = exit ? (roomKey.kind === 'room' && roomKey.arena ? new Trainer(champ.sprite, { x: world.hub.x, y: world.hub.y - 7.5 }, exit) : Trainer.atExit(champ.sprite, exit)) : null;
-      runHud.announce(champ.name, typeColor(champ.type), run.onVictoryRoad ? 'MAÎTRE DE LA LIGUE' : final ? 'DRESSEUR FINAL' : "CHAMPION D'ARÈNE");
+      // (Retour de test : « on ne voit pas les dresseurs » : plus près du terrain, 5 cases au lieu de 7,5.)
+      // Dans son arène, il se tient sur son rocher (world/arena.ts, podium), immobile et hors d'atteinte.
+      const podium = roomKey.kind === 'room' && roomKey.arena ? world.podium : undefined;
+      trainer = exit ? (podium ? new Trainer(champ.sprite, podium, exit, 0) : Trainer.atExit(champ.sprite, exit)) : null;
+      if (trainer && podium) trainer.perch = 22;
+      runHud.announce(champ.name, typeColor(champ.type), run.onVictoryRoad ? (champ.name === LEAGUE_MASTER ? 'MAÎTRE DE LA LIGUE' : 'CONSEIL DE LA LIGUE') : final ? 'DRESSEUR FINAL' : "CHAMPION D'ARÈNE");
       // L'éclair du « VS » des combats de dresseur.
       sfx('vs');
       combat.addShake(0.15);
@@ -1987,7 +2201,7 @@ async function boot(): Promise<void> {
       endDelay = Math.max(VICTORY_TIME, Dialogue.duration(FINAL_BOSS_DEFEAT) + 0.5);
       combat.addShake(0.2);
       dialogue.show(speaker(run.champion, true), finalLines().defeat);
-      runHud.announce('Victoire !', '#ffd23f', run.onVictoryRoad ? 'NOUVEAU MAÎTRE' : 'LA CHAÎNE EST BRISÉE');
+      runHud.announce('Victoire !', '#ffd23f', run.onVictoryRoad ? (run.champion.name === LEAGUE_MASTER ? 'NOUVEAU MAÎTRE' : 'CONSEIL VAINCU') : 'LA CHAÎNE EST BRISÉE');
     },
   });
 
@@ -2006,7 +2220,7 @@ async function boot(): Promise<void> {
 
   /** Les répliques du dernier boss : le Dresseur final, ou le Maître au bout de la Route Victoire. */
   function finalLines(): { intro: string; defeat: string } {
-    if (run.onVictoryRoad) return { intro: run.champion.intro, defeat: MASTER_DEFEAT };
+    if (run.onVictoryRoad) return { intro: run.champion.intro, defeat: run.champion.name === LEAGUE_MASTER ? MASTER_DEFEAT : ELITE_DEFEAT };
     return { intro: FINAL_BOSS_INTRO, defeat: FINAL_BOSS_DEFEAT };
   }
 
@@ -2766,7 +2980,8 @@ async function boot(): Promise<void> {
     const champ = wild.find((a) => a.role !== 'wild' && a.pokemon && a.deathT < 0);
     return champ?.pokemon
       ? {
-          name: champ.pokemon.name,
+          // Un as et son jumeau : une barre pour deux.
+          name: champ.partner && champ.partner.deathT < 0 ? `${champ.pokemon.name} ×2` : champ.pokemon.name,
           sub: cave.active ? cave.guardianTitle : `${champ.role === 'boss' ? 'As' : 'Équipe'} de ${run.champion.name}`,
           ace: champ.role === 'boss',
           bars: champ.bars,
@@ -3256,7 +3471,17 @@ async function boot(): Promise<void> {
       if (cave.active) cave.update(dt, sample, world, run, player, wild);
       else director.update(dt, sample, world, run, player, wild, guests, claimers);
     }
+    if (trainer) trainer.watch = player;
     trainer?.update(dt, world, Math.random);
+    if (trainerVanishT > 0) {
+      trainerVanishT -= dt;
+      if (trainerVanishT <= 0 && trainer) {
+        fx.impact(trainer.x, trainer.y - 1.4, '#ffffff');
+        fx.attackAnim('normal', trainer.x, trainer.y - 1.4, 'sand-attack', true);
+        sfx('ballDrop');
+        trainer.gone = true;
+      }
+    }
     // L'Aimant à Baies d'Alakazam attire les baies tombées.
     // En ligne : les invités ramassent aussi les baies tombées et ouvrent les coffres (avant l'hôte,
     // dont l'invite « [E] » doit rester la sienne). Le gain revient à tous (shareLoot).
@@ -3406,6 +3631,14 @@ async function boot(): Promise<void> {
     altar.placeLabels(proj);
     dojo.placeLabels(proj);
     pension.placeLabels(proj);
+    // La bulle du champion, au-dessus de sa tête (basculée seulement quand il le faut).
+    trainerBubbleT -= frameDt;
+    const say = Boolean(trainer) && trainerBubbleT > 0 && mode === 'run';
+    if (trainerBubble.classList.contains('open') !== say) trainerBubble.classList.toggle('open', say);
+    if (say && trainer) {
+      const at = proj.toCss(trainer.x, trainer.y - 2.3);
+      trainerBubble.style.transform = `translate(${at.x}px, ${at.y}px) translate(-50%, -100%)`;
+    }
     residents.placeLabels(proj);
     cave.placeLabels(proj);
     camp.placeLabels(proj);
@@ -3456,6 +3689,9 @@ async function boot(): Promise<void> {
         dojo,
         spring,
         residents,
+        get trainer() {
+          return trainer;
+        },
         camp,
         /** Jeu en ligne : la scène reçue (invité), le décor de la salle (hôte), la session. */
         netDebug: () => ({ scene: hostScene, extras: runExtras().length, net, field }),

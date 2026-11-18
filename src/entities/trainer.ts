@@ -33,6 +33,9 @@ const KEEP_OUT = 4;
 const COMMAND_SPEED = 2.8;
 const RETREAT_SPEED = 3.6;
 
+/** Durée du petit bond d'un dresseur perché (s). */
+const HOP_TIME = 0.4;
+
 export class Trainer {
   x: number;
   y: number;
@@ -51,6 +54,25 @@ export class Trainer {
   private rushing = false;
   /** Arrêté (s) : il vise, puis reprend ses cent pas. */
   private holdT = 0;
+  /**
+   * Perché (px) : le champion sur son rocher, au bord de l'arène (retour de test : « sur un
+   * piédestal, en hauteur ; il ne se balade pas dans l'arène »). Immobile, face au terrain, dessiné
+   * plus haut, sans ombre au sol.
+   */
+  perch = 0;
+  /** Perché : ce qu'il suit du regard (le Pokémon joué, posé par main.ts à chaque image). */
+  watch: { x: number; y: number } | null = null;
+  /** Perché : il regarde autour de lui (prochain coup d'œil, s) ; bond en cours (s restantes). */
+  private lookT = 1.5;
+  private hopT = 0;
+  /** Piétinement en cours (s). */
+  private stepT = 0;
+
+  /** Il envoie un Pokémon ou appelle des renforts : un petit bond sur son rocher, face au terrain. */
+  cheer(): void {
+    this.hopT = HOP_TIME;
+    this.row = 0;
+  }
 
   /** Le dresseur d'un champion : deux cases devant la sortie, côté salle (visible, sans boucher le passage). */
   static atExit(sprite: string, exit: Exit): Trainer {
@@ -115,6 +137,27 @@ export class Trainer {
 
   update(dt: number, world: WorldMap, random: () => number): void {
     this.animT += dt;
+    if (this.perch && !this.fleeing) {
+      // Sur son rocher (retour de test : « figés, on dirait qu'ils ne bougent pas ») : il regarde
+      // tour à tour le terrain, à gauche, à droite, et piétine un peu ; un bond quand il envoie un
+      // Pokémon (cheer).
+      this.hopT = Math.max(0, this.hopT - dt);
+      this.lookT -= dt;
+      if (this.lookT <= 0) {
+        this.lookT = 1.2 + random() * 2.2;
+        this.stepT = random() < 0.4 ? 0.6 : 0;
+      }
+      // Il suit le joueur du regard (retour de test : « qu'il nous suive du regard, toujours »).
+      const w = this.watch;
+      if (w) {
+        const dx = w.x - this.x;
+        const dy = w.y - this.y;
+        this.row = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 1 : 2) : dy < 0 ? 3 : 0;
+      }
+      this.stepT = Math.max(0, this.stepT - dt);
+      this.moving = this.stepT > 0 || this.hopT > 0;
+      return;
+    }
     if (this.holdT > 0) {
       this.holdT -= dt;
       return;
@@ -233,15 +276,25 @@ export class Trainer {
   /** Dessin trié avec les Pokémon et le décor (ligne de sol = pieds). */
   draw(b: CanvasRenderingContext2D, camX: number, camY: number, k: number): void {
     if (!this.image || this.gone) return;
+    // À l'arrêt, un champion suit le joueur du regard, même hors de son rocher (arène du Village).
+    const seen = this.watch;
+    if (seen && !this.moving && !this.fleeing) {
+      const dx = seen.x - this.x;
+      const dy = seen.y - this.y;
+      this.row = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 1 : 2) : dy < 0 ? 3 : 0;
+    }
     const col = this.moving ? Math.floor(this.animT * 6) % 4 : 0;
     const w = FRAME_W * SCALE * k;
     const h = FRAME_H * SCALE * k;
     const fx = Math.round((this.x * TILE - camX) * k - w / 2);
-    const fy = Math.round((this.y * TILE - camY) * k - h + 1 * k);
-    b.fillStyle = 'rgba(16,24,12,0.28)';
-    b.beginPath();
-    b.ellipse(Math.round((this.x * TILE - camX) * k), Math.round((this.y * TILE - camY) * k), 5 * k, 2 * k, 0, 0, Math.PI * 2);
-    b.fill();
+    const hop = this.hopT > 0 ? Math.sin((1 - this.hopT / HOP_TIME) * Math.PI) * 5 : 0;
+    const fy = Math.round((this.y * TILE - camY) * k - h + 1 * k - (this.perch + hop) * k);
+    if (!this.perch) {
+      b.fillStyle = 'rgba(16,24,12,0.28)';
+      b.beginPath();
+      b.ellipse(Math.round((this.x * TILE - camX) * k), Math.round((this.y * TILE - camY) * k), 5 * k, 2 * k, 0, 0, Math.PI * 2);
+      b.fill();
+    }
     b.drawImage(this.image, col * FRAME_W, this.row * FRAME_H, FRAME_W, FRAME_H, fx, fy, Math.round(w), Math.round(h));
   }
 

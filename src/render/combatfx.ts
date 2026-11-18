@@ -414,11 +414,28 @@ export class CombatFx {
           b.arc(px, py, inner, 0, Math.PI * 2, true);
           break;
         }
+        case 'field': {
+          // Tout le disque, les zones sûres découpées en sens inverse.
+          b.arc(px, py, shape.r * s * f, 0, Math.PI * 2);
+          for (const z of shape.safe) {
+            const zx = (z.x * TILE - camX) * k;
+            const zy = (z.y * TILE - camY) * k;
+            b.moveTo(zx + z.r * s, zy);
+            b.arc(zx, zy, z.r * s, 0, Math.PI * 2, true);
+          }
+          break;
+        }
       }
     };
     b.fillStyle = withAlpha(color, 0.16);
     path(1);
     b.fill();
+    // La grande attaque de l'as couvre l'arène : un voile rouge qui monte, lisible quel que soit le type.
+    if (shape.kind === 'field') {
+      b.fillStyle = `rgba(255,50,30,${0.12 + 0.18 * fill})`;
+      path(1);
+      b.fill();
+    }
     b.fillStyle = withAlpha(color, 0.42);
     path(fill);
     b.fill();
@@ -427,6 +444,16 @@ export class CombatFx {
     b.strokeStyle = blink ? 'rgba(255,240,220,0.95)' : 'rgba(255,56,38,0.9)';
     path(1);
     b.stroke();
+    // Les zones sûres de la grande attaque : un liseré vert qui respire, pour qu'on les trouve d'un coup d'œil.
+    if (shape.kind === 'field') {
+      b.lineWidth = Math.max(1, Math.round(k * 1.5));
+      b.strokeStyle = `rgba(120,255,140,${0.6 + 0.35 * Math.sin(u * 30)})`;
+      for (const z of shape.safe) {
+        b.beginPath();
+        b.arc((z.x * TILE - camX) * k, (z.y * TILE - camY) * k, z.r * s, 0, Math.PI * 2);
+        b.stroke();
+      }
+    }
   }
 
   /** Les chiffres suivent la caméra : à repositionner à chaque image. */

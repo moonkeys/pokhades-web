@@ -127,6 +127,8 @@ export interface WorldMap {
    * l'Autel) : des cases de l'atlas, posées par les salles spéciales après la génération.
    */
   decals: FlatDecor[];
+  /** Arène d'un champion (world/arena.ts) : le rocher où il se tient, hors d'atteinte. */
+  podium?: { x: number; y: number };
   /** Ambiance propre à la salle (salles calmes, main.ts : SPECIAL_AMBIANCE), à la place de celle du biome. */
   ambiance?: Ambiance;
   /** Nénuphars : dessinés à part pour flotter sur l'eau. */
@@ -499,7 +501,10 @@ export function generate(
   const inClearing = (x: number, y: number, k = 1) =>
     pockets ? Math.hypot((x + 0.5 - W / 2) / 13, (y + 0.5 - cy0) / 10.5) + (fbm(x * 0.14, y * 0.14, s + 401) - 0.5) * 0.3 < 1 || inPocket(x, y) : inOpen(x, y, k);
   /** Boutique du Lac ou du Volcan : un anneau d'eau, ou de lave, entre la clairière et la lisière. */
-  const ringed = store && !options.camp && Boolean(biome.water) && !biome.coast;
+  // L'anneau d'eau (ou de lave) autour de la boutique et de l'arène. Retour de test du 17 novembre
+  // 2026 (« la Prairie n'est pas censée avoir d'eau du tout ») : dans une arène, seulement au Lac,
+  // au Marais et au Volcan ; ailleurs, la forêt du biome ferme le cercle.
+  const ringed = store && !options.camp && Boolean(biome.water) && !biome.coast && (!arena || biome.id === 'lac' || biome.id === 'marais' || biome.id === 'volcan');
   const inRing = (x: number, y: number) => ringed && !inClearing(x, y) && inClearing(x, y, 1.45);
   /** Boutique de bord de mer : la mer où l'on nage autour de l'île, jusqu'au récif. */
   const inBay = (x: number, y: number) => store && Boolean(biome.coast) && inClearing(x, y, 1.7);

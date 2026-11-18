@@ -2278,7 +2278,29 @@
   max-height: 82vh;
   overflow-y: auto;
   padding: calc(2 * var(--u)) calc(4 * var(--u)) calc(2 * var(--u)) calc(3 * var(--u));
-  scrollbar-width: thin;
+  /* La barre du navigateur cède la place au rail du jeu (.cs-rail, campscreen.ts scrollRail),
+   * visible même là où le système cache les barres (retour de test : « on ne sait pas qu'on
+   * peut scroller ») ; le bas de la colonne s'estompe tant qu'il reste à lire (.more). */
+  scrollbar-width: none;
+}
+.cs-main.more {
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 6 * var(--u)), #0003);
+}
+.cs-rail {
+  position: absolute;
+  width: 8px;
+  background: #ffffff2e;
+  border-radius: 4px;
+  pointer-events: none;
+}
+.cs-rail i {
+  position: absolute;
+  left: 0;
+  right: 0;
+  min-height: 24px;
+  background: var(--yel);
+  border-radius: 4px;
+  box-shadow: 0 0 8px #ffd23faa;
 }
 .play .cs-main {
   animation: cs-in 0.35s ease-out 0.15s both;
@@ -5298,4 +5320,275 @@ body.net-on .hud-team {
 }
 .stats-errands .errand.done b {
   color: #2f8a3a;
+}
+
+/* Recrues chez Dracolosse (campscreen.ts, renderRecruits) : la grille et la fiche du Pokédex de
+ * Porygon. Les attaques ne se cliquent pas (.ro) ; les deux boutons sont ceux de la hutte. */
+.cs-recruits {
+  grid-template-columns: minmax(0, 1fr) calc(46 * var(--u));
+}
+.cs-recruits .cs-dex-card {
+  position: relative;
+}
+.cs-rec-detail {
+  margin-top: 0;
+}
+.cs-move.ro {
+  cursor: default;
+}
+.cs-rec-act {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(0.6 * var(--u));
+}
+.cs-rec-detail .cs-moves {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* Carnet de Xatu (campscreen.ts, renderFeats) : quatre records, puis un papier par groupe
+ * d'exploits ; ce qui est prêt à réclamer est surligné en jaune. */
+.cs-records {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, calc(12 * var(--u))));
+  gap: calc(0.8 * var(--u));
+  margin-bottom: calc(1.2 * var(--u));
+}
+.cs-records > div {
+  display: grid;
+  padding: calc(0.5 * var(--u)) calc(0.6 * var(--u));
+  text-align: center;
+  color: var(--ink);
+}
+.cs-records b {
+  font: normal calc(2 * var(--u)) / 1.1 var(--head);
+  letter-spacing: 0.04em;
+}
+.cs-records small {
+  font-size: calc(0.95 * var(--u));
+  color: var(--muted);
+}
+/* En bento, des cases inégales (retour de test : « en colonne, la Rébellion est tout en bas » ;
+ * puis « un vrai bento ») : la Carte du monde, la plus longue, en grande case à gauche, ses
+ * exploits sur deux colonnes ; les Champions et la Rébellion empilés à droite ; la Route
+ * Victoire, quand elle se dévoile, en bandeau dessous. Tout se voit d'un coup d'œil. */
+.cs-feats {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  grid-template-areas:
+    'monde champions'
+    'monde rebellion'
+    'conseil conseil';
+  gap: calc(1 * var(--u));
+  align-items: stretch;
+}
+.cs-feat-group.g-monde {
+  grid-area: monde;
+}
+.cs-feat-group.g-champions {
+  grid-area: champions;
+}
+.cs-feat-group.g-rebellion {
+  grid-area: rebellion;
+}
+.cs-feat-group.g-conseil {
+  grid-area: conseil;
+}
+.cs-feat-rows {
+  display: grid;
+  gap: calc(0.4 * var(--u));
+  align-content: start;
+}
+.g-monde .cs-feat-rows,
+.g-conseil .cs-feat-rows {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.cs-feat-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--u);
+  padding-bottom: calc(0.3 * var(--u));
+  margin-bottom: calc(0.2 * var(--u));
+  font: normal calc(1.7 * var(--u)) / 1 var(--head);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink);
+  border-bottom: calc(0.2 * var(--u)) solid var(--ink);
+}
+.cs-feat-head small {
+  padding: calc(0.1 * var(--u)) calc(0.5 * var(--u));
+  font: normal calc(1.1 * var(--u)) / 1.2 var(--head);
+  color: var(--paper);
+  background: var(--ink);
+}
+.cs-feat-group {
+  display: grid;
+  align-content: start;
+  gap: calc(0.4 * var(--u));
+  padding: calc(0.8 * var(--u)) calc(1.2 * var(--u));
+  color: var(--ink);
+}
+.cs-feat-group .cs-label small {
+  color: var(--muted);
+}
+.cs-feat {
+  /* Le texte, puis la récompense dessous, à droite : les cases du bento sont étroites. */
+  display: grid;
+  gap: calc(0.4 * var(--u));
+  justify-items: start;
+  padding: calc(0.3 * var(--u)) calc(0.7 * var(--u));
+  border-left: calc(0.35 * var(--u)) solid var(--muted);
+}
+.cs-feat > div {
+  display: grid;
+}
+.cs-feat b {
+  font: normal calc(1.4 * var(--u)) / 1.1 var(--head);
+  letter-spacing: 0.04em;
+}
+.cs-feat small {
+  font-size: calc(1 * var(--u));
+  line-height: 1.25;
+  color: var(--muted);
+}
+.cs-feat.ready {
+  border-left-color: var(--yel);
+  background: rgba(255, 210, 63, 0.28);
+}
+.cs-feat-reward {
+  justify-self: end;
+  font: normal calc(1.1 * var(--u)) / 1.2 var(--head);
+  color: var(--muted);
+  text-align: right;
+}
+.cs-feat .cs-claim {
+  justify-self: end;
+}
+.cs-claim {
+  padding: calc(0.2 * var(--u)) calc(0.9 * var(--u));
+  font: normal calc(1.2 * var(--u)) / 1.2 var(--head);
+  letter-spacing: 0.05em;
+  color: var(--ink);
+  background: var(--yel);
+  border: calc(0.15 * var(--u)) solid var(--ink);
+  cursor: pointer;
+}
+.cs-claim:hover {
+  filter: brightness(1.08);
+}
+/* « Tout réclamer » : le gros bouton qu'on ne rate pas — rouge bombe, ombre d'encre, qui bat
+ * doucement (retour de test : « plus évident, plus gros, d'autres couleurs »). */
+.cs-claim.all {
+  display: flex;
+  align-items: center;
+  gap: calc(0.8 * var(--u));
+  margin-bottom: calc(1.2 * var(--u));
+  padding: calc(0.6 * var(--u)) calc(2 * var(--u));
+  font-size: calc(2.2 * var(--u));
+  color: #fff;
+  background: var(--spray);
+  border: calc(0.25 * var(--u)) solid var(--ink);
+  box-shadow: calc(0.5 * var(--u)) calc(0.5 * var(--u)) 0 var(--ink);
+  rotate: -1deg;
+  animation: cs-claim-beat 1.6s ease-in-out infinite;
+}
+.cs-claim.all i {
+  font-style: normal;
+  color: var(--yel);
+}
+.cs-claim.all:active {
+  translate: calc(0.3 * var(--u)) calc(0.3 * var(--u));
+  box-shadow: calc(0.2 * var(--u)) calc(0.2 * var(--u)) 0 var(--ink);
+}
+@keyframes cs-claim-beat {
+  50% {
+    scale: 1.04;
+  }
+}
+
+/* Écrans du Repaire en petit écran, portrait (retour de test du 18 novembre 2026 : « en petit
+ * écran, ça marche pas du tout ») : --u suit 1vw, et tout y devenait minuscule. On le relève
+ * (planché en pixels), le volet du gardien devient un bandeau en haut (portrait, puis son nom),
+ * la colonne prend toute la largeur et défile ; les grilles à fiche (Pokédex, recrues) passent
+ * sur une colonne, la fiche sous les cartes. */
+@media (max-width: 760px) {
+  .camp-screen {
+    --u: clamp(6px, 2.1vw, 9px);
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--tint) 70%, rgba(0, 0, 0, 0.6)) 0 calc(11 * var(--u) + 24px), transparent calc(11 * var(--u) + 24.5px)),
+      #16121e;
+  }
+  .cs-page {
+    display: flex;
+    flex-direction: column;
+  }
+  .cs-side {
+    grid-template-columns: auto 1fr;
+    align-content: center;
+    align-items: center;
+    column-gap: 12px;
+    min-height: calc(11 * var(--u) + 24px);
+    padding: 12px 56px 12px 16px;
+    box-sizing: border-box;
+  }
+  .cs-art {
+    grid-row: span 2;
+    width: calc(10 * var(--u));
+    margin: 0;
+  }
+  .cs-title,
+  .cs-title.long {
+    font-size: calc(4 * var(--u));
+  }
+  .cs-main {
+    flex: 1;
+    align-self: stretch;
+    max-height: none;
+    min-height: 0;
+    padding: 12px 16px 24px;
+  }
+  .cs-purse {
+    top: 52px;
+    left: auto;
+    right: 14px;
+    font-size: calc(2 * var(--u));
+  }
+  .cs-stock,
+  .cs-keys {
+    display: none;
+  }
+  .cs-close {
+    top: 12px;
+    right: 12px;
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+  }
+  .cs-dex,
+  .cs-team {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cs-dex-detail {
+    position: static;
+    margin-top: 0;
+  }
+  .cs-dex-grid {
+    grid-template-columns: repeat(auto-fill, minmax(calc(11 * var(--u)), 1fr));
+  }
+  .cs-records {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .cs-feats {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: none;
+  }
+  .cs-feat-group.g-monde,
+  .cs-feat-group.g-champions,
+  .cs-feat-group.g-rebellion,
+  .cs-feat-group.g-conseil {
+    grid-area: auto;
+  }
+  .cs-quote {
+    font-size: calc(1.6 * var(--u));
+  }
 }

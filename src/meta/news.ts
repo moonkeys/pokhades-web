@@ -27,6 +27,9 @@ function offer(save: Save, station: string): string[] {
         .map((b) => b.id);
     case 'team':
       return roster(save).map(String);
+    // Dracolosse tient la liste des recrues qui attendent : une nouvelle rallume son « ! ».
+    case 'start':
+      return save.candidates.map((c) => String(c.species));
     // Les recettes qu'on peut façonner : une de plus à portée rallume le repère.
     case 'craft':
       return RECIPES.filter((r) => canCraft(save, r)).map((r) => r.out);

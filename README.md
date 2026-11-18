@@ -97,15 +97,20 @@ Restent entrés par le bas : le Village (ses rues), la boutique, et le Lac
 quand on arrive du nord (le lac occuperait l'entrée). Une porte unique (vers
 la boutique ou le boss) est celle d'en face, tout droit.
 
-**Route Victoire** (ajout, la zone ultime) : une fois les dix champions des
-biomes vaincus au moins une fois, la run compte un cinquième acte. Au
-quatrième étage, le Conseil (Aldo aux Rocailleux, Agatha au Marais, Peter
-au Volcan, Olga en Montagne) peut garder le biome à la place du champion ; sa
-sortie mène à la Route Victoire (décor des Rocailleux, faune des quatre
-biomes du dernier étage, +6 niveaux), au bout de laquelle attend Régis, le
-Maître de la Ligue, et ses six Pokémon. Le
-champion de l'acte est tiré quand on choisit son biome, rangé par étage
-(`BIOME_CHAMPIONS` : Giovanni garde les Rocailleux, plus le Village). Chaque
+**Route Victoire** (ajout, la zone ultime) : une fois les onze champions des
+biomes vaincus au moins une fois, la run compte un cinquième acte : la sortie
+du quatrième étage mène à la Route Victoire (décor des Rocailleux, faune des
+quatre biomes du dernier étage, +6 niveaux). Au bout, le Conseil la garde, un
+membre par run dans l'ordre (Aldo, Agatha, Peter) tant qu'il n'est pas tombé
+en entier ; ensuite, Régis, le Maître de la Ligue, et ses six Pokémon. Le
+Conseil ne remplace plus le champion d'un biome. **Un seul champion par
+biome**, et un seul biome par champion (`BIOME_CHAMPIONS`, retour de test :
+Ondine était partout) : Blanche à la Prairie, Ondine à la Plage, Major Bob
+au Village, Erika à la Forêt, Morgane au Lac, Koga au Marais, Pierre à
+l'Automne, **Flora** à l'Océan (ajout : la dresseuse de Hoenn d'Essentials,
+Bekipan, Ludicolo et Lokhlass), Auguste au Volcan, Giovanni aux Rocailleux,
+Olga en Montagne glacée. Une sauvegarde qui était déjà montée sur la Route
+avant Flora la garde ouverte. Chaque
 salle lance ses vagues (plus ou moins fournies selon sa surface libre :
 ×0,75 pour une petite Arène, jusqu'à ×1,3 pour une grande Clairière,
 `crowdOf` dans room.ts), se libère (+₽), pose une récompense au centre et
@@ -267,7 +272,19 @@ debout qui passe à 9 cases d'un intimidateur debout perd un quart de son
 Attaque pendant 10 s (comme Rugissement), une fois par salle, dans les deux
 sens. Écart voulu : les jeux n'intimident qu'à l'entrée, mais ici les
 sauvages arrivent par vagues. Les talents se lisent sur l'espèce dessinée.
-L'intimidateur se montre : il fait son geste d'attaque vers sa cible, avec
+**Lévitation** (Fantominus, Smogo, Séléroc, Motisma…) : les attaques Sol ne
+le touchent pas (`damage.ts`, comme une immunité de type). **Talents de
+contact** (`CONTACT_TALENTS`) : qui frappe au corps à corps un Pokémon doté
+de Statik (Pikachu, Wattouat, Élektek…), Corps Ardent (Ponyta, Magmar,
+Limagma…) ou Point Poison (Nidoran, Qwilfish, Rosélia…) risque, 3 fois sur
+10, la paralysie, la brûlure ou le poison ; dans les deux camps
+(`Combat.contactTalent`). **Absorb Eau** (Ptitard, Lokhlass, Aquali,
+Axoloto…) et **Absorb Volt** (Voltali, Loupio, Lanturn) : le type absorbé ne
+blesse pas, il soigne d'un quart des PV. **Torche** (Goupix, Pyroli, Malosse,
+Démolosse) : le Feu ne blesse pas, et embrase ses propres attaques Feu
+(×1,5). **Engrais, Brasier, Torrent** (les starters de toutes les
+générations) : sous un tiers des PV, les attaques du type gagnent 50 %. Tout
+se joue dans `calculateDamage` (damage.ts). L'intimidateur se montre : il fait son geste d'attaque vers sa cible, avec
 l'animation de Rugissement et « Intimidation » au-dessus de lui (une fois
 par seconde au plus). Le talent est écrit sur la fiche de run (C), sur la
 fiche de l'équipe et dans le Pokédex au Repaire (celui d'une évolution aussi :
@@ -283,7 +300,10 @@ coffre), dans le noir, éclairé par des torches et des cristaux qui luisent.
 Un **sbire** de la Ligue attend au milieu de l'arène (`src/data/grunts.ts`) :
 son métier et sa planche Essentials suivent le type de son équipe, tiré du
 biome (Montagnard en Rocailleux, Cambrioleur au Volcan, Pêcheur ou Marin au
-bord de l'eau, Scout en forêt, Sbire Rocket ailleurs…). On l'approche, il
+bord de l'eau, Scout en forêt, Sbire Rocket ailleurs… ; et, faute de Team
+Aqua ou Magma chez Essentials, Motard, Loubard, Parieur, Gentleman,
+Scientifique, Dompteur, Nageurs, Intello, Jongleur, Pokémaniac, ou un
+Archéologue et ses Pokémon Sol au Volcan, aux Rocailleux et à la Plage). On l'approche, il
 parle (son portrait, une réplique), puis envoie d'un jet de Poké Ball son
 Pokémon fort, le gardien (trois barres de PV), et une escorte de sauvages
 du biome. Pendant le combat, il lance des **Poké Balls** sur le Pokémon joué
@@ -534,7 +554,10 @@ courbe lissée ; un anneau d'herbe déchiquetée les borde (`WorldMap.lanes`).
 
 Poids d'équipe (GameManager `compute_team_weight`, `src/meta/weight.ts`) :
 chaque Pokémon emmené pèse selon le stade avec lequel il part (3, 5, 8 ;
-Super Bonbon compris), un légendaire 10 ; un objet tenu 2 ; une attaque
+Super Bonbon compris), et au moins selon sa force (total des stats de base,
+`src/data/bst.json` tiré des fiches par `scripts/build-bst.ts` : 5 dès 400, 8
+dès 480 ; Ronflex pèse 8), un légendaire 10 ; un objet tenu 1 à 3 selon ce
+qu'il apporte en tout (+20 %, +35 %, au-delà : `itemWeight`) ; une attaque
 équipée 0 à 3 selon sa puissance (≤ 40, ≤ 70, ≤ 90, au-delà). Au-delà du
 plafond (24), on compose librement mais « Partir » refuse. Le plafond monte
 de 4 par palier, jusqu'à 40, avec le Bracelet de charge d'Alakazam, payé en
@@ -625,7 +648,74 @@ Danse-Fleur d'Erika (deux spirales de pétales), Toxik de Koga (des flaques
 qui piquent quatre fois), Prémonition de Morgane (trois salves qui suivent
 l'équipe), Déflagration d'Auguste (un anneau de feu puis une explosion au
 centre), Séisme de Giovanni (des ondes qui s'éloignent) et Roulade de
-Blanche (trois charges visées). Le dresseur attend devant la sortie et s'enfuit
+Blanche (trois charges visées). **Phases de l'as** (retour de test du 17
+novembre 2026 : « à six, on les éclate tous d'un coup ») : à chaque barre
+brisée, « Phase n » au-dessus de lui et une réplique de son dresseur dans une
+bulle ; à la 4ᵉ et à la dernière barre, il appelle des sbires de son type (1,
+plus un par paire de membres de l'équipe) ; à la 2ᵉ, il méga-évolue s'il le
+peut ; à la dernière, il **enrage** (lueur rouge, zones deux fois plus
+fréquentes, coups un quart plus rapprochés : `Actor.enraged`). Toutes les
+11 s (7 s enragé), l'as **prend le centre** de l'arène 6 s et y enchaîne des
+figures autour de lui : deux ondes de choc, une croix de rayons puis sa
+diagonale, trois cônes qui balaient, des anneaux qui s'éloignent ou une pluie
+de frappes — selon son type, deux fois sur trois (`STANCE_STYLE`) ; il ne
+reste jamais planté (`EnemyBrain.centerStance`, 4,5 s, une figure toutes les
+1,6 s, 1,1 s enragé) et frappe qui se colle à lui pendant ses figures. Une fois sur deux, au lieu
+du centre, il **bondit** sur le membre le plus éloigné : un cercle au sol, il
+disparaît dans les airs et retombe en onde de choc (`leap`). Enragé, toutes
+les 15 s, sa **plus forte attaque** sur toute l'arène (Séisme, Surf, Écrasement…,
+son nom au-dessus de lui ; pas d'« ultime », retour de test), sous un voile
+rouge, sauf trois zones sûres cerclées de vert, 2,2 s pour s'y mettre
+(`ultimate`, forme `field`). Toutes ses figures reprennent ses propres
+attaques, nom et type compris, à tour de rôle (`offense`), et leurs zones
+grandissent avec leur puissance (jusqu'à ×1,5). Chaque as a son jeu de
+quatre attaques choisi pour son champion (`ACE_MOVES`, data/champions.ts) :
+Éboulement, Séisme, Lame de Roc et Queue de Fer pour l'Onix de Pierre ;
+Surf, Psyko, Laser Glace et Psykoud'Boul pour le Flagadoss d'Ondine ;
+Boutefeu, Draco-Griffe, Colère et Lame d'Air pour le Dracaufeu de Peter…
+Un as dont la Méga n'a pas de planches a cédé la place à un Pokémon dont la
+Méga en a (Flagadoss chez Ondine, Dracaufeu chez Peter, Alakazam chez Régis).
+Les autres Pokémon d'un champion prennent leurs six attaques les plus
+fortes apprises à leur niveau (`Pokemon.strongestMoves`), plus le kit faible
+des sauvages : Léviator n'avait que Ligotage, Frénésie, Siphon et Charge.
+L'as en a sept (`ACE_MOVES`), et tous en tirent une au hasard à chaque coup et
+à chaque zone, jamais deux fois la même d'affilée (`EnemyBrain.choose`) ; de
+loin, seulement celles qui portent. **Surprises** (`TWISTS`) quand l'as
+entame ses deux dernières barres : Peter envoie un jumeau, un Méga-Dracaufeu
+X chromatique (SpriteCollab n'a pas le Y ; planches en data/pmd/20034), qui
+partage la vie de l'as (une barre « ×2 », les coups sur l'un usent l'autre,
+ils tombent ensemble : `Actor.partner`, `sharesHp`) ; d'autres changent le
+temps de l'arène (pluie d'Ondine et de Major Bob, sable de Pierre et
+Giovanni, grêle d'Olga et de Flora, soleil d'Auguste et d'Erika, brouillard
+de Koga). Agatha envoie un Reflet spectral, double de son as à vie partagée ;
+Blanche rend une barre entière à son as (Lait à Boire) ; Aldo enrage une
+barre plus tôt (Gonflette) ; Morgane et Giovanni appellent une vague de
+sbires de plus ; Régis enrage et appelle les siens. Chaque champion crie sa
+réplique au même moment, une seule fois par combat.
+Après un champion, pas de don : ses Éclats de Champion attendent au centre,
+à prendre avec [E] comme une récompense de salle (perdus si l'on part sans). Les Pokémon d'un champion ne nagent plus (au Lac, ils
+partaient au large, hors d'atteinte). Le champion se tient **sur un rocher**
+de l'anneau, au nord-est (`WorldMap.podium`), immobile et hors d'atteinte ;
+vaincu, il lâche une dernière phrase et disparaît dans un nuage. Sur son
+rocher, il suit le joueur du regard (à l'arrêt, au Village aussi) et
+piétine ; il bondit quand il envoie un Pokémon ou appelle des renforts. Au
+centre de chaque arène en plein air, une Poké Ball tracée dans le sol marque
+où sortent ses Pokémon : le liseré de l'emblème de l'arène du Village, changé
+par l'atlas en un trait sombre translucide et un reflet clair, comme gravé
+(`composeBall`, `ARENA_BALL`) ; il prend la teinte du sol de chaque biome ; les Pokémon du champion, son as compris, y sortent (les sauvages de
+l'escorte, à leurs places). Chaque Pokémon ennemi qui apparaît en run
+joue l'animation de son type à son arrivée (des vagues pour un Pokémon Eau…).
+Les Pokémon d'un champion ne reculent plus pour tirer, et frappent plus
+souvent (recharge ×0,7, ×0,55 pour l'as ; zones toutes les 4,8 s, 3,2 s pour
+l'as). L'anneau d'eau autour de l'arène n'existe plus qu'au Lac, au Marais et
+au Volcan (lave) : la Prairie n'a plus d'eau, mais un enclos de bois ouvert
+aux sorties, de la paille et de petits champs dans ses angles. La difficulté
+suit l'équipe : +45 % de PV et +5 % d'attaque par membre au-delà du premier,
+une barre de plus aux Pokémon du champion dès quatre membres. Le dresseur
+n'était jamais visible (effacé juste après son apparition, sa réplique
+d'entrée aussi : corrigé). Les arènes de
+la Prairie (enclos, paille, champs, fleurs, tournesols) et du Lac (nénuphars,
+roseaux sur la rive) ont leur décor à elles (`ARENA_EXTRAS`, arena.ts). Le dresseur attend devant la sortie et s'enfuit
 par elle à la fin. Les K.O. rapportent de l'XP (niveau³ par niveau, comme
 le jeu) : sans elle, le boss était hors de portée d'un Pokémon resté niveau 10.
 
@@ -662,8 +752,9 @@ et qu'il reste des ennemis. Même mise en scène que l'évolution ; la Méga pre
 types et stats de sa forme (fiche PokéAPI à son numéro de forme, 10034 pour
 Méga-Dracaufeu X…), garde attaques, niveau et part de PV, et reprend sa forme
 quand la salle est libérée, à la salle suivante ou au retour au Repaire. Une
-aura violette et rose l'entoure ; quand SpriteCollab n'a pas ses planches
-(Florizarre, Tortank…), elle garde celles de sa base, grandies de 20 %. Le HUD
+aura violette et rose l'entoure ; seules les formes dont SpriteCollab a les
+planches sont proposées (Méga-Florizarre, Méga-Tortank, Méga-Staross… ne le
+sont pas : ce n'était que la base grandie). Le HUD
 dit « Méga-évolution — F » quand elle est prête. Une espèce à deux formes
 (Dracaufeu, Mewtwo, Raichu X / Y ; Absol, Carchacrok, Lucario et leur forme Z)
 fait choisir, jeu en pause, à l'écran d'évolution (`MEGA_ALT_FORMS`). L'as
@@ -851,7 +942,12 @@ coin du départ, à gauche de l'arche de Dracolosse.
   et ses géants moussus, le Lac cerné d'arbres, et son îlot boisé ; à l'est, les bois d'Automne puis
   la Forêt ; en bas, la Prairie et ses herbes hautes. Les positions des noms
   (`PLACES`) ne valent que pour le plan : le sens des portes en run suit
-  `world/worldmap.ts`. Les routes sont de petits chemins de terre peints, tracés
+  `world/worldmap.ts`. Les routes déjà prises en run (`Save.trails`, notées à
+  l'entrée de chaque biome : « plage>marais ») s'y tracent en pointillés
+  d'encre d'une zone à l'autre ; la traversée vers l'Océan, en pointillés
+  d'écume, reste pâle tant qu'on ne l'a pas faite. Le nom du champion d'une
+  zone ne s'affiche (au plan et au carnet) qu'une fois rencontré dans son
+  arène (`Save.met`) ; avant, « Champion ? ». Les routes sont de petits chemins de terre peints, tracés
   à la main (`TRAILS`) : ils partent de la Prairie, se rejoignent comme des
   sentiers et finissent au pied des escaliers des falaises ; seuls ceux qui
   partent d'un biome déjà atteint apparaissent (la traversée vers l'Océan, en
@@ -864,8 +960,15 @@ coin du départ, à gauche de l'arche de Dracolosse.
 - **Xatu, le chroniqueur** (poste `feats`) : le carnet des exploits, « à la
   Hades » — chaque champion à battre une fois, le Conseil et le Maître, chaque
   biome à atteindre, les runs gagnées, la taille de la rébellion. Une ligne par
-  exploit (nom, avancée, récompense) ; ceux qui sont faits se réclament d'un clic
-  ou tous ensemble (Entrée), les réclamés ne restent qu'au compte. Les exploits
+  exploit (nom, avancée, récompense), un papier par groupe, en bento à cases
+  inégales — la Carte du monde en grande case à gauche sur deux colonnes, les
+  Champions et la Rébellion empilés à droite, la Route Victoire en bandeau
+  dessous (titres à l'encre, compte en étiquette) ; ceux qui sont faits se
+  réclament d'un clic ou tous ensemble (gros bouton rose bombe qui bat), les
+  réclamés ne restent qu'au compte.
+  Écran du Repaire comme les autres, Xatu dans le volet de gauche
+  (`CampScreen.renderFeats`) ; le panneau du plan garde sa feuille volante
+  (`src/ui/journal.ts`). Les exploits
   se dévoilent au fil de l'avancée (`Feat.unlocked`) : le champion d'une zone et
   les biomes voisins une fois la zone atteinte, le Conseil et le Maître une fois
   la Route Victoire ouverte, les objectifs suivants de la rébellion une fois le
@@ -901,9 +1004,25 @@ du joueur, et reculent s'il fonce sur eux.
 
 - La jauge des places est en haut à gauche : « Le Repaire · 5/6 Pokémon · 2 en
   attente ».
-- Toutes les recrues en attente (dix au plus) flânent autour du feu, chacune
-  avec son « ! » ; on parle à celle qu'on veut. Repaire plein : « Plus tard » (ou
-  Échap) referme sans renvoyer personne.
+- Les recrues en attente ne sont plus sur la place (retour de test du 18
+  novembre 2026 : elles encombraient le terrain) : **Dracolosse** en tient la
+  liste, un « ! » au-dessus de lui quand une nouvelle arrive (`meta/news.ts`,
+  poste `start`). C'est un écran du Repaire comme ceux de Miaouss ou de Monsieur
+  Mime, Dracolosse dans le volet de gauche (`CampScreen.renderRecruits`), à la
+  façon du Pokédex de Porygon : une carte par recrue (illustration, nom, d'où
+  elle vient, « ! » si on ne l'a pas encore vue) et, à droite, la fiche de
+  celle qu'on choisit — types, niveau, poids, provenance, talent, stats au
+  niveau de départ, attaques en arrivant. « Recruter » ouvre sa fiche d'accueil
+  (surnom, équipe ou Repaire, exil si le Repaire est plein), « Renvoyer » la
+  laisse partir ; la liste se rouvre après chaque fiche tant qu'il en reste.
+  Sans recrue, Dracolosse rappelle qu'on part par l'arche.
+- En petit écran (moins de 760 px de large, téléphone en portrait), les écrans
+  du Repaire passent sur une colonne : le gardien en bandeau en haut, la
+  colonne qui défile dessous, la fiche sous les cartes (Pokédex, équipe,
+  recrues), et l'unité de taille (`--u`) relevée pour rester lisible.
+- Quand la colonne d'un écran du Repaire déborde, un rail jaune dessiné par le
+  jeu (`CampScreen.scrollRail`) dit qu'il y a une suite et où l'on en est (le Mac
+  cache sa barre tant qu'on ne défile pas), et le bas de la colonne s'estompe.
 - Les poches de l'atelier du bâtisseur et de l'Étude d'Alakazam sont plus larges,
   et une trouée sur leur allée les relie à la place (`yardWay`, `studyWay` dans
   `src/run/camp.ts`).
@@ -1043,7 +1162,7 @@ au Repaire une fois le starter choisi.
 
 ## Jouer en ligne : ce que fait un invité
 
-- **Au Repaire de l'hôte**, il voit les recrues qui attendent (sans pouvoir leur parler) et peut
+- **Au Repaire de l'hôte**, il ne voit plus les recrues qui attendent (elles sont chez Dracolosse) et peut
   acheter chez Monsieur Mime (attaques), Alakazam (améliorations) et Miaouss (objets), avec **sa**
   sauvegarde. Démolosse (missions) et le Charpentier restent ceux de l'hôte.
 - **En run**, n'importe quel joueur debout qui franchit une porte (ou une bouche de grotte) lance

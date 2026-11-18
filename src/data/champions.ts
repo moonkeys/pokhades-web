@@ -34,7 +34,7 @@ export const CHAMPIONS: Record<string, Champion> = {
   Ondine: {
     name: 'Ondine',
     type: 'water',
-    team: [[120, 120], [121, 120]],
+    team: [[121, 120], [80, 79]],
     sprite: 'trainer_LEADER_Misty.png',
     intro: 'Ta petite rébellion ? Une vaguelette. Mes Pokémon d’Eau la noieront avant qu’elle n’atteigne le large.',
   },
@@ -89,9 +89,19 @@ export const CHAMPIONS: Record<string, Champion> = {
     sprite: 'trainer_ELITEFOUR_Lorelei.png',
     intro: 'Tu as grimpé jusqu’ici pour parler de liberté ? Le froid fige tout, même les rêves. Tes Pokémon resteront pris dans la glace.',
   },
-  // Ajout : le Conseil de Kanto (Rouge Feu), qui garde le dernier étage une fois la Route
-  // Victoire ouverte (run.ts, ELITE_BY_BIOME), et le Maître de la Ligue qui l'attend au
-  // bout. Équipes des jeux, réduites aux espèces dont le dépôt a les planches (Ectoplasma
+  // Ajout (retour de test du 17 novembre 2026 : « d'autres dresseurs connus… toujours un seul
+  // dresseur unique par biome ») : Flora, la dresseuse de Hoenn d'Essentials
+  // (POKEMONTRAINER_May), garde l'Océan, qui n'avait plus de champion à lui. Une équipe de
+  // haute mer : Bekipan, Ludicolo, et Lokhlass en as.
+  Flora: {
+    name: 'Flora',
+    type: 'water',
+    team: [[279, 278], [272, 270], [131, 131]],
+    sprite: 'trainer_POKEMONTRAINER_May.png',
+    intro: 'J’ai traversé Hoenn de bout en bout, et la Ligue m’a confié l’Océan. Un sauvage qui veut sa liberté ? Le large n’appartient qu’à ceux qui savent le dompter.',
+  },
+  // Ajout : le Conseil de Kanto (Rouge Feu), qui garde la Route Victoire, un membre par run
+  // (run.ts, ELITE), et le Maître de la Ligue qui l'attend une fois le Conseil tombé. Équipes des jeux, réduites aux espèces dont le dépôt a les planches (Ectoplasma
   // devient Spectrum, Ptéra un Dracaufeu).
   Aldo: {
     name: 'Aldo',
@@ -110,14 +120,14 @@ export const CHAMPIONS: Record<string, Champion> = {
   Peter: {
     name: 'Peter',
     type: 'dragon',
-    team: [[130, 129], [148, 147], [6, 4], [149, 147]],
+    team: [[130, 129], [148, 147], [149, 147], [6, 4]],
     sprite: 'trainer_ELITEFOUR_Lance.png',
     intro: 'Les dragons ne servent personne… sauf moi. Si un sauvage peut briser une chaîne, qu’il brise d’abord la mienne.',
   },
   Régis: {
     name: 'Régis',
     type: 'normal',
-    team: [[18, 16], [65, 63], [112, 111], [130, 129], [59, 58], [9, 7]],
+    team: [[18, 16], [112, 111], [130, 129], [59, 58], [9, 7], [65, 63]],
     sprite: 'trainer_CHAMPION.png',
     intro: 'Alors c’est toi, la rumeur. Tous les champions à terre, le Conseil en déroute… Je suis le Maître de la Ligue. Au-dessus de moi, il n’y a rien. Montre-moi ce que vaut ta liberté.',
   },
@@ -135,7 +145,9 @@ export const CHAMPIONS: Record<string, Champion> = {
  * Écart voulu (retour de test : des Pokémon très forts dès le début) : rangés aussi par
  * étage de la carte du monde (world/worldmap.ts) — Giovanni et ses cinq Pokémon ne
  * gardent plus le Village, au deuxième acte, mais les Rocailleux, au dernier ; Major Bob
- * prend le Village, Morgane le Lac et l'Océan. Les petites équipes des premiers
+ * prend le Village, Morgane le Lac. Un seul champion par biome, et un seul biome par champion
+ * (retour de test du 17 novembre 2026 : « Ondine, elle va être un peu partout ») ; Flora garde
+ * l'Océan. Les petites équipes des premiers
  * champions sont complétées selon l'acte où on les croise (run.ts, reinforce).
  */
 export const BIOME_CHAMPIONS: Partial<Record<BiomeId, string[]>> = {
@@ -143,11 +155,11 @@ export const BIOME_CHAMPIONS: Partial<Record<BiomeId, string[]>> = {
   plage: ['Ondine'],
   village: ['Major Bob'],
   foret: ['Erika'],
-  ocean: ['Morgane', 'Ondine'],
+  ocean: ['Flora'],
   marais: ['Koga'],
-  lac: ['Ondine', 'Morgane'],
-  automne: ['Erika', 'Pierre'],
-  rocailleux: ['Giovanni', 'Pierre'],
+  lac: ['Morgane'],
+  automne: ['Pierre'],
+  rocailleux: ['Giovanni'],
   volcan: ['Auguste'],
   glace: ['Olga'],
 };
@@ -159,6 +171,9 @@ export const FINAL_BOSS_DEFEAT =
   'Impossible… le dernier verrou a cédé. Va, alors. Que les Pokémon choisissent : suivre un dresseur… ou vivre libres. La chaîne est brisée — et c’est toi qui l’as brisée.';
 
 /** Réplique du Maître de la Ligue vaincu, au bout de la Route Victoire. */
+/** Un membre du Conseil tombe sur la Route Victoire : le Maître attend la prochaine fois. */
+export const ELITE_DEFEAT =
+  'Le Conseil plie… pour cette fois. Mais au bout de la Route, Régis t’attend. Reviens quand le Conseil entier sera tombé.';
 export const MASTER_DEFEAT =
   'Battu… par un sauvage. Le titre est à toi, si tu en veux. Mais je crois que tu n’en veux pas : tu voulais seulement qu’on vous laisse choisir. Alors choisis.';
 
@@ -168,3 +183,75 @@ export function championSpecies(): number[] {
   for (const c of Object.values(CHAMPIONS)) for (const [f, b] of c.team) ids.add(f).add(b);
   return [...ids];
 }
+
+/**
+ * Les attaques de l'as de chaque champion (retour de test du 17 novembre 2026 : « que chaque
+ * Pokémon ait vraiment ses attaques à lui dans le boss » ; son jeu appris au niveau était souvent
+ * faible, ou de statut). Sept attaques (même jour : « un plus grand choix d'attaques, pour varier » ;
+ * il en tire une à chaque coup, combat/enemy.ts), fidèles à l'espèce et au champion, de types variés : ses
+ * figures, son bond et sa grande attaque les reprennent (combat/enemy.ts), d'où un combat
+ * différent dans chaque arène. Noms d'API PokéAPI.
+ *
+ * Un as dont la Méga n'a pas de planches cède la place (retour de test du 17 novembre 2026) :
+ * Flagadoss chez Ondine (Staross reste dans l'équipe), Dracaufeu chez Peter (Méga X, Dragon),
+ * Alakazam chez Régis.
+ */
+export const ACE_MOVES: Readonly<Record<string, readonly string[]>> = {
+  Pierre: ['rock-slide', 'earthquake', 'stone-edge', 'iron-tail', 'rock-tomb', 'dig', 'rock-throw'],
+  Ondine: ['surf', 'psychic', 'ice-beam', 'zen-headbutt', 'water-pulse', 'psybeam', 'hydro-pump'],
+  'Major Bob': ['thunderbolt', 'thunder', 'iron-tail', 'quick-attack', 'thunder-punch', 'spark', 'brick-break'],
+  Erika: ['petal-dance', 'sludge-bomb', 'giga-drain', 'moonblast', 'energy-ball', 'acid', 'mega-drain'],
+  Koga: ['sludge-bomb', 'flamethrower', 'shadow-ball', 'dark-pulse', 'sludge', 'fire-blast', 'thunderbolt'],
+  Morgane: ['psychic', 'shadow-ball', 'dazzling-gleam', 'psybeam', 'confusion', 'energy-ball', 'thunder-punch'],
+  Auguste: ['flamethrower', 'fire-blast', 'extreme-speed', 'crunch', 'fire-fang', 'flame-wheel', 'wild-charge'],
+  Giovanni: ['earthquake', 'rock-slide', 'megahorn', 'stone-edge', 'drill-run', 'hammer-arm', 'crunch'],
+  Olga: ['blizzard', 'ice-beam', 'psychic', 'ice-punch', 'psyshock', 'draining-kiss', 'ice-shard'],
+  Aldo: ['cross-chop', 'dynamic-punch', 'rock-slide', 'earthquake', 'close-combat', 'karate-chop', 'bullet-punch'],
+  Agatha: ['shadow-ball', 'sludge-bomb', 'dark-pulse', 'thunderbolt', 'shadow-punch', 'lick', 'night-shade'],
+  Peter: ['flare-blitz', 'dragon-claw', 'outrage', 'air-slash', 'flamethrower', 'dragon-breath', 'wing-attack'],
+  Flora: ['surf', 'ice-beam', 'body-slam', 'hydro-pump', 'psychic', 'thunderbolt', 'water-pulse'],
+  Régis: ['psychic', 'shadow-ball', 'thunder-punch', 'dazzling-gleam', 'fire-punch', 'ice-punch', 'psybeam'],
+  Blanche: ['body-slam', 'rollout', 'stomp', 'zen-headbutt', 'double-edge', 'headbutt', 'earthquake'],
+};
+
+/**
+ * Les surprises des champions (retour de test du 17 novembre 2026 : « quand Peter invoque son
+ * Méga-Dracaufeu X, il invoque aussi un Méga-Dracaufeu Y… ils partagent la même barre de vie ;
+ * d'autres petites surprises comme ça sur d'autres dresseurs »). Elles tombent quand l'as entame
+ * ses deux dernières barres, en même temps que sa Méga :
+ *   - `twin` : un jumeau de l'as (méga-évolué s'il le peut), qui partage sa vie (une barre pour
+ *     deux, ils tombent ensemble) ; `sheet` : d'autres planches que les siennes. SpriteCollab n'a
+ *     pas Méga-Dracaufeu Y : celui de Peter est son X chromatique (0006/0001/0001, recopié en
+ *     data/pmd/20034), au choix du testeur ;
+ *   - `weather` : le temps de l'arène change jusqu'à la fin du combat (le brouillard compris) ;
+ *   - `heal` : l'as regagne une barre entière (Lait à Boire) ;
+ *   - `rage` : il enrage dès maintenant, une barre plus tôt (Gonflette) ;
+ *   - `minions` : il appelle une vague de sbires de plus ;
+ *   - `line` : ce que le champion crie à ce moment-là, et `move` : le nom annoncé au-dessus de l'as.
+ */
+export interface ChampionTwist {
+  twin?: { sheet?: number; name: string };
+  weather?: 'rain' | 'sun' | 'sand' | 'hail' | 'fog';
+  heal?: boolean;
+  rage?: boolean;
+  minions?: boolean;
+  line?: string;
+  move?: string;
+}
+export const TWISTS: Readonly<Record<string, ChampionTwist>> = {
+  Peter: { twin: { sheet: 20034, name: 'Méga-Dracaufeu X chromatique' }, line: 'Un dragon ne vole jamais seul !' },
+  Agatha: { twin: { name: 'Reflet spectral' }, line: 'Hé hé… Lequel est le vrai ?' },
+  Koga: { weather: 'fog', line: 'L’art du ninja : disparaître dans la fumée !', move: 'Brouillard' },
+  Pierre: { weather: 'sand', line: 'Le sable se lève. Tu ne verras rien venir.' },
+  Giovanni: { weather: 'sand', minions: true, line: 'La Team Rocket ne se bat jamais seule.' },
+  Ondine: { weather: 'rain', line: 'Danse Pluie ! Mes Pokémon sont chez eux.' },
+  Flora: { weather: 'hail', line: 'Le large gèle, et toi avec !' },
+  Olga: { weather: 'hail', line: 'Le froid fige tout.' },
+  Auguste: { weather: 'sun', line: 'Le soleil cogne ! Brûle, maintenant !' },
+  Erika: { weather: 'sun', line: 'Le soleil fait fleurir mes Pokémon…' },
+  'Major Bob': { weather: 'rain', line: 'Sous la pluie, Fatal-Foudre ne rate jamais !' },
+  Morgane: { minions: true, line: 'J’ai vu ta défaite. Mes visions prennent corps.', move: 'Visions' },
+  Blanche: { heal: true, line: 'Une gorgée de lait, et on repart !', move: 'Lait à Boire' },
+  Aldo: { rage: true, line: 'Gonflette ! Mes muscles brûlent !', move: 'Gonflette' },
+  Régis: { rage: true, minions: true, line: 'Je ne retiens plus rien. Plus rien !', move: 'Rage du Maître' },
+};

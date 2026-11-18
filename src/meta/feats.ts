@@ -1,8 +1,7 @@
 import type { BiomeId } from '../data/species';
-import { LEAGUE_GATE, LEAGUE_MASTER } from '../run/run';
+import { ELITE, LEAGUE_GATE, LEAGUE_GATE_V1, LEAGUE_MASTER } from '../run/run';
 import { BIOMES } from '../world/biomes';
 import { WORLD, WORLD_LINKS } from '../world/worldmap';
-import { BIOME_CHAMPIONS } from '../data/champions';
 import { roster, type Save } from './save';
 
 // Le carnet des exploits (ajout, retour de test : « le but du jeu, c'est de
@@ -46,26 +45,23 @@ export const FEAT_GROUPS: Record<FeatGroup, string> = {
 /** Où l'on croise chaque champion des biomes (data/champions.ts, BIOME_CHAMPIONS), pour le carnet. */
 const CHAMPION_HOME: Record<string, string> = {
   Blanche: 'de la Prairie',
-  Ondine: 'de la Plage et du Lac',
+  Ondine: 'de la Plage',
   'Major Bob': 'du Village',
-  Erika: 'de la Forêt et de l’Automne',
-  Pierre: 'de l’Automne et des Rocailleux',
+  Erika: 'de la Forêt',
+  Pierre: 'de l’Automne',
   Koga: 'du Marais',
-  Morgane: 'de l’Océan et du Lac',
+  Morgane: 'du Lac',
+  Flora: 'de l’Océan',
   Auguste: 'du Volcan',
   Giovanni: 'des Rocailleux',
   Olga: 'de la Montagne glacée',
 };
 
-/** Le Conseil : les champions de la Route Victoire. */
-const ELITE = ['Aldo', 'Agatha', 'Peter'];
 
 const beat = (name: string) => (save: Save): [number, number] => [save.beaten.includes(name) ? 1 : 0, 1];
 
 /** Un biome atteint (la Prairie, d'où part chaque run, l'est d'office). */
 const reached = (save: Save, b: BiomeId) => b === 'prairie' || save.visited.includes(b);
-/** Les biomes où l'on croise chaque champion (data/champions.ts, BIOME_CHAMPIONS). */
-const homesOf = (name: string) => (Object.keys(BIOME_CHAMPIONS) as BiomeId[]).filter((b) => BIOME_CHAMPIONS[b]?.includes(name));
 
 /**
  * Économie (retour de test : « on se fait de l'argent beaucoup trop facilement ») : les
@@ -80,8 +76,8 @@ export const FEATS: readonly Feat[] = [
     desc: `Champion ${CHAMPION_HOME[name]} : à battre une fois.`,
     progress: beat(name),
     reward: { baies: 30 + 10 * i, shards: 1 },
-    // Le champion d'une zone apparaît une fois la zone atteinte.
-    unlocked: (save) => homesOf(name).some((b) => reached(save, b)),
+    // Le champion d'une zone apparaît une fois rencontré, pas dès la zone atteinte.
+    unlocked: (save) => save.met.includes(name),
   })),
   {
     // (Le but qui ouvre la Route Victoire reste avec les champions, visible d'emblée : c'est lui
@@ -89,7 +85,7 @@ export const FEATS: readonly Feat[] = [
     id: 'league',
     group: 'champions',
     name: 'Ouvrir la Route Victoire',
-    desc: 'Vaincs les dix champions : au bout de la carte, la route du Conseil s’ouvre.',
+    desc: 'Vaincs les onze champions : au bout de la carte, la route du Conseil s’ouvre.',
     progress: (save) => [LEAGUE_GATE.filter((n) => save.beaten.includes(n)).length, LEAGUE_GATE.length],
     reward: { shards: 3 },
   },
@@ -97,7 +93,7 @@ export const FEATS: readonly Feat[] = [
     id: `champ:${name}`,
     group: 'conseil',
     name: `Vaincre ${name}`,
-    desc: `Un membre du Conseil : il garde le dernier étage une fois la Route Victoire ouverte.`,
+    desc: `Un membre du Conseil : il garde la Route Victoire, un par run, avant le Maître.`,
     progress: beat(name),
     reward: { baies: 120, shards: 2 },
     unlocked: (save) => leagueOpen(save),
@@ -163,7 +159,13 @@ export function claimFeat(save: Save, id: string): boolean {
 }
 
 /** Tous les champions des biomes vaincus : la Route Victoire est ouverte. */
-export const leagueOpen = (save: Save): boolean => LEAGUE_GATE.every((n) => save.beaten.includes(n));
+/**
+ * Les onze champions vaincus. Une sauvegarde déjà montée sur la Route Victoire avant l'arrivée de
+ * Flora (un membre du Conseil ou le Maître vaincu, avec les dix d'alors) la garde ouverte.
+ */
+export const leagueOpen = (save: Save): boolean =>
+  LEAGUE_GATE.every((n) => save.beaten.includes(n)) ||
+  (LEAGUE_GATE_V1.every((n) => save.beaten.includes(n)) && [...ELITE, LEAGUE_MASTER].some((n) => save.beaten.includes(n)));
 
 /** Texte d'une récompense : « 40 Baies · 1 Éclat ». */
 export function rewardText(r: Feat['reward']): string {

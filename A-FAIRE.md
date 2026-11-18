@@ -241,8 +241,12 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
 - Grotte agrandie à 54 × 36 (arène 12 × 7), pour avoir la place d'esquiver.
 - **Mode Nuzlocke** (fait : Échap → Réglages, `Options.nuzlocke`, `nuzlockeToll`
   de main.ts) : en fin de run, un Pokémon encore K.O. ou resté capturé est
-  relâché pour de bon (jamais le dernier de l'équipe). Reste : d'autres sbires (Team Aqua, Magma…) si le
-  dépôt en a les planches (Essentials n'a que la Team Rocket).
+  relâché pour de bon (jamais le dernier de l'équipe). Autres sbires (fait,
+  18 novembre 2026) : Essentials n'a ni la Team Aqua ni la Team Magma ;
+  Motard, Loubard, Parieur, Gentleman, Scientifique, Dompteur, Nageurs,
+  Intello, Jongleur, Pokémaniac rejoignent les thèmes, et un thème Sol
+  (Archéologue, Montagnard ; Triopikeur, Rhinoféros, Grolem) garde les
+  grottes du Volcan, des Rocailleux et de la Plage.
   Changer de place en lançant (fait, 14 novembre 2026) : après un lancer, six
   fois sur dix, le sbire court se poster ailleurs dans l'arène, le plus loin
   possible du joueur (`CaveDirector.relocate`, `Trainer.dashTo`).
@@ -309,6 +313,12 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
   sens (`entryTalents`, main.ts). Écart voulu : pas seulement à l'entrée
   (vagues). Talents lus sur `speciesId` (`baseId` est l'uid au Repaire).
   Reste : d'autres talents.
+- Lévitation et talents de contact (ajout, 17 novembre 2026) : immunité au
+  Sol (`LEVITATE`, `calculateDamage`) ; Statik, Corps Ardent, Point Poison
+  (`CONTACT_TALENTS`, 30 %, `Combat.contactTalent`, mêlée des deux camps).
+  Puis (même jour) : Absorb Eau, Absorb Volt, Torche, Engrais / Brasier /
+  Torrent (`ABSORB`, `FLASH_FIRE`, `PINCH`, `calculateDamage`). Reste :
+  d'autres talents (Glissade, Chlorophylle, Isograisse…).
 
 ### 1.9 Salles spéciales (fait)
 - Une porte sur plusieurs peut mener à une salle spéciale (`Run.offers`,
@@ -378,6 +388,49 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
   7 combats ou salles spéciales, la boutique, le champion
   (`COMBATS_PER_ACT`, `ROOMS_PER_ACT`) ; niveaux à la même pente par acte.
 - Reste : d'autres salles.
+
+### 1.9 bis Combats de champion plus épiques (17 novembre 2026)
+- Retour de test (« à six Pokémon, trop facile, les boss on les éclate ») :
+  phases de l'as (réplique du champion, « Phase n », sbires à la 4ᵉ et à la
+  dernière barre, Méga à la 2ᵉ, rage à la dernière), difficulté selon
+  l'équipe (PV +45 % et attaque +5 % par membre, 3 barres aux Pokémon du
+  champion dès 4 membres), champion visible au bord de son arène (il était
+  effacé par le chargement de salle, sa réplique d'entrée aussi).
+- Deuxième passe : l'as prend le centre et y enchaîne ondes, rayons et
+  cônes (`centerStance`) ; Pokémon de champion sans nage (Lac bloqué) ;
+  champion perché sur un rocher (`podium`), disparition avec une phrase.
+- Troisième passe : Pokémon de champion sans recul et plus vifs ; dresseur
+  animé (coups d'œil, bond à chaque envoi) ; animation de type à
+  l'apparition des ennemis ; plus d'anneau d'eau dans l'arène de la Prairie
+  (enclos de bois, paille, champs) ; paillasses du Dortoir remises.
+- Cinquième passe : bond de l'as sur le membre le plus éloigné, grande
+  attaque de l'as enragé (sa plus forte, nommée ; pas d'« ultime ») (arène entière sauf trois zones sûres, forme `field`),
+  figures au centre selon son type (anneaux, pluie de frappes…).
+- Sixième passe : les figures reprennent les attaques de l'as (noms, types,
+  taille selon la puissance), sa grande attaque est sa plus forte, et chaque
+  as a quatre attaques choisies pour son champion (`ACE_MOVES`). Reste : à
+  juger en jeu, arène par arène.
+- Septième passe : Pokémon du champion sur la Poké Ball du centre ; l'as
+  riposte au corps à corps pendant ses figures, prises de centre plus
+  courtes et figures plus fréquentes, plus nombreuses et plus écartées ;
+  éclats qui flottent au centre et filent vers le joueur.
+- Huitième passe : les Éclats de Champion remplacent le don au centre de
+  l'arène, à prendre avec [E] ; Pokémon de champion avec leurs attaques les
+  plus fortes (Léviator inactif) ; Méga sans planches retirées, et as de
+  rechange (Flagadoss, Dracaufeu, Alakazam).
+- Neuvième passe : plus d'attaques (sept pour l'as, six pour les autres),
+  tirées à chaque coup ; surprises des champions (`TWISTS`) : jumeau à vie
+  partagée chez Peter, temps qui change chez six autres.
+- Dixième passe : une surprise pour chaque champion (brouillard de Koga,
+  Reflet spectral d'Agatha, Lait à Boire de Blanche, Gonflette d'Aldo,
+  sbires de Morgane et Giovanni, rage de Régis…), avec sa réplique. Reste :
+  les voir en jeu, une par une.
+- Quatrième passe : emblème Poké Ball au sol au centre des arènes, dresseur
+  qui suit le joueur du regard, Éclats de Champion qui s'envolent à la
+  victoire.
+- Arènes : Prairie (fleurs, tournesols) et Lac (nénuphars, roseaux)
+  distinctes. Reste : les autres arènes (à voir en jeu), juger l'équilibre
+  à six.
 
 ### 1.10 Son (fait)
 - `src/audio/sounds.ts` (catalogue, repris de `Sfx.gd`) et `audio.ts`
@@ -592,8 +645,9 @@ Si d'autres se voient en jeu, noter leur emplacement.
   vignette au seul panneau de test.
 - À vérifier en jeu : le vent sur les tournesols, les icônes des étals et de
   la buvette, la portée des postes déplacés (Kangourex, Roucarnage, Miaouss).
-- Reste : Leçons de Bouldeneu plus courtes (pas prioritaire) ; poids des
-  améliorations (à voir) ; potager et artisanat (fait, voir 2.8).
+- Leçons de Bouldeneu plus courtes (fait, 18 novembre 2026 : les 25 fiches
+  les plus longues réécrites, 230 signes au plus) ; potager et artisanat
+  (fait, voir 2.8).
 
 ### 2.4 Terrain d'entraînement et missions (fait)
 - **Démolosse**, le pisteur, au camp dès le départ (à l'est, sous le terrain
@@ -638,8 +692,10 @@ Si d'autres se voient en jeu, noter leur emplacement.
 - Affiché à l'équipe (jauge, poids de chacun, détail dans la fiche, ⚖ des
   grosses attaques) et au départ ; « Partir » bloqué au-delà du plafond
   (`CampScreen.depart`). Le panneau de test compose sans limite.
-- Reste : à équilibrer en jeu (plafond, poids des CT) ; Rappels et bourse
-  pesants comme dans Godot, si on veut en faire des choix de build.
+- Réglages (18 novembre 2026) : un Pokémon pèse au moins selon sa force
+  (total des stats, `src/data/bst.json`, `scripts/build-bst.ts`) : 5 dès 400,
+  8 dès 480 (Ronflex pesait 3, comme Pichu) ; un objet tenu pèse 1 à 3 selon
+  ce qu'il apporte (`itemWeight`), plus 2 pour tous. Reste : juger en jeu.
 
 ### 2.7 Leçons de Bouldeneu (fait)
 - Bouldeneu (465), le savant, au camp dès le départ, au sud du feu avec un
@@ -688,6 +744,28 @@ Si d'autres se voient en jeu, noter leur emplacement.
 - Reste : vérifier en jeu le tracé des allées (le dortoir, en briques
   beiges, n'a pas été vu en rendu hors ligne) et la lisibilité des bacs.
 
+### 2.10 Un champion par biome, routes du plan (fait, 17 novembre 2026)
+
+- Un seul champion par biome, et un seul biome par champion
+  (`BIOME_CHAMPIONS`) ; Flora (POKEMONTRAINER_May d'Essentials) garde
+  l'Océan ; onze champions ouvrent la Route Victoire (les sauvegardes déjà
+  montées la gardent ouverte).
+- Le Conseil ne remplace plus de champion de biome : il garde la Route
+  Victoire, un membre par run (Aldo, Agatha, Peter), puis le Maître.
+- Plan du Repaire : les routes déjà prises en pointillés (`Save.trails`).
+- Le nom d'un champion n'apparaît au plan et au carnet qu'une fois rencontré
+  (`Save.met`), pas dès son biome atteint.
+- Recrues en attente chez Dracolosse (18 novembre 2026) : plus sur la place,
+  une liste avec « Recruter » et « Renvoyer », un « ! » quand une nouvelle
+  arrive. Puis (même jour) : la liste devient un écran du Repaire avec
+  Dracolosse sur le côté, comme Miaouss ou Monsieur Mime, et une fiche à droite
+  (stats, attaques, talent, poids) ; le carnet de Xatu aussi ; les écrans du
+  Repaire passent sur une colonne en petit écran. Puis : carnet de Xatu en
+  bento à cases inégales (Carte du monde en grande case), titres lisibles, « Tout réclamer » en gros ; rail de défilement visible.
+- Reste : d'autres dresseurs connus d'Essentials (Red, Leaf, Brendan) si l'on
+  ajoute des biomes ; vérifier le plan en jeu (les pointillés n'ont pas été vus
+  à l'écran).
+
 ---
 
 ## 3. Déjà notés, toujours en attente
@@ -699,14 +777,13 @@ Si d'autres se voient en jeu, noter leur emplacement.
   un obstacle coupé restent dessinés intacts chez l'invité (décor « cuit »
   dans la carte) ; pas de reconnexion en cours de run ; à tester entre deux
   machines (NAT strict : il faudrait un serveur TURN).
-- **Revente** à la boutique de run (il faut d'abord un inventaire en run). Les
-  lots de Baies de `ShopStock.gd` sont faits (un par étal).
-- **Surf en run** : au Repaire, on ne nage qu'avec Surf ; en run, on nage
-  toujours (certaines cartes risqueraient de bloquer leurs sorties
-  autrement). Le graphe de biomes (1.2) ne laisse entrer à l'Océan qu'avec
-  Surf ; ailleurs, le Lac et la Plage se nagent encore sans. À trancher.
+- ~~Revente à la boutique de run~~ : abandonnée (18 novembre 2026 : pas
+  d'inventaire en run).
+- **Surf en run** (tranché le 18 novembre 2026 : on garde) : au Repaire, on ne
+  nage qu'avec Surf ; en run, on nage toujours ; seul l'Océan demande Surf.
+- **Contenu en plus** (plus tard, 18 novembre 2026) : d'autres talents,
+  salles spéciales, visiteurs par zone, récoltes, dresseurs connus.
 - Le graphe de biomes est un premier jet (`BIOME_LINKS`) : à rééquilibrer
   au fil des tests, et d'autres CS pourront y garder des branches (Coupe,
-  Éclate-Roc). Les champions du Lac, de la Plage et de l'Océan sont tous
-  Ondine : on la croise une fois, ensuite un autre champion la remplace.
+  Éclate-Roc). (Un champion par biome depuis le 17 novembre 2026 : voir 2.10.)
 - Les objets tenus n'ont pas été vraiment testés en partie par le joueur.

@@ -126,8 +126,13 @@ export const MEGA_ALT_FORMS: Readonly<Record<number, MegaForm>> = {
   448: { id: 10310, name: "Méga-Lucario Z", collab: null },
 };
 
-/** Les formes Méga d'une espèce (aucune, une, ou deux). */
-export const megaFormsOf = (base: number): MegaForm[] => [MEGA_FORMS[base], MEGA_ALT_FORMS[base]].filter((m): m is MegaForm => !!m);
+/**
+ * Les formes Méga d'une espèce qu'on peut prendre (aucune, une, ou deux) : seulement celles dont
+ * SpriteCollab a les planches (retour de test du 17 novembre 2026 : « si on n'a pas les sprites
+ * des méga-évolutions, on ne les utilise pas » ; Méga-Staross n'était qu'un Staross grandi). Les
+ * autres restent dans les tables, pour le jour où leurs planches arriveront.
+ */
+export const megaFormsOf = (base: number): MegaForm[] => [MEGA_FORMS[base], MEGA_ALT_FORMS[base]].filter((m): m is MegaForm => !!m?.collab);
 
 const BY_ID = new Map(
   [...Object.entries(MEGA_FORMS), ...Object.entries(MEGA_ALT_FORMS)].map(([base, m]) => [m.id, { ...m, base: Number(base) }]),

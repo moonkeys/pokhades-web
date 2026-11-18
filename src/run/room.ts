@@ -9,7 +9,7 @@ import { TILE } from '../world/tiles';
 import { REWARD_COLOR, SHOP_COLOR, SPECIALS, type ExitOffer, type Reward, type Run, type SpecialId } from './run';
 import { SWIMMERS, type BiomeId } from '../data/species';
 import type { DonorId } from '../combat/boons';
-import { donorBadge, drawRewardIcon, itemIcon, rewardIcon, shopIcon } from '../ui/rewardicons';
+import { donorBadge, drawRewardIcon, itemIcon, rewardIcon, shopIcon, type Prize } from '../ui/rewardicons';
 import { BIOMES, BIOME_COLOR } from '../world/biomes';
 import { CS_LIST } from '../meta/catalog';
 import { VICTORY_ROAD } from '../world/worldmap';
@@ -62,6 +62,9 @@ const FADE = 0.5;
 /** Délai entre deux rappels « CS requise » quand on bute contre une porte fermée. */
 const LOCKED_NAG = 2.5;
 /** Rayon de ramassage de la récompense au centre (Area3D de rayon 1,2). */
+/** Le halo des Éclats de Champion posés au centre d'une arène : le bleu pâle de la Comète. */
+const SHARD_COLOR = '#9fd8ff';
+
 const PICKUP_RADIUS = 1.2;
 /**
  * Distance minimale au joueur d'un point d'apparition. Le jeu n'en a pas ;
@@ -163,6 +166,8 @@ export interface RoomHost {
   prepareReward(reward: Reward): void;
   /** Ouvre l'écran de choix ; `consume` retire la récompense une fois prise. */
   openReward(reward: Reward, consume: () => void): void;
+  /** Les Éclats de Champion posés au centre de l'arène sont pris. */
+  claimShards(): void;
   /** On s'engage dans la bouche d'une grotte, pendant que l'écran est noir (cf. CaveDirector). */
   enterCave(): void;
   /** Chrono du Défi, en secondes (null : on le masque). */
@@ -213,7 +218,7 @@ export class RoomDirector {
   /** Temps avant de pouvoir redire qu'une porte demande une CS. */
   private nag = 0;
   /** `badge` : le badge HTML d'un don, qui flotte au-dessus de la récompense (net, contrairement au canvas). */
-  private pedestal: { x: number; y: number; color: string; reward: Reward; donor?: DonorId; label: HTMLElement; badge: HTMLElement | null } | null = null;
+  private pedestal: { x: number; y: number; color: string; reward: Prize; donor?: DonorId; label: HTMLElement; badge: HTMLElement | null } | null = null;
   /** Le gain de la salle a été versé (la salle est libérée). */
   private paid = false;
   /** Salle de boss : les Pokémon sortent de Poké Balls. */
@@ -555,7 +560,11 @@ export class RoomDirector {
     for (const mon of this.waves[this.wave] ?? []) {
       const g = mon.group !== undefined ? this.groups[mon.group] : undefined;
       const swims = SWIMMERS.has(mon.id);
-      const at = (g && this.spawnNear(world, g.trainer, player, swims)) ?? this.spawnPoint(world, player, swims);
+      // En salle de champion, ses Pokémon sortent sur la Poké Ball gravée au centre de l'arène (retour de
+      // test du 17 novembre 2026 : « l'as devrait apparaître sur la Poké Ball, pas dans les coins ») ;
+      // les sauvages de l'escorte, à leurs places habituelles.
+      const center = this.boss && mon.role !== 'wild' && world.podium ? { x: world.hub.x + 0.5, y: world.hub.y + 0.5 } : null;
+      const at = center ?? (g && this.spawnNear(world, g.trainer, player, swims)) ?? this.spawnPoint(world, player, swims);
       if (!at) continue;
       this.pending.push({ ...mon, ...at, t: -warn });
       // Toutes les balls d'une vague partent ensemble ; elles s'ouvrent quand le Pokémon apparaît (0,55 s).
@@ -716,6 +725,13 @@ export class RoomDirector {
       }
     }
     if (!best) return;
+    // Après un champion, pas de don : ses Éclats de Champion attendent au centre, à prendre avec
+    // [E] comme une récompense de salle (retour de test du 17 novembre 2026 : « tu remplaces le
+    // don par un éclat de champion »).
+    if (run.isBoss()) {
+      this.pedestal = { ...best, color: SHARD_COLOR, reward: 'shards', label: this.label('[E]', '#efe6d2'), badge: null };
+      return;
+    }
     // Un don sans donateur annoncé (première salle, sortie de boss, salle forcée) : on le tire
     // maintenant, pour que le badge posé et l'écran des dons montrent le même légendaire (retour
     // de test : le badge de Mew s'affichait par défaut, puis l'écran proposait Électhor).
@@ -770,6 +786,11 @@ export class RoomDirector {
   private claim(run: Run): void {
     const p = this.pedestal;
     if (!p) return;
+    if (p.reward === 'shards') {
+      this.host.claimShards();
+      this.consume();
+      return;
+    }
     if (run.reward !== 'loot') {
       // Dons ou nouvelle attaque : l'écran de choix ; la récompense ne part qu'une fois prise.
       this.host.openReward(run.reward, () => this.consume());

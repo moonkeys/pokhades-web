@@ -1,7 +1,7 @@
 import type { BiomeId } from '../data/species';
 import { findExits, type WorldMap } from './generate';
 import type { Paving } from './town';
-import { CAMP_PROPS, GYM, LAMP, PROPS, TILE, TOWN_DECOR, TREES, type SpriteDef, type Tile } from './tiles';
+import { ARENA_BALL, CAMP_PROPS, FENCES, FLOWERS, GYM, LAMP, LILIES, PROPS, TILE, TOWN_DECOR, TREES, type SpriteDef, type Tile } from './tiles';
 
 // L'arène d'un champion (ajout, retour de test : « de vraies arènes, un endroit
 // précis pour chaque boss, toujours le même pour chaque biome… un cercle » ;
@@ -39,6 +39,9 @@ const RING: Record<BiomeId, { main: readonly SpriteDef[]; fill: readonly SpriteD
   glace: { main: [...PROPS.snowBoulder, ...TREES.snowy.slice(0, 2)], fill: [...PROPS.iceCrystals, ...PROPS.snowRocks], step: 2.2 },
 };
 
+/** Où se dresse le rocher du champion sur l'anneau (nord-est). */
+const PODIUM_ANGLE = -Math.PI / 4;
+
 /** Les quatre sorties (nord, est, sud, ouest), en angle. */
 const EXITS = [-Math.PI / 2, 0, Math.PI / 2, Math.PI];
 
@@ -61,9 +64,19 @@ export function decorateArena(world: WorldMap, biome: BiomeId): void {
   const perimeter = Math.PI * 2 * RING_R * ((1 + RING_Y) / 2);
   const n = Math.round(perimeter / ring.step);
   const seed = biome.length * 7;
+  // Le rocher du champion (retour de test du 17 novembre 2026 : « sur un piédestal, en hauteur, on
+  // ne peut pas l'atteindre ») : il prend une place de l'anneau, au nord-est, bien en vue.
+  const rock = biome === 'glace' ? PROPS.snowBoulder[0] : PROPS.boulder[0];
+  const px = c.x + Math.cos(PODIUM_ANGLE) * RING_R;
+  const py = c.y + Math.sin(PODIUM_ANGLE) * RING_R * RING_Y;
+  world.objects.push({ sprite: rock, x: Math.round(px * TILE) + TILE / 2, y: Math.round(py * TILE), fades: false });
+  for (let dy = -2; dy <= 0; dy++) for (let dx = -1; dx <= 1; dx++) world.blocked[(Math.floor(py) + dy) * w + Math.floor(px) + dx] = 1;
+  // (Juste devant le pied du rocher, au même endroit : trié après lui, le dresseur est dessiné dessus.)
+  world.podium = { x: (Math.round(px * TILE) + TILE / 2) / TILE, y: Math.round(py * TILE) / TILE + 0.05 };
   for (let k = 0; k < n; k++) {
     const a = (k / n) * Math.PI * 2 - Math.PI;
     if (EXITS.some((e) => Math.abs(Math.atan2(Math.sin(a - e), Math.cos(a - e))) < GAP)) continue;
+    if (Math.abs(Math.atan2(Math.sin(a - PODIUM_ANGLE), Math.cos(a - PODIUM_ANGLE))) < 0.3) continue;
     const list = k % 2 === 0 ? ring.main : ring.fill;
     const sp = list[(k * 5 + seed) % list.length];
     place(sp, c.x + Math.cos(a) * RING_R, c.y + Math.sin(a) * RING_R * RING_Y);
@@ -75,8 +88,111 @@ export function decorateArena(world: WorldMap, biome: BiomeId): void {
       place(CAMP_PROPS.torch, c.x + Math.cos(a) * RING_R, c.y + Math.sin(a) * RING_R * RING_Y);
     }
   }
+  // L'emblème Poké Ball de l'arène du Village (Essentials, 3 × 4 cases), au sol au centre (retour de
+  // test du 17 novembre 2026 : les Pokémon du champion y apparaissent ; « le même style de Poké Ball
+  // que sur l'arène, mais au sol »).
+  // (Détourée par l'atlas, ARENA_BALL : rien que la balle, posée sur le sol du biome.)
+  for (let r = 0; r < ARENA_BALL.h; r++)
+    for (let col = 0; col < ARENA_BALL.w; col++) world.decals.push({ tile: [ARENA_BALL.tile[0] + col, ARENA_BALL.tile[1] + r], x: Math.floor(c.x) - 1 + col, y: Math.floor(c.y) - 2 + r });
+  ARENA_EXTRAS[biome]?.(world, place);
   world.objects.sort((a, b) => a.y - b.y);
 }
+
+type Place = (sp: SpriteDef, x: number, y: number) => boolean;
+
+/**
+ * Ce qui distingue une arène d'une autre au-delà de son anneau (retour de test du 17 novembre
+ * 2026 : « la même pour la Prairie et le Lac ») : la Prairie, un tapis de fleurs au bord du
+ * terrain et quatre massifs de tournesols ; le Lac, des nénuphars sur l'eau qui cerne l'arène et
+ * des roseaux sur la rive. Tout vient du tileset.
+ */
+const ARENA_EXTRAS: Partial<Record<BiomeId, (world: WorldMap, place: Place) => void>> = {
+  prairie: (world, place) => {
+    // Le côté campagne (retour de test : « le bois, les champs, la paille ») : un enclos de bois
+    // autour du terrain (coins et côtés du tileset), ouvert au milieu de chaque côté pour les
+    // sorties ; de la paille et deux petits champs dans ses angles ; des fleurs, des tournesols et
+    // des rondins dehors.
+    const cx = Math.floor(world.hub.x);
+    const cy = Math.floor(world.hub.y);
+    const HW = 7;
+    const HH = 6;
+    const [fc, fr] = FENCES.wood.origin;
+    for (let dy = -HH; dy <= HH; dy++)
+      for (let dx = -HW; dx <= HW; dx++) {
+        const edgeX = Math.abs(dx) === HW;
+        const edgeY = Math.abs(dy) === HH;
+        if (!edgeX && !edgeY) continue;
+        // Les ouvertures : trois cases au milieu de chaque côté.
+        if ((edgeY && !edgeX && Math.abs(dx) <= 1) || (edgeX && !edgeY && Math.abs(dy) <= 1)) continue;
+        const x = cx + dx;
+        const y = cy + dy;
+        const i = y * world.w + x;
+        if (world.water[i]) continue;
+        const col = dx === -HW ? 0 : dx === HW ? 2 : 1;
+        const row = dy === -HH ? 0 : dy === HH ? 2 : 1;
+        world.objects.push({ sprite: { rect: [(fc + col) * TILE, (fr + row) * TILE, TILE, TILE], foot: TILE - 1, trunk: 1 }, x: x * TILE + TILE / 2, y: (y + 1) * TILE - 1, fades: false });
+        world.blocked[i] = 1;
+      }
+    // Paille (nord-ouest, sud-est) et champs (nord-est, sud-ouest), dans les angles de l'enclos.
+    const { col: hc, row: hr } = CAMP_PROPS.hay;
+    for (const [x, y] of [[cx - HW + 1, cy - HH + 1], [cx + HW - 3, cy + HH - 3]]) {
+      for (let dy = 0; dy < 3; dy++) for (let dx = 0; dx < 3; dx++) world.decals.push({ tile: [hc + dx, hr + dy], x: x + dx, y: y + dy });
+    }
+    const { col: sc, row: sr } = CAMP_PROPS.soil;
+    for (const [x, y] of [[cx + HW - 4, cy - HH + 1], [cx - HW + 1, cy + HH - 2]]) {
+      for (let dy = 0; dy < 2; dy++)
+        for (let dx = 0; dx < 3; dx++) {
+          world.decals.push({ tile: [sc + (dx === 0 ? 0 : dx === 2 ? 2 : 1), sr + (dy === 0 ? 0 : 2)], x: x + dx, y: y + dy });
+          world.objects.push({ sprite: { ...CAMP_PROPS.crops[(dx + dy) % CAMP_PROPS.crops.length], grass: true }, x: (x + dx) * TILE + TILE / 2, y: (y + dy + 1) * TILE - 1, fades: false });
+        }
+    }
+    // Dehors : des fleurs au pied de l'enclos, des tournesols et des rondins aux diagonales.
+    for (let k = 0; k < 44; k++) {
+      const t = k / 44;
+      const side = Math.floor(t * 4);
+      const u = (t * 4) % 1;
+      const [x, y] =
+        side === 0 ? [cx - HW + Math.floor(u * 2 * HW), cy - HH - 1] : side === 1 ? [cx + HW + 1, cy - HH + Math.floor(u * 2 * HH)] : side === 2 ? [cx + HW - Math.floor(u * 2 * HW), cy + HH + 1] : [cx - HW - 1, cy + HH - Math.floor(u * 2 * HH)];
+      const i = y * world.w + x;
+      if (k % 2 || world.blocked[i] || world.water[i] || world.path[i]) continue;
+      world.flat.push({ tile: FLOWERS[(k * 3) % FLOWERS.length], x, y });
+    }
+    for (const a of DIAGONALS) {
+      place(TOWN_DECOR.sunflowers, world.hub.x + Math.cos(a + 0.28) * (RING_R - 0.4), world.hub.y + Math.sin(a + 0.28) * (RING_R - 0.4) * RING_Y);
+      place(PROPS.log[0], world.hub.x + Math.cos(a - 0.3) * (RING_R - 0.8), world.hub.y + Math.sin(a - 0.3) * (RING_R - 0.8) * RING_Y);
+    }
+  },
+  lac: (world, place) => {
+    // L'arène du Lac est cernée d'eau (generate.ts) : des nénuphars sur l'eau qui l'entoure, et des
+    // roseaux le long de la rive.
+    const c = world.hub;
+    for (let k = 0; k < 64; k++) {
+      const a = (k / 64) * Math.PI * 2;
+      for (const r of [RING_R + 1.5, RING_R + 3]) {
+        const x = Math.floor(c.x + Math.cos(a) * r);
+        const y = Math.floor(c.y + Math.sin(a) * r * RING_Y);
+        if (x < 1 || y < 1 || x >= world.w - 1 || y >= world.h - 1) continue;
+        const i = y * world.w + x;
+        if (world.water[i] && (k + Math.round(r)) % 3 === 0) world.lilies.push({ tile: LILIES.pond[k % LILIES.pond.length], x, y });
+      }
+      if (k % 4) continue;
+      // Un roseau sur la dernière case de terre avant l'eau, en partant du centre.
+      for (let r = INNER_R; r < RING_R + 4; r += 0.5) {
+        const x = c.x + Math.cos(a) * r;
+        const y = c.y + Math.sin(a) * r * RING_Y;
+        const i = Math.floor(y) * world.w + Math.floor(x);
+        if (!world.water[i]) continue;
+        const back = r - 0.8;
+        place(PROPS.reeds[k % 2], c.x + Math.cos(a) * back, c.y + Math.sin(a) * back * RING_Y);
+        break;
+      }
+    }
+  },
+};
+
+/** Rayon du bord du terrain (roseaux), et les quatre diagonales. */
+const INNER_R = 7.6;
+const DIAGONALS = [Math.PI / 4, (3 * Math.PI) / 4, (5 * Math.PI) / 4, (7 * Math.PI) / 4];
 
 /**
  * L'arène du Village (retour de test : « une vraie arène de dresseur, comme

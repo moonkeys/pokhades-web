@@ -20,19 +20,24 @@ export interface GruntTheme {
 }
 
 export const GRUNT_THEMES: Record<string, GruntTheme> = {
-  normal: { type: 'normal', looks: [{ sprite: 'trainer_TEAMROCKET_M.png', title: 'Sbire' }, { sprite: 'trainer_TEAMROCKET_F.png', title: 'Sbire' }], guardians: [20, 53, 22, 217] },
-  poison: { type: 'poison', looks: [{ sprite: 'trainer_TEAMROCKET_M.png', title: 'Sbire' }, { sprite: 'trainer_TEAMROCKET_F.png', title: 'Sbire' }], guardians: [24, 110, 42, 89, 33] },
-  fire: { type: 'fire', looks: [{ sprite: 'trainer_BURGLAR.png', title: 'Cambrioleur' }], guardians: [58, 77, 126, 322, 78] },
-  water: { type: 'water', looks: [{ sprite: 'trainer_FISHERMAN.png', title: 'Pêcheur' }, { sprite: 'trainer_SAILOR.png', title: 'Marin' }], guardians: [119, 131, 99, 73, 61] },
-  rock: { type: 'rock', looks: [{ sprite: 'trainer_HIKER.png', title: 'Montagnard' }], guardians: [95, 111, 247, 328, 75] },
-  fighting: { type: 'fighting', looks: [{ sprite: 'trainer_BLACKBELT.png', title: 'Karatéka' }], guardians: [67, 106, 107, 57, 237] },
+  normal: { type: 'normal', looks: [{ sprite: 'trainer_TEAMROCKET_M.png', title: 'Sbire' }, { sprite: 'trainer_TEAMROCKET_F.png', title: 'Sbire' }, { sprite: 'trainer_GAMBLER.png', title: 'Parieur' }, { sprite: 'trainer_GENTLEMAN.png', title: 'Gentleman' }], guardians: [20, 53, 22, 217] },
+  poison: { type: 'poison', looks: [{ sprite: 'trainer_TEAMROCKET_M.png', title: 'Sbire' }, { sprite: 'trainer_TEAMROCKET_F.png', title: 'Sbire' }, { sprite: 'trainer_BIKER.png', title: 'Motard' }, { sprite: 'trainer_SCIENTIST.png', title: 'Scientifique' }], guardians: [24, 110, 42, 89, 33] },
+  fire: { type: 'fire', looks: [{ sprite: 'trainer_BURGLAR.png', title: 'Cambrioleur' }, { sprite: 'trainer_TAMER.png', title: 'Dompteur' }, { sprite: 'trainer_BIKER.png', title: 'Motard' }], guardians: [58, 77, 126, 322, 78] },
+  water: { type: 'water', looks: [{ sprite: 'trainer_FISHERMAN.png', title: 'Pêcheur' }, { sprite: 'trainer_SAILOR.png', title: 'Marin' }, { sprite: 'trainer_SWIMMER_M.png', title: 'Nageur' }, { sprite: 'trainer_SWIMMER_F.png', title: 'Nageuse' }], guardians: [119, 131, 99, 73, 61] },
+  rock: { type: 'rock', looks: [{ sprite: 'trainer_HIKER.png', title: 'Montagnard' }, { sprite: 'trainer_POKEMANIAC.png', title: 'Pokémaniac' }], guardians: [95, 111, 247, 328, 75] },
+  fighting: { type: 'fighting', looks: [{ sprite: 'trainer_BLACKBELT.png', title: 'Karatéka' }, { sprite: 'trainer_CUEBALL.png', title: 'Loubard' }], guardians: [67, 106, 107, 57, 237] },
   bug: { type: 'bug', looks: [{ sprite: 'trainer_BUGCATCHER.png', title: 'Scout' }], guardians: [127, 123, 15, 49, 168] },
   grass: { type: 'grass', looks: [{ sprite: 'trainer_AROMALADY.png', title: 'Aromatologue' }], guardians: [44, 70, 2, 153, 274] },
   ghost: { type: 'ghost', looks: [{ sprite: 'trainer_CHANNELER.png', title: 'Exorciste' }], guardians: [93, 200, 302, 708] },
-  electric: { type: 'electric', looks: [{ sprite: 'trainer_ROCKER.png', title: 'Rocker' }, { sprite: 'trainer_ENGINEER.png', title: 'Ingénieur' }], guardians: [82, 125, 101, 180, 310] },
+  electric: { type: 'electric', looks: [{ sprite: 'trainer_ROCKER.png', title: 'Rocker' }, { sprite: 'trainer_ENGINEER.png', title: 'Ingénieur' }, { sprite: 'trainer_SCIENTIST.png', title: 'Scientifique' }, { sprite: 'trainer_SUPERNERD.png', title: 'Intello' }], guardians: [82, 125, 101, 180, 310] },
   // Ajout (biome de glace) : pas de skieur chez Essentials, ce sont des Rangers emmitouflés.
   ice: { type: 'ice', looks: [{ sprite: 'trainer_POKEMONRANGER_M.png', title: 'Ranger' }, { sprite: 'trainer_POKEMONRANGER_F.png', title: 'Ranger' }], guardians: [362, 221, 460, 614, 713] },
-  psychic: { type: 'psychic', looks: [{ sprite: 'trainer_PSYCHIC_M.png', title: 'Kinésiste' }, { sprite: 'trainer_PSYCHIC_F.png', title: 'Kinésiste' }], guardians: [64, 97, 178, 203, 281] },
+  psychic: { type: 'psychic', looks: [{ sprite: 'trainer_PSYCHIC_M.png', title: 'Kinésiste' }, { sprite: 'trainer_PSYCHIC_F.png', title: 'Kinésiste' }, { sprite: 'trainer_JUGGLER.png', title: 'Jongleur' }], guardians: [64, 97, 178, 203, 281] },
+  // Ajout (retour de test du 18 novembre 2026 : « d'autres sbires ») : Essentials n'a ni la Team
+  // Aqua ni la Team Magma ; d'autres métiers louches de ses planches prennent la relève (Motard,
+  // Loubard, Parieur, Scientifique, Dompteur, Nageurs, Intello, Jongleur…), et un fouilleur de ruines
+  // garde les grottes de terre.
+  ground: { type: 'ground', looks: [{ sprite: 'trainer_RUINMANIAC.png', title: 'Archéologue' }, { sprite: 'trainer_HIKER.png', title: 'Montagnard' }], guardians: [51, 112, 76] },
 };
 
 /** Les équipes possibles par biome : ce qu'on y affronte dehors. */
@@ -42,10 +47,10 @@ export const BIOME_GRUNTS: Record<BiomeId, readonly string[]> = {
   automne: ['ghost', 'grass'],
   lac: ['water'],
   marais: ['poison'],
-  volcan: ['fire'],
-  rocailleux: ['rock', 'fighting'],
+  volcan: ['fire', 'ground'],
+  rocailleux: ['rock', 'fighting', 'ground'],
   village: ['electric', 'psychic'],
-  plage: ['water'],
+  plage: ['water', 'ground'],
   ocean: ['water'],
   glace: ['ice', 'rock'],
 };
@@ -57,6 +62,9 @@ export const GRUNT_INTROS: readonly string[] = [
   'Encore un de ces sauvages qui jouent aux héros… Tu vas finir dans une Ball, comme les autres. Débats-toi tant que tu peux !',
   'On m’a dit de surveiller la grotte. On ne m’a pas dit qu’un rebelle viendrait se livrer. C’est mon jour de chance !',
   'Une rébellion de Pokémon ? Laisse-moi rire. Une Ball bien lancée, et c’est fini.',
+  'Je parie dix contre un que tu finis dans ma Ball. Les paris sont ouverts !',
+  'La Ligue m’a promis une prime par rebelle. Toi, tu vas me payer mes vacances.',
+  'Personne ne sort de ce trou sans ma permission. Et je ne la donne jamais.',
 ];
 
 /** Répliques de défaite (A-FAIRE 1.6), lancées en s'enfuyant, dans une bulle au-dessus de lui. */
@@ -66,6 +74,8 @@ export const GRUNT_DEFEATS: readonly string[] = [
   'Mes Pokémon… tous K.O. ? Je me tire d’ici !',
   'Ce n’était pas dans le contrat, ça ! Adieu !',
   'Garde ta grotte, rebelle. J’ai d’autres trous à surveiller !',
+  'J’ai perdu mon pari… et ma prime avec.',
+  'Tu ne m’as pas vu, d’accord ? Je n’étais jamais là !',
 ];
 /** Quand il rend des Pokémon capturés : la réplique qui va avec. */
 export const GRUNT_DEFEATS_RELEASE: readonly string[] = [
