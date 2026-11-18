@@ -416,8 +416,11 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
   rechange (Flagadoss, Dracaufeu, Alakazam).
 - Neuvième passe : plus d'attaques (sept pour l'as, six pour les autres),
   tirées à chaque coup ; surprises des champions (`TWISTS`) : jumeau à vie
-  partagée chez Peter, temps qui change chez six autres. Reste : d'autres
-  surprises (Koga, Agatha, Morgane, Major Bob, Aldo, Blanche, Régis).
+  partagée chez Peter, temps qui change chez six autres.
+- Dixième passe : une surprise pour chaque champion (brouillard de Koga,
+  Reflet spectral d'Agatha, Lait à Boire de Blanche, Gonflette d'Aldo,
+  sbires de Morgane et Giovanni, rage de Régis…), avec sa réplique. Reste :
+  les voir en jeu, une par une.
 - Quatrième passe : emblème Poké Ball au sol au centre des arènes, dresseur
   qui suit le joueur du regard, Éclats de Champion qui s'envolent à la
   victoire.
@@ -768,6 +771,5 @@ Si d'autres se voient en jeu, noter leur emplacement.
   Surf ; ailleurs, le Lac et la Plage se nagent encore sans. À trancher.
 - Le graphe de biomes est un premier jet (`BIOME_LINKS`) : à rééquilibrer
   au fil des tests, et d'autres CS pourront y garder des branches (Coupe,
-  Éclate-Roc). Les champions du Lac, de la Plage et de l'Océan sont tous
-  Ondine : on la croise une fois, ensuite un autre champion la remplace.
+  Éclate-Roc). (Un champion par biome depuis le 17 novembre 2026 : voir 2.10.)
 - Les objets tenus n'ont pas été vraiment testés en partie par le joueur.

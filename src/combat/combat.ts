@@ -175,7 +175,7 @@ export class Combat {
   /** Un ennemi tombe, quel que soit l'auteur du coup : le décompte des victoires (déblocage, main.ts). */
   defeated: (e: Actor) => void = () => {};
   /** Une capacité de météo a été lancée (main.ts change le temps de la salle). */
-  weatherMove: (weather: 'rain' | 'sun' | 'sand' | 'hail', by: Actor) => void = () => {};
+  weatherMove: (weather: 'rain' | 'sun' | 'sand' | 'hail' | 'fog', by: Actor) => void = () => {};
   /** Un Pokémon de champion vient de perdre une barre de PV (main.ts : la Méga de l'as). */
   phase: (e: Actor) => void = () => {};
   /** Le Pokémon mené vient d'encaisser un coup (quête « Sans une égratignure », main.ts). */

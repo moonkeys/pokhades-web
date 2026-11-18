@@ -679,8 +679,13 @@ entame ses deux dernières barres : Peter envoie un jumeau, un Méga-Dracaufeu
 X chromatique (SpriteCollab n'a pas le Y ; planches en data/pmd/20034), qui
 partage la vie de l'as (une barre « ×2 », les coups sur l'un usent l'autre,
 ils tombent ensemble : `Actor.partner`, `sharesHp`) ; d'autres changent le
-temps de l'arène (pluie d'Ondine, sable de Pierre et Giovanni, grêle d'Olga,
-soleil d'Auguste et d'Erika).
+temps de l'arène (pluie d'Ondine et de Major Bob, sable de Pierre et
+Giovanni, grêle d'Olga et de Flora, soleil d'Auguste et d'Erika, brouillard
+de Koga). Agatha envoie un Reflet spectral, double de son as à vie partagée ;
+Blanche rend une barre entière à son as (Lait à Boire) ; Aldo enrage une
+barre plus tôt (Gonflette) ; Morgane et Giovanni appellent une vague de
+sbires de plus ; Régis enrage et appelle les siens. Chaque champion crie sa
+réplique au même moment, une seule fois par combat.
 Après un champion, pas de don : ses Éclats de Champion attendent au centre,
 à prendre avec [E] comme une récompense de salle (perdus si l'on part sans). Les Pokémon d'un champion ne nagent plus (au Lac, ils
 partaient au large, hors d'atteinte). Le champion se tient **sur un rocher**

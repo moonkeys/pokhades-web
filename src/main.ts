@@ -1192,34 +1192,54 @@ async function boot(): Promise<void> {
     sfx('ballDrop');
   };
   /** La surprise du champion (data/champions.ts, TWISTS), quand son as entame ses deux dernières barres. */
+  /** Les as qui ont déjà eu leur surprise : une seule par combat (Lait à Boire lui rend une barre, il repasserait par là). */
+  const twisted = new WeakSet<Actor>();
   const championTwist = (boss: Actor) => {
     const tw = TWISTS[run.champion.name];
-    if (!tw) return;
+    if (!tw || twisted.has(boss)) return;
+    twisted.add(boss);
+    // Sa réplique couvre celle de la phase : c'est le moment fort du combat.
+    if (tw.line) trainerSay(tw.line);
+    if (tw.move) combat.callout(boss, `${tw.move} !`);
     if (tw.weather) {
       combat.weatherMove(tw.weather, boss);
       combat.addShake(0.12);
     }
+    // (La barre qui vient de casser remonte déjà au plein : le soin lui rend une barre entière de plus.)
+    if (tw.heal && boss.pokemon && boss.barsLeft < boss.bars) {
+      boss.barsLeft++;
+      boss.pokemon.hp = boss.pokemon.maxHp;
+      fx.attackAnim('fx_boost', boss.x, boss.y);
+      boss.flash = { color: '#fff6d0', t: 0.4, dur: 0.4, alpha: 0.8 };
+      sfx('heal');
+    }
+    if (tw.rage && !boss.enraged) {
+      boss.enraged = true;
+      combat.addShake(0.25);
+      fx.impact(boss.x, boss.y, '#ff5040');
+      sfx('ability');
+    }
+    if (tw.minions) summonMinions(boss);
     const twin = tw.twin;
     if (!twin || boss.partner) return;
-    // Il sort d'une Poké Ball à côté de l'as, sous sa forme Méga d'emblée ; ses PV sont ceux de l'as.
-    const forms = megaFormsOf(boss.speciesId);
-    const id = forms[0]?.id ?? boss.speciesId;
+    // Il sort d'une Poké Ball à côté de l'as, sous sa forme Méga d'emblée s'il en a une ; ses PV sont ceux de l'as.
+    const form = megaFormsOf(boss.speciesId)[0];
+    const id = form?.id ?? boss.speciesId;
     const x = boss.x + 2;
     const y = boss.y;
     const c = Math.floor(y - 0.05) * world.w + Math.floor(x);
     const at = world.blocked[c] || world.water[c] ? { x: boss.x - 2, y: boss.y } : { x, y };
     const a = new Actor(id, at.x, at.y);
     a.role = 'boss';
-    a.sheetId = twin.sheet;
+    a.sheetId = twin.sheet ?? null;
     a.partner = boss;
     a.sharesHp = true;
-    a.mega = 1;
+    if (form) a.mega = 1;
     boss.partner = a;
     attach(a, false, boss.pokemon?.level ?? run.roomLevel);
     wild.push(a);
     fx.ballSend(at.x, at.y);
     trainer?.cheer();
-    trainerSay('Un dragon ne vole jamais seul !');
     window.setTimeout(() => {
       if (a.deathT >= 0 || !a.pokemon) return;
       combat.mirror(a);

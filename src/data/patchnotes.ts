@@ -42,6 +42,7 @@ export const PATCH_NOTES: readonly PatchNote[] = [
           'Le Conseil garde maintenant la Route Victoire, un membre à chaque run, avant le Maître.',
           'Sur le plan du Repaire, les routes que tu as déjà prises s’affichent en pointillés.',
           'Le plan et le carnet ne nomment le champion d’une zone qu’une fois que tu l’as rencontré.',
+          'Chaque champion a sa surprise quand son as faiblit : le brouillard de Koga, le Reflet spectral d’Agatha, le Lait à Boire de Blanche, la Gonflette d’Aldo, les renforts de Morgane et Giovanni, la rage de Régis…',
           'Surprises : à sa Méga, le Dracaufeu de Peter appelle son jumeau chromatique, qui partage sa barre de vie ; Ondine, Pierre, Giovanni, Olga, Auguste et Erika font changer le temps.',
           'L’arène de la Prairie n’a plus d’eau : un enclos de bois, de la paille, des petits champs, des tournesols. Celle du Lac a ses nénuphars et ses roseaux.',
         ],

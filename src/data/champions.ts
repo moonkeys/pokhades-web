@@ -219,23 +219,39 @@ export const ACE_MOVES: Readonly<Record<string, readonly string[]>> = {
  * Méga-Dracaufeu X, il invoque aussi un Méga-Dracaufeu Y… ils partagent la même barre de vie ;
  * d'autres petites surprises comme ça sur d'autres dresseurs »). Elles tombent quand l'as entame
  * ses deux dernières barres, en même temps que sa Méga :
- *   - `twin` : un jumeau de l'as méga-évolué, sous ces planches, qui partage sa vie (une barre
- *     pour deux, ils tombent ensemble). SpriteCollab n'a pas Méga-Dracaufeu Y : c'est son X
- *     chromatique (0006/0001/0001, recopié en data/pmd/20034), au choix du testeur ;
- *   - `weather` : le temps de l'arène change (Danse Pluie d'Ondine, Tempête de Sable de Pierre…),
- *     jusqu'à la fin du combat.
+ *   - `twin` : un jumeau de l'as (méga-évolué s'il le peut), qui partage sa vie (une barre pour
+ *     deux, ils tombent ensemble) ; `sheet` : d'autres planches que les siennes. SpriteCollab n'a
+ *     pas Méga-Dracaufeu Y : celui de Peter est son X chromatique (0006/0001/0001, recopié en
+ *     data/pmd/20034), au choix du testeur ;
+ *   - `weather` : le temps de l'arène change jusqu'à la fin du combat (le brouillard compris) ;
+ *   - `heal` : l'as regagne une barre entière (Lait à Boire) ;
+ *   - `rage` : il enrage dès maintenant, une barre plus tôt (Gonflette) ;
+ *   - `minions` : il appelle une vague de sbires de plus ;
+ *   - `line` : ce que le champion crie à ce moment-là, et `move` : le nom annoncé au-dessus de l'as.
  */
 export interface ChampionTwist {
-  twin?: { sheet: number; name: string };
-  weather?: 'rain' | 'sun' | 'sand' | 'hail';
+  twin?: { sheet?: number; name: string };
+  weather?: 'rain' | 'sun' | 'sand' | 'hail' | 'fog';
+  heal?: boolean;
+  rage?: boolean;
+  minions?: boolean;
+  line?: string;
+  move?: string;
 }
 export const TWISTS: Readonly<Record<string, ChampionTwist>> = {
-  Peter: { twin: { sheet: 20034, name: 'Méga-Dracaufeu X chromatique' } },
-  Pierre: { weather: 'sand' },
-  Giovanni: { weather: 'sand' },
-  Ondine: { weather: 'rain' },
-  Flora: { weather: 'hail' },
-  Olga: { weather: 'hail' },
-  Auguste: { weather: 'sun' },
-  Erika: { weather: 'sun' },
+  Peter: { twin: { sheet: 20034, name: 'Méga-Dracaufeu X chromatique' }, line: 'Un dragon ne vole jamais seul !' },
+  Agatha: { twin: { name: 'Reflet spectral' }, line: 'Hé hé… Lequel est le vrai ?' },
+  Koga: { weather: 'fog', line: 'L’art du ninja : disparaître dans la fumée !', move: 'Brouillard' },
+  Pierre: { weather: 'sand', line: 'Le sable se lève. Tu ne verras rien venir.' },
+  Giovanni: { weather: 'sand', minions: true, line: 'La Team Rocket ne se bat jamais seule.' },
+  Ondine: { weather: 'rain', line: 'Danse Pluie ! Mes Pokémon sont chez eux.' },
+  Flora: { weather: 'hail', line: 'Le large gèle, et toi avec !' },
+  Olga: { weather: 'hail', line: 'Le froid fige tout.' },
+  Auguste: { weather: 'sun', line: 'Le soleil cogne ! Brûle, maintenant !' },
+  Erika: { weather: 'sun', line: 'Le soleil fait fleurir mes Pokémon…' },
+  'Major Bob': { weather: 'rain', line: 'Sous la pluie, Fatal-Foudre ne rate jamais !' },
+  Morgane: { minions: true, line: 'J’ai vu ta défaite. Mes visions prennent corps.', move: 'Visions' },
+  Blanche: { heal: true, line: 'Une gorgée de lait, et on repart !', move: 'Lait à Boire' },
+  Aldo: { rage: true, line: 'Gonflette ! Mes muscles brûlent !', move: 'Gonflette' },
+  Régis: { rage: true, minions: true, line: 'Je ne retiens plus rien. Plus rien !', move: 'Rage du Maître' },
 };
