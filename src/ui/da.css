@@ -5300,30 +5300,187 @@ body.net-on .hud-team {
   color: #2f8a3a;
 }
 
-/* Recrues chez Dracolosse (ui/recruitlist.ts) : les cartes de l'échange, « Nouveau » en
- * pastille jaune, et deux boutons pleine largeur (les + / − de l'entraînement sont trop étroits). */
-.recruit-card {
+/* Recrues chez Dracolosse (campscreen.ts, renderRecruits) : la grille et la fiche du Pokédex de
+ * Porygon. Les attaques ne se cliquent pas (.ro) ; les deux boutons sont ceux de la hutte. */
+.cs-recruits {
+  grid-template-columns: minmax(0, 1fr) calc(46 * var(--u));
+}
+.cs-recruits .cs-dex-card {
   position: relative;
+}
+.cs-rec-detail {
+  margin-top: 0;
+}
+.cs-move.ro {
   cursor: default;
 }
-.recruit-card.fresh {
-  border-color: var(--yel);
+.cs-rec-act {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(0.6 * var(--u));
 }
-.recruit-new {
-  position: absolute;
-  top: calc(0.3 * var(--u));
-  right: calc(0.3 * var(--u));
-  padding: 0 calc(0.4 * var(--u));
-  font: calc(0.9 * var(--u)) var(--head);
-  font-style: normal;
+.cs-rec-detail .cs-moves {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* Carnet de Xatu (campscreen.ts, renderFeats) : quatre records, puis un papier par groupe
+ * d'exploits ; ce qui est prêt à réclamer est surligné en jaune. */
+.cs-records {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, calc(12 * var(--u))));
+  gap: calc(0.8 * var(--u));
+  margin-bottom: calc(1.2 * var(--u));
+}
+.cs-records > div {
+  display: grid;
+  padding: calc(0.5 * var(--u)) calc(0.6 * var(--u));
+  text-align: center;
+  color: var(--ink);
+}
+.cs-records b {
+  font: normal calc(2 * var(--u)) / 1.1 var(--head);
+  letter-spacing: 0.04em;
+}
+.cs-records small {
+  font-size: calc(0.95 * var(--u));
+  color: var(--muted);
+}
+.cs-feats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(calc(30 * var(--u)), 1fr));
+  gap: calc(1 * var(--u));
+  align-items: start;
+}
+.cs-feat-group {
+  display: grid;
+  gap: calc(0.4 * var(--u));
+  padding: calc(0.8 * var(--u)) calc(1.2 * var(--u));
+  color: var(--ink);
+}
+.cs-feat-group .cs-label small {
+  color: var(--muted);
+}
+.cs-feat {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: calc(0.8 * var(--u));
+  align-items: center;
+  padding: calc(0.3 * var(--u)) calc(0.7 * var(--u));
+  border-left: calc(0.35 * var(--u)) solid var(--muted);
+}
+.cs-feat > div {
+  display: grid;
+}
+.cs-feat b {
+  font: normal calc(1.4 * var(--u)) / 1.1 var(--head);
+  letter-spacing: 0.04em;
+}
+.cs-feat small {
+  font-size: calc(1 * var(--u));
+  line-height: 1.25;
+  color: var(--muted);
+}
+.cs-feat.ready {
+  border-left-color: var(--yel);
+  background: rgba(255, 210, 63, 0.28);
+}
+.cs-feat-reward {
+  font: normal calc(1.1 * var(--u)) / 1.2 var(--head);
+  color: var(--muted);
+  text-align: right;
+}
+.cs-claim {
+  padding: calc(0.2 * var(--u)) calc(0.9 * var(--u));
+  font: normal calc(1.2 * var(--u)) / 1.2 var(--head);
+  letter-spacing: 0.05em;
   color: var(--ink);
   background: var(--yel);
+  border: calc(0.15 * var(--u)) solid var(--ink);
+  cursor: pointer;
 }
-.recruit-card .train-btns {
-  width: 100%;
+.cs-claim.all {
+  margin-bottom: calc(1 * var(--u));
+  font-size: calc(1.5 * var(--u));
+  color: var(--paper);
+  background: var(--ink);
 }
-.recruit-card .train-btns button {
-  flex: 1;
-  width: auto;
-  font-size: calc(1 * var(--u));
+
+/* Écrans du Repaire en petit écran, portrait (retour de test du 18 novembre 2026 : « en petit
+ * écran, ça marche pas du tout ») : --u suit 1vw, et tout y devenait minuscule. On le relève
+ * (planché en pixels), le volet du gardien devient un bandeau en haut (portrait, puis son nom),
+ * la colonne prend toute la largeur et défile ; les grilles à fiche (Pokédex, recrues) passent
+ * sur une colonne, la fiche sous les cartes. */
+@media (max-width: 760px) {
+  .camp-screen {
+    --u: clamp(6px, 2.1vw, 9px);
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--tint) 70%, rgba(0, 0, 0, 0.6)) 0 calc(11 * var(--u) + 24px), transparent calc(11 * var(--u) + 24.5px)),
+      #16121e;
+  }
+  .cs-page {
+    display: flex;
+    flex-direction: column;
+  }
+  .cs-side {
+    grid-template-columns: auto 1fr;
+    align-content: center;
+    align-items: center;
+    column-gap: 12px;
+    min-height: calc(11 * var(--u) + 24px);
+    padding: 12px 56px 12px 16px;
+    box-sizing: border-box;
+  }
+  .cs-art {
+    grid-row: span 2;
+    width: calc(10 * var(--u));
+    margin: 0;
+  }
+  .cs-title,
+  .cs-title.long {
+    font-size: calc(4 * var(--u));
+  }
+  .cs-main {
+    flex: 1;
+    align-self: stretch;
+    max-height: none;
+    min-height: 0;
+    padding: 12px 16px 24px;
+  }
+  .cs-purse {
+    top: 52px;
+    left: auto;
+    right: 14px;
+    font-size: calc(2 * var(--u));
+  }
+  .cs-stock,
+  .cs-keys {
+    display: none;
+  }
+  .cs-close {
+    top: 12px;
+    right: 12px;
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+  }
+  .cs-dex,
+  .cs-team {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cs-dex-detail {
+    position: static;
+    margin-top: 0;
+  }
+  .cs-dex-grid {
+    grid-template-columns: repeat(auto-fill, minmax(calc(11 * var(--u)), 1fr));
+  }
+  .cs-records {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .cs-feats {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cs-quote {
+    font-size: calc(1.6 * var(--u));
+  }
 }

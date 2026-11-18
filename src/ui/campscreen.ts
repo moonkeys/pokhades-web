@@ -15,7 +15,9 @@ import { MISSIONS, available, busy, collect, mission, missionSlots, open as miss
 import { NICK_MAX, capacity, isBaseForm, recruitThreshold, welcomeMon, level, monName, ownedSpecies, ownsSpecies, roster as rosterIds, speciesOf, startLevel, type Save } from '../meta/save';
 import { natureText, applyTraits } from '../meta/mons';
 import { MAX_ACTIVE, QUESTS, abandonQuest, acceptQuest, claimContract, claimQuest, contractText, itemName, questFor, questState, refillContracts } from '../meta/quests';
-import { memberWeight, moveWeight, weightCap, type MemberWeight } from '../meta/weight';
+import { memberWeight, moveWeight, pokemonWeight, weightCap, type MemberWeight } from '../meta/weight';
+import { FEAT_GROUPS, FEATS, claimFeat, featShown, featState, rewardText as featReward, type FeatGroup } from '../meta/feats';
+import { LEAGUE_GATE } from '../run/run';
 import { typeColor } from '../render/combatfx';
 import { STATIONS, stationId, type Station } from '../run/camp';
 import { TYPE_FR, moveInfo, typePill } from './hud';
@@ -66,6 +68,12 @@ export interface CampCtx {
   preview(): { biome: string; color: string; champion: string; champType: string };
   /** Le jeu en ligne (Roucarnage) : le Pokémon qu'on emmène, et le départ de la run (hôte). */
   online: { loadout(): Promise<Loadout>; start(): void };
+  /**
+   * Dracolosse : ouvre la fiche d'accueil de la recrue `idx` (Save.candidates) — surnom, équipe
+   * ou Repaire, place à faire si le Repaire est plein (main.ts, meetCandidate). L'écran se
+   * referme le temps de la fiche, puis la liste se rouvre tant qu'il reste quelqu'un.
+   */
+  recruit(idx: number): void;
 }
 
 /** Fiche d'espèce embarquée (data/pokeapi/pokemon) : ce que l'écran d'équipe et le tuteur en lisent. */
@@ -231,7 +239,7 @@ const TINT: Record<Station, string> = { start: '#ff7a2a', moves: '#b88ceb', team
  * Ce qui se choisit au clavier, dans l'ordre de l'écran : onglets, cartes,
  * Pokémon, attaques, objets, boutons. Fenêtre ouverte par-dessus : elle seule.
  */
-const NAV = '.cs-tabs button, .cs-recall, .cs-card:not(.soon), .cs-slot.da-paper, .cs-chip, .cs-dex-card, .cs-dex-go, .cs-move, .cs-items button, .cs-candy button:not(:disabled), .cs-go';
+const NAV = '.cs-rec-act button:not(:disabled), .cs-claim, .cs-tabs button, .cs-recall, .cs-card:not(.soon), .cs-slot.da-paper, .cs-chip, .cs-dex-card, .cs-dex-go, .cs-move, .cs-items button, .cs-candy button:not(:disabled), .cs-go';
 const NAV_MODAL = '.cs-modal .cs-buy:not(:disabled), .cs-modal .cs-close';
 const ARROWS: Record<string, [number, number]> = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] };
 
@@ -277,6 +285,14 @@ export class CampScreen {
   private navIndex = -1;
   /** Code saisi chez Roucarnage, gardé d'un rendu à l'autre. */
   joinCode = '';
+  /**
+   * Chez Dracolosse : la liste des recrues plutôt que l'écran du départ (que garde l'hôte qui a
+   * des invités : c'est lui qui les emmène). `recSel` : l'espèce dont on lit la fiche (une seule
+   * recrue par espèce attend à la fois, meta/save.ts) ; `recMons` : leurs fiches de combat.
+   */
+  private recruits = false;
+  private recSel = 0;
+  private readonly recMons = new Map<number, Promise<Pokemon>>();
   private readonly keys = (e: KeyboardEvent) => {
     if (!this.open) return;
     // Dans le champ du surnom, la frappe lui revient (flèches comprises) :
@@ -307,7 +323,7 @@ export class CampScreen {
       e.preventDefault();
       e.stopPropagation();
       this.activate(this.navEls()[this.navIndex]);
-    } else if (this.station === 'start' && (e.code === 'Enter' || e.code === 'KeyE')) {
+    } else if (this.station === 'start' && !this.recruits && (e.code === 'Enter' || e.code === 'KeyE')) {
       e.preventDefault();
       void this.depart();
     }
@@ -322,9 +338,10 @@ export class CampScreen {
   }
 
   /** `news` : ce qui est neuf à ce poste (meta/news.ts), marqué d'un « ! » sur sa carte. */
-  show(station: Station, ctx: CampCtx, onClose: () => void, news: ReadonlySet<string> = new Set()): void {
+  show(station: Station, ctx: CampCtx, onClose: () => void, news: ReadonlySet<string> = new Set(), opts: { recruits?: boolean } = {}): void {
     this.close();
     this.open = true;
+    this.recruits = station === 'start' && !!opts.recruits;
     this.news = news;
     this.station = station;
     this.ctx = ctx;
@@ -378,9 +395,10 @@ export class CampScreen {
     page.className = 'cs-page';
     const side = el('div', 'cs-side', page);
     art(stationId(this.station, ctx.save.built), side, 'cs-art');
-    el('div', 'cs-kicker', side, st.kicker);
+    el('div', 'cs-kicker', side, this.recruits ? 'le passeur' : st.kicker);
     // (Les noms longs — « Aménagements », « Améliorations » — tiendraient mal dans le volet au corps plein.)
-    el('h1', `cs-title${st.title.length > 10 ? ' long' : ''}`, side, st.title);
+    const title = this.recruits ? 'Recrues' : st.title;
+    el('h1', `cs-title${title.length > 10 ? ' long' : ''}`, side, title);
     const main = el('div', 'cs-main', page);
     const purse = el('div', 'da-stamp cs-purse', page);
     purse.innerHTML = `${ctx.save.baies}<small>Baies</small>`;
@@ -395,7 +413,11 @@ export class CampScreen {
       'div',
       'cs-keys',
       page,
-      this.station === 'start'
+      this.recruits
+        ? hint('Flèches + Entrée, ou clic : choisir · Échap : fermer', 'Touche une recrue pour lire sa fiche · ✕ pour fermer')
+        : this.station === 'feats'
+          ? hint('Flèches + Entrée : réclamer · Échap : fermer', 'Touche « réclamer » · ✕ pour fermer')
+          : this.station === 'start'
         ? hint('Entrée : partir · Échap : rester au camp', 'Touche ✕ pour rester au camp')
         : this.station === 'team' && this.teamTab === 'team'
           ? hint('Clique un Pokémon puis « Ajouter à l’équipe » (ou glisse-le) · Échap : fermer', 'Touche un Pokémon puis « Ajouter à l’équipe »')
@@ -418,6 +440,8 @@ export class CampScreen {
     else if (this.station === 'lore') this.renderLore(main);
     else if (this.station === 'garden') this.renderGarden(main, ctx);
     else if (this.station === 'craft') this.renderCraft(main, ctx);
+    else if (this.station === 'feats') this.renderFeats(main, ctx);
+    else if (this.recruits) await this.renderRecruits(main, ctx);
     else await this.renderStart(main, ctx);
     if (ticket !== this.ticket || this.root !== root) return;
     // Garde le défilement de la colonne de droite d'un rendu à l'autre.
@@ -979,7 +1003,7 @@ export class CampScreen {
   /** La jauge des victoires jusqu'à la prochaine recrue de l'espèce (ou : elle attend au Repaire). */
   private recruitBar(card: HTMLElement, save: Save, id: number, waiting: boolean): void {
     if (waiting) {
-      el('p', 'cs-dex-text', card, 'Une recrue de cette espèce t’attend près du feu : va lui parler !');
+      el('p', 'cs-dex-text', card, 'Une recrue de cette espèce t’attend : Dracolosse, près de l’arche, te la présentera.');
       return;
     }
     const n = save.progress[id] ?? 0;
@@ -1850,6 +1874,186 @@ export class CampScreen {
   }
 
   // ── Départ ───────────────────────────────────────────────────────────
+  /**
+   * Dracolosse et ses recrues (retour de test du 18 novembre 2026 : « que ce soit cohérent avec
+   * Miaouss, Monsieur Mime, Alakazam… le petit Pokémon sur le côté » ; « pas très responsive en
+   * petit écran » ; « les attaques du Pokémon, les stats, les talents, sur la droite »). La mise
+   * en page du Pokédex de Porygon : à gauche une carte par recrue (« ! » sur celles qu'on n'avait
+   * pas vues), à droite la fiche de celle qu'on a choisie, comme celle de la hutte — disque du
+   * type, talent, provenance, poids, stats au niveau de départ et attaques —, puis « Recruter »
+   * (sa fiche d'accueil : surnom, équipe ou Repaire) et « Renvoyer ». Sa nature, elle, se tire à
+   * son arrivée (meta/save.ts, addMon) : la fiche ne peut pas encore la dire.
+   */
+  private async renderRecruits(main: HTMLElement, ctx: CampCtx): Promise<void> {
+    const save = ctx.save;
+    const list = save.candidates;
+    if (!list.length) {
+      el('p', 'cs-quote', main, '« Plus personne n’attend. Quand tu es prêt, passe l’arche, au nord. »');
+      return;
+    }
+    if (!list.some((c) => c.species === this.recSel)) this.recSel = list[0].species;
+    const datas = await Promise.all(list.map((c) => species(c.species)));
+    el('p', 'cs-quote', main, `« ${list.length > 1 ? `${list.length} Pokémon veulent` : 'Un Pokémon veut'} rejoindre la rébellion. Lis leur fiche, puis accueille-les ou renvoie-les. »`);
+    el('div', 'cs-label', main, `Le Repaire loge ${rosterIds(save).length} / ${capacity(save)} libérés`);
+    const wrap = el('div', 'cs-dex cs-recruits', main);
+    const grid = el('div', 'cs-dex-grid', wrap);
+    list.forEach((c, i) => {
+      const card = el('button', `cs-dex-card own${c.species === this.recSel ? ' sel' : ''}`, grid);
+      art(c.species, card);
+      if (this.news.has(String(c.species))) newMark(card);
+      el('b', '', card, c.name ?? datas[i].name);
+      el('small', 'state', card, originLabel(c.origin ?? '') || 'Recrue');
+      card.addEventListener('click', () => {
+        this.recSel = c.species;
+        // En petit écran, la fiche est sous les cartes : on y descend.
+        void this.render().then(() => {
+          if (matchMedia('(max-width: 760px)').matches) this.root?.querySelector('.cs-rec-detail')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+      });
+    });
+
+    // ── Fiche de la recrue choisie.
+    const idx = list.findIndex((c) => c.species === this.recSel);
+    const c = list[idx];
+    const data = datas[idx];
+    let p = this.recMons.get(c.species);
+    if (!p) this.recMons.set(c.species, (p = Pokemon.load(c.species, BASE_TEAM_LEVEL)));
+    const mon = await p;
+    const card = el('div', 'cs-detail cs-rec-detail da-paper', wrap);
+    card.style.setProperty('--c', typeColor(data.types[0]));
+    const top = el('div', 'cs-top', card);
+    art(c.species, el('div', 'cs-disc', top), 'cs-big');
+    const who = el('div', 'cs-who', top);
+    const head = el('div', 'cs-head', who);
+    el('b', '', head, c.name ?? data.name);
+    for (const t of data.types) typePill(t, head);
+    el('small', 'cs-info cs-lv', head, `N.${mon.level}`);
+    const chips = el('div', 'cs-chips', who);
+    const chip = (icon: string, text: string, tip: string) => {
+      const ch = el('span', 'cs-chip2', chips);
+      el('i', '', ch, icon);
+      if (text) ch.append(text);
+      ch.title = tip;
+    };
+    const w = pokemonWeight(c.species);
+    chip('⚖', String(w), `Poids ${w} (sans ses attaques ni son objet) : l’équipe ne doit pas dépasser son plafond pour partir.`);
+    const from = originLabel(c.origin ?? '');
+    if (from) chip('⚑', from, `Provenance : ${from}`);
+    const act = el('div', 'cs-actions cs-rec-act', who);
+    const yes = el('button', 'cs-add', act) as HTMLButtonElement;
+    el('i', '', yes, '＋');
+    yes.append('Recruter');
+    yes.addEventListener('click', () => {
+      sfx('confirm');
+      ctx.recruit(idx);
+    });
+    const no = el('button', 'cs-add out', act) as HTMLButtonElement;
+    el('i', '', no, '✕');
+    no.append('Renvoyer');
+    no.addEventListener('click', () => {
+      const k = save.candidates.indexOf(c);
+      if (k < 0) return;
+      save.candidates.splice(k, 1);
+      ctx.persist();
+      sfx('click');
+      ctx.notify('Au revoir', `${c.name ?? data.name} repart, le cœur gros. Il reviendra peut-être.`, c.species);
+      if (!save.candidates.length) return this.close();
+      void this.render();
+    });
+    // Le talent, en toutes lettres (sur la fiche de la hutte, il tient dans une pastille).
+    const talent = talentInLine(c.species);
+    if (talent) el('small', 'cs-info cs-talent', card, `◆ Talent : ${talent.name} — ${talent.desc}${talent.level ? ` (une fois évolué, dès le niveau ${talent.level})` : ''}.`);
+
+    // Ses stats au niveau de départ, sur la même échelle que la fiche de la hutte.
+    const stats = el('div', 'cs-stats', card);
+    for (const [label, v] of [
+      ['PV', mon.maxHp],
+      ['Attaque', mon.attack],
+      ['Défense', mon.defense],
+      ['Att. spé.', mon.spAttack],
+      ['Déf. spé.', mon.spDefense],
+      ['Vitesse', mon.speed],
+    ] as const) {
+      const r = el('div', '', stats);
+      el('small', '', r, label);
+      el('b', '', r, String(Math.round(v)));
+      el('i', '', r).style.setProperty('--w', `${Math.min(100, (v / (label === 'PV' ? 90 : 60)) * 100)}%`);
+    }
+    el('div', 'cs-label', card, 'Ses attaques en arrivant');
+    const moves = el('div', 'cs-moves', card);
+    for (const m of mon.moves) {
+      const row = el('div', 'cs-move on ro', moves);
+      row.style.setProperty('--c', typeColor(m.type));
+      el('b', '', row, m.name);
+      typePill(m.type, row);
+      el('small', '', row, moveInfo(m));
+    }
+    el('small', 'cs-info', card, 'Sa nature se révèle à son arrivée. Monsieur Mime pourra lui apprendre d’autres attaques.');
+  }
+
+  /**
+   * Xatu, le chroniqueur : le carnet des exploits, dans un écran du Repaire comme les autres
+   * gardiens (retour de test du 18 novembre 2026 : il s'ouvrait en feuille volante, sans le
+   * Pokémon sur le côté). Les records, puis par groupe son compte, ce qui est prêt à réclamer et
+   * les deux prochains à faire seulement (retour de test : « le carnet est trop chargé »).
+   */
+  private renderFeats(main: HTMLElement, ctx: CampCtx): void {
+    const save = ctx.save;
+    el('p', 'cs-quote', main, '« Fais chacun une fois : je t’en récompense, ici, au Repaire. »');
+    const rec = el('div', 'cs-records', main);
+    const champs = save.beaten.filter((n) => LEAGUE_GATE.includes(n)).length;
+    for (const [v, label] of [
+      [String(save.runs), 'runs'],
+      [String(save.wins), save.wins > 1 ? 'victoires' : 'victoire'],
+      [save.bestRoom ? `Salle ${save.bestRoom}` : '—', 'record'],
+      [`${champs} / ${LEAGUE_GATE.length}`, 'champions'],
+    ] as const) {
+      const cell = el('div', 'da-paper', rec);
+      el('b', '', cell, v);
+      el('small', '', cell, label);
+    }
+    const claimed = (text: string) => {
+      sfx('claim');
+      ctx.persist();
+      ctx.notify('Exploit', text);
+      void this.render();
+    };
+    const ready = FEATS.filter((f) => featState(save, f) === 'ready');
+    if (ready.length > 1) {
+      const all = el('button', 'cs-claim all', main, `Tout réclamer (${ready.length})`);
+      all.addEventListener('click', () => {
+        for (const f of ready) claimFeat(save, f.id);
+        claimed(`${ready.length} exploits réclamés.`);
+      });
+    }
+    const list = el('div', 'cs-feats', main);
+    for (const group of Object.keys(FEAT_GROUPS) as FeatGroup[]) {
+      // Seuls les exploits que l'avancée a dévoilés ; un groupe sans aucun ne se montre pas encore.
+      const feats = FEATS.filter((f) => f.group === group && featShown(save, f));
+      if (!feats.length) continue;
+      const done = feats.filter((f) => featState(save, f) === 'done').length;
+      const box = el('div', 'cs-feat-group da-paper', list);
+      const h = el('div', 'cs-label', box, FEAT_GROUPS[group]);
+      el('small', '', h, ` · ${done} / ${feats.length}`);
+      const shown = [...feats.filter((f) => featState(save, f) === 'ready'), ...feats.filter((f) => featState(save, f) === 'todo').slice(0, 2)];
+      if (!shown.length) el('small', 'cs-info', box, 'Tout est fait.');
+      for (const f of shown) {
+        const state = featState(save, f);
+        const row = el('div', `cs-feat ${state}`, box);
+        const text = el('div', '', row);
+        el('b', '', text, f.name);
+        const [n, goal] = f.progress(save);
+        el('small', '', text, goal > 1 && state === 'todo' ? `${f.desc} (${n} / ${goal})` : f.desc);
+        if (state === 'ready') {
+          const b = el('button', 'cs-claim', row, featReward(f.reward));
+          b.addEventListener('click', () => {
+            if (claimFeat(save, f.id)) claimed(`${f.name} : ${featReward(f.reward)}.`);
+          });
+        } else el('span', 'cs-feat-reward', row, featReward(f.reward));
+      }
+    }
+  }
+
   private async renderStart(main: HTMLElement, ctx: CampCtx): Promise<void> {
     const save = ctx.save;
     // Les débloqués n'ont pas leur nom dans PLAYER_SPECIES : on lit les fiches d'espèce.

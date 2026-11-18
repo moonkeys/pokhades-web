@@ -1,12 +1,11 @@
 import { sfx } from '../audio/audio';
 import { BIOME_CHAMPIONS } from '../data/champions';
-import { FEAT_GROUPS, FEATS, claimFeat, featShown, featState, leagueOpen, rewardText, type FeatGroup } from '../meta/feats';
+import { leagueOpen } from '../meta/feats';
 import type { Save } from '../meta/save';
 import { BIOMES } from '../world/biomes';
 import { TILE } from '../world/tiles';
 import { VICTORY_ROAD } from '../world/worldmap';
 import { MW, MH, ZONES, paintPlan, type Region } from './worldplan';
-import { LEAGUE_GATE } from '../run/run';
 import { ShoreWaves } from '../render/shorewaves';
 import type { WorldMap } from '../world/generate';
 import { hint } from './hints';
@@ -16,7 +15,8 @@ import { hint } from './hints';
 // avec un plan, juste avant de partir » ; « le carnet est trop chargé, illisible ».
 // Il n'y a donc plus de touche : on lit le plan sur le panneau à côté de
 // l'arche du départ (camp.ts, `board`), et l'on réclame les exploits à Xatu,
-// le chroniqueur, juste à côté. Deux écrans séparés, chacun d'une seule page.
+// le chroniqueur, juste à côté. (Le carnet est depuis un écran du Repaire comme les autres,
+// avec Xatu sur le côté : ui/campscreen.ts, renderFeats.)
 //
 // Le plan est peint avec les tuiles du jeu (retour de test : « l'image est un
 // peu basique ») : chaque biome a sa région, son sol et ses arbres, comme une
@@ -35,8 +35,7 @@ const el = <K extends keyof HTMLElementTagNameMap>(tag: K, cls: string, parent?:
 export class Journal {
   private readonly root: HTMLElement;
   private onClose: (() => void) | null = null;
-  private page: 'map' | 'feats' = 'map';
-  private ctx: { save: Save; claimed: (text: string) => void } | null = null;
+  private ctx: { save: Save } | null = null;
 
   constructor(
     parent: HTMLElement,
@@ -51,8 +50,7 @@ export class Journal {
         if (this.root.hidden) return;
         e.stopImmediatePropagation();
         e.preventDefault();
-        if (e.code === 'Escape' || e.code === 'KeyE' || (this.page === 'map' && (e.code === 'Enter' || e.code === 'Space'))) this.close();
-        else if (e.code === 'Enter' && this.page === 'feats') this.claimAll();
+        if (e.code === 'Escape' || e.code === 'KeyE' || e.code === 'Enter' || e.code === 'Space') this.close();
       },
       { capture: true },
     );
@@ -146,35 +144,22 @@ export class Journal {
     done?.();
   }
 
-  /** `page` : le plan du panneau, ou le carnet de Xatu. `claimed` : un exploit vient d'être réclamé. */
-  show(page: 'map' | 'feats', save: Save, claimed: (text: string) => void, onClose: () => void): void {
+  show(save: Save, onClose: () => void): void {
     sfx('menuOpen');
-    this.page = page;
-    this.ctx = { save, claimed };
+    this.ctx = { save };
     this.onClose = onClose;
     this.root.hidden = false;
-    this.render();
-  }
-
-  private claimAll(): void {
-    const c = this.ctx!;
-    const ready = FEATS.filter((f) => featState(c.save, f) === 'ready');
-    if (!ready.length) return;
-    for (const f of ready) claimFeat(c.save, f.id);
-    sfx('claim');
-    c.claimed(ready.length > 1 ? `${ready.length} exploits réclamés.` : `${ready[0].name} : ${rewardText(ready[0].reward)}.`);
     this.render();
   }
 
   private render(): void {
     this.root.replaceChildren();
     el('div', 'poster-dim', this.root).addEventListener('click', () => this.close());
-    const card = el('div', `jr-card ${this.page}`, this.root);
+    const card = el('div', 'jr-card map', this.root);
     const head = el('div', 'jr-head', card);
-    el('span', 'da-tape', head, this.page === 'map' ? 'PLAN DU MONDE' : 'CARNET DES EXPLOITS');
-    if (this.page === 'map') this.renderMap(card);
-    else this.renderFeats(card);
-    el('p', 'jr-keys', card, hint(this.page === 'map' ? 'Entrée, E ou Échap : fermer' : 'Entrée : tout réclamer · E ou Échap : fermer', 'Touche en dehors pour fermer'));
+    el('span', 'da-tape', head, 'PLAN DU MONDE');
+    this.renderMap(card);
+    el('p', 'jr-keys', card, hint('Entrée, E ou Échap : fermer', 'Touche en dehors pour fermer'));
   }
 
   /** Le plan : peint aux tuiles du jeu (ui/worldplan.ts), puis noms, flèches et traversées par-dessus. */
@@ -267,65 +252,5 @@ export class Journal {
       if (known) add('text', { x, y: y + 18, class: 'jr-sub' }, g2).textContent = champs;
     }
     wrap.append(svg);
-  }
-
-  /**
-   * Les exploits, en petit (retour de test : « une modale plus petite, c'était illisible ») :
-   * une phrase de Xatu, puis par groupe son compte, ce qui est prêt à réclamer et les deux
-   * prochains à faire seulement, chacun avec une courte description.
-   */
-  private renderFeats(card: HTMLElement): void {
-    const c = this.ctx!;
-    el('p', 'jr-intro', card, 'Fais chacun une fois : je t’en récompense, ici, au Repaire.');
-    // Les records de la rébellion (retour de test : « la meilleure salle atteinte, les champions
-    // battus… vas-y, les statistiques »).
-    const rec = el('div', 'jr-records', card);
-    const champs = c.save.beaten.filter((n) => LEAGUE_GATE.includes(n)).length;
-    for (const [v, label] of [
-      [String(c.save.runs), 'runs'],
-      [String(c.save.wins), c.save.wins > 1 ? 'victoires' : 'victoire'],
-      [c.save.bestRoom ? `Salle ${c.save.bestRoom}` : '—', 'record'],
-      [`${champs} / ${LEAGUE_GATE.length}`, 'champions'],
-    ] as const) {
-      const cell = el('div', 'jr-rec', rec);
-      el('b', '', cell, v);
-      el('small', '', cell, label);
-    }
-    const list = el('div', 'jr-feats', card);
-    const ready = FEATS.filter((f) => featState(c.save, f) === 'ready');
-    if (ready.length) {
-      const b = el('button', 'jr-claim all', list, `Tout réclamer (${ready.length})`);
-      b.type = 'button';
-      b.addEventListener('click', () => this.claimAll());
-    }
-    for (const group of Object.keys(FEAT_GROUPS) as FeatGroup[]) {
-      // Seuls les exploits que l'avancée a dévoilés (une zone atteinte, la Route Victoire ouverte…) ;
-      // un groupe sans aucun ne se montre pas encore.
-      const feats = FEATS.filter((f) => f.group === group && featShown(c.save, f));
-      if (!feats.length) continue;
-      const done = feats.filter((f) => featState(c.save, f) === 'done').length;
-      const h = el('h4', 'jr-group', list, FEAT_GROUPS[group]);
-      el('small', '', h, `${done} / ${feats.length}`);
-      const shown = [...feats.filter((f) => featState(c.save, f) === 'ready'), ...feats.filter((f) => featState(c.save, f) === 'todo').slice(0, 2)];
-      if (!shown.length) el('p', 'jr-none', list, 'Tout est fait.');
-      for (const f of shown) {
-        const state = featState(c.save, f);
-        const row = el('div', `jr-feat ${state}`, list);
-        const text = el('div', 'jr-text', row);
-        el('b', '', text, f.name);
-        const [n, goal] = f.progress(c.save);
-        el('span', '', text, goal > 1 && state === 'todo' ? `${f.desc} (${n} / ${goal})` : f.desc);
-        if (state === 'ready') {
-          const b = el('button', 'jr-claim', row, rewardText(f.reward));
-          b.type = 'button';
-          b.addEventListener('click', () => {
-            if (!claimFeat(c.save, f.id)) return;
-            sfx('claim');
-            c.claimed(`${f.name} : ${rewardText(f.reward)}.`);
-            this.render();
-          });
-        } else el('span', 'jr-reward', row, rewardText(f.reward));
-      }
-    }
   }
 }

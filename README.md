@@ -960,8 +960,11 @@ coin du départ, à gauche de l'arche de Dracolosse.
 - **Xatu, le chroniqueur** (poste `feats`) : le carnet des exploits, « à la
   Hades » — chaque champion à battre une fois, le Conseil et le Maître, chaque
   biome à atteindre, les runs gagnées, la taille de la rébellion. Une ligne par
-  exploit (nom, avancée, récompense) ; ceux qui sont faits se réclament d'un clic
-  ou tous ensemble (Entrée), les réclamés ne restent qu'au compte. Les exploits
+  exploit (nom, avancée, récompense), un papier par groupe ; ceux qui sont faits
+  se réclament d'un clic ou tous ensemble, les réclamés ne restent qu'au compte.
+  Écran du Repaire comme les autres, Xatu dans le volet de gauche
+  (`CampScreen.renderFeats`) ; le panneau du plan garde sa feuille volante
+  (`src/ui/journal.ts`). Les exploits
   se dévoilent au fil de l'avancée (`Feat.unlocked`) : le champion d'une zone et
   les biomes voisins une fois la zone atteinte, le Conseil et le Maître une fois
   la Route Victoire ouverte, les objectifs suivants de la rébellion une fois le
@@ -999,12 +1002,20 @@ du joueur, et reculent s'il fonce sur eux.
   attente ».
 - Les recrues en attente ne sont plus sur la place (retour de test du 18
   novembre 2026 : elles encombraient le terrain) : **Dracolosse** en tient la
-  liste (`src/ui/recruitlist.ts`), un « ! » au-dessus de lui quand une nouvelle
-  arrive (`meta/news.ts`, poste `start`). Une carte par recrue (illustration,
-  nom, d'où elle vient, « Nouveau » si on ne l'a pas encore vue) : « Recruter »
-  ouvre sa fiche (surnom, équipe ou Repaire, exil si le Repaire est plein),
-  « Renvoyer » la laisse partir ; la liste se rouvre après chaque fiche tant
-  qu'il en reste. Sans recrue, Dracolosse rappelle qu'on part par l'arche.
+  liste, un « ! » au-dessus de lui quand une nouvelle arrive (`meta/news.ts`,
+  poste `start`). C'est un écran du Repaire comme ceux de Miaouss ou de Monsieur
+  Mime, Dracolosse dans le volet de gauche (`CampScreen.renderRecruits`), à la
+  façon du Pokédex de Porygon : une carte par recrue (illustration, nom, d'où
+  elle vient, « ! » si on ne l'a pas encore vue) et, à droite, la fiche de
+  celle qu'on choisit — types, niveau, poids, provenance, talent, stats au
+  niveau de départ, attaques en arrivant. « Recruter » ouvre sa fiche d'accueil
+  (surnom, équipe ou Repaire, exil si le Repaire est plein), « Renvoyer » la
+  laisse partir ; la liste se rouvre après chaque fiche tant qu'il en reste.
+  Sans recrue, Dracolosse rappelle qu'on part par l'arche.
+- En petit écran (moins de 760 px de large, téléphone en portrait), les écrans
+  du Repaire passent sur une colonne : le gardien en bandeau en haut, la
+  colonne qui défile dessous, la fiche sous les cartes (Pokédex, équipe,
+  recrues), et l'unité de taille (`--u`) relevée pour rester lisible.
 - Les poches de l'atelier du bâtisseur et de l'Étude d'Alakazam sont plus larges,
   et une trouée sur leur allée les relie à la place (`yardWay`, `studyWay` dans
   `src/run/camp.ts`).

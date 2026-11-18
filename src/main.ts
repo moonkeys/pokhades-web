@@ -16,7 +16,7 @@ import { ACE_MOVES, TWISTS, ELITE_DEFEAT, FINAL_BOSS_DEFEAT, FINAL_BOSS_INTRO, M
 import { Trainer } from './entities/trainer';
 import { MERC_RETAINER, Shop } from './run/shop';
 import { Camp, CAMP_SEED, campPockets, STATIONS, stationId, type Station } from './run/camp';
-import { CampScreen, movePool, originLabel, teamWeight, type CampCtx } from './ui/campscreen';
+import { CampScreen, movePool, teamWeight, type CampCtx } from './ui/campscreen';
 import { NetBadge } from './ui/netbadge';
 import { BAIES, FIELD_FOOD, QUARRY_STONE, RESOURCES, RESOURCE_IDS, ROOM_RES, SHARDS, UPGRADES, applyHeld, heldItem, teamSlots, type ResourceId } from './meta/catalog';
 import { addMon, capacity, exile, grantAlly, grantChampion, isFull, level, loadSave, markSeen, monName, ownedSpecies, ownsSpecies, recordDefeat, resetSave, roster, speciesOf, startLevel, welcomeMon, writeSave } from './meta/save';
@@ -81,7 +81,6 @@ import { RunHud } from './ui/runhud';
 import { RecruitScreen } from './ui/recruitscreen';
 import { SwapScreen } from './ui/swapscreen';
 import { TalkScreen } from './ui/talkscreen';
-import { RecruitList } from './ui/recruitlist';
 import { TrainScreen } from './ui/trainscreen';
 import { StarterScreen } from './ui/starterscreen';
 import { QuizScreen, STARTER_NATURE } from './ui/quizscreen';
@@ -195,7 +194,6 @@ async function boot(): Promise<void> {
   const swapScreen = new SwapScreen(document.body);
   const talkScreen = new TalkScreen(document.body);
   /** Les recrues qui attendent, chez Dracolosse (ui/recruitlist.ts). */
-  const recruitList = new RecruitList(document.body);
   const trainScreen = new TrainScreen(document.body);
   const starterScreen = new StarterScreen(document.body);
   const quizScreen = new QuizScreen(document.body);
@@ -990,7 +988,7 @@ async function boot(): Promise<void> {
     cry(player.speciesId, -4);
   };
   /** Un écran ouvert par-dessus le jeu : la simulation se fige. */
-  const paused = () => rewardScreen.open || evolutionScreen.open || bossPreview.open || runSummary.open || settingsMenu.open || campScreen.open || statSheet.open || recruitScreen.open || swapScreen.open || talkScreen.open || recruitList.open || trainScreen.open || starterScreen.open || quizScreen.open || journal.open || titleScreen.open;
+  const paused = () => rewardScreen.open || evolutionScreen.open || bossPreview.open || runSummary.open || settingsMenu.open || campScreen.open || statSheet.open || recruitScreen.open || swapScreen.open || talkScreen.open || trainScreen.open || starterScreen.open || quizScreen.open || journal.open || titleScreen.open;
   /** Clic sur un membre du HUD : comme Tab, mais vers celui-là, s'il est debout et qu'on l'est aussi. */
   const pickMember = (i: number) => {
     const m = team[i];
@@ -1046,19 +1044,10 @@ async function boot(): Promise<void> {
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement) return;
     void openStats();
   });
-  /** Le plan du monde (panneau de l'arche) ou le carnet des exploits (Xatu) : au Repaire seulement. */
-  const openJournal = (page: 'map' | 'feats', fromDialogue = false) => {
-    if (paused() || (dialogue.open && !fromDialogue)) return;
-    journal.show(
-      page,
-      save,
-      (text) => {
-        writeSave(save);
-        refreshNews();
-        runHud.notify({ title: 'Exploit', text, icon: '✦', color: 'var(--yel)' });
-      },
-      () => input.flush(),
-    );
+  /** Le plan du monde (panneau de l'arche) : au Repaire seulement. Le carnet de Xatu est un écran de poste (campscreen.ts). */
+  const openJournal = () => {
+    if (paused() || dialogue.open) return;
+    journal.show(save, () => input.flush());
   };
 
   const spawnEnemy = (id: number, level: number, x: number, y: number, role: Actor['role'] = 'wild') => {
@@ -1717,6 +1706,10 @@ async function boot(): Promise<void> {
         newRun();
       },
     },
+    recruit: (idx) => {
+      campScreen.close();
+      void meetCandidate(idx, () => window.setTimeout(openRecruits, 250));
+    },
     preview: () => {
       // La même graine que la run que Dracolosse lancera.
       const next = newRunState();
@@ -1870,33 +1863,26 @@ async function boot(): Promise<void> {
   };
 
   /**
-   * La liste des recrues, chez Dracolosse (ui/recruitlist.ts) : « Nouveau » sur celles qu'on n'a
-   * pas encore vues, puis elles le sont (son « ! » s'éteint). Après chaque fiche, la liste se
-   * rouvre tant qu'il en reste.
+   * La liste des recrues, chez Dracolosse : un écran du Repaire comme les autres (ui/campscreen.ts,
+   * renderRecruits), le portrait du gardien à gauche, les fiches à droite. « ! » sur celles qu'on
+   * n'avait pas encore vues, puis elles le sont (son « ! » s'éteint). Après chaque fiche d'accueil
+   * (campCtx.recruit), la liste se rouvre tant qu'il en reste.
    */
-  const openRecruits = async () => {
-    if (!save.candidates.length) return;
-    const seen = freshNews(save, 'start');
-    const infos = await Promise.all(save.candidates.map((c) => loadInfo(c.species)));
-    const list = save.candidates.map((c, idx) => ({ idx, species: c.species, name: c.name ?? infos[idx].name, origin: originLabel(c.origin ?? ''), fresh: seen.has(String(c.species)) }));
+  const openRecruits = () => {
+    if (!save.candidates.length || campScreen.open) return;
+    const news = freshNews(save, 'start');
     markNewsSeen(save, 'start');
     writeSave(save);
     refreshNews();
-    const again = () => window.setTimeout(() => void openRecruits(), 250);
-    recruitList.show(
-      list,
-      `Le Repaire loge ${roster(save).length}/${capacity(save)} libérés. Recrute-les dans l’équipe ou au Repaire, ou renvoie-les.`,
-      (idx) => void meetCandidate(idx, again),
-      (idx) => {
-        const c = save.candidates[idx];
-        if (!c) return;
-        save.candidates.splice(idx, 1);
-        writeSave(save);
-        runHud.notify({ title: 'Au revoir', text: `${list.find((e) => e.idx === idx)?.name ?? 'La recrue'} repart, le cœur gros. Il reviendra peut-être.`, art: c.species, color: 'var(--ink)' });
+    campScreen.show(
+      'start',
+      campCtx,
+      () => {
+        input.flush();
         refreshNews();
-        again();
       },
-      () => input.flush(),
+      news,
+      { recruits: true },
     );
   };
 
@@ -1961,8 +1947,6 @@ async function boot(): Promise<void> {
   const talkTo = (station: Station, arg?: number) => {
     if (dialogue.open || campScreen.open) return;
     const openScreen = () => {
-      // Xatu : le carnet des exploits, pas un écran de poste.
-      if (station === 'feats') return openJournal('feats', true);
       // Ce qui y est apparu est vu (l'écran le marque d'un « ! » cette fois-ci encore) ; ce qui
       // attend un geste (récolter, réclamer) se revérifie à la fermeture.
       const news = freshNews(save, station);
@@ -1987,11 +1971,11 @@ async function boot(): Promise<void> {
       runHud.notify({ title: 'Repaire de l’hôte', text: station === 'start' ? 'C’est l’hôte qui lance la run, chez Dracolosse.' : 'Ce gardien sert l’hôte : ici, tu peux parler à Roucarnage, Porygon et aux boutiques.', art: CAMP_NPCS.online, color: '#7ac0e8' });
       return;
     }
-    if (station === 'map') return openJournal('map');
+    if (station === 'map') return openJournal();
     // Dracolosse ne lance plus la run (on part en passant l'arche) : il le rappelle. Il tient
     // aussi la liste des recrues qui attendent : il l'ouvre s'il y en a.
     if (station === 'start' && !(net.role === 'host' && net.guests.length)) {
-      if (save.candidates.length) return void openRecruits();
+      if (save.candidates.length) return openRecruits();
       const g = STATIONS.start;
       dialogue.show({ name: camp.npcs.find((n) => n.speciesId === g.id)?.info?.name ?? g.title, role: `Le Repaire · ${g.title}`, type: g.type, sprite: `/game/artwork/${g.id}.png` }, 'Quand tu es prêt, passe l’arche, au nord. Ton équipe te suit : compose-la chez Porygon avant de partir.');
       return;

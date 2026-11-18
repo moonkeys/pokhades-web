@@ -757,7 +757,10 @@ Si d'autres se voient en jeu, noter leur emplacement.
   (`Save.met`), pas dès son biome atteint.
 - Recrues en attente chez Dracolosse (18 novembre 2026) : plus sur la place,
   une liste avec « Recruter » et « Renvoyer », un « ! » quand une nouvelle
-  arrive (`ui/recruitlist.ts`).
+  arrive. Puis (même jour) : la liste devient un écran du Repaire avec
+  Dracolosse sur le côté, comme Miaouss ou Monsieur Mime, et une fiche à droite
+  (stats, attaques, talent, poids) ; le carnet de Xatu aussi ; les écrans du
+  Repaire passent sur une colonne en petit écran.
 - Reste : d'autres dresseurs connus d'Essentials (Red, Leaf, Brendan) si l'on
   ajoute des biomes ; vérifier le plan en jeu (les pointillés n'ont pas été vus
   à l'écran).
