@@ -120,7 +120,10 @@ export const CHAMPIONS: Record<string, Champion> = {
   Peter: {
     name: 'Peter',
     type: 'dragon',
-    team: [[130, 129], [148, 147], [149, 147], [6, 4]],
+    // Drattak et Carchacrok en plus de l'équipe des jeux (run d'équilibrage du 20 novembre
+    // 2026) : la faune de la Ligue n'a qu'un Dragon (Boumata), et reinforce le laissait à cinq
+    // Pokémon sur six. Deux lignées jouables (Draby, Griknot) : battu, il en cède la forme de base.
+    team: [[130, 129], [148, 147], [149, 147], [373, 371], [445, 443], [6, 4]],
     sprite: 'trainer_ELITEFOUR_Lance.png',
     intro: 'Les dragons ne servent personne… sauf moi. Si un sauvage peut briser une chaîne, qu’il brise d’abord la mienne.',
   },

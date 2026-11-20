@@ -16,6 +16,20 @@ npm run dev             # http://localhost:5173 (?debug pour l'objet de debug)
 npm run build           # dist/
 ```
 
+Banc d'équilibrage (`src/debug/balance.ts`, chargé seulement par `npm run dev`
+avec `?debug`) : un pilote automatique joue un combat de champion avec une
+équipe donnée, au niveau donné et avec ses meilleures attaques, en pas à pas
+(il tourne aussi panneau du navigateur masqué), et rend la durée des vagues,
+l'issue et les dégâts du Pokémon joué et des compagnons. Dans la console :
+
+```js
+await pokhades.balance.fight({ room: 35, team: [3, 6, 9, 65, 68], level: 54 })
+await pokhades.balance.series({ room: 44, team: [6, 9], level: 70, league: true, champion: 'Peter' }, 4)
+```
+
+Il joue moins bien qu'un joueur (ni changement de Pokémon, ni visée, ni dons) :
+ses séries se comparent entre elles, avant et après un changement.
+
 Bestiaire (`config.html`, servi par `npm run dev` seulement, sur
 http://localhost:5173/config.html) : la page de config des espèces. À gauche,
 toutes les espèces du Pokédex national, celles que le jeu embarque et celles

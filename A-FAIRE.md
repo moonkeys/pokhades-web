@@ -497,9 +497,14 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
   Après : Olga et Aldo à six, battus 3 fois sur 3 à trois et cinq membres
   avec de la casse ; Pierre à quatre contre cinq membres au premier acte,
   2 victoires sur 3, de justesse.
+- Ensuite : Peter aligne six Pokémon (Drattak et Carchacrok ajoutés à
+  l'équipe des jeux, data/champions.ts : la faune n'avait qu'un Dragon de
+  plus) ; contre cinq membres niv. 70, 2 victoires sur 5, l'équipe à bout :
+  le Conseil redevient le sommet de la run. Le pilote est rangé dans le
+  projet (`src/debug/balance.ts`, `pokhades.balance.fight` / `.series`,
+  en dev seulement) au lieu d'être recollé dans la console.
 - Reste : le pilote ne sait ni changer de Pokémon, ni viser, ni prendre de
-  dons ; le jugement final se fait en jeu. Peter n'a que cinq Pokémon (un
-  seul Dragon de plus dans la faune).
+  dons ; le jugement final se fait en jeu.
 
 ### 1.10 Son (fait)
 - `src/audio/sounds.ts` (catalogue, repris de `Sfx.gd`) et `audio.ts`

@@ -3756,6 +3756,14 @@ async function boot(): Promise<void> {
         },
       },
     });
+    // Banc d'équilibrage (src/debug/balance.ts) : `pokhades.balance.fight` / `.series`. Chargé à part,
+    // et seulement en dev : `import.meta.env.DEV` vaut false au build, le module ne part pas en ligne.
+    if (import.meta.env.DEV) {
+      void import('./debug/balance').then(({ installBalance }) => {
+        const P = (window as unknown as { pokhades: Parameters<typeof installBalance>[0] & { balance?: unknown } }).pokhades;
+        P.balance = installBalance(P);
+      });
+    }
   }
 }
 
