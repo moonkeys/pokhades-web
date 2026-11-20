@@ -675,6 +675,13 @@ Surf, Psyko, Laser Glace et Psykoud'Boul pour le Flagadoss d'Ondine ;
 Boutefeu, Draco-Griffe, Colère et Lame d'Air pour le Dracaufeu de Peter…
 Un as dont la Méga n'a pas de planches a cédé la place à un Pokémon dont la
 Méga en a (Flagadoss chez Ondine, Dracaufeu chez Peter, Alakazam chez Régis).
+**Premier acte** (run d'équilibrage du 20 novembre 2026) : l'as n'y garde que
+ses attaques de puissance 70 au plus (90 au deuxième acte, `ACE_POWER_CAP`,
+trois au moins), et au premier acte son attaque est ×0,8 (`FIRST_ACE_ATK`) et
+ses PV par barre ×0,5 (`FIRST_ACE_HP`). L'Écrémeuh de Blanche (niv. 21, 239 PV
+par barre) gardait Damoclès et Séisme et ne perdait que 4 à 7 PV par coup
+d'une équipe de départ : il fallait deux cents coups, et un pilote de test
+qui menait Major Bob à sa dernière barre ne lui en prenait que deux.
 Les autres Pokémon d'un champion prennent leurs six attaques les plus
 fortes apprises à leur niveau (`Pokemon.strongestMoves`), plus le kit faible
 des sauvages : Léviator n'avait que Ligotage, Frénésie, Siphon et Charge.

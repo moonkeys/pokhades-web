@@ -18,6 +18,20 @@ export interface PatchNote {
 
 export const PATCH_NOTES: readonly PatchNote[] = [
   {
+    id: '2026-11-20',
+    date: '20 novembre 2026',
+    title: 'Un premier champion plus juste',
+    sections: [
+      {
+        title: 'Équilibre',
+        items: [
+          'L’as du premier champion retient ses coups : moitié moins de vie par barre, un peu moins de force, et ses attaques les plus douces (plus de Damoclès ni de Séisme pour l’Écrémeuh de Blanche).',
+          'Au deuxième acte, l’as laisse encore de côté ses attaques les plus puissantes.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-11-17',
     date: '17 novembre 2026',
     title: 'Champions plus épiques et nouveaux talents',
