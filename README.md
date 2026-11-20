@@ -82,7 +82,13 @@ la Forêt jaunit en Automne qui monte en Montagne, la Plage longe la mer
 (Océan, avec Surf) ou s'enlise au Marais, le Lac s'adosse aux Rocailleux,
 l'Océan finit sur une île volcanique. Chaque porte de route est percée sur le
 bord de la salle qui regarde son biome (`Run.pickExits`) et annonce son biome
-en grand, au-dessus de la récompense de la salle d'après. La Plage mène à
+en grand, puis le champion qui le garde et la pastille de son type
+(`Run.championAhead` : un seul champion par biome ; rien quand il faudrait le
+tirer au sort, le sien déjà battu dans la run ; le membre du Conseil devant la
+Route Victoire), au-dessus de la récompense de la salle d'après. Run
+d'équilibrage du 20 novembre 2026 : un combat de champion se gagne d'abord aux
+types, et l'affiche de la boutique arrive quand l'équipe ne peut plus changer ;
+la route, elle, se choisit encore. La Plage mène à
 l'Océan seulement si l'on est parti avec la CS Surf : sans elle, la porte
 reste visible mais fermée (« CS Surf requise »), et le Marais reste ouvert.
 
@@ -1000,7 +1006,12 @@ Retour de test : la première run est dure, puis une équipe de six au niveau
   d'eux-mêmes en moins grand nombre (run d'équilibrage du 20 novembre 2026 :
   la table des évolutions ne couvre que les lignées jouables, et Olga, la
   dernière championne, restait à deux Pokémon au quatrième acte ; Erika et
-  Pierre à trois, Aldo, Agatha et Peter à quatre) ; ses sbires passent de 2 au premier acte à 3 + 2 × acte,
+  Pierre à trois, Aldo, Agatha et Peter à quatre). Les formes de base que le
+  joueur ne vit pas (Férosinge pour Colossinge, Debugant pour Kicklee et
+  Tygnon, Stalgamin pour Momartik…) servent aux seules escortes
+  (`escortPreviousOf`, `LEAGUE_PREVIOUS` dans data/evolutions.ts) : dans la
+  table des évolutions, elles feraient partir une recrue d'une forme qui
+  n'évoluerait jamais ; ses sbires passent de 2 au premier acte à 3 + 2 × acte,
   plus un par paire de membres de l'équipe ; l'affiche de la boutique montre
   les vrais niveaux (`Run.bossLevel`) ;
 - **l'équipe compte** : dès le deuxième acte, un sauvage de plus par vague par

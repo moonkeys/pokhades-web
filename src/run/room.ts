@@ -15,6 +15,7 @@ import { CS_LIST } from '../meta/catalog';
 import { VICTORY_ROAD } from '../world/worldmap';
 import { Trainer } from '../entities/trainer';
 import { CaptureThreat } from './capture';
+import { typePill } from '../ui/hud';
 import { ACES, TRAINER_CLASSES, pickClass, pickMember, type TrainerClassId } from '../data/trainers';
 
 // Déroulé d'une salle, repris de CombatArena.gd (_start_zone, vagues,
@@ -871,6 +872,14 @@ export class RoomDirector {
     name.textContent = `→ ${place.name}`;
     name.style.setProperty('--b', place.color);
     el.prepend(name);
+    // Qui garde ce biome, et son type : la route se choisit aussi aux types (Run.championAhead).
+    if (offer.champion) {
+      const who = document.createElement('span');
+      who.className = 'room-champ';
+      who.textContent = offer.champion.name;
+      typePill(offer.champion.type, who);
+      name.after(who);
+    }
     return el;
   }
 

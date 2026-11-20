@@ -126,7 +126,7 @@ export const LORE: LoreChapter[] = [
     intro: 'Quatre actes, quatre champions, et des sauvages entre eux. Personne n’a dit que la route serait courte.',
     cards: [
       // run/run.ts:18-20, 36-47
-      { title: 'Actes et salles', text: 'Un acte : sept salles de combat ou spéciales, une boutique, puis le champion. On part de la Prairie, au sud de la carte du monde, et chaque champion battu ouvre les biomes voisins.' },
+      { title: 'Actes et salles', text: 'Un acte : sept salles de combat ou spéciales, une boutique, puis le champion. On part de la Prairie, au sud de la carte du monde, et chaque champion battu ouvre les biomes voisins. Chaque porte de route dit qui garde le biome, et son type : choisis selon ton équipe.' },
       // world/worldmap.ts, meta/feats.ts
       { title: 'La Route Victoire', text: 'Bats les onze champions une fois : la Route Victoire s’ouvre au bout de la carte, un cinquième acte plus dur. Le Conseil la garde, un membre par run ; ensuite, le Maître t’y attend.' },
       { title: 'Le carnet', text: 'Xatu, près de l’arche, tient la liste des exploits : champions, biomes, victoires, taille de la rébellion. Un exploit fait se réclame dans le carnet, contre des Baies et des Éclats.' },

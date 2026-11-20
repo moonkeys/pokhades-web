@@ -485,7 +485,15 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
 - Fait : `reinforce` (run.ts) complète avec les autres Pokémon du type
   quand les formes évoluées manquent (jamais un nageur) ; leur escorte est
   leur propre forme, moins nombreuse (déjà prévu par `bossWaves`). Les
-  tirages d'avant restent les mêmes (formes évoluées d'abord, même graine).
+  escortes connaissent en plus les formes de base que le joueur ne vit pas
+  (`escortPreviousOf`, 22 espèces dont la fiche et les planches sont là :
+  Férosinge, Debugant, Stalgamin, Magby…), y compris pour les équipes
+  reprises du jeu (Kicklee, Tygnon, Spectrum s'escortaient d'eux-mêmes) ;
+  pas dans `preEvolutionOf`, qui ferait d'une recrue Colossinge un
+  Férosinge qui n'évolue jamais. Les portes de route annoncent le
+  champion du biome et son type (`Run.championAhead`) : la route se choisit
+  aux types, quand l'affiche de la boutique arrive trop tard pour changer
+  d'équipe.
   Après : Olga et Aldo à six, battus 3 fois sur 3 à trois et cinq membres
   avec de la casse ; Pierre à quatre contre cinq membres au premier acte,
   2 victoires sur 3, de justesse.

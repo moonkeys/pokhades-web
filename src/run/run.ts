@@ -6,7 +6,7 @@ import type { CsId } from '../meta/catalog';
 import { BIOMES } from '../world/biomes';
 import { OPPOSITE, type Side } from '../world/generate';
 import { VICTORY_ROAD, WORLD, WORLD_LINKS, type BiomeLink } from '../world/worldmap';
-import { preEvolutionOf } from '../data/evolutions';
+import { escortPreviousOf } from '../data/evolutions';
 import { typeMates } from '../data/trainers';
 
 // Structure d'une run, reprise de RunManager.gd : 4 actes de 9 salles (7
@@ -141,6 +141,8 @@ export interface ExitOffer {
   exit?: number;
   /** Sortie de boss vers la Route Victoire. */
   victory?: boolean;
+  /** Sortie de boss : le champion qui garde ce biome, s'il est sûr (Run.championAhead). */
+  champion?: { name: string; type: string };
 }
 
 /** Ce que la run doit savoir du Repaire en partant. */
@@ -245,7 +247,15 @@ export class Run {
    * les jeux, en alignent cinq au quatrième acte. Les renforts sont des Pokémon de son
    * type pris dans la faune de la Ligue, rangés avant l'as, escortés de leur forme de base.
    */
-  private reinforce(champ: Champion, act: number): Champion {
+  private reinforce(given: Champion, act: number): Champion {
+    // Ses propres Pokémon aussi s'escortent de leur forme de base quand on la connaît : les
+    // équipes reprises du jeu donnaient la leur à Kicklee, Tygnon et Spectrum (escortPreviousOf).
+    const baseOf = (id: number) => {
+      let base = id;
+      while (escortPreviousOf(base) !== null) base = escortPreviousOf(base)!;
+      return base;
+    };
+    const champ = { ...given, team: given.team.map(([f, b]): [number, number] => [f, f === b ? baseOf(f) : b]) };
     // Plus ton équipe est grande, plus la sienne l'est (retour de test du 11 novembre
     // 2026) : autant de Pokémon que toi, moins un, plus l'acte ; quatre au plus au
     // premier acte, six ensuite. Seul, on retrouve le plancher de l'acte.
@@ -254,7 +264,7 @@ export class Run {
     if (champ.team.length >= want) return champ;
     const have = new Set(champ.team.map(([f]) => f));
     const others = typeMates(champ.type).filter((id) => !have.has(id));
-    const mates = others.filter((id) => preEvolutionOf(id) !== null);
+    const mates = others.filter((id) => escortPreviousOf(id) !== null);
     // Repli : les autres Pokémon du type, sans forme de base connue (leur escorte prend leur
     // forme, moins nombreuse : bossWaves). Run d'équilibrage du 20 novembre 2026 : la table
     // des évolutions ne couvre que les lignées jouables, et la faune de la Ligue est surtout
@@ -262,15 +272,13 @@ export class Run {
     // Les seules formes évoluées laissaient Olga, dernière championne, à deux Pokémon au
     // quatrième acte, Erika et Pierre à trois, Aldo, Agatha et Peter à quatre sur six, et le
     // Conseil tombait plus vite que le champion d'avant. Jamais un nageur hors de l'eau.
-    const spare = others.filter((id) => preEvolutionOf(id) === null && !SWIMMERS.has(id));
+    const spare = others.filter((id) => escortPreviousOf(id) === null && !SWIMMERS.has(id));
     const extra: [number, number][] = [];
     const rng = new Rng(hash2(this.seed, act, 4411) * 1e9);
     while (champ.team.length + extra.length < want && (mates.length || spare.length)) {
       const pool = mates.length ? mates : spare;
       const id = pool.splice(rng.int(pool.length), 1)[0];
-      let base = id;
-      while (preEvolutionOf(base) !== null) base = preEvolutionOf(base)!;
-      extra.push([id, base]);
+      extra.push([id, baseOf(id)]);
     }
     return { ...champ, team: [...champ.team.slice(0, -1), ...extra, champ.team[champ.team.length - 1]] };
   }
@@ -279,6 +287,21 @@ export class Run {
   nextBiomes(): BiomeLink[] {
     this.ensureAct(this.act);
     return this.linksFrom(this.act);
+  }
+
+  /**
+   * Le champion qui attend au bout de cette branche, sans rien tirer : le garde du
+   * Conseil sur la Route Victoire, sinon le champion du biome s'il n'a pas encore été
+   * affronté dans la run (un seul par biome, BIOME_CHAMPIONS). Null quand pushAct
+   * devrait tirer au sort parmi les autres : la porte ne promet que ce qui est sûr.
+   * Run d'équilibrage du 20 novembre 2026 : un combat de champion se gagne d'abord
+   * aux types (Olga tombait sans peine devant Feu et Combat, Giovanni et Auguste
+   * renversaient la même équipe) ; la porte le dit au moment de choisir sa route.
+   */
+  championAhead(link: BiomeLink): Champion | null {
+    if (this.act + 1 === this.victoryAct) return CHAMPIONS[ELITE.find((n) => !this.beaten.includes(n)) ?? LEAGUE_MASTER] ?? null;
+    const fresh = (BIOME_CHAMPIONS[link.to] ?? []).filter((n) => !this.faced.has(n));
+    return fresh.length === 1 ? (CHAMPIONS[fresh[0]] ?? null) : null;
   }
 
   /** La CS qui manque pour prendre cette branche, s'il en manque une. */
@@ -422,7 +445,8 @@ export class Run {
       const head = this.act === this.victoryAct ? (this.champion.name === LEAGUE_MASTER ? '☠ MAÎTRE DE LA LIGUE' : '☠ CONSEIL') : this.act >= this.acts - 1 ? '☠ DRESSEUR FINAL' : '☠ BOSS';
       const label = boss ? `${head} · ${this.champion.name}` : donor ? donorLabel(donor) : REWARD_LABEL[reward];
       const link = links[i];
-      out.push({ reward, label, donor, biome: link?.to, locked: link && this.missingCs(link), exit: exits[i], victory: link && this.act + 1 === this.victoryAct ? true : undefined });
+      const ahead = link && this.championAhead(link);
+      out.push({ reward, label, donor, biome: link?.to, locked: link && this.missingCs(link), exit: exits[i], victory: link && this.act + 1 === this.victoryAct ? true : undefined, champion: ahead ? { name: ahead.name, type: ahead.type } : undefined });
     }
     // Une porte sur plusieurs peut mener à une salle spéciale : jamais vers la boutique ou le boss,
     // ni en ouvrant un acte, ni dans les deux premières salles (sauvages de niveau 4 à 8 : un Piège

@@ -27,7 +27,12 @@ export const PATCH_NOTES: readonly PatchNote[] = [
         items: [
           'Les champions alignent enfin l’équipe prévue : Olga, la dernière championne, n’avait que deux Pokémon au quatrième acte, Erika et Pierre trois, et le Conseil quatre sur la Route Victoire, qui tombait plus vite que le champion d’avant.',
           'Faute de formes évoluées de son type, un champion complète son équipe avec les autres Pokémon de ce type, escortés d’eux-mêmes en moins grand nombre.',
+          'Les escortes prennent la vraie forme de base : Férosinge autour de Colossinge, Debugant autour de Kicklee et Tygnon, Stalgamin autour de Momartik.',
         ],
+      },
+      {
+        title: 'Carte du monde',
+        items: ['Après un champion, chaque porte de route annonce qui garde le biome et son type : choisis ta route selon ton équipe.'],
       },
     ],
   },

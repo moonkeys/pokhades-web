@@ -38,7 +38,7 @@ import { BOONS, DONORS, RARITY_COLOR, RARITY_NAME, STAT_BOONS, type BoonOffer } 
 import { loadMove, tune, type Move } from './combat/moves';
 import { BASE_TEAM_LEVEL, Pokemon, xpForLevel } from './combat/pokemon';
 import { typeMates } from './data/trainers';
-import { preEvolutionOf } from './data/evolutions';
+import { escortPreviousOf } from './data/evolutions';
 import { STEP, startLoop } from './core/loop';
 import { Rng } from './core/rng';
 import { CAMP_NPCS, SWIMMERS } from './data/species';
@@ -1189,7 +1189,8 @@ async function boot(): Promise<void> {
   const minionCount = () => 1 + Math.floor(team.filter((m) => !m.runAlly).length / 2);
   const summonMinions = (boss: Actor) => {
     const champ = run.champion;
-    const pool = typeMates(champ.type).filter((id) => preEvolutionOf(id) === null && !SWIMMERS.has(id));
+    // Des formes de base, celles que le joueur ne vit pas comprises (Férosinge, pas Colossinge : escortPreviousOf).
+    const pool = typeMates(champ.type).filter((id) => escortPreviousOf(id) === null && !SWIMMERS.has(id));
     if (!pool.length) return;
     const n = minionCount();
     for (let i = 0; i < n; i++) {

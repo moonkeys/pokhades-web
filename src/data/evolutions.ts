@@ -305,6 +305,44 @@ const PREVIOUS = new Map<number, number>([
   ...Object.entries(REGIONAL_EVOLUTIONS).flatMap(([to, byBiome]) => Object.values(byBiome).map((form) => [form, PREV_OF(Number(to))] as const)),
 ]);
 
+/**
+ * Formes précédentes que le joueur ne vit pas, pour les seules escortes de champion : des
+ * espèces de la faune de la Ligue évoluées dans les jeux, mais dont la lignée n'est pas
+ * jouable (pas dans EVOLUTIONS, donc rien ne les fait évoluer en run). Pas dans PREVIOUS :
+ * isBaseForm et le poids d'une recrue (meta/save.ts, meta/weight.ts) la feraient partir
+ * d'une forme qui n'évoluerait jamais. Seules les formes de base dont la fiche PokéAPI et
+ * les planches PMD sont embarquées (ni Pichu, ni Mélo, ni Okéoké, ni Azurill).
+ * Run d'équilibrage du 20 novembre 2026 : Colossinge, Cochignon ou Momartik, renforts de
+ * champion, passaient pour des formes de base et s'escortaient d'eux-mêmes.
+ */
+const LEAGUE_PREVIOUS: Readonly<Record<number, number>> = {
+  57: 56, // Colossinge ← Férosinge
+  87: 86, // Lamantine ← Otaria
+  106: 236, // Kicklee ← Debugant
+  107: 236, // Tygnon ← Debugant
+  124: 238, // Lippoutou ← Lippouti
+  126: 240, // Magmar ← Magby
+  221: 220, // Cochignon ← Marcacrin
+  226: 458, // Démanta ← Babimanta
+  279: 278, // Bekipan ← Goélise
+  362: 361, // Oniglali ← Stalgamin
+  364: 363, // Phogleur ← Obalie
+  460: 459, // Blizzaroi ← Blizzi
+  478: 361, // Momartik ← Stalgamin
+  583: 582, // Sorboul ← Sorbébé
+  614: 613, // Polagriffe ← Polarhume
+  628: 627, // Gueriaigle ← Furaiglon
+  713: 712, // Séracrawl ← Grelaçon
+  750: 749, // Bourrinos ← Tiboudet
+  770: 769, // Trépassable ← Bacabouh
+  873: 872, // Beldeneige ← Frissonille
+  958: 957, // Forgella ← Forgerette
+  959: 958, // Forgelina ← Forgella
+};
+
+/** Forme précédente de `id` pour une escorte de champion : celle du joueur, sinon LEAGUE_PREVIOUS. */
+export const escortPreviousOf = (id: number): number | null => PREVIOUS.get(id) ?? LEAGUE_PREVIOUS[id] ?? null;
+
 /** Forme précédente de `id`, ou null pour une forme de base (ou absente de la table). */
 export const preEvolutionOf = (id: number): number | null => PREVIOUS.get(id) ?? null;
 
