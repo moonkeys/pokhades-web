@@ -193,7 +193,7 @@ export const LORE: LoreChapter[] = [
       { title: 'Ils visent ta faiblesse', text: 'Un sauvage choisit sa cible selon l’efficacité de son type : un Pokémon Feu dans une équipe attirera tous les sauvages Eau de la salle.' },
       // enemy.ts:56-81, main.ts
       { title: 'Les phases du champion', text: 'Chaque barre brisée, une phase : sbires, Méga, puis rage à la dernière (lueur rouge). Il prend le centre et frappe autour, ou bondit sur toi. À la fin, sa plus forte attaque couvre l’arène : file dans un cercle vert.' },
-      { title: 'Les champions', text: 'Plusieurs barres et de grandes attaques annoncées au sol. Battu, il te cède un Pokémon, du plus faible à son as. Ses Éclats de Champion t’attendent au centre : [E], avant de passer la porte.' },
+      { title: 'Les champions', text: 'Plusieurs barres et de grandes attaques annoncées au sol. Son équipe grandit avec l’acte et avec la tienne : jusqu’à six Pokémon, complétée par d’autres de son type. Battu, il te cède un Pokémon, du plus faible à son as. Ses Éclats de Champion t’attendent au centre : [E], avant de passer la porte.' },
       { title: 'L’as', text: 'Le dernier Pokémon du champion : cinq barres, sept attaques, des zones plus fréquentes. Celui du premier champion retient ses coups (moins de vie, moins de force, ses attaques les plus douces). Aux deux dernières barres, il méga-évolue s’il le peut, et son champion sort sa surprise : jumeau, temps, renforts…' },
       // combat/signatures.ts
       { title: 'Les signatures', text: 'Chaque champion ouvre le bal avec son attaque fétiche : cage de rochers de Pierre, vagues d’Ondine, croix électrique de Major Bob, flaques de Koga, anneau de feu d’Auguste… Apprends-les.' },

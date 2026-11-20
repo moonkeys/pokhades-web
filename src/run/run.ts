@@ -1,7 +1,7 @@
 import { Boons, DONORS, type DonorId } from '../combat/boons';
 import { Rng, hash2 } from '../core/rng';
 import { BIOME_CHAMPIONS, CHAMPIONS, type Champion } from '../data/champions';
-import type { BiomeId } from '../data/species';
+import { SWIMMERS, type BiomeId } from '../data/species';
 import type { CsId } from '../meta/catalog';
 import { BIOMES } from '../world/biomes';
 import { OPPOSITE, type Side } from '../world/generate';
@@ -253,11 +253,21 @@ export class Run {
     const want = Math.min(act === 0 ? 4 : 6, Math.max(floor, this.teamSize - 1 + act));
     if (champ.team.length >= want) return champ;
     const have = new Set(champ.team.map(([f]) => f));
-    const mates = typeMates(champ.type).filter((id) => !have.has(id) && preEvolutionOf(id) !== null);
+    const others = typeMates(champ.type).filter((id) => !have.has(id));
+    const mates = others.filter((id) => preEvolutionOf(id) !== null);
+    // Repli : les autres Pokémon du type, sans forme de base connue (leur escorte prend leur
+    // forme, moins nombreuse : bossWaves). Run d'équilibrage du 20 novembre 2026 : la table
+    // des évolutions ne couvre que les lignées jouables, et la faune de la Ligue est surtout
+    // faite de formes de base ou d'espèces qu'elle ne connaît pas (Colossinge, Spectrum…).
+    // Les seules formes évoluées laissaient Olga, dernière championne, à deux Pokémon au
+    // quatrième acte, Erika et Pierre à trois, Aldo, Agatha et Peter à quatre sur six, et le
+    // Conseil tombait plus vite que le champion d'avant. Jamais un nageur hors de l'eau.
+    const spare = others.filter((id) => preEvolutionOf(id) === null && !SWIMMERS.has(id));
     const extra: [number, number][] = [];
     const rng = new Rng(hash2(this.seed, act, 4411) * 1e9);
-    while (champ.team.length + extra.length < want && mates.length) {
-      const id = mates.splice(rng.int(mates.length), 1)[0];
+    while (champ.team.length + extra.length < want && (mates.length || spare.length)) {
+      const pool = mates.length ? mates : spare;
+      const id = pool.splice(rng.int(pool.length), 1)[0];
       let base = id;
       while (preEvolutionOf(base) !== null) base = preEvolutionOf(base)!;
       extra.push([id, base]);

@@ -995,7 +995,12 @@ Retour de test : la première run est dure, puis une équipe de six au niveau
 - **boss à la hauteur** : le champion part du niveau de son acte +3 (le jeu :
   18 + salle × 0,7, plus faible que les sauvages du quatrième acte) ; son équipe
   est complétée par des Pokémon de son type jusqu'à 2, 3, 4, 5 puis 6 selon
-  l'acte (`reinforce`) ; ses sbires passent de 2 au premier acte à 3 + 2 × acte,
+  l'acte (`reinforce`) : d'abord des formes évoluées, escortées de leur forme
+  de base, puis, faute d'en trouver, les autres Pokémon du type, escortés
+  d'eux-mêmes en moins grand nombre (run d'équilibrage du 20 novembre 2026 :
+  la table des évolutions ne couvre que les lignées jouables, et Olga, la
+  dernière championne, restait à deux Pokémon au quatrième acte ; Erika et
+  Pierre à trois, Aldo, Agatha et Peter à quatre) ; ses sbires passent de 2 au premier acte à 3 + 2 × acte,
   plus un par paire de membres de l'équipe ; l'affiche de la boutique montre
   les vrais niveaux (`Run.bossLevel`) ;
 - **l'équipe compte** : dès le deuxième acte, un sauvage de plus par vague par

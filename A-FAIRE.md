@@ -460,6 +460,39 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
   dons réels, et les escortes du quatrième acte (11 sbires par vague à cinq
   membres).
 
+### 1.9 quater Run d'équilibrage, fin de run (20 novembre 2026)
+- Méthode : le même pilote, mais en pas à pas (`pokhades.step`, le panneau
+  du navigateur masqué fige la boucle de rendu) en attendant le chargement
+  des fiches entre deux pas ; une équipe aux meilleures attaques de son
+  niveau (`strongestMoves`), au niveau des salles (+2 à +4) ; des séries de
+  combats de champion par acte et par taille d'équipe (1, 2, 3, 5), les
+  dégâts comptés par source (Pokémon joué, compagnons).
+- Constats : la Route Victoire était plus facile que le champion d'avant
+  (Aldo battu 4 fois sur 4 en 30 s à cinq membres, Giovanni et Auguste 1 à
+  3 fois sur 5) : le Conseil n'alignait que quatre Pokémon. `reinforce` ne
+  prenait que des formes évoluées, et la table des évolutions ne connaît
+  que les lignées jouables : Olga restait à deux Pokémon au quatrième acte,
+  Pierre, Erika et Blanche à trois, Major Bob à trois, Auguste, Aldo,
+  Agatha et Peter à quatre. Les escortes du dernier acte (13 sbires par
+  vague à cinq membres) ne gênent pas : ils tombent dans les zones des
+  compagnons. Chaque compagnon fait autant de dégâts que le Pokémon joué,
+  ou plus (à cinq, 10 000 contre 1 700 sur les Pokémon d'Aldo) ; mais à
+  champion égal, trois ou cinq membres finissent dans le même temps (40 à
+  45 s contre Olga) : l'écart tient aux types bien plus qu'au nombre, et un
+  bonus de PV « au carré » pour les grandes équipes, essayé, ne changeait
+  rien de mesurable : retiré. La tempête de sable use 1 % des PV par
+  seconde, aux deux camps, jamais sous 1 PV : laissée.
+- Fait : `reinforce` (run.ts) complète avec les autres Pokémon du type
+  quand les formes évoluées manquent (jamais un nageur) ; leur escorte est
+  leur propre forme, moins nombreuse (déjà prévu par `bossWaves`). Les
+  tirages d'avant restent les mêmes (formes évoluées d'abord, même graine).
+  Après : Olga et Aldo à six, battus 3 fois sur 3 à trois et cinq membres
+  avec de la casse ; Pierre à quatre contre cinq membres au premier acte,
+  2 victoires sur 3, de justesse.
+- Reste : le pilote ne sait ni changer de Pokémon, ni viser, ni prendre de
+  dons ; le jugement final se fait en jeu. Peter n'a que cinq Pokémon (un
+  seul Dragon de plus dans la faune).
+
 ### 1.10 Son (fait)
 - `src/audio/sounds.ts` (catalogue, repris de `Sfx.gd`) et `audio.ts`
   (Web Audio : bus musique / bruitages, fondu entre musiques, anti-rafale
