@@ -432,6 +432,34 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
   distinctes. Reste : les autres arènes (à voir en jeu), juger l'équilibre
   à six.
 
+### 1.9 ter Run d'équilibrage (20 novembre 2026)
+- Méthode : un modèle de la courbe d'XP (sauvages, champions, XP par K.O.),
+  les coups pour mettre K.O. et les coups encaissés calculés avec les vraies
+  fiches (`calculateDamage`) à chaque acte, puis un pilote automatique en jeu
+  (`?debug` : il marche vers le sauvage le plus proche, enchaîne ses quatre
+  attaques, esquive au dash les zones marquées, `Combat.threatAt`) sur les
+  salles du premier acte et sur des combats de champion.
+- Constats : les salles ordinaires tiennent (un sauvage tombe en 2 à 3
+  coups à tous les actes, en frappe 4 à 11 ; le pilote vide une salle du
+  premier acte en 10 à 20 s, l'équipe garde 2 à 4 niveaux d'avance) ; les
+  compagnons gagnent autant d'XP que le Pokémon joué, voire plus ; la marche
+  de la Route Victoire (+9 niveaux) ne fait pas de mur (2,4 à 2,9 coups par
+  K.O.). Le premier champion détonnait : Écrémeuh de Blanche, 1 195 PV en
+  cinq barres, Damoclès et Séisme au niveau 21, 4 à 7 PV par coup d'une
+  équipe de départ ; défaite à 3 barres sur 5 quand Major Bob, au deuxième
+  acte, tombait presque.
+- Fait : `ACE_POWER_CAP` (70 au premier acte, 90 au deuxième),
+  `FIRST_ACE_ATK` (×0,8), `FIRST_ACE_HP` (×0,5), dans main.ts. Après : le
+  pilote mène l'as à 1 ou 2 barres sans attaques de récompense, et le bat de
+  justesse avec (27 s, deux membres à 2 %).
+- Ce que le pilote ne dit pas : en fin de run, tout dépend des attaques
+  (en run, une attaque apprise ne prend qu'un emplacement libre ; seules les
+  récompenses en changent). Avec ses attaques de départ, une équipe niv. 52
+  tombe à la deuxième vague d'Auguste ; avec ses meilleures, le champion
+  final tombe en 20 s. À juger en jeu : la fin de run avec une équipe et des
+  dons réels, et les escortes du quatrième acte (11 sbires par vague à cinq
+  membres).
+
 ### 1.10 Son (fait)
 - `src/audio/sounds.ts` (catalogue, repris de `Sfx.gd`) et `audio.ts`
   (Web Audio : bus musique / bruitages, fondu entre musiques, anti-rafale

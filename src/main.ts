@@ -139,6 +139,26 @@ const CHAMPION_MON_MOVES = 6;
  * Pokémon du champion dès quatre membres (main.ts, spawnEnemy).
  */
 const BOSS_ATK_PER_MEMBER = 0.05;
+/**
+ * Puissance la plus forte des attaques de l'as (ACE_MOVES), par acte ; au-delà, son jeu entier.
+ * Run d'équilibrage du 20 novembre 2026 : au premier acte, l'Écrémeuh de Blanche (niv. 21) gardait
+ * Damoclès (120) et Séisme (100) ; un Damoclès ôtait 80 % des PV d'un Carabaffe niv. 19, et une
+ * équipe de trois, pleine de vie, tombait en vingt secondes en ne lui prenant que deux barres.
+ * Ses Pokémon de champion, eux, prennent leurs attaques apprises jusqu'à leur niveau : rien à brider.
+ */
+const ACE_POWER_CAP = [70, 90];
+/**
+ * Attaque de l'as au premier acte, × ce facteur (×1,45 → ×1,16). Même run : plafonnée à Coup d'Boule
+ * (70), l'Écrémeuh ôtait encore 25 à 34 PV sur 45 d'un coup ; le pilote de test lui laissait trois
+ * barres sur cinq, quand il menait le Raichu de Major Bob, au deuxième acte, à sa dernière.
+ */
+const FIRST_ACE_ATK = 0.8;
+/**
+ * PV de chaque barre de l'as au premier acte, × ce facteur. Même run : 239 PV par barre (1 195 pour
+ * cinq), et les attaques de départ d'une équipe niv. 19 (Écume, Éclair, Charge) ne lui ôtaient que
+ * 4 à 7 PV contre sa Défense ×1,3 — deux cents coups à porter, à mi-vie à chaque riposte.
+ */
+const FIRST_ACE_HP = 0.5;
 
 async function boot(): Promise<void> {
   const canvas = document.getElementById('screen') as HTMLCanvasElement;
@@ -803,13 +823,15 @@ async function boot(): Promise<void> {
       // Bonus innés permanents d'un champion et de son as (EnemyAI.gd:210-217 : ATQ +15 % ; ATQ +35 %, DÉF +30 %).
       if (a.role !== 'wild') {
         const boost = BOSS_BOOST[a.role];
-        mon.mult.atk *= boost.atk;
-        mon.mult.spAtk *= boost.atk;
+        const first = a.role === 'boss' && mode === 'run' && run.act === 0;
+        const soft = first ? FIRST_ACE_ATK : 1;
+        mon.mult.atk *= boost.atk * soft;
+        mon.mult.spAtk *= boost.atk * soft;
         mon.mult.def *= boost.def;
         mon.mult.spDef *= boost.def;
         // PV de chaque barre, selon la taille de l'équipe sur le terrain (mercenaires compris).
         const extra = Math.max(0, team.length - 1);
-        mon.boostMaxHp(boost.hp * (1 + BOSS_HP_PER_MEMBER * extra));
+        mon.boostMaxHp(boost.hp * (1 + BOSS_HP_PER_MEMBER * extra) * (first ? FIRST_ACE_HP : 1));
         mon.mult.atk *= 1 + BOSS_ATK_PER_MEMBER * extra;
         mon.mult.spAtk *= 1 + BOSS_ATK_PER_MEMBER * extra;
         mon.hp = mon.maxHp;
@@ -821,7 +843,11 @@ async function boot(): Promise<void> {
       const ace = a.role === 'boss' && mode === 'run' ? ACE_MOVES[run.champion.name] : undefined;
       if (ace) {
         void Promise.all(ace.map((api) => loadMove(api, mon.level))).then((ms) => {
-          const got = ms.filter((m): m is NonNullable<typeof m> => Boolean(m));
+          const all = ms.filter((m): m is NonNullable<typeof m> => Boolean(m));
+          // Les premiers actes plafonnent la puissance de ce jeu (ACE_POWER_CAP), trois attaques au moins.
+          const cap = ACE_POWER_CAP[run.act] ?? Infinity;
+          const under = all.filter((m) => m.power <= cap);
+          const got = under.length >= 3 ? under : [...all].sort((x, y) => x.power - y.power).slice(0, 3);
           if (!got.length || a.pokemon !== mon || a.deathT >= 0) return;
           mon.moves.splice(0, mon.moves.length, ...got);
           mon.movesVersion++;
