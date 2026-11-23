@@ -20,7 +20,7 @@ export const PATCH_NOTES: readonly PatchNote[] = [
   {
     id: '2026-11-23',
     date: '23 novembre 2026',
-    title: 'Nouveaux talents, la Horde',
+    title: 'Talents, Horde et CT de l’atelier',
     sections: [
       {
         title: 'Talents',
@@ -33,6 +33,10 @@ export const PATCH_NOTES: readonly PatchNote[] = [
       {
         title: 'Nouvelle salle',
         items: ['La Horde ❖ : une colonie d’une seule espèce, que la porte annonce. Deux fois plus de sauvages, un peu plus faibles : de quoi remplir d’un coup la jauge d’une recrue.'],
+      },
+      {
+        title: 'Atelier',
+        items: ['Queulorior façonne onze CT que le tuteur n’a pas : Éco-Sphère, Bombe Beurk, Luminocanon, Vibrobscur, Lame de Roc… Chacune demande le matériau d’un biome et une herbe du potager.'],
       },
     ],
   },

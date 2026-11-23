@@ -577,7 +577,11 @@ après le Champ), une maison sur la rive du lac à l'est du ponton, dans sa prop
 bout d'une allée de galets, est tenu par Queulorior :
 avec herbes et matériaux, il façonne des objets tenus introuvables à l'étal
 (Ceinture Pro, Grelot Coque, Casque Brut, Bandeau, Évoluroc, Mouchoir Choix,
-Lunettes Choix, Lentille Zoom, Orbe Vie) et quatre **nectars**. Posé sur la
+Lunettes Choix, Lentille Zoom, Orbe Vie), onze **CT** que le tuteur n'a pas
+(ajout, 23 novembre 2026, `CRAFTED_TMS` : une par matériau de biome, Éclat
+Magique, Éco-Sphère, Plaie Croix, Cascade, Bombe Beurk, Canicule, Lame de Roc,
+Luminocanon, Aurasphère, Vibrobscur, Chute Glace ; façonnée une fois, elle
+s'apprend à la hutte comme une CT achetée, `Save.tms`) et quatre **nectars**. Posé sur la
 coupelle de pierre devant l'atelier (le nectar y luit à sa couleur), un nectar attire en 5 salles un Pokémon de base pas
 encore débloqué, d'un type qu'il aime (les espèces déjà croisées d'abord) : il
 attend près de la coupelle, on lui parle, il rejoint la rébellion. À l'écran

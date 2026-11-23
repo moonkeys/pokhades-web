@@ -94,7 +94,29 @@ export const NECTARS: Record<string, { name: string; icon: string; types: readon
 /** Salles à franchir en run après avoir posé un nectar, avant que le visiteur arrive. */
 export const NECTAR_ROOMS = 5;
 
-export type Recipe = { out: string; kind: 'held' | 'nectar'; needs: Record<string, number> };
+export type Recipe = { out: string; kind: 'held' | 'nectar' | 'tm'; needs: Record<string, number> };
+
+/**
+ * CT de l'atelier (ajout, 23 novembre 2026, A-FAIRE 2.8 : « d'autres recettes (baies de
+ * combat, CT ?) ») : une par matériau de biome, des attaques que le tuteur n'a pas, aux
+ * types qui lui manquent (Plante, Poison, Acier, Insecte, Fée, Ténèbres…). Façonnée une
+ * fois, elle s'apprend comme une CT achetée (Save.tms, hutte de Porygon). Les herbes du
+ * potager entrent dans chacune : le potager mène aux attaques, pas seulement aux objets.
+ * Nom et type écrits ici, la fiche de l'attaque ne se lisant qu'en asynchrone.
+ */
+export const CRAFTED_TMS: Record<string, { name: string; type: string; power: number }> = {
+  'dazzling-gleam': { name: 'Éclat Magique', type: 'fairy', power: 80 },
+  'energy-ball': { name: 'Éco-Sphère', type: 'grass', power: 90 },
+  'x-scissor': { name: 'Plaie Croix', type: 'bug', power: 80 },
+  waterfall: { name: 'Cascade', type: 'water', power: 80 },
+  'sludge-bomb': { name: 'Bombe Beurk', type: 'poison', power: 90 },
+  'heat-wave': { name: 'Canicule', type: 'fire', power: 95 },
+  'stone-edge': { name: 'Lame de Roc', type: 'rock', power: 100 },
+  'flash-cannon': { name: 'Luminocanon', type: 'steel', power: 80 },
+  'aura-sphere': { name: 'Aurasphère', type: 'fighting', power: 80 },
+  'dark-pulse': { name: 'Vibrobscur', type: 'dark', power: 80 },
+  'icicle-crash': { name: 'Chute Glace', type: 'ice', power: 85 },
+};
 
 /**
  * Recettes de Queulorior. Chaque objet demande le matériau d'un ou deux
@@ -114,22 +136,41 @@ export const RECIPES: readonly Recipe[] = [
   { out: 'choice-specs', kind: 'held', needs: { pearl: 2, 'mental-herb': 2 } },
   { out: 'zoom-lens', kind: 'held', needs: { 'never-melt-ice': 3, 'mental-herb': 1 } },
   { out: 'life-orb', kind: 'held', needs: { charcoal: 2, 'black-sludge': 1, 'revival-herb': 1 } },
+  // Les CT : deux du matériau de leur biome (trois pour Lame de Roc, la plus forte) et une herbe.
+  { out: 'dazzling-gleam', kind: 'tm', needs: { 'pretty-wing': 2, 'white-herb': 1 } },
+  { out: 'energy-ball', kind: 'tm', needs: { 'tiny-mushroom': 2, 'energy-root': 2 } },
+  { out: 'x-scissor', kind: 'tm', needs: { 'balm-mushroom': 2, 'power-herb': 1 } },
+  { out: 'waterfall', kind: 'tm', needs: { 'heart-scale': 2, 'energy-root': 1 } },
+  { out: 'sludge-bomb', kind: 'tm', needs: { 'black-sludge': 2, 'mental-herb': 1 } },
+  { out: 'heat-wave', kind: 'tm', needs: { charcoal: 2, 'power-herb': 1 } },
+  { out: 'stone-edge', kind: 'tm', needs: { 'smooth-rock': 3, 'power-herb': 1 } },
+  { out: 'flash-cannon', kind: 'tm', needs: { 'relic-copper': 2, 'mental-herb': 1 } },
+  { out: 'aura-sphere', kind: 'tm', needs: { 'shoal-shell': 2, 'white-herb': 1 } },
+  { out: 'dark-pulse', kind: 'tm', needs: { pearl: 2, 'mental-herb': 1 } },
+  { out: 'icicle-crash', kind: 'tm', needs: { 'never-melt-ice': 2, 'energy-root': 1 } },
 ];
 
 /** Nom et icône de ce qu'une recette produit. */
 export function recipeOutput(r: Recipe): { name: string; icon: string } {
   if (r.kind === 'nectar') return NECTARS[r.out];
+  if (r.kind === 'tm') {
+    const tm = CRAFTED_TMS[r.out];
+    return { name: `CT ${tm?.name ?? r.out}`, icon: `machine_${(tm?.type ?? 'normal').toUpperCase()}` };
+  }
   const it = heldItem(r.out);
   return { name: it?.name ?? r.out, icon: it?.icon ?? 'POKEBALL' };
 }
 
-export const canCraft = (save: Save, r: Recipe): boolean => Object.entries(r.needs).every(([m, n]) => (save.materials[m] ?? 0) >= n);
+/** Une CT ne se façonne qu'une fois : elle s'apprend ensuite à volonté, comme une CT achetée. */
+export const canCraft = (save: Save, r: Recipe): boolean =>
+  !(r.kind === 'tm' && save.tms.includes(r.out)) && Object.entries(r.needs).every(([m, n]) => (save.materials[m] ?? 0) >= n);
 
 /** Façonne : prélève les ingrédients et range le produit (objets tenus avec les autres, nectars à part). */
 export function craft(save: Save, r: Recipe): boolean {
   if (!canCraft(save, r)) return false;
   for (const [m, n] of Object.entries(r.needs)) save.materials[m] -= n;
   if (r.kind === 'held') save.items[r.out] = (save.items[r.out] ?? 0) + 1;
+  else if (r.kind === 'tm') save.tms.push(r.out);
   else save.materials[r.out] = (save.materials[r.out] ?? 0) + 1;
   return true;
 }

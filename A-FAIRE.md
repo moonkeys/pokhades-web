@@ -665,7 +665,9 @@ Si d'autres se voient en jeu, noter leur emplacement.
   terrain d'entraînement. Deux libérés y frappent leur rocher (le mannequin
   du terrain, `dummy.rock`, éclats dessinés) ; +1 Pierre par salle
   (`QUARRY_STONE`). Vérifiée atteignable à pied depuis le feu.
-- Reste : des visiteurs propres à chaque zone, des récoltes plus variées.
+- Reste : des récoltes plus variées (le potager mène aussi aux CT de
+  l'atelier depuis le 23 novembre 2026 ; les visiteurs sauvages, eux, ont
+  été retirés : le Repaire ne loge que des libérés).
 
 ### 2.3 bis Agrandir le camp (fait)
 - Quatre aménagements de plus (`BUILDINGS`) : **Jardins fleuris** (massifs,
@@ -808,9 +810,15 @@ Si d'autres se voient en jeu, noter leur emplacement.
 - Nectar sur la coupelle : en 5 salles, un Pokémon de base non débloqué,
   d'un type qu'il aime, vient attendre ; on lui parle, il reste.
 - Repères « ! » : récolte mûre, recette à portée, visiteur arrivé.
+- CT de l'atelier (23 novembre 2026) : onze attaques absentes du tuteur
+  (Plante, Poison, Acier, Insecte, Fée, Ténèbres, Combat, Eau, Feu, Roche,
+  Glace), chacune deux du matériau d'un biome et une herbe du potager
+  (`CRAFTED_TMS`, recettes `kind: 'tm'`) ; une seule fois, puis apprise à la
+  hutte (`Save.tms`). Visiteurs par zone écartés : le Repaire ne loge plus
+  que des libérés (choix du 2.3 ter).
 - Reste : vérifier en jeu (bâtir, semer, récolter, façonner, poser un
-  nectar, accueillir le visiteur) ; équilibrer les quantités ; d'autres
-  recettes (baies de combat, CT ?).
+  nectar, accueillir le visiteur) ; équilibrer les quantités ; montrer les
+  CT façonnées chez le tuteur aussi ; des baies de combat ?
 
 ### 2.9 Retours de test du potager, de l'atelier et des allées (fait)
 - Potager : trois bacs de bois dessinés à la main (`drawBed`), séparés ; un

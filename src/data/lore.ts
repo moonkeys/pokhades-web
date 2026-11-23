@@ -226,7 +226,7 @@ export const LORE: LoreChapter[] = [
       { title: 'Aménagements et missions', text: 'Charpenti bâtit au fil des runs : bâtiments, dortoir, terrain, champ, maisons, carrière… Chaque chantier fait de la place aux libérés. Démolosse les envoie en mission chercher des ressources.' },
       // meta/crafting.ts
       { title: 'Potager et matériaux', text: 'Chaque coffre rapporte le matériau de son biome. Au Potager, Héliatronc plante ce que tu veux : ça pousse à chaque salle franchie, et se récolte en herbes et en racines.' },
-      { title: 'L’atelier et les nectars', text: 'Queulorior façonne des objets tenus introuvables ailleurs (souvent deux stats) et des nectars. Posé sur la coupelle, un nectar attire en 5 salles un Pokémon pas encore libéré : parle-lui, il reste.' },
+      { title: 'L’atelier et les nectars', text: 'Queulorior façonne des objets tenus introuvables ailleurs (souvent deux stats), des CT que le tuteur n’a pas (une par biome, à faire une fois) et des nectars. Posé sur la coupelle, un nectar attire en 5 salles un Pokémon pas encore libéré : parle-lui, il reste.' },
     ],
   },
 ];
