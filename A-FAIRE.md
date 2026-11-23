@@ -321,9 +321,13 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
   (23 novembre 2026) : Chlorophylle, Glissade, Baigne Sable, Chasse-Neige
   (cadence ×1,5 et pas ×1,2 sous leur temps, `WEATHER_SPEED`), Isograisse
   (Feu et Glace ×0,5, `THICK_FAT`), Cran (Attaque ×1,5 sous un statut,
-  `GUTS`) ; 50 espèces, talents des jeux vérifiés, cachés compris. Reste :
-  juger en jeu la vitesse sous la pluie ; d'autres talents (Technicien,
-  Sniper, Joli Sourire, Médic Nature…).
+  `GUTS`) ; 50 espèces, talents des jeux vérifiés, cachés compris. Même
+  jour, deuxième passe : Technicien (puissance ≤ 60 ×1,5), Sniper
+  (critiques ×2,25 et +10 % de chance : les critiques sont à 0 % d'office),
+  Médic Nature (statuts deux fois plus courts), 13 espèces. Reste : juger
+  en jeu la vitesse sous la pluie ; d'autres talents (Joli Sourire,
+  Adaptabilité : sans objet tant que `calculateDamage` n'a pas de bonus de
+  même type, comme le jeu Godot).
 
 ### 1.9 Salles spéciales (fait)
 - Une porte sur plusieurs peut mener à une salle spéciale (`Run.offers`,
@@ -817,8 +821,8 @@ Si d'autres se voient en jeu, noter leur emplacement.
   hutte (`Save.tms`). Visiteurs par zone écartés : le Repaire ne loge plus
   que des libérés (choix du 2.3 ter).
 - Reste : vérifier en jeu (bâtir, semer, récolter, façonner, poser un
-  nectar, accueillir le visiteur) ; équilibrer les quantités ; montrer les
-  CT façonnées chez le tuteur aussi ; des baies de combat ?
+  nectar, accueillir le visiteur) ; équilibrer les quantités ; des baies
+  de combat ? (Les CT façonnées sont rangées chez le tuteur aussi.)
 
 ### 2.9 Retours de test du potager, de l'atelier et des allées (fait)
 - Potager : trois bacs de bois dessinés à la main (`drawBed`), séparés ; un

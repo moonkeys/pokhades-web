@@ -28,6 +28,7 @@ export const PATCH_NOTES: readonly PatchNote[] = [
           'Chlorophylle, Glissade, Baigne Sable et Chasse-Neige : sous leur temps, le Pokémon attaque et court plus vite (Chétiflor au soleil, Hypotrempe sous la pluie…).',
           'Isograisse : Ronflex, Écrémeuh, Otaria ou Marill ne prennent que la moitié des coups Feu et Glace.',
           'Cran : brûlé, empoisonné ou paralysé, Machoc, Scarhino ou Charpenti frappent moitié plus fort.',
+          'Technicien (Miaouss, Insécateur, Cizayox…) renforce les petites attaques ; Sniper (Piafabec, Rapasdepic, Dardargnan) place des critiques plus fréquents et plus durs ; Médic Nature (Leveinard, Staross…) se remet deux fois plus vite d’un statut.',
         ],
       },
       {
@@ -36,7 +37,7 @@ export const PATCH_NOTES: readonly PatchNote[] = [
       },
       {
         title: 'Atelier',
-        items: ['Queulorior façonne onze CT que le tuteur n’a pas : Éco-Sphère, Bombe Beurk, Luminocanon, Vibrobscur, Lame de Roc… Chacune demande le matériau d’un biome et une herbe du potager.'],
+        items: ['Queulorior façonne onze CT que le tuteur n’a pas : Éco-Sphère, Bombe Beurk, Luminocanon, Vibrobscur, Lame de Roc… Chacune demande le matériau d’un biome et une herbe du potager. Le tuteur les montre aussi, avec qui peut les apprendre.'],
       },
     ],
   },

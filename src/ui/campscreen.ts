@@ -575,8 +575,31 @@ export class CampScreen {
         void this.render();
       });
     });
-    const tm = TMS.find((t) => t.api === this.modal);
-    const m = tm && moves[TMS.indexOf(tm)];
+    // Les CT de l'atelier (CRAFTED_TMS) : rangées ici aussi, pour voir qui peut les apprendre ;
+    // elles ne s'achètent pas, elles se façonnent chez Queulorior.
+    el('div', 'cs-label', main, 'Façonnées à l’atelier de Queulorior');
+    const forged = el('div', 'cs-grid', main);
+    const crafted = Object.keys(CRAFTED_TMS);
+    const cmoves = await Promise.all(crafted.map((api) => move(api)));
+    crafted.forEach((api, i) => {
+      const m = cmoves[i];
+      if (!m) return;
+      const owned = ctx.save.tms.includes(api);
+      const card = el('div', `cs-card da-paper${owned ? ' owned' : ' poor'}`, forged);
+      card.style.setProperty('--c', typeColor(m.type));
+      icon(`machine_${m.type.toUpperCase()}`, card);
+      const head = el('div', 'cs-head', card);
+      el('b', '', head, m.name);
+      typePill(m.type, head);
+      el('small', 'cs-info', card, moveInfo(m));
+      el('div', 'da-tape cs-tag', card, owned ? 'Acquise' : 'Atelier');
+      card.addEventListener('click', () => {
+        this.modal = api;
+        void this.render();
+      });
+    });
+    const tm = TMS.find((t) => t.api === this.modal) ?? (this.modal && CRAFTED_TMS[this.modal] ? { api: this.modal, price: 0 } : undefined);
+    const m = tm && (moves[TMS.indexOf(tm as (typeof TMS)[number])] ?? cmoves[crafted.indexOf(tm.api)]);
     if (tm && m) await this.moveModal(page, ctx, tm, m);
   }
 
@@ -607,6 +630,7 @@ export class CampScreen {
     const owned = ctx.save.tms.includes(tm.api);
     const act = el('div', 'cs-modal-act', box);
     if (owned) el('div', 'da-tape', act, 'Acquise : à équiper à la hutte');
+    else if (!tm.price) el('div', 'da-tape', act, 'À façonner à l’atelier de Queulorior');
     else {
       const b = el('button', 'cs-buy', act, `Acheter · ${tm.price} Baies`) as HTMLButtonElement;
       b.disabled = ctx.save.baies < tm.price;

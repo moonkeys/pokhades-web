@@ -139,6 +139,24 @@ export const THICK_FAT: ReadonlySet<number> = new Set([86, 87, 143, 446, 183, 18
 /** Cran : sous un statut (brûlure, poison, paralysie), son Attaque ×1,5. */
 export const GUTS: ReadonlySet<number> = new Set([19, 20, 66, 67, 68, 214, 217, 532, 533, 534]);
 export const GUTS_MULT = 1.5;
+// Technicien, Sniper, Médic Nature (ajout, 23 novembre 2026, deuxième passe : A-FAIRE 1.8).
+/** Technicien : ses attaques de puissance TECHNICIAN_CAP au plus frappent ×1,5. */
+export const TECHNICIAN: ReadonlySet<number> = new Set([52, 53, 123, 212, 235, 572]);
+export const TECHNICIAN_CAP = 60;
+/**
+ * Sniper : ses coups critiques font ×2,25 au lieu de ×1,5, et il en porte SNIPER_CHANCE de
+ * plus. Écart voulu : ici, un Pokémon n'a aucune chance de critique d'office (seuls les dons
+ * et la Lentille Zoom en donnent) ; le seul bonus des jeux n'aurait presque jamais joué.
+ */
+export const SNIPER: ReadonlySet<number> = new Set([15, 21, 22]);
+export const SNIPER_CRIT = 2.25;
+export const SNIPER_CHANCE = 0.1;
+/**
+ * Médic Nature : ses statuts s'usent deux fois plus vite. Écart voulu : dans les jeux, le
+ * statut s'efface quand il rentre dans sa Ball ; ici, toute l'équipe reste sur le terrain
+ * (les compagnons se battent), un changement ne le retire de rien.
+ */
+export const NATURAL_CURE: ReadonlySet<number> = new Set([113, 440, 120, 121]);
 const WEATHER_FR: Record<WeatherAbility['weather'], string> = { rain: 'sous la pluie', sun: 'au soleil', sand: 'dans la tempête de sable', hail: 'sous la grêle' };
 
 
@@ -172,6 +190,9 @@ export function talentOf(id: number): Talent | null {
   if (ws) return { name: ws.name, desc: `${WEATHER_FR[ws.weather]}, il attaque et court plus vite` };
   if (THICK_FAT.has(id)) return { name: 'Isograisse', desc: 'le Feu et la Glace ne lui font que la moitié des dégâts' };
   if (GUTS.has(id)) return { name: 'Cran', desc: 'brûlé, empoisonné ou paralysé, son Attaque monte de moitié' };
+  if (TECHNICIAN.has(id)) return { name: 'Technicien', desc: `ses attaques de puissance ${TECHNICIAN_CAP} au plus frappent moitié plus fort` };
+  if (SNIPER.has(id)) return { name: 'Sniper', desc: 'des coups critiques plus fréquents, et qui font bien plus mal' };
+  if (NATURAL_CURE.has(id)) return { name: 'Médic Nature', desc: 'ses statuts passent deux fois plus vite' };
   return null;
 }
 

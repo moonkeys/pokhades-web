@@ -322,7 +322,15 @@ cadence des attaques ×1,5 et le pas ×1,2 (`WEATHER_SPEED`,
 qui n'y règle que l'ordre des tours, et un pas doublé traverserait la salle).
 **Isograisse** (Ronflex, Écrémeuh, Otaria, Marill, Obalie, Makuhita…) : Feu
 et Glace à moitié. **Cran** (Rattata, Machoc, Scarhino, Ursaring,
-Charpenti…) : sous un statut, l'Attaque ×1,5 (`Pokemon.attack`). L'intimidateur se montre : il fait son geste d'attaque vers sa cible, avec
+Charpenti…) : sous un statut, l'Attaque ×1,5 (`Pokemon.attack`).
+**Technicien** (Miaouss, Persian, Insécateur, Cizayox, Queulorior,
+Chinchidou) : les attaques de puissance 60 au plus ×1,5. **Sniper**
+(Dardargnan, Piafabec, Rapasdepic) : critiques ×2,25 au lieu de ×1,5, et
+10 % de chance de critique en plus (écart voulu : aucun Pokémon n'en a
+d'office ici, seuls les dons et la Lentille Zoom en donnent). **Médic
+Nature** (Leveinard, Ptiravi, Stari, Staross) : ses statuts s'usent deux fois
+plus vite (écart voulu : les jeux l'effacent au retour dans la Ball, et ici
+toute l'équipe reste sur le terrain). L'intimidateur se montre : il fait son geste d'attaque vers sa cible, avec
 l'animation de Rugissement et « Intimidation » au-dessus de lui (une fois
 par seconde au plus). Le talent est écrit sur la fiche de run (C), sur la
 fiche de l'équipe et dans le Pokédex au Repaire (celui d'une évolution aussi :
@@ -581,7 +589,8 @@ Lunettes Choix, Lentille Zoom, Orbe Vie), onze **CT** que le tuteur n'a pas
 (ajout, 23 novembre 2026, `CRAFTED_TMS` : une par matériau de biome, Éclat
 Magique, Éco-Sphère, Plaie Croix, Cascade, Bombe Beurk, Canicule, Lame de Roc,
 Luminocanon, Aurasphère, Vibrobscur, Chute Glace ; façonnée une fois, elle
-s'apprend à la hutte comme une CT achetée, `Save.tms`) et quatre **nectars**. Posé sur la
+s'apprend à la hutte comme une CT achetée, `Save.tms` ; le tuteur les range
+aussi, sous « Façonnées à l'atelier », pour voir qui peut les apprendre) et quatre **nectars**. Posé sur la
 coupelle de pierre devant l'atelier (le nectar y luit à sa couleur), un nectar attire en 5 salles un Pokémon de base pas
 encore débloqué, d'un type qu'il aime (les espèces déjà croisées d'abord) : il
 attend près de la coupelle, on lui parle, il rejoint la rébellion. À l'écran

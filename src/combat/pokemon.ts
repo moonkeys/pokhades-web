@@ -1,7 +1,7 @@
 import { sfx } from '../audio/audio';
 import { loadMove, type Move } from './moves';
 import { currentWeather, type Fighter } from './damage';
-import { GUTS, GUTS_MULT, WEATHER_SPEED, WEATHER_SPEED_CADENCE, WEATHER_SPEED_MOVE } from '../data/abilities';
+import { GUTS, GUTS_MULT, NATURAL_CURE, SNIPER, SNIPER_CHANCE, WEATHER_SPEED, WEATHER_SPEED_CADENCE, WEATHER_SPEED_MOVE } from '../data/abilities';
 import { growthOf, xpAt } from '../data/growth';
 import { sheetOf } from '../data/bestiary';
 import { fetchJson } from '../assets/json';
@@ -174,7 +174,7 @@ export class Pokemon implements Fighter {
   }
 
   get critChance(): number {
-    return Math.min(0.6, this.baseCrit + this.mult.crit + this.buff('crit') - 1);
+    return Math.min(0.6, this.baseCrit + this.mult.crit + this.buff('crit') - 1 + (SNIPER.has(this.id) ? SNIPER_CHANCE : 0));
   }
 
   /** Chance d'esquiver un coup (Reflet…), plafonnée à 50 % comme PokemonInstance._DODGE_CAP. */
@@ -271,7 +271,8 @@ export class Pokemon implements Fighter {
   /** Avance le statut ; rend les dégâts du tic (brûlure, poison), 0 sinon. */
   tickStatus(dt: number): number {
     if (!this.status) return 0;
-    this.statusTime -= dt;
+    // Médic Nature : le statut s'use deux fois plus vite (les dégâts de poison ou de brûlure aussi s'arrêtent plus tôt).
+    this.statusTime -= NATURAL_CURE.has(this.id) ? dt * 2 : dt;
     if (this.statusTime <= 0) {
       this.status = null;
       return 0;
