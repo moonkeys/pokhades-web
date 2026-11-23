@@ -38,7 +38,7 @@ import { BOONS, DONORS, RARITY_COLOR, RARITY_NAME, STAT_BOONS, type BoonOffer } 
 import { loadMove, tune, type Move } from './combat/moves';
 import { BASE_TEAM_LEVEL, Pokemon, xpForLevel } from './combat/pokemon';
 import { typeMates } from './data/trainers';
-import { preEvolutionOf } from './data/evolutions';
+import { escortPreviousOf } from './data/evolutions';
 import { STEP, startLoop } from './core/loop';
 import { Rng } from './core/rng';
 import { CAMP_NPCS, SWIMMERS } from './data/species';
@@ -1189,7 +1189,8 @@ async function boot(): Promise<void> {
   const minionCount = () => 1 + Math.floor(team.filter((m) => !m.runAlly).length / 2);
   const summonMinions = (boss: Actor) => {
     const champ = run.champion;
-    const pool = typeMates(champ.type).filter((id) => preEvolutionOf(id) === null && !SWIMMERS.has(id));
+    // Des formes de base, celles que le joueur ne vit pas comprises (Férosinge, pas Colossinge : escortPreviousOf).
+    const pool = typeMates(champ.type).filter((id) => escortPreviousOf(id) === null && !SWIMMERS.has(id));
     if (!pool.length) return;
     const n = minionCount();
     for (let i = 0; i < n; i++) {
@@ -1278,7 +1279,7 @@ async function boot(): Promise<void> {
         fx.impact(e.x, e.y, '#ff5040');
         sfx('ability');
       }
-    } else if (mode === 'run' && e.role === 'champion' && Math.random() < 0.5) trainerSay(['Tiens bon !', 'Ne lâche rien !', 'Encore un effort !'][Math.floor(Math.random() * 3)]);
+    } else if (mode === 'run' && e.role === 'champion' && run.isBoss() && Math.random() < 0.5) trainerSay(['Tiens bon !', 'Ne lâche rien !', 'Encore un effort !'][Math.floor(Math.random() * 3)]);
     if (mode === 'run' && e.role === 'boss' && e.barsLeft === 2 && !e.sharesHp) championTwist(e);
     const mon = e.pokemon;
     const forms = mon && e.role === 'boss' && e.barsLeft === 2 && !e.mega && !e.sharesHp ? megaFormsOf(mon.id) : [];
@@ -2021,8 +2022,9 @@ async function boot(): Promise<void> {
   const director: RoomDirector = new RoomDirector(document.body, fx, {
     spawnEnemy: (id, level, x, y, role, bars) => {
       const a = spawnEnemy(id, level, x, y, role);
-      // Pokémon du champion de l'acte : ils lancent sa signature (combat/signatures.ts). Pas les gardiens de grotte.
-      if (role !== 'wild') a.signature = run.champion.name;
+      // Pokémon du champion de l'acte : ils lancent sa signature (combat/signatures.ts). Pas les gardiens
+      // de grotte, ni ceux d'une légende en Duel (des Pokémon de champion, mais pas du champion de l'acte).
+      if (role !== 'wild' && run.isBoss()) a.signature = run.champion.name;
       // Pokémon d'un top dresseur : plusieurs barres de PV (combat.ts les recharge une à une).
       if (bars) a.bars = a.barsLeft = bars;
       return a;
@@ -2185,7 +2187,7 @@ async function boot(): Promise<void> {
       wild = wild.filter((e) => e.deathT >= 0);
     },
     specialDone: (special, success) => {
-      if (special === 'challenge' || special === 'trap') questProgress({ kind: 'special', special, success });
+      if (special === 'challenge' || special === 'trap' || special === 'horde') questProgress({ kind: 'special', special, success });
     },
     // Ligne de front : la vague qui arrive fait trembler le sol (coupé avec les secousses, comme les autres).
     rumble: () => combat.addShake(0.25),
@@ -2714,9 +2716,11 @@ async function boot(): Promise<void> {
     // Aller à une salle : 1ʳᵉ salle de combat, boutique ou boss de l'acte (PV et dons conservés).
     // Depuis le Repaire, une run part d'abord.
     if (mode === 'camp') newRun();
-    const special = kind === 'challenge' || kind === 'trap' || kind === 'merchant' || kind === 'spring' || kind === 'altar' || kind === 'dojo' || kind === 'pension' ? kind : null;
+    const special = kind === 'challenge' || kind === 'trap' || kind === 'merchant' || kind === 'spring' || kind === 'altar' || kind === 'dojo' || kind === 'pension' || kind === 'horde' || kind === 'duel' ? kind : null;
     run.room = act * ROOMS_PER_ACT + (special ? 1 : kind === 'combat' ? 0 : kind === 'shop' ? COMBATS_PER_ACT : ROOMS_PER_ACT - 1);
     run.special = special;
+    // Horde forcée au panneau : la première espèce possible de la faune de la salle.
+    run.hordeSpecies = special === 'horde' ? (run.hordePool()[0] ?? null) : null;
     endT = -1;
     loadRoom(false);
   });
@@ -3008,7 +3012,8 @@ async function boot(): Promise<void> {
       ? {
           // Un as et son jumeau : une barre pour deux.
           name: champ.partner && champ.partner.deathT < 0 ? `${champ.pokemon.name} ×2` : champ.pokemon.name,
-          sub: cave.active ? cave.guardianTitle : `${champ.role === 'boss' ? 'As' : 'Équipe'} de ${run.champion.name}`,
+          // En Duel, l'équipe est celle de la légende, pas du champion de l'acte.
+          sub: cave.active ? cave.guardianTitle : `${champ.role === 'boss' ? 'As' : 'Équipe'} de ${director.duelName ?? run.champion.name}`,
           ace: champ.role === 'boss',
           bars: champ.bars,
           barsLeft: champ.barsLeft,
@@ -3755,6 +3760,14 @@ async function boot(): Promise<void> {
         },
       },
     });
+    // Banc d'équilibrage (src/debug/balance.ts) : `pokhades.balance.fight` / `.series`. Chargé à part,
+    // et seulement en dev : `import.meta.env.DEV` vaut false au build, le module ne part pas en ligne.
+    if (import.meta.env.DEV) {
+      void import('./debug/balance').then(({ installBalance }) => {
+        const P = (window as unknown as { pokhades: Parameters<typeof installBalance>[0] & { balance?: unknown } }).pokhades;
+        P.balance = installBalance(P);
+      });
+    }
   }
 }
 

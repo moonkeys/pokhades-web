@@ -2,6 +2,7 @@ import { sfx } from '../audio/audio';
 import { BIOME_CHAMPIONS } from '../data/champions';
 import { leagueOpen } from '../meta/feats';
 import type { Save } from '../meta/save';
+import { CS_LIST } from '../meta/catalog';
 import { BIOMES } from '../world/biomes';
 import { TILE } from '../world/tiles';
 import { VICTORY_ROAD } from '../world/worldmap';
@@ -226,13 +227,22 @@ export class Journal {
     for (const r of plan.roads) {
       const done = walked.has(`${r.from}>${r.to}`);
       const sea = r.from === 'ocean' || r.to === 'ocean';
-      if (!done && !sea) continue;
+      const csName = r.cs && CS_LIST.find((c) => c.id === r.cs)?.name;
+      // Une route gardée qu'on n'a pas encore prise : rien de tracé, mais la CS qu'il faudra,
+      // écrite à mi-chemin (on prépare sa run au Repaire, devant ce plan).
+      if (!done && !sea) {
+        if (csName && !save.cs.includes(r.cs!)) {
+          const m = r.pts[Math.floor(r.pts.length / 2)];
+          add('text', { x: m.x * TILE, y: m.y * TILE, class: 'jr-cs' }).textContent = `CS ${csName}`;
+        }
+        continue;
+      }
       const d = `M ${r.pts.map((p) => `${(p.x * TILE).toFixed(1)} ${(p.y * TILE).toFixed(1)}`).join(' L ')}`;
       if (!sea) add('path', { d, class: 'jr-trail-under' });
       add('path', { d, class: `jr-trail${sea ? ' sea' : ''}${sea && !done ? ' shut' : ''}` });
-      if (r.cs) {
+      if (csName) {
         const m = r.pts[Math.floor(r.pts.length / 2)];
-        add('text', { x: m.x * TILE + 26, y: m.y * TILE, class: 'jr-cs' }).textContent = 'CS Surf';
+        add('text', { x: m.x * TILE + (sea ? 26 : 0), y: m.y * TILE, class: 'jr-cs' }).textContent = `CS ${csName}`;
       }
     }
     for (const n of plan.nodes) {

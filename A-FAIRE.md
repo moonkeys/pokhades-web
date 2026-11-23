@@ -317,8 +317,17 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
   Sol (`LEVITATE`, `calculateDamage`) ; Statik, Corps Ardent, Point Poison
   (`CONTACT_TALENTS`, 30 %, `Combat.contactTalent`, mêlée des deux camps).
   Puis (même jour) : Absorb Eau, Absorb Volt, Torche, Engrais / Brasier /
-  Torrent (`ABSORB`, `FLASH_FIRE`, `PINCH`, `calculateDamage`). Reste :
-  d'autres talents (Glissade, Chlorophylle, Isograisse…).
+  Torrent (`ABSORB`, `FLASH_FIRE`, `PINCH`, `calculateDamage`). Puis
+  (23 novembre 2026) : Chlorophylle, Glissade, Baigne Sable, Chasse-Neige
+  (cadence ×1,5 et pas ×1,2 sous leur temps, `WEATHER_SPEED`), Isograisse
+  (Feu et Glace ×0,5, `THICK_FAT`), Cran (Attaque ×1,5 sous un statut,
+  `GUTS`) ; 50 espèces, talents des jeux vérifiés, cachés compris. Même
+  jour, deuxième passe : Technicien (puissance ≤ 60 ×1,5), Sniper
+  (critiques ×2,25 et +10 % de chance : les critiques sont à 0 % d'office),
+  Médic Nature (statuts deux fois plus courts), 13 espèces. Reste : juger
+  en jeu la vitesse sous la pluie ; d'autres talents (Joli Sourire,
+  Adaptabilité : sans objet tant que `calculateDamage` n'a pas de bonus de
+  même type, comme le jeu Godot).
 
 ### 1.9 Salles spéciales (fait)
 - Une porte sur plusieurs peut mener à une salle spéciale (`Run.offers`,
@@ -387,6 +396,21 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
 - 9 salles par biome (16 novembre 2026, retour de test : « entre 8 et 10 ») :
   7 combats ou salles spéciales, la boutique, le champion
   (`COMBATS_PER_ACT`, `ROOMS_PER_ACT`) ; niveaux à la même pente par acte.
+- Horde ❖ (23 novembre 2026) : une colonie d'une seule espèce, annoncée
+  par la porte ; deux vagues, effectif ×2 (36 au plus), −2 niveaux, sans
+  dresseur ; de quoi remplir la jauge de recrue d'une espèce choisie.
+  Reste : juger en jeu la place qu'elle prend parmi les portes (une salle
+  spéciale de plus dilue les autres). Route Victoire (même jour) : elle
+  n'avait jamais de salle spéciale (`specialsTaken` à quatre cases) ; elle
+  propose maintenant Défi, Piège et Horde, jamais de salle calme
+  (`VICTORY_SPECIALS`) ; sur 300 graines, autant de portes spéciales qu'au
+  quatrième acte.
+- Duel ⚔ (23 novembre 2026) : une légende (Red, Leaf, Brice), quatre de ses
+  Pokémon en Pokémon de champion, un par vague, +3 niveaux ; un don promis.
+  Dès le troisième acte seulement (au deuxième, le banc y perdait comme
+  contre un champion). Le dresseur d'un Duel ne fuit qu'après sa dernière
+  vague (`TrainerGroup.until`). Reste : juger en jeu (la capture par la
+  légende quand un membre faiblit est-elle de trop ?).
 - Reste : d'autres salles.
 
 ### 1.9 bis Combats de champion plus épiques (17 novembre 2026)
@@ -459,6 +483,52 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
   final tombe en 20 s. À juger en jeu : la fin de run avec une équipe et des
   dons réels, et les escortes du quatrième acte (11 sbires par vague à cinq
   membres).
+
+### 1.9 quater Run d'équilibrage, fin de run (20 novembre 2026)
+- Méthode : le même pilote, mais en pas à pas (`pokhades.step`, le panneau
+  du navigateur masqué fige la boucle de rendu) en attendant le chargement
+  des fiches entre deux pas ; une équipe aux meilleures attaques de son
+  niveau (`strongestMoves`), au niveau des salles (+2 à +4) ; des séries de
+  combats de champion par acte et par taille d'équipe (1, 2, 3, 5), les
+  dégâts comptés par source (Pokémon joué, compagnons).
+- Constats : la Route Victoire était plus facile que le champion d'avant
+  (Aldo battu 4 fois sur 4 en 30 s à cinq membres, Giovanni et Auguste 1 à
+  3 fois sur 5) : le Conseil n'alignait que quatre Pokémon. `reinforce` ne
+  prenait que des formes évoluées, et la table des évolutions ne connaît
+  que les lignées jouables : Olga restait à deux Pokémon au quatrième acte,
+  Pierre, Erika et Blanche à trois, Major Bob à trois, Auguste, Aldo,
+  Agatha et Peter à quatre. Les escortes du dernier acte (13 sbires par
+  vague à cinq membres) ne gênent pas : ils tombent dans les zones des
+  compagnons. Chaque compagnon fait autant de dégâts que le Pokémon joué,
+  ou plus (à cinq, 10 000 contre 1 700 sur les Pokémon d'Aldo) ; mais à
+  champion égal, trois ou cinq membres finissent dans le même temps (40 à
+  45 s contre Olga) : l'écart tient aux types bien plus qu'au nombre, et un
+  bonus de PV « au carré » pour les grandes équipes, essayé, ne changeait
+  rien de mesurable : retiré. La tempête de sable use 1 % des PV par
+  seconde, aux deux camps, jamais sous 1 PV : laissée.
+- Fait : `reinforce` (run.ts) complète avec les autres Pokémon du type
+  quand les formes évoluées manquent (jamais un nageur) ; leur escorte est
+  leur propre forme, moins nombreuse (déjà prévu par `bossWaves`). Les
+  escortes connaissent en plus les formes de base que le joueur ne vit pas
+  (`escortPreviousOf`, 22 espèces dont la fiche et les planches sont là :
+  Férosinge, Debugant, Stalgamin, Magby…), y compris pour les équipes
+  reprises du jeu (Kicklee, Tygnon, Spectrum s'escortaient d'eux-mêmes) ;
+  pas dans `preEvolutionOf`, qui ferait d'une recrue Colossinge un
+  Férosinge qui n'évolue jamais. Les portes de route annoncent le
+  champion du biome et son type (`Run.championAhead`) : la route se choisit
+  aux types, quand l'affiche de la boutique arrive trop tard pour changer
+  d'équipe.
+  Après : Olga et Aldo à six, battus 3 fois sur 3 à trois et cinq membres
+  avec de la casse ; Pierre à quatre contre cinq membres au premier acte,
+  2 victoires sur 3, de justesse.
+- Ensuite : Peter aligne six Pokémon (Drattak et Carchacrok ajoutés à
+  l'équipe des jeux, data/champions.ts : la faune n'avait qu'un Dragon de
+  plus) ; contre cinq membres niv. 70, 2 victoires sur 5, l'équipe à bout :
+  le Conseil redevient le sommet de la run. Le pilote est rangé dans le
+  projet (`src/debug/balance.ts`, `pokhades.balance.fight` / `.series`,
+  en dev seulement) au lieu d'être recollé dans la console.
+- Reste : le pilote ne sait ni changer de Pokémon, ni viser, ni prendre de
+  dons ; le jugement final se fait en jeu.
 
 ### 1.10 Son (fait)
 - `src/audio/sounds.ts` (catalogue, repris de `Sfx.gd`) et `audio.ts`
@@ -608,7 +678,9 @@ Si d'autres se voient en jeu, noter leur emplacement.
   terrain d'entraînement. Deux libérés y frappent leur rocher (le mannequin
   du terrain, `dummy.rock`, éclats dessinés) ; +1 Pierre par salle
   (`QUARRY_STONE`). Vérifiée atteignable à pied depuis le feu.
-- Reste : des visiteurs propres à chaque zone, des récoltes plus variées.
+- Reste : des récoltes plus variées (le potager mène aussi aux CT de
+  l'atelier depuis le 23 novembre 2026 ; les visiteurs sauvages, eux, ont
+  été retirés : le Repaire ne loge que des libérés).
 
 ### 2.3 bis Agrandir le camp (fait)
 - Quatre aménagements de plus (`BUILDINGS`) : **Jardins fleuris** (massifs,
@@ -687,8 +759,14 @@ Si d'autres se voient en jeu, noter leur emplacement.
   nettoyée en run, ne rate jamais, se récolte au retour ; « Rappeler » rentre
   sans rien. Deux places, trois avec le Dortoir. Le Pokémon parti quitte le
   camp et l'équipe ; Porygon le montre grisé.
+- Fouilles (23 novembre 2026), Carrière bâtie : 3 matériaux de biome en 6
+  salles, parmi les biomes atteints (`materials`, `collect`). Contrat
+  « Horde » chez Kangourex (à la place du Défi une fois sur deux). Quêtes
+  nouvelles écartées pour l'instant : les espèces libres et embarquées ne
+  sont plus que des légendaires déjà donateurs ou PNJ (il faudrait en
+  importer, `npm run import-assets`).
 - Reste : d'autres places ou missions à débloquer avec de futurs aménagements
-  (Godot : Grange, Palissade, Carrière du sanctuaire).
+  (Godot : Grange, Palissade).
 
 ### 2.5 Quêtes de Kangourex (fait)
 - **Kangourex**, la doyenne, au camp dès le départ, à l'est entre la hutte
@@ -751,9 +829,15 @@ Si d'autres se voient en jeu, noter leur emplacement.
 - Nectar sur la coupelle : en 5 salles, un Pokémon de base non débloqué,
   d'un type qu'il aime, vient attendre ; on lui parle, il reste.
 - Repères « ! » : récolte mûre, recette à portée, visiteur arrivé.
+- CT de l'atelier (23 novembre 2026) : onze attaques absentes du tuteur
+  (Plante, Poison, Acier, Insecte, Fée, Ténèbres, Combat, Eau, Feu, Roche,
+  Glace), chacune deux du matériau d'un biome et une herbe du potager
+  (`CRAFTED_TMS`, recettes `kind: 'tm'`) ; une seule fois, puis apprise à la
+  hutte (`Save.tms`). Visiteurs par zone écartés : le Repaire ne loge plus
+  que des libérés (choix du 2.3 ter).
 - Reste : vérifier en jeu (bâtir, semer, récolter, façonner, poser un
-  nectar, accueillir le visiteur) ; équilibrer les quantités ; d'autres
-  recettes (baies de combat, CT ?).
+  nectar, accueillir le visiteur) ; équilibrer les quantités ; des baies
+  de combat ? (Les CT façonnées sont rangées chez le tuteur aussi.)
 
 ### 2.9 Retours de test du potager, de l'atelier et des allées (fait)
 - Potager : trois bacs de bois dessinés à la main (`drawBed`), séparés ; un
@@ -790,9 +874,11 @@ Si d'autres se voient en jeu, noter leur emplacement.
   (stats, attaques, talent, poids) ; le carnet de Xatu aussi ; les écrans du
   Repaire passent sur une colonne en petit écran. Puis : carnet de Xatu en
   bento à cases inégales (Carte du monde en grande case), titres lisibles, « Tout réclamer » en gros ; rail de défilement visible.
-- Reste : d'autres dresseurs connus d'Essentials (Red, Leaf, Brendan) si l'on
-  ajoute des biomes ; vérifier le plan en jeu (les pointillés n'ont pas été vus
-  à l'écran).
+- Red, Leaf et Brice (Brendan) : les légendes de la salle Duel (23 novembre
+  2026, voir 1.9). Reste : leur portrait de combat pour un dialogue, s'il en
+  faut un. Plan vu en jeu le 23 novembre 2026 : les routes prises
+  s'y pointillent d'encre, la traversée vers l'Océan d'écume pâle, « CS
+  Surf » à côté ; rien à reprendre.
 
 ---
 
@@ -812,6 +898,14 @@ Si d'autres se voient en jeu, noter leur emplacement.
 - **Contenu en plus** (plus tard, 18 novembre 2026) : d'autres talents,
   salles spéciales, visiteurs par zone, récoltes, dresseurs connus.
 - Le graphe de biomes est un premier jet (`BIOME_LINKS`) : à rééquilibrer
-  au fil des tests, et d'autres CS pourront y garder des branches (Coupe,
-  Éclate-Roc). (Un champion par biome depuis le 17 novembre 2026 : voir 2.10.)
+  au fil des tests. (Un champion par biome depuis le 17 novembre 2026 : voir
+  2.10.) Fait le 23 novembre 2026 : Coupe garde Forêt → Automne, Éclate-Roc
+  Marais → Volcan, Force Automne → Montagne glacée (une autre route reste
+  ouverte de chaque biome) ; le plan écrit la CS qui manque. À juger en jeu :
+  sans CS, Pierre, Auguste et Olga sont hors de portée, et la Route Victoire
+  attend donc les CS (600 Baies environ) ; est-ce le bon rythme ?
 - Les objets tenus n'ont pas été vraiment testés en partie par le joueur.
+  Relus le 23 novembre 2026 : appliqués à la sortie du Repaire (`applyHeld`),
+  gardés à l'évolution (`Pokemon.inherit`), jamais sur un mercenaire ; pas de
+  défaut trouvé. Aucun ne donne de critique (la Lentille Zoom de l'atelier
+  touche Atq. Spé. et Vitesse, pas la précision des jeux).

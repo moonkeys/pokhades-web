@@ -16,6 +16,20 @@ npm run dev             # http://localhost:5173 (?debug pour l'objet de debug)
 npm run build           # dist/
 ```
 
+Banc d'équilibrage (`src/debug/balance.ts`, chargé seulement par `npm run dev`
+avec `?debug`) : un pilote automatique joue un combat de champion avec une
+équipe donnée, au niveau donné et avec ses meilleures attaques, en pas à pas
+(il tourne aussi panneau du navigateur masqué), et rend la durée des vagues,
+l'issue et les dégâts du Pokémon joué et des compagnons. Dans la console :
+
+```js
+await pokhades.balance.fight({ room: 35, team: [3, 6, 9, 65, 68], level: 54 })
+await pokhades.balance.series({ room: 44, team: [6, 9], level: 70, league: true, champion: 'Peter' }, 4)
+```
+
+Il joue moins bien qu'un joueur (ni changement de Pokémon, ni visée, ni dons) :
+ses séries se comparent entre elles, avant et après un changement.
+
 Bestiaire (`config.html`, servi par `npm run dev` seulement, sur
 http://localhost:5173/config.html) : la page de config des espèces. À gauche,
 toutes les espèces du Pokédex national, celles que le jeu embarque et celles
@@ -82,9 +96,23 @@ la Forêt jaunit en Automne qui monte en Montagne, la Plage longe la mer
 (Océan, avec Surf) ou s'enlise au Marais, le Lac s'adosse aux Rocailleux,
 l'Océan finit sur une île volcanique. Chaque porte de route est percée sur le
 bord de la salle qui regarde son biome (`Run.pickExits`) et annonce son biome
-en grand, au-dessus de la récompense de la salle d'après. La Plage mène à
+en grand, puis le champion qui le garde et la pastille de son type
+(`Run.championAhead` : un seul champion par biome ; rien quand il faudrait le
+tirer au sort, le sien déjà battu dans la run ; le membre du Conseil devant la
+Route Victoire), au-dessus de la récompense de la salle d'après. Run
+d'équilibrage du 20 novembre 2026 : un combat de champion se gagne d'abord aux
+types, et l'affiche de la boutique arrive quand l'équipe ne peut plus changer ;
+la route, elle, se choisit encore. La Plage mène à
 l'Océan seulement si l'on est parti avec la CS Surf : sans elle, la porte
 reste visible mais fermée (« CS Surf requise »), et le Marais reste ouvert.
+Trois routes de plus sont gardées (23 novembre 2026, `WORLD_LINKS`) : Forêt →
+Automne par **Coupe**, Marais → Volcan par **Éclate-Roc**, Automne → Montagne
+glacée par **Force** ; chaque biome garde une autre route ouverte. Sans CS, 7
+champions sur 11 restent à portée (Pierre demande Coupe, Auguste Surf ou
+Éclate-Roc, Olga Coupe puis Force) : la Route Victoire passe par les CS
+achetées chez Alakazam. Le plan du monde écrit la CS manquante au milieu de la
+route qu'elle garde (`journal.ts`). Vérifié sur 400 graines : jamais de run
+bloquée sans CS, les dix biomes atteints avec toutes.
 
 Sens des salles (ajout, retour de test : « je sors par la droite et j'arrive
 par le haut ») : on entre dans une salle par le bord d'en face de la porte
@@ -203,6 +231,35 @@ l'équipe ni en mission) prend sa place, au niveau du partant s'il est plus
 bas, PV pleins, avec ses attaques et son objet ; l'équipe du Repaire suit.
 Pas en ligne.
 
+**Horde** ❖ (ajout, 23 novembre 2026, `HORDE_*` dans run/room.ts) : toute une
+colonie d'une seule espèce, que la porte annonce sous son nom (une forme de
+base de la faune de la salle, jamais un nageur, `Run.hordePool`) : deux
+vagues, deux fois l'effectif d'une salle (36 au plus), 2 niveaux en dessous,
+sans dresseur ; la porte garde sa récompense. On recrute une espèce en en
+battant assez (10, puis 20) : la Horde remplit une jauge choisie d'un coup.
+Au banc, elle se vide plus vite qu'une salle ordinaire (19 s contre 37 au
+deuxième acte : les zones fauchent la colonie), pour un peu plus de casse.
+Panneau → « Horde ».
+
+**Duel** ⚔ (ajout, 23 novembre 2026, `DUEL_*` dans run/room.ts) : un
+dresseur légendaire d'Essentials, Red, Leaf ou Brice (Brendan), entre avec
+quatre Pokémon tirés de son équipe emblématique (`LEGEND_TEAMS`,
+data/trainers.ts : le Pikachu et les starters de Kanto de Red, les évolutions
+d'Évoli de Leaf, des Pokémon de Hoenn pour Brice), un par vague, 3 niveaux
+au-dessus de la salle, en Pokémon de champion (le renfort des champions, leurs
+six attaques les plus fortes, deux barres) mais sans la signature du champion
+de l'acte ; la barre dit « Équipe de Red ». La porte promet un don, la salle
+paie ₽ ×2. Jamais avant le troisième acte : au banc, deux ou trois membres
+du deuxième acte y perdaient même à son niveau, comme contre un champion.
+Ensuite, quatre membres gagnent en 30 s, deux perdent ; cinq, au quatrième
+acte, gagnent entamés. Panneau → « Duel ».
+
+Sur la Route Victoire (23 novembre 2026), les portes proposent aussi des
+salles spéciales, mais seulement celles où l'on se bat (Défi, Piège, Horde, Duel,
+`VICTORY_SPECIALS`) : ni soins, ni niveaux, ni leçons offerts sur l'acte le
+plus dur. Avant, elle n'en avait jamais : le compte des salles spéciales par
+acte n'avait que quatre cases, et la cinquième valait NaN.
+
 Salles calmes (Source, Autel, Dojo, Pension ; retours de test du 16 novembre
 2026 : « une salle couloir, la source sur le chemin… une petite salle faite
 pour, plus de décor, une ambiance différente pour chaque salle ») :
@@ -284,7 +341,23 @@ blesse pas, il soigne d'un quart des PV. **Torche** (Goupix, Pyroli, Malosse,
 Démolosse) : le Feu ne blesse pas, et embrase ses propres attaques Feu
 (×1,5). **Engrais, Brasier, Torrent** (les starters de toutes les
 générations) : sous un tiers des PV, les attaques du type gagnent 50 %. Tout
-se joue dans `calculateDamage` (damage.ts). L'intimidateur se montre : il fait son geste d'attaque vers sa cible, avec
+se joue dans `calculateDamage` (damage.ts). **Chlorophylle, Glissade, Baigne
+Sable, Chasse-Neige** (23 novembre 2026 : Mystherbe, Chétiflor, Granivol ;
+Psykokwak, Hypotrempe, Barpau ; Sabelette ; Polarhume) : sous leur temps, la
+cadence des attaques ×1,5 et le pas ×1,2 (`WEATHER_SPEED`,
+`Pokemon.speed`, `speedMult` ; écart voulu : les jeux doublent la Vitesse,
+qui n'y règle que l'ordre des tours, et un pas doublé traverserait la salle).
+**Isograisse** (Ronflex, Écrémeuh, Otaria, Marill, Obalie, Makuhita…) : Feu
+et Glace à moitié. **Cran** (Rattata, Machoc, Scarhino, Ursaring,
+Charpenti…) : sous un statut, l'Attaque ×1,5 (`Pokemon.attack`).
+**Technicien** (Miaouss, Persian, Insécateur, Cizayox, Queulorior,
+Chinchidou) : les attaques de puissance 60 au plus ×1,5. **Sniper**
+(Dardargnan, Piafabec, Rapasdepic) : critiques ×2,25 au lieu de ×1,5, et
+10 % de chance de critique en plus (écart voulu : aucun Pokémon n'en a
+d'office ici, seuls le don Précision et les attaques qui affûtent en donnent). **Médic
+Nature** (Leveinard, Ptiravi, Stari, Staross) : ses statuts s'usent deux fois
+plus vite (écart voulu : les jeux l'effacent au retour dans la Ball, et ici
+toute l'équipe reste sur le terrain). L'intimidateur se montre : il fait son geste d'attaque vers sa cible, avec
 l'animation de Rugissement et « Intimidation » au-dessus de lui (une fois
 par seconde au plus). Le talent est écrit sur la fiche de run (C), sur la
 fiche de l'équipe et dans le Pokédex au Repaire (celui d'une évolution aussi :
@@ -434,7 +507,12 @@ Démolosse, le pisteur (les expéditions de Godot), envoie des libérés en
 2 salles), Coupe de bois (Bois 6, 3), Ramassage de pierres (Pierre 5, 4),
 Récolte de baies (40 Baies, 4), Entraînement (+2 niveaux de départ, 5 ;
 terrain bâti, plafond du Super Bonbon), Grande chasse (Nourriture 21, 6),
-Grande coupe (Bois 20, 8), Ouvrir une carrière (Pierre 14, 9). Une mission
+Grande coupe (Bois 20, 8), Ouvrir une carrière (Pierre 14, 9), et, la
+Carrière bâtie, les **Fouilles** (23 novembre 2026 : 3 matériaux de biome, 6
+salles, tirés parmi les biomes déjà atteints ; l'annonce au retour dit
+lesquels) : de quoi façonner à l'atelier sans refaire une run au bon endroit.
+Les contrats de Kangourex comptent aussi les Hordes (« Viens à bout d'une
+Horde », à la place du Défi une fois sur deux, payé en Baies et vivres). Une mission
 avance d'un cran à chaque salle nettoyée en run, ne rate jamais, et se
 récolte chez lui au retour ; « Rappeler » fait rentrer le Pokémon les mains
 vides. Parti, il n'est plus au camp et ne peut pas entrer dans l'équipe
@@ -539,7 +617,12 @@ après le Champ), une maison sur la rive du lac à l'est du ponton, dans sa prop
 bout d'une allée de galets, est tenu par Queulorior :
 avec herbes et matériaux, il façonne des objets tenus introuvables à l'étal
 (Ceinture Pro, Grelot Coque, Casque Brut, Bandeau, Évoluroc, Mouchoir Choix,
-Lunettes Choix, Lentille Zoom, Orbe Vie) et quatre **nectars**. Posé sur la
+Lunettes Choix, Lentille Zoom, Orbe Vie), onze **CT** que le tuteur n'a pas
+(ajout, 23 novembre 2026, `CRAFTED_TMS` : une par matériau de biome, Éclat
+Magique, Éco-Sphère, Plaie Croix, Cascade, Bombe Beurk, Canicule, Lame de Roc,
+Luminocanon, Aurasphère, Vibrobscur, Chute Glace ; façonnée une fois, elle
+s'apprend à la hutte comme une CT achetée, `Save.tms` ; le tuteur les range
+aussi, sous « Façonnées à l'atelier », pour voir qui peut les apprendre) et quatre **nectars**. Posé sur la
 coupelle de pierre devant l'atelier (le nectar y luit à sa couleur), un nectar attire en 5 salles un Pokémon de base pas
 encore débloqué, d'un type qu'il aime (les espèces déjà croisées d'abord) : il
 attend près de la coupelle, on lui parle, il rejoint la rébellion. À l'écran
@@ -995,7 +1078,17 @@ Retour de test : la première run est dure, puis une équipe de six au niveau
 - **boss à la hauteur** : le champion part du niveau de son acte +3 (le jeu :
   18 + salle × 0,7, plus faible que les sauvages du quatrième acte) ; son équipe
   est complétée par des Pokémon de son type jusqu'à 2, 3, 4, 5 puis 6 selon
-  l'acte (`reinforce`) ; ses sbires passent de 2 au premier acte à 3 + 2 × acte,
+  l'acte (`reinforce`) : d'abord des formes évoluées, escortées de leur forme
+  de base, puis, faute d'en trouver, les autres Pokémon du type, escortés
+  d'eux-mêmes en moins grand nombre (run d'équilibrage du 20 novembre 2026 :
+  la table des évolutions ne couvre que les lignées jouables, et Olga, la
+  dernière championne, restait à deux Pokémon au quatrième acte ; Erika et
+  Pierre à trois, Aldo, Agatha et Peter à quatre). Les formes de base que le
+  joueur ne vit pas (Férosinge pour Colossinge, Debugant pour Kicklee et
+  Tygnon, Stalgamin pour Momartik…) servent aux seules escortes
+  (`escortPreviousOf`, `LEAGUE_PREVIOUS` dans data/evolutions.ts) : dans la
+  table des évolutions, elles feraient partir une recrue d'une forme qui
+  n'évoluerait jamais ; ses sbires passent de 2 au premier acte à 3 + 2 × acte,
   plus un par paire de membres de l'équipe ; l'affiche de la boutique montre
   les vrais niveaux (`Run.bossLevel`) ;
 - **l'équipe compte** : dès le deuxième acte, un sauvage de plus par vague par

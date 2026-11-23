@@ -1,6 +1,7 @@
 import { sfx } from '../audio/audio';
 import { loadMove, type Move } from './moves';
-import type { Fighter } from './damage';
+import { currentWeather, type Fighter } from './damage';
+import { GUTS, GUTS_MULT, NATURAL_CURE, SNIPER, SNIPER_CHANCE, WEATHER_SPEED, WEATHER_SPEED_CADENCE, WEATHER_SPEED_MOVE } from '../data/abilities';
 import { growthOf, xpAt } from '../data/growth';
 import { sheetOf } from '../data/bestiary';
 import { fetchJson } from '../assets/json';
@@ -173,7 +174,7 @@ export class Pokemon implements Fighter {
   }
 
   get critChance(): number {
-    return Math.min(0.6, this.baseCrit + this.mult.crit + this.buff('crit') - 1);
+    return Math.min(0.6, this.baseCrit + this.mult.crit + this.buff('crit') - 1 + (SNIPER.has(this.id) ? SNIPER_CHANCE : 0));
   }
 
   /** Chance d'esquiver un coup (Reflet…), plafonnée à 50 % comme PokemonInstance._DODGE_CAP. */
@@ -183,7 +184,13 @@ export class Pokemon implements Fighter {
 
   /** Stat de Vitesse (elle règle la cadence des capacités). */
   get speed(): number {
-    return Math.floor(this.baseSpeed * this.mult.speed);
+    return Math.floor(this.baseSpeed * this.mult.speed * (this.weatherSpeed ? WEATHER_SPEED_CADENCE : 1));
+  }
+
+  /** Chlorophylle, Glissade, Baigne Sable, Chasse-Neige : son temps souffle sur la salle. */
+  get weatherSpeed(): boolean {
+    const w = WEATHER_SPEED[this.id];
+    return !!w && w.weather === currentWeather();
   }
 
   /** PV max imposés (jeu en ligne : ceux que l'hôte ou l'invité a calculés chez lui), PV courants inchangés. */
@@ -211,7 +218,9 @@ export class Pokemon implements Fighter {
   }
 
   get attack(): number {
-    return Math.floor(this.baseAttack * this.mult.atk * this.buff('atk'));
+    // Cran : le statut qui l'accable l'enrage (gel et sommeil l'empêchent de toute façon d'attaquer).
+    const guts = this.status && GUTS.has(this.id) ? GUTS_MULT : 1;
+    return Math.floor(this.baseAttack * this.mult.atk * this.buff('atk') * guts);
   }
   get spAttack(): number {
     return Math.floor(this.baseSpAttack * this.mult.spAtk * this.buff('atk'));
@@ -245,7 +254,7 @@ export class Pokemon implements Fighter {
 
   /** Paralysie : vitesse de moitié ; bonus de VIT (soutien, Célérité). */
   get speedMult(): number {
-    return (this.status === 'paralysis' ? 0.5 : 1) * this.buff('spd') * this.mult.speed;
+    return (this.status === 'paralysis' ? 0.5 : 1) * this.buff('spd') * this.mult.speed * (this.weatherSpeed ? WEATHER_SPEED_MOVE : 1);
   }
 
   /** Un statut actif n'est jamais écrasé (PokemonInstance.apply_status). `duration` : allongée par un don. */
@@ -262,7 +271,8 @@ export class Pokemon implements Fighter {
   /** Avance le statut ; rend les dégâts du tic (brûlure, poison), 0 sinon. */
   tickStatus(dt: number): number {
     if (!this.status) return 0;
-    this.statusTime -= dt;
+    // Médic Nature : le statut s'use deux fois plus vite (les dégâts de poison ou de brûlure aussi s'arrêtent plus tôt).
+    this.statusTime -= NATURAL_CURE.has(this.id) ? dt * 2 : dt;
     if (this.statusTime <= 0) {
       this.status = null;
       return 0;

@@ -15,7 +15,9 @@ import { CS_LIST } from '../meta/catalog';
 import { VICTORY_ROAD } from '../world/worldmap';
 import { Trainer } from '../entities/trainer';
 import { CaptureThreat } from './capture';
-import { ACES, TRAINER_CLASSES, pickClass, pickMember, type TrainerClassId } from '../data/trainers';
+import { typePill } from '../ui/hud';
+import { loadInfo } from '../assets/pmd';
+import { ACES, LEGENDS, LEGEND_TEAMS, TRAINER_CLASSES, pickClass, pickMember, type TrainerClassId } from '../data/trainers';
 
 // Déroulé d'une salle, repris de CombatArena.gd (_start_zone, vagues,
 // _on_room_cleared, portes, _do_advance) :
@@ -80,6 +82,28 @@ const TRAP_LEVELS = 3;
 const TRAP_WAVES = 3;
 const TRAP_CROWD = 1.5;
 /**
+ * Horde : deux vagues d'une seule espèce, deux fois l'effectif d'une salle (36 au plus), à 2
+ * niveaux de moins. Au premier acte, une salle ordinaire en compte une douzaine sur trois
+ * espèces : il en faut 10 d'une même espèce pour la première recrue, 20 pour la deuxième
+ * (recruitThreshold) ; une Horde en remplit une jauge d'un coup, et ses Pokémon, plus
+ * faibles et plus nombreux, se battent comme une marée plutôt qu'un à un.
+ */
+const HORDE_CROWD = 2;
+const HORDE_WAVES = 2;
+const HORDE_LEVELS = -2;
+const HORDE_MAX = 36;
+/**
+ * Duel : un dresseur légendaire et DUEL_TEAM de ses Pokémon (LEGEND_TEAMS), DUEL_LEVELS niveaux
+ * au-dessus de la salle, DUEL_BARS barres chacun (un top dresseur : 3 Pokémon, +4, 2 barres).
+ * Pas de sauvage à côté : tout le combat est le sien. La porte promet un don. Au banc (23 novembre
+ * 2026), au deuxième acte, deux ou trois membres niv. 27 perdaient même à son niveau (18 à 37 s),
+ * comme contre un champion : le Duel ne s'ouvre qu'au troisième (Run.offers). Ensuite, à +3 :
+ * quatre membres niv. 36 gagnent en 30 s, deux perdent ; cinq niv. 46 gagnent, entamés.
+ */
+const DUEL_TEAM = 4;
+const DUEL_LEVELS = 3;
+const DUEL_BARS = 2;
+/**
  * Surface libre (cases où l'on marche) d'une salle de taille moyenne. Les effectifs
  * des vagues suivent la racine du rapport, entre CROWD_MIN et CROWD_MAX : une Arène
  * étroite reçoit moins de sauvages qu'une grande Clairière (A-FAIRE 1.12).
@@ -128,6 +152,8 @@ interface TrainerGroup {
   thrown: boolean;
   done: boolean;
   ace: boolean;
+  /** Dernière vague qu'il mène (Duel : toutes) ; il ne s'enfuit qu'après elle. Par défaut, la sienne. */
+  until?: number;
 }
 
 /** Un top dresseur (demi-boss) dans une salle de combat sur cinq, à partir de la troisième. */
@@ -206,6 +232,12 @@ export class RoomDirector {
   open = 0;
   /** Les dresseurs de la salle de combat (aucun en salle de boss : le champion a le sien). */
   private groups: TrainerGroup[] = [];
+  /** Duel : la légende de la salle (null ailleurs). */
+  private duel: TrainerClassId | null = null;
+  /** Le nom de la légende du Duel en cours (barre du Pokémon en jeu), ou null. */
+  get duelName(): string | null {
+    return this.special === 'duel' && this.duel ? TRAINER_CLASSES[this.duel].name : null;
+  }
   private wave = 0;
   private pending: PendingSpawn[] = [];
   /** Sauvages déjà comptés comme K.O. */
@@ -319,6 +351,7 @@ export class RoomDirector {
     this.paid = false;
     this.waves = [];
     this.special = run.special;
+    this.duel = null;
     this.failed = false;
     this.village = world.biome.id === 'village' && !run.isBoss() && !run.isShop();
     this.capture.reset();
@@ -339,6 +372,21 @@ export class RoomDirector {
       this.level = plan.level + TRAP_LEVELS;
       for (let w = 0; w < TRAP_WAVES; w++) this.waves.push([]);
       for (let n = 0; n < count; n++) this.waves[n % TRAP_WAVES].push({ id: this.rng.pick(pool), level: this.level, role: 'wild' });
+    } else if (this.special === 'duel' && enemiesOn) {
+      const cls = this.rng.pick(LEGENDS);
+      const team = [...(LEGEND_TEAMS[cls] ?? [])];
+      this.level = plan.level + DUEL_LEVELS;
+      // Des Pokémon de champion (main.ts, attach) : le renfort des champions (PV selon la taille de
+      // l'équipe), leurs six attaques les plus fortes, leur entrée en puissance ; un par vague, comme
+      // ceux d'un champion. Run d'équilibrage du 23 novembre 2026 : en sauvages à deux barres, la
+      // légende tombait en 8 à 13 s ; ses quatre Pokémon de champion à la fois, l'équipe en 12 s.
+      for (let k = 0; k < DUEL_TEAM && team.length; k++) this.waves.push([{ id: team.splice(this.rng.int(team.length), 1)[0], level: this.level, role: 'champion', group: 0 }]);
+      this.duel = cls;
+    } else if (this.special === 'horde' && run.hordeSpecies !== null && enemiesOn) {
+      const count = Math.min(HORDE_MAX, Math.max(HORDE_WAVES * 4, Math.round(plan.count * plan.perWave * crowd * HORDE_CROWD)));
+      this.level = Math.max(2, plan.level + HORDE_LEVELS);
+      for (let w = 0; w < HORDE_WAVES; w++) this.waves.push([]);
+      for (let n = 0; n < count; n++) this.waves[n % HORDE_WAVES].push({ id: run.hordeSpecies, level: this.level, role: 'wild' });
     } else if (!run.isShop() && !this.peaceful && enemiesOn) {
       // Répartition égale, le reste sur les premières vagues (CombatArena.gd:1636-1654).
       // Ligne de front : autant d'ennemis, en une vague de moins (deux au moins) —
@@ -354,7 +402,11 @@ export class RoomDirector {
     }
     this.boss = run.isBoss();
     this.groups = [];
-    if (!this.boss && this.waves.length) this.assignTrainers(world, run);
+    // Pas de dresseur dans une Horde : ils mêleraient leurs Pokémon à la colonie. Le Duel a le sien.
+    if (this.special === 'duel' && this.duel && this.waves.length) {
+      const at = this.spawnPoint(world, world.spawn, false) ?? world.spawn;
+      this.groups.push({ trainer: new Trainer(TRAINER_CLASSES[this.duel].sprite, at, null, 2.5), cls: this.duel, wave: 0, actors: [], thrown: false, done: false, ace: true, until: this.waves.length - 1 });
+    } else if (!this.boss && this.waves.length && this.special !== 'horde') this.assignTrainers(world, run);
     this.total = this.waves.reduce((s, w) => s + w.length, 0);
     // Portes fermées dès l'arrivée : autant que la carte en offre, une seule autour de la boutique et du boss.
     // Chaque offre dit sur quelle sortie elle s'ouvre (Run.pickExits : les routes du côté de leur biome).
@@ -421,7 +473,7 @@ export class RoomDirector {
     for (const p of this.pending.filter((q) => q.t >= SPAWN_ANNOUNCE)) {
       // Sortie de Poké Ball : pas de nuage, la gerbe de la ball suffit.
       const g = p.group !== undefined ? this.groups[p.group] : undefined;
-      const a = this.host.spawnEnemy(p.id, p.level, p.x, p.y, p.role, g?.ace ? ACE_BARS : undefined);
+      const a = this.host.spawnEnemy(p.id, p.level, p.x, p.y, p.role, g?.ace ? (this.special === 'duel' ? DUEL_BARS : ACE_BARS) : undefined);
       g?.actors.push(a);
     }
     this.pending = this.pending.filter((q) => q.t < SPAWN_ANNOUNCE);
@@ -429,7 +481,7 @@ export class RoomDirector {
     this.groups.forEach((g, k) => {
       if (g.done) g.trainer.update(dt, world, Math.random);
       else g.trainer.direct(dt, world, player, g.actors.filter((a) => a.deathT < 0), Math.random);
-      if (g.thrown && !g.done && g.actors.length && g.actors.every((a) => a.deathT >= 0) && !this.pending.some((p) => p.group === k)) this.flee(g, world);
+      if (g.thrown && !g.done && g.actors.length && g.actors.every((a) => a.deathT >= 0) && !this.pending.some((p) => p.group === k) && this.wave >= (g.until ?? g.wave)) this.flee(g, world);
     });
     this.t -= dt;
     this.nag -= dt;
@@ -451,6 +503,10 @@ export class RoomDirector {
           // Le Défi s'annonce (retour de test du 16 novembre 2026 : « le défi et le piège, c'est
           // la même chose ») : l'objectif en grand, puis le compte à côté du chrono.
           if (this.special === 'challenge' && this.wave === 0) this.host.toast(`Défi : ${this.total} sauvages en ${Math.round(this.clock)} s`, `₽ ×3 et un don`);
+          if (this.special === 'horde' && this.wave === 0 && run.hordeSpecies !== null) {
+            const n = this.total;
+            void loadInfo(run.hordeSpecies).then((inf) => this.host.toast(`Horde : ${n} ${inf.name}`, 'Autant de pas vers une recrue'));
+          }
           this.startWave(world, player);
         }
         break;
@@ -503,12 +559,12 @@ export class RoomDirector {
           }
           // Défi réussi ₽ ×3, piège ₽ ×2 ; un défi raté paie la salle, sans plus.
           const won = this.special === 'challenge' && !this.failed;
-          const gold = run.roomGold * (run.isBoss() || won ? 3 : this.special === 'trap' ? 2 : 1);
+          const gold = run.roomGold * (run.isBoss() || won ? 3 : this.special === 'trap' || this.special === 'duel' ? 2 : 1);
           run.money += gold;
           this.host.setTimer(null);
           this.host.roomCleared();
           this.host.toast(won ? 'Défi réussi !' : this.failed ? 'Défi raté…' : 'Salle libérée !', `+${gold} ₽`);
-          if (this.special === 'challenge' || this.special === 'trap') this.host.specialDone(this.special, !this.failed);
+          if (this.special === 'challenge' || this.special === 'trap' || this.special === 'horde') this.host.specialDone(this.special, !this.failed);
           this.t = OPEN_DELAY;
           break;
         }
@@ -549,10 +605,11 @@ export class RoomDirector {
     const warn = world.front && !this.boss ? this.announce(world, player) : 0;
     // Les dresseurs de cette vague se tournent vers le joueur et lancent leurs Poké Balls.
     for (const g of this.groups) {
-      if (g.wave !== this.wave) continue;
+      if (this.wave < g.wave || this.wave > (g.until ?? g.wave)) continue;
+      const first = !g.thrown;
       g.thrown = true;
       g.trainer.aim(player.x, player.y, 1.2);
-      if (g.ace) {
+      if (g.ace && first) {
         this.host.message(`${TRAINER_CLASSES[g.cls].name} te défie !`);
         sfx('vs');
       }
@@ -845,6 +902,14 @@ export class RoomDirector {
     name.textContent = `${sp.glyph} ${sp.name}`;
     name.style.setProperty('--b', sp.color);
     el.prepend(name);
+    // Horde : son espèce sous le nom, pour venir y chercher une recrue.
+    if (offer.special === 'horde' && offer.horde !== undefined) {
+      const who = document.createElement('span');
+      who.className = 'room-champ';
+      who.textContent = '…';
+      name.after(who);
+      void loadInfo(offer.horde).then((inf) => (who.textContent = inf.name));
+    }
     return el;
   }
 
@@ -871,6 +936,14 @@ export class RoomDirector {
     name.textContent = `→ ${place.name}`;
     name.style.setProperty('--b', place.color);
     el.prepend(name);
+    // Qui garde ce biome, et son type : la route se choisit aussi aux types (Run.championAhead).
+    if (offer.champion) {
+      const who = document.createElement('span');
+      who.className = 'room-champ';
+      who.textContent = offer.champion.name;
+      typePill(offer.champion.type, who);
+      name.after(who);
+    }
     return el;
   }
 

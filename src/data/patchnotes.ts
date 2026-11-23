@@ -18,6 +18,68 @@ export interface PatchNote {
 
 export const PATCH_NOTES: readonly PatchNote[] = [
   {
+    id: '2026-11-23',
+    date: '23 novembre 2026',
+    title: 'Talents, Horde et CT de l’atelier',
+    sections: [
+      {
+        title: 'Talents',
+        items: [
+          'Chlorophylle, Glissade, Baigne Sable et Chasse-Neige : sous leur temps, le Pokémon attaque et court plus vite (Chétiflor au soleil, Hypotrempe sous la pluie…).',
+          'Isograisse : Ronflex, Écrémeuh, Otaria ou Marill ne prennent que la moitié des coups Feu et Glace.',
+          'Cran : brûlé, empoisonné ou paralysé, Machoc, Scarhino ou Charpenti frappent moitié plus fort.',
+          'Technicien (Miaouss, Insécateur, Cizayox…) renforce les petites attaques ; Sniper (Piafabec, Rapasdepic, Dardargnan) place des critiques plus fréquents et plus durs ; Médic Nature (Leveinard, Staross…) se remet deux fois plus vite d’un statut.',
+        ],
+      },
+      {
+        title: 'Nouvelles salles',
+        items: [
+          'La Horde ❖ : une colonie d’une seule espèce, que la porte annonce. Deux fois plus de sauvages, un peu plus faibles : de quoi remplir d’un coup la jauge d’une recrue.',
+          'Le Duel ⚔ : Red, Leaf ou Brice t’attendent avec quatre de leurs Pokémon, aussi forts que ceux d’un champion. Un don à la clé, à partir du troisième acte.',
+        ],
+      },
+      {
+        title: 'Carte du monde',
+        items: ['Coupe ouvre la route de l’Automne, Éclate-Roc celle du Volcan depuis le Marais, Force celle de la Montagne glacée. Le plan du Repaire écrit la CS qui manque sur la route qu’elle garde.'],
+      },
+      {
+        title: 'Repaire',
+        items: [
+          'Nouvelle mission chez Démolosse, une fois la Carrière bâtie : les Fouilles rapportent trois matériaux des biomes déjà parcourus.',
+          'Kangourex propose parfois un contrat de Horde.',
+        ],
+      },
+      {
+        title: 'Route Victoire',
+        items: ['Ses portes proposent enfin des salles spéciales : Défi, Piège et Horde, rien de plus doux sur l’acte le plus dur.'],
+      },
+      {
+        title: 'Atelier',
+        items: ['Queulorior façonne onze CT que le tuteur n’a pas : Éco-Sphère, Bombe Beurk, Luminocanon, Vibrobscur, Lame de Roc… Chacune demande le matériau d’un biome et une herbe du potager. Le tuteur les montre aussi, avec qui peut les apprendre.'],
+      },
+    ],
+  },
+  {
+    id: '2026-11-20-equipes',
+    date: '20 novembre 2026',
+    title: 'Des champions au complet',
+    sections: [
+      {
+        title: 'Équilibre',
+        items: [
+          'Les champions alignent enfin l’équipe prévue : Olga, la dernière championne, n’avait que deux Pokémon au quatrième acte, Erika et Pierre trois, et le Conseil quatre sur la Route Victoire, qui tombait plus vite que le champion d’avant.',
+          'Faute de formes évoluées de son type, un champion complète son équipe avec les autres Pokémon de ce type, escortés d’eux-mêmes en moins grand nombre.',
+          'Les escortes prennent la vraie forme de base : Férosinge autour de Colossinge, Debugant autour de Kicklee et Tygnon, Stalgamin autour de Momartik.',
+          'Peter aligne six Pokémon : Drattak et Carchacrok rejoignent ses dragons.',
+        ],
+      },
+      {
+        title: 'Carte du monde',
+        items: ['Après un champion, chaque porte de route annonce qui garde le biome et son type : choisis ta route selon ton équipe.'],
+      },
+    ],
+  },
+  {
     id: '2026-11-20',
     date: '20 novembre 2026',
     title: 'Un premier champion plus juste',

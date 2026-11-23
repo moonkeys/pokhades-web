@@ -8,7 +8,7 @@ import { dexOf } from '../data/forms';
 import { BUILDINGS, BUNKS, BUNK_ROOM, bunkPrice, CANDY, CS_LIST, HELD_ITEMS, RESOURCES, RESOURCE_IDS, SHARDS, TMS, UPGRADES, applyHeld, buildingsShown, canAfford, heldBoosts, heldItem, heldText, teamSlots, type Cost, type HeldItem, type ResourceId, type Upgrade } from '../meta/catalog';
 import { evolutionsOf } from '../data/evolutions';
 import { BIOME_IDS, CAMP_NPCS, FAUNA, LEGENDARY_SPECIES, MERC_POOLS, QUEST_SPECIES, STARTER_IDS, type BiomeId } from '../data/species';
-import { BIOME_MATERIAL, GARDEN, MATERIALS, NECTARS, NECTAR_ROOMS, RECIPES, canCraft, craft, harvest, materialName, pickVisitor, plots, recipeOutput, sow } from '../meta/crafting';
+import { BIOME_MATERIAL, CRAFTED_TMS, GARDEN, MATERIALS, NECTARS, NECTAR_ROOMS, RECIPES, canCraft, craft, harvest, materialName, pickVisitor, plots, recipeOutput, sow } from '../meta/crafting';
 import { BIOME_GRUNTS, GRUNT_THEMES } from '../data/grunts';
 import { BIOMES } from '../world/biomes';
 import { MISSIONS, available, busy, collect, mission, missionSlots, open as missionOpen, recall, rewardText, send, type Mission, type MissionId } from '../meta/missions';
@@ -575,8 +575,31 @@ export class CampScreen {
         void this.render();
       });
     });
-    const tm = TMS.find((t) => t.api === this.modal);
-    const m = tm && moves[TMS.indexOf(tm)];
+    // Les CT de l'atelier (CRAFTED_TMS) : rangées ici aussi, pour voir qui peut les apprendre ;
+    // elles ne s'achètent pas, elles se façonnent chez Queulorior.
+    el('div', 'cs-label', main, 'Façonnées à l’atelier de Queulorior');
+    const forged = el('div', 'cs-grid', main);
+    const crafted = Object.keys(CRAFTED_TMS);
+    const cmoves = await Promise.all(crafted.map((api) => move(api)));
+    crafted.forEach((api, i) => {
+      const m = cmoves[i];
+      if (!m) return;
+      const owned = ctx.save.tms.includes(api);
+      const card = el('div', `cs-card da-paper${owned ? ' owned' : ' poor'}`, forged);
+      card.style.setProperty('--c', typeColor(m.type));
+      icon(`machine_${m.type.toUpperCase()}`, card);
+      const head = el('div', 'cs-head', card);
+      el('b', '', head, m.name);
+      typePill(m.type, head);
+      el('small', 'cs-info', card, moveInfo(m));
+      el('div', 'da-tape cs-tag', card, owned ? 'Acquise' : 'Atelier');
+      card.addEventListener('click', () => {
+        this.modal = api;
+        void this.render();
+      });
+    });
+    const tm = TMS.find((t) => t.api === this.modal) ?? (this.modal && CRAFTED_TMS[this.modal] ? { api: this.modal, price: 0 } : undefined);
+    const m = tm && (moves[TMS.indexOf(tm as (typeof TMS)[number])] ?? cmoves[crafted.indexOf(tm.api)]);
     if (tm && m) await this.moveModal(page, ctx, tm, m);
   }
 
@@ -607,6 +630,7 @@ export class CampScreen {
     const owned = ctx.save.tms.includes(tm.api);
     const act = el('div', 'cs-modal-act', box);
     if (owned) el('div', 'da-tape', act, 'Acquise : à équiper à la hutte');
+    else if (!tm.price) el('div', 'da-tape', act, 'À façonner à l’atelier de Queulorior');
     else {
       const b = el('button', 'cs-buy', act, `Acheter · ${tm.price} Baies`) as HTMLButtonElement;
       b.disabled = ctx.save.baies < tm.price;
@@ -822,15 +846,19 @@ export class CampScreen {
       icon(out.icon, card);
       el('div', 'cs-head', card).append(el('b', '', undefined, out.name));
       const held = r.kind === 'held' ? heldItem(r.out) : undefined;
-      el('small', 'cs-info', card, held ? heldText(held) : NECTARS[r.out]?.desc ?? '');
+      const tm = r.kind === 'tm' ? CRAFTED_TMS[r.out] : undefined;
+      if (tm) typePill(tm.type, card.querySelector('.cs-head') as HTMLElement);
+      el('small', 'cs-info', card, held ? heldText(held) : tm ? `Puissance ${tm.power}, à apprendre à la hutte.` : NECTARS[r.out]?.desc ?? '');
       matRow(r.needs, card, 'cs-cost', save.materials);
-      const owned = r.kind === 'held' ? save.items[r.out] ?? 0 : save.materials[r.out] ?? 0;
+      const learnt = r.kind === 'tm' && save.tms.includes(r.out);
+      const owned = r.kind === 'held' ? save.items[r.out] ?? 0 : r.kind === 'tm' ? 0 : save.materials[r.out] ?? 0;
       if (owned) el('small', 'cs-next', card, `En réserve : ${owned}`);
-      el('div', 'da-tape cs-tag', card, 'Façonner');
+      if (learnt) card.classList.add('owned');
+      el('div', 'da-tape cs-tag', card, learnt ? 'Acquise' : 'Façonner');
       card.addEventListener('click', () => {
         if (!craft(save, r)) return sfx('buzzer');
         sfx('buy');
-        ctx.notify('Atelier', r.kind === 'held' ? `${out.name} : à donner à la hutte de Porygon.` : `${out.name} : à poser devant l’atelier.`, CAMP_NPCS.craft);
+        ctx.notify('Atelier', r.kind === 'held' ? `${out.name} : à donner à la hutte de Porygon.` : r.kind === 'tm' ? `${out.name} : à apprendre à la hutte de Porygon.` : `${out.name} : à poser devant l’atelier.`, CAMP_NPCS.craft);
         ctx.persist();
         void this.render();
       });
@@ -1405,7 +1433,7 @@ export class CampScreen {
         card.addEventListener('click', () =>
           this.buy(c.price, () => {
             ctx.save.cs.push(c.id);
-            ctx.notify(`CS ${c.name}`, c.id === 'surf' ? 'Ton équipe sait nager : le lac et son île t’attendent.' : c.id === 'cut' ? 'Les arbustes ne gardent plus les coffres : [E] devant pour couper.' : c.id === 'rock-smash' ? 'Les rochers fissurés ne gardent plus les coffres : [E] devant pour briser.' : c.desc, STATIONS.upgrades.id);
+            ctx.notify(`CS ${c.name}`, c.id === 'surf' ? 'Ton équipe sait nager : le lac et son île t’attendent.' : c.id === 'cut' ? 'Les arbustes ne gardent plus les coffres, et la route de l’Automne s’ouvre.' : c.id === 'rock-smash' ? 'Les rochers fissurés ne gardent plus les coffres, et la route du Volcan s’ouvre.' : c.id === 'strength' ? 'Les gros rochers se poussent, et la route de la Montagne glacée s’ouvre.' : c.desc, STATIONS.upgrades.id);
             ctx.teamChanged();
           }),
         );
@@ -1657,7 +1685,7 @@ export class CampScreen {
         el('div', 'cs-head', card).append(el('b', '', undefined, m.name));
         el('small', 'cs-info', card, m.desc);
         this.rewardRow(m, card, `${m.rooms} salles`);
-        if (!ok) el('div', 'da-tape cs-tag', card, 'Terrain requis');
+        if (!ok) el('div', 'da-tape cs-tag', card, m.needs === 'quarry' ? 'Carrière requise' : 'Terrain requis');
         else card.addEventListener('click', () => go({ slot: sending.slot, type: m.id }));
       }
       return;
@@ -1696,9 +1724,11 @@ export class CampScreen {
       if (done) {
         el('div', 'da-stamp cs-price', card, 'Récolter');
         card.addEventListener('click', () => {
-          if (!collect(save, i)) return;
+          const got = collect(save, i);
+          if (!got) return;
           ctx.persist();
-          ctx.notify('Mission', `${name} rapporte ${rewardText(m)}.`, speciesOf(save, slot.pid));
+          const found = got.found && Object.entries(got.found).map(([mat, n]) => `${materialName(mat)}${n > 1 ? ` ×${n}` : ''}`).join(', ');
+          ctx.notify('Mission', `${name} rapporte ${found ?? rewardText(m)}.`, speciesOf(save, slot.pid));
           ctx.teamChanged();
           void this.render();
         });
@@ -1727,9 +1757,9 @@ export class CampScreen {
     const row = m.res ? resRow(m.res, card, 'cs-cost cs-reward') : el('div', 'cs-cost cs-reward', card);
     if (!m.res) {
       const chip = el('span', 'cs-res', row);
-      chip.title = m.levels ? 'Niveaux de départ' : 'Baies';
-      el('b', '', chip, m.levels ? `+${m.levels} N.` : String(m.baies ?? 0));
-      icon(m.levels ? CANDY.icon : 'ORANBERRY', chip, 'cs-res-ico');
+      chip.title = m.levels ? 'Niveaux de départ' : m.materials ? 'Matériaux de biome' : 'Baies';
+      el('b', '', chip, m.levels ? `+${m.levels} N.` : m.materials ? `×${m.materials}` : String(m.baies ?? 0));
+      icon(m.levels ? CANDY.icon : m.materials ? MATERIALS['smooth-rock'].icon : 'ORANBERRY', chip, 'cs-res-ico');
     }
     if (tail) el('small', 'cs-next', row, `· ${tail}`);
   }
@@ -1739,7 +1769,7 @@ export class CampScreen {
     const r = Object.keys(m.res ?? {})[0] as ResourceId | undefined;
     const box = el('div', 'cs-icon cs-mission-ico', card);
     if (r) resIcon(r, box);
-    else icon(m.levels ? CANDY.icon : 'ORANBERRY', box, 'cs-res-ico');
+    else icon(m.levels ? CANDY.icon : m.materials ? MATERIALS['smooth-rock'].icon : 'ORANBERRY', box, 'cs-res-ico');
   }
 
   // ── En ligne (Roucarnage) ────────────────────────────────────────────

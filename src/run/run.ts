@@ -1,12 +1,12 @@
 import { Boons, DONORS, type DonorId } from '../combat/boons';
 import { Rng, hash2 } from '../core/rng';
 import { BIOME_CHAMPIONS, CHAMPIONS, type Champion } from '../data/champions';
-import type { BiomeId } from '../data/species';
+import { SWIMMERS, type BiomeId } from '../data/species';
 import type { CsId } from '../meta/catalog';
 import { BIOMES } from '../world/biomes';
 import { OPPOSITE, type Side } from '../world/generate';
 import { VICTORY_ROAD, WORLD, WORLD_LINKS, type BiomeLink } from '../world/worldmap';
-import { preEvolutionOf } from '../data/evolutions';
+import { escortPreviousOf } from '../data/evolutions';
 import { typeMates } from '../data/trainers';
 
 // Structure d'une run, reprise de RunManager.gd : 4 actes de 9 salles (7
@@ -87,7 +87,7 @@ const REWARD_WEIGHTS: [Reward, number][] = [
  *   une embuscade plus forte, et elle ne se prend qu'une fois la salle libérée ;
  * - Marchand : Miaouss propose un pari sur les ₽ et un don contre des PV.
  */
-export type SpecialId = 'challenge' | 'trap' | 'merchant' | 'spring' | 'altar' | 'dojo' | 'pension';
+export type SpecialId = 'challenge' | 'trap' | 'merchant' | 'spring' | 'altar' | 'dojo' | 'pension' | 'horde' | 'duel';
 export const SPECIALS: Record<SpecialId, { name: string; glyph: string; color: string }> = {
   challenge: { name: 'Défi', glyph: '⏱', color: '#f2c14e' },
   trap: { name: 'Piège', glyph: '⚠', color: '#e8604c' },
@@ -100,6 +100,13 @@ export const SPECIALS: Record<SpecialId, { name: string; glyph: string; color: s
   dojo: { name: 'Dojo', glyph: '✊', color: '#e08a4c' },
   // Ajout (A-FAIRE 1.9) : Écrémeuh y entraîne l'équipe, un niveau chacun (run/pension.ts).
   pension: { name: 'Pension', glyph: '❀', color: '#e8a8c8' },
+  // Ajout (23 novembre 2026, A-FAIRE 1.9 : « d'autres salles ») : toute une colonie d'une même
+  // espèce, annoncée par la porte. On recrute une espèce en en battant assez (meta/save.ts,
+  // recordDefeat) : la Horde est la salle où l'on vient remplir une jauge choisie.
+  horde: { name: 'Horde', glyph: '❖', color: '#9ad46a' },
+  // Ajout (23 novembre 2026) : un dresseur légendaire (Red, Leaf, Brice) et quatre Pokémon
+  // de champion, contre un don garanti (run/room.ts, DUEL_*). Jamais avant le troisième acte.
+  duel: { name: 'Duel', glyph: '⚔', color: '#e8584c' },
 };
 
 /**
@@ -120,7 +127,9 @@ const CURSE_LEVELS = 2;
  * marchand, j'en veux pas du tout » — Miaouss (run/merchant.ts) n'est plus
  * tiré ; son code reste, pour le jour où il reviendrait sous une autre forme.
  */
-const OFFERED_SPECIALS: readonly SpecialId[] = ['challenge', 'trap', 'spring', 'altar', 'dojo', 'pension'];
+const OFFERED_SPECIALS: readonly SpecialId[] = ['challenge', 'trap', 'spring', 'altar', 'dojo', 'pension', 'horde', 'duel'];
+/** Les salles spéciales de la Route Victoire : celles où l'on se bat. */
+const VICTORY_SPECIALS: readonly SpecialId[] = ['challenge', 'trap', 'horde', 'duel'];
 /** Chance qu'une porte devienne une salle spéciale, et plafond par acte. */
 const SPECIAL_CHANCE = 0.35;
 const SPECIALS_PER_ACT = 3;
@@ -141,6 +150,10 @@ export interface ExitOffer {
   exit?: number;
   /** Sortie de boss vers la Route Victoire. */
   victory?: boolean;
+  /** Horde : l'espèce de toute la salle, que la porte annonce. */
+  horde?: number;
+  /** Sortie de boss : le champion qui garde ce biome, s'il est sûr (Run.championAhead). */
+  champion?: { name: string; type: string };
 }
 
 /** Ce que la run doit savoir du Repaire en partant. */
@@ -173,8 +186,14 @@ export class Run {
   private readonly beaten: readonly string[];
   /** Salle spéciale en cours (la porte prise l'annonçait), sinon null. */
   special: SpecialId | null = null;
+  /** Salle de Horde : son espèce (ExitOffer.horde). */
+  hordeSpecies: number | null = null;
   /** Salles spéciales prises à chaque acte, et la dernière (jamais deux pareilles de suite). */
-  private readonly specialsTaken = [0, 0, 0, 0];
+  /**
+   * Salles spéciales prises, par acte. Un tableau à quatre cases laissait la Route Victoire,
+   * cinquième acte, sans aucune (NaN < 3 est faux) : il suit maintenant les actes de la run.
+   */
+  private readonly specialsTaken: number[] = [];
   private lastSpecial: SpecialId | null = null;
   /** Dons de légendaires et ultime de la run. */
   readonly boons = new Boons();
@@ -204,6 +223,11 @@ export class Run {
     this.teamSize = Math.max(1, setup.teamSize ?? 1);
     this.beaten = setup.beaten ?? [];
     this.pushAct(biomeOverride ?? 'prairie');
+  }
+
+  /** La salle `room` est sur la Route Victoire. */
+  onVictoryRoadAt(room: number): boolean {
+    return Math.min(this.acts - 1, Math.floor(room / ROOMS_PER_ACT)) === this.victoryAct;
   }
 
   /** L'acte courant se joue sur la Route Victoire. */
@@ -245,7 +269,15 @@ export class Run {
    * les jeux, en alignent cinq au quatrième acte. Les renforts sont des Pokémon de son
    * type pris dans la faune de la Ligue, rangés avant l'as, escortés de leur forme de base.
    */
-  private reinforce(champ: Champion, act: number): Champion {
+  private reinforce(given: Champion, act: number): Champion {
+    // Ses propres Pokémon aussi s'escortent de leur forme de base quand on la connaît : les
+    // équipes reprises du jeu donnaient la leur à Kicklee, Tygnon et Spectrum (escortPreviousOf).
+    const baseOf = (id: number) => {
+      let base = id;
+      while (escortPreviousOf(base) !== null) base = escortPreviousOf(base)!;
+      return base;
+    };
+    const champ = { ...given, team: given.team.map(([f, b]): [number, number] => [f, f === b ? baseOf(f) : b]) };
     // Plus ton équipe est grande, plus la sienne l'est (retour de test du 11 novembre
     // 2026) : autant de Pokémon que toi, moins un, plus l'acte ; quatre au plus au
     // premier acte, six ensuite. Seul, on retrouve le plancher de l'acte.
@@ -253,14 +285,22 @@ export class Run {
     const want = Math.min(act === 0 ? 4 : 6, Math.max(floor, this.teamSize - 1 + act));
     if (champ.team.length >= want) return champ;
     const have = new Set(champ.team.map(([f]) => f));
-    const mates = typeMates(champ.type).filter((id) => !have.has(id) && preEvolutionOf(id) !== null);
+    const others = typeMates(champ.type).filter((id) => !have.has(id));
+    const mates = others.filter((id) => escortPreviousOf(id) !== null);
+    // Repli : les autres Pokémon du type, sans forme de base connue (leur escorte prend leur
+    // forme, moins nombreuse : bossWaves). Run d'équilibrage du 20 novembre 2026 : la table
+    // des évolutions ne couvre que les lignées jouables, et la faune de la Ligue est surtout
+    // faite de formes de base ou d'espèces qu'elle ne connaît pas (Colossinge, Spectrum…).
+    // Les seules formes évoluées laissaient Olga, dernière championne, à deux Pokémon au
+    // quatrième acte, Erika et Pierre à trois, Aldo, Agatha et Peter à quatre sur six, et le
+    // Conseil tombait plus vite que le champion d'avant. Jamais un nageur hors de l'eau.
+    const spare = others.filter((id) => escortPreviousOf(id) === null && !SWIMMERS.has(id));
     const extra: [number, number][] = [];
     const rng = new Rng(hash2(this.seed, act, 4411) * 1e9);
-    while (champ.team.length + extra.length < want && mates.length) {
-      const id = mates.splice(rng.int(mates.length), 1)[0];
-      let base = id;
-      while (preEvolutionOf(base) !== null) base = preEvolutionOf(base)!;
-      extra.push([id, base]);
+    while (champ.team.length + extra.length < want && (mates.length || spare.length)) {
+      const pool = mates.length ? mates : spare;
+      const id = pool.splice(rng.int(pool.length), 1)[0];
+      extra.push([id, baseOf(id)]);
     }
     return { ...champ, team: [...champ.team.slice(0, -1), ...extra, champ.team[champ.team.length - 1]] };
   }
@@ -269,6 +309,21 @@ export class Run {
   nextBiomes(): BiomeLink[] {
     this.ensureAct(this.act);
     return this.linksFrom(this.act);
+  }
+
+  /**
+   * Le champion qui attend au bout de cette branche, sans rien tirer : le garde du
+   * Conseil sur la Route Victoire, sinon le champion du biome s'il n'a pas encore été
+   * affronté dans la run (un seul par biome, BIOME_CHAMPIONS). Null quand pushAct
+   * devrait tirer au sort parmi les autres : la porte ne promet que ce qui est sûr.
+   * Run d'équilibrage du 20 novembre 2026 : un combat de champion se gagne d'abord
+   * aux types (Olga tombait sans peine devant Feu et Combat, Giovanni et Auguste
+   * renversaient la même équipe) ; la porte le dit au moment de choisir sa route.
+   */
+  championAhead(link: BiomeLink): Champion | null {
+    if (this.act + 1 === this.victoryAct) return CHAMPIONS[ELITE.find((n) => !this.beaten.includes(n)) ?? LEAGUE_MASTER] ?? null;
+    const fresh = (BIOME_CHAMPIONS[link.to] ?? []).filter((n) => !this.faced.has(n));
+    return fresh.length === 1 ? (CHAMPIONS[fresh[0]] ?? null) : null;
   }
 
   /** La CS qui manque pour prendre cette branche, s'il en manque une. */
@@ -412,15 +467,20 @@ export class Run {
       const head = this.act === this.victoryAct ? (this.champion.name === LEAGUE_MASTER ? '☠ MAÎTRE DE LA LIGUE' : '☠ CONSEIL') : this.act >= this.acts - 1 ? '☠ DRESSEUR FINAL' : '☠ BOSS';
       const label = boss ? `${head} · ${this.champion.name}` : donor ? donorLabel(donor) : REWARD_LABEL[reward];
       const link = links[i];
-      out.push({ reward, label, donor, biome: link?.to, locked: link && this.missingCs(link), exit: exits[i], victory: link && this.act + 1 === this.victoryAct ? true : undefined });
+      const ahead = link && this.championAhead(link);
+      out.push({ reward, label, donor, biome: link?.to, locked: link && this.missingCs(link), exit: exits[i], victory: link && this.act + 1 === this.victoryAct ? true : undefined, champion: ahead ? { name: ahead.name, type: ahead.type } : undefined });
     }
     // Une porte sur plusieurs peut mener à une salle spéciale : jamais vers la boutique ou le boss,
     // ni en ouvrant un acte, ni dans les deux premières salles (sauvages de niveau 4 à 8 : un Piège
     // y tirerait plan.level + TRAP_LEVELS), ni sans autre porte à côté (on doit pouvoir l'éviter).
     const next = this.room + 1;
     const fits = out.length >= 2 && next >= 2 && !this.isBoss() && !this.isShop(next) && !this.isBoss(next) && next % ROOMS_PER_ACT !== 0;
-    if (fits && this.specialsTaken[this.act] < SPECIALS_PER_ACT && this.rng.chance(SPECIAL_CHANCE)) {
-      const kinds = OFFERED_SPECIALS.filter((k) => k !== this.lastSpecial);
+    if (fits && (this.specialsTaken[this.act] ?? 0) < SPECIALS_PER_ACT && this.rng.chance(SPECIAL_CHANCE)) {
+      // Sur la Route Victoire, seulement des salles de combat : ni soins, ni niveaux, ni leçons
+      // offerts sur l'acte le plus dur (choix du 23 novembre 2026).
+      // Pas de Duel avant le troisième acte : quatre Pokémon de champion d'une légende, un combat
+      // de champion en plus, trop lourd pour une équipe qui se cherche (run/room.ts, DUEL_*).
+      const kinds = (this.onVictoryRoadAt(next) ? VICTORY_SPECIALS : OFFERED_SPECIALS).filter((k) => k !== this.lastSpecial && !(k === 'duel' && this.act < 2));
       const special = this.rng.pick(kinds);
       const i = out.length - 1;
       out[i] = { ...this.specialOffer(special, out[i]), exit: out[i].exit };
@@ -434,11 +494,18 @@ export class Run {
    * remplacent).
    */
   specialOffer(special: SpecialId, base: ExitOffer): ExitOffer {
-    const reward: Reward = special === 'challenge' ? 'boon' : special === 'merchant' || special === 'spring' || special === 'altar' || special === 'dojo' || special === 'pension' ? 'loot' : base.reward;
+    const reward: Reward = special === 'challenge' || special === 'duel' ? 'boon' : special === 'merchant' || special === 'spring' || special === 'altar' || special === 'dojo' || special === 'pension' ? 'loot' : base.reward;
     const donor = reward === 'boon' ? (base.donor ?? this.boons.pickDonor(this.rng) ?? undefined) : undefined;
     const prize = special === 'merchant' ? '' : special === 'spring' ? ' · soins' : special === 'altar' ? ' · pacte' : special === 'dojo' ? ' · leçons' : special === 'pension' ? ' · niveaux' : ` · ${donor ? donorLabel(donor) : REWARD_LABEL[reward]}`;
     // Le Piège garde l'étiquette de la porte qu'il remplace : rien ne le trahit.
     if (special === 'trap') return { ...base, special };
+    // La Horde garde aussi la récompense de sa porte, et dit son espèce : une forme de base
+    // de la faune de la salle d'après (jamais un nageur : la colonie charge à pied).
+    if (special === 'horde') {
+      const pool = this.hordePool(this.room + 1);
+      const horde = pool.length ? this.rng.pick(pool) : undefined;
+      return horde === undefined ? base : { ...base, special, horde, label: `${SPECIALS.horde.name}${prize}` };
+    }
     return { reward, donor, special, label: `${SPECIALS[special].name}${prize}` };
   }
 
@@ -480,8 +547,9 @@ export class Run {
     this.reward = offer.reward;
     this.donor = offer.donor;
     this.special = offer.special ?? null;
+    this.hordeSpecies = offer.horde ?? null;
     if (this.special) {
-      this.specialsTaken[this.act]++;
+      this.specialsTaken[this.act] = (this.specialsTaken[this.act] ?? 0) + 1;
       this.lastSpecial = this.special;
     }
   }
@@ -553,10 +621,15 @@ export class Run {
    * premières de la liste du biome, des formes de base. La Route Victoire mêle la faune
    * des quatre biomes du dernier étage.
    */
-  fauna(): number[] {
+  /** Les espèces dont une Horde peut être faite dans `room` : formes de base de sa faune, à pied. */
+  hordePool(room = this.room): number[] {
+    return this.fauna(room).filter((id) => escortPreviousOf(id) === null && !SWIMMERS.has(id));
+  }
+
+  fauna(room = this.room): number[] {
     if (this.onVictoryRoad) return [...new Set((['volcan', 'rocailleux', 'glace', 'marais'] as BiomeId[]).flatMap((b) => BIOMES[b].fauna))];
     const all = BIOMES[this.biome].fauna;
-    const early = this.room % ROOMS_PER_ACT < 2;
+    const early = room % ROOMS_PER_ACT < 2;
     if (this.act === 0) return all.slice(0, early ? 3 : 5);
     return early ? all.slice(0, 9) : [...all];
   }

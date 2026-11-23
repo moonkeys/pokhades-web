@@ -324,6 +324,26 @@ body {
 .room-label.route.locked .room-biome {
   opacity: 0.55;
 }
+/* Sous le biome : qui le garde, et la pastille de son type (Run.championAhead). */
+.room-label .room-champ {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 2px 0 4px;
+  font-family: var(--head);
+  font-size: 16px;
+  letter-spacing: 0.04em;
+  color: #efe6d2;
+  -webkit-text-stroke: 4px #1a1008;
+  paint-order: stroke fill;
+}
+.room-label .room-champ .pill {
+  -webkit-text-stroke: 0;
+}
+.room-label.route.locked .room-champ {
+  opacity: 0.55;
+}
 .room-label.route.locked .rw-ico img {
   filter: grayscale(1) drop-shadow(0 0 1px #1a1008) drop-shadow(0 0 1px #1a1008);
 }

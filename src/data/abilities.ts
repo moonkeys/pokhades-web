@@ -115,6 +115,51 @@ export const PINCH: Readonly<Record<number, { name: string; type: string }>> = O
   ),
 );
 const TYPE_FR: Record<string, string> = { water: 'Eau', electric: 'Électrik', grass: 'Plante', fire: 'Feu' };
+// Talents de temps, Isograisse et Cran (ajout, 23 novembre 2026, A-FAIRE 1.8 : « Glissade,
+// Chlorophylle, Isograisse… »). Même table à la main, vérifiée sur les talents des jeux
+// (cachés compris : Psykokwak, Sabelette, Doudouvet), et seulement des espèces embarquées.
+
+/**
+ * Chlorophylle, Glissade, Baigne Sable, Chasse-Neige : sous leur temps, la cadence de ses
+ * attaques ×WEATHER_SPEED_CADENCE et son pas ×WEATHER_SPEED_MOVE (Pokemon.speed, speedMult).
+ * Écart voulu : les jeux doublent la Vitesse, qui n'y règle que l'ordre des tours ; ici elle
+ * règle la cadence, et un pas doublé ferait traverser la salle en un clin d'œil (le dash
+ * va déjà à 26 cases par seconde) : la cadence gagne la moitié, le pas un cinquième.
+ */
+export const WEATHER_SPEED: Readonly<Record<number, { name: string; weather: WeatherAbility['weather'] }>> = {
+  ...Object.fromEntries([43, 44, 45, 69, 70, 71, 103, 114, 187, 188, 189, 191, 192, 273, 274, 275, 357, 465, 546, 547].map((id) => [id, { name: 'Chlorophylle', weather: 'sun' as const }])),
+  ...Object.fromEntries([54, 55, 116, 117, 118, 119, 129, 226, 270, 271, 272, 283, 349, 458].map((id) => [id, { name: 'Glissade', weather: 'rain' as const }])),
+  27: { name: 'Baigne Sable', weather: 'sand' },
+  ...Object.fromEntries([613, 614].map((id) => [id, { name: 'Chasse-Neige', weather: 'hail' as const }])),
+};
+export const WEATHER_SPEED_CADENCE = 1.5;
+export const WEATHER_SPEED_MOVE = 1.2;
+/** Isograisse : les attaques Feu et Glace ne lui font que la moitié des dégâts. */
+export const THICK_FAT: ReadonlySet<number> = new Set([86, 87, 143, 446, 183, 184, 220, 221, 241, 296, 297, 363, 364]);
+/** Cran : sous un statut (brûlure, poison, paralysie), son Attaque ×1,5. */
+export const GUTS: ReadonlySet<number> = new Set([19, 20, 66, 67, 68, 214, 217, 532, 533, 534]);
+export const GUTS_MULT = 1.5;
+// Technicien, Sniper, Médic Nature (ajout, 23 novembre 2026, deuxième passe : A-FAIRE 1.8).
+/** Technicien : ses attaques de puissance TECHNICIAN_CAP au plus frappent ×1,5. */
+export const TECHNICIAN: ReadonlySet<number> = new Set([52, 53, 123, 212, 235, 572]);
+export const TECHNICIAN_CAP = 60;
+/**
+ * Sniper : ses coups critiques font ×2,25 au lieu de ×1,5, et il en porte SNIPER_CHANCE de
+ * plus. Écart voulu : ici, un Pokémon n'a aucune chance de critique d'office (seuls le don
+ * Précision et les attaques qui affûtent en donnent ; la Lentille Zoom de l'atelier, elle,
+ * touche Atq. Spé. et Vitesse) ; le seul bonus des jeux n'aurait presque jamais joué.
+ */
+export const SNIPER: ReadonlySet<number> = new Set([15, 21, 22]);
+export const SNIPER_CRIT = 2.25;
+export const SNIPER_CHANCE = 0.1;
+/**
+ * Médic Nature : ses statuts s'usent deux fois plus vite. Écart voulu : dans les jeux, le
+ * statut s'efface quand il rentre dans sa Ball ; ici, toute l'équipe reste sur le terrain
+ * (les compagnons se battent), un changement ne le retire de rien.
+ */
+export const NATURAL_CURE: ReadonlySet<number> = new Set([113, 440, 120, 121]);
+const WEATHER_FR: Record<WeatherAbility['weather'], string> = { rain: 'sous la pluie', sun: 'au soleil', sand: 'dans la tempête de sable', hail: 'sous la grêle' };
+
 
 /** Ce que fait un talent, en une phrase (fiches de run et du Repaire). */
 const WEATHER_DESC: Record<WeatherAbility['weather'], string> = {
@@ -142,6 +187,13 @@ export function talentOf(id: number): Talent | null {
   if (pinch) return { name: pinch.name, desc: `sous un tiers de ses PV, ses attaques ${TYPE_FR[pinch.type]} gagnent 50 %` };
   const c = CONTACT_TALENTS[id];
   if (c) return { name: c.name, desc: CONTACT_DESC[c.status] };
+  const ws = WEATHER_SPEED[id];
+  if (ws) return { name: ws.name, desc: `${WEATHER_FR[ws.weather]}, il attaque et court plus vite` };
+  if (THICK_FAT.has(id)) return { name: 'Isograisse', desc: 'le Feu et la Glace ne lui font que la moitié des dégâts' };
+  if (GUTS.has(id)) return { name: 'Cran', desc: 'brûlé, empoisonné ou paralysé, son Attaque monte de moitié' };
+  if (TECHNICIAN.has(id)) return { name: 'Technicien', desc: `ses attaques de puissance ${TECHNICIAN_CAP} au plus frappent moitié plus fort` };
+  if (SNIPER.has(id)) return { name: 'Sniper', desc: 'des coups critiques plus fréquents, et qui font bien plus mal' };
+  if (NATURAL_CURE.has(id)) return { name: 'Médic Nature', desc: 'ses statuts passent deux fois plus vite' };
   return null;
 }
 
