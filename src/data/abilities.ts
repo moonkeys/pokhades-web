@@ -145,8 +145,9 @@ export const TECHNICIAN: ReadonlySet<number> = new Set([52, 53, 123, 212, 235, 5
 export const TECHNICIAN_CAP = 60;
 /**
  * Sniper : ses coups critiques font ×2,25 au lieu de ×1,5, et il en porte SNIPER_CHANCE de
- * plus. Écart voulu : ici, un Pokémon n'a aucune chance de critique d'office (seuls les dons
- * et la Lentille Zoom en donnent) ; le seul bonus des jeux n'aurait presque jamais joué.
+ * plus. Écart voulu : ici, un Pokémon n'a aucune chance de critique d'office (seuls le don
+ * Précision et les attaques qui affûtent en donnent ; la Lentille Zoom de l'atelier, elle,
+ * touche Atq. Spé. et Vitesse) ; le seul bonus des jeux n'aurait presque jamais joué.
  */
 export const SNIPER: ReadonlySet<number> = new Set([15, 21, 22]);
 export const SNIPER_CRIT = 2.25;

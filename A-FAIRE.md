@@ -400,8 +400,11 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
   par la porte ; deux vagues, effectif ×2 (36 au plus), −2 niveaux, sans
   dresseur ; de quoi remplir la jauge de recrue d'une espèce choisie.
   Reste : juger en jeu la place qu'elle prend parmi les portes (une salle
-  spéciale de plus dilue les autres) ; la Route Victoire n'a jamais de
-  salle spéciale (`specialsTaken` n'a que quatre actes : à trancher).
+  spéciale de plus dilue les autres). Route Victoire (même jour) : elle
+  n'avait jamais de salle spéciale (`specialsTaken` à quatre cases) ; elle
+  propose maintenant Défi, Piège et Horde, jamais de salle calme
+  (`VICTORY_SPECIALS`) ; sur 300 graines, autant de portes spéciales qu'au
+  quatrième acte.
 - Reste : d'autres salles.
 
 ### 1.9 bis Combats de champion plus épiques (17 novembre 2026)
@@ -860,8 +863,9 @@ Si d'autres se voient en jeu, noter leur emplacement.
   Repaire passent sur une colonne en petit écran. Puis : carnet de Xatu en
   bento à cases inégales (Carte du monde en grande case), titres lisibles, « Tout réclamer » en gros ; rail de défilement visible.
 - Reste : d'autres dresseurs connus d'Essentials (Red, Leaf, Brendan) si l'on
-  ajoute des biomes ; vérifier le plan en jeu (les pointillés n'ont pas été vus
-  à l'écran).
+  ajoute des biomes. Plan vu en jeu le 23 novembre 2026 : les routes prises
+  s'y pointillent d'encre, la traversée vers l'Océan d'écume pâle, « CS
+  Surf » à côté ; rien à reprendre.
 
 ---
 
@@ -884,3 +888,7 @@ Si d'autres se voient en jeu, noter leur emplacement.
   au fil des tests, et d'autres CS pourront y garder des branches (Coupe,
   Éclate-Roc). (Un champion par biome depuis le 17 novembre 2026 : voir 2.10.)
 - Les objets tenus n'ont pas été vraiment testés en partie par le joueur.
+  Relus le 23 novembre 2026 : appliqués à la sortie du Repaire (`applyHeld`),
+  gardés à l'évolution (`Pokemon.inherit`), jamais sur un mercenaire ; pas de
+  défaut trouvé. Aucun ne donne de critique (la Lentille Zoom de l'atelier
+  touche Atq. Spé. et Vitesse, pas la précision des jeux).

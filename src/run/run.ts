@@ -125,6 +125,8 @@ const CURSE_LEVELS = 2;
  * tiré ; son code reste, pour le jour où il reviendrait sous une autre forme.
  */
 const OFFERED_SPECIALS: readonly SpecialId[] = ['challenge', 'trap', 'spring', 'altar', 'dojo', 'pension', 'horde'];
+/** Les salles spéciales de la Route Victoire : celles où l'on se bat. */
+const VICTORY_SPECIALS: readonly SpecialId[] = ['challenge', 'trap', 'horde'];
 /** Chance qu'une porte devienne une salle spéciale, et plafond par acte. */
 const SPECIAL_CHANCE = 0.35;
 const SPECIALS_PER_ACT = 3;
@@ -184,7 +186,11 @@ export class Run {
   /** Salle de Horde : son espèce (ExitOffer.horde). */
   hordeSpecies: number | null = null;
   /** Salles spéciales prises à chaque acte, et la dernière (jamais deux pareilles de suite). */
-  private readonly specialsTaken = [0, 0, 0, 0];
+  /**
+   * Salles spéciales prises, par acte. Un tableau à quatre cases laissait la Route Victoire,
+   * cinquième acte, sans aucune (NaN < 3 est faux) : il suit maintenant les actes de la run.
+   */
+  private readonly specialsTaken: number[] = [];
   private lastSpecial: SpecialId | null = null;
   /** Dons de légendaires et ultime de la run. */
   readonly boons = new Boons();
@@ -214,6 +220,11 @@ export class Run {
     this.teamSize = Math.max(1, setup.teamSize ?? 1);
     this.beaten = setup.beaten ?? [];
     this.pushAct(biomeOverride ?? 'prairie');
+  }
+
+  /** La salle `room` est sur la Route Victoire. */
+  onVictoryRoadAt(room: number): boolean {
+    return Math.min(this.acts - 1, Math.floor(room / ROOMS_PER_ACT)) === this.victoryAct;
   }
 
   /** L'acte courant se joue sur la Route Victoire. */
@@ -461,8 +472,10 @@ export class Run {
     // y tirerait plan.level + TRAP_LEVELS), ni sans autre porte à côté (on doit pouvoir l'éviter).
     const next = this.room + 1;
     const fits = out.length >= 2 && next >= 2 && !this.isBoss() && !this.isShop(next) && !this.isBoss(next) && next % ROOMS_PER_ACT !== 0;
-    if (fits && this.specialsTaken[this.act] < SPECIALS_PER_ACT && this.rng.chance(SPECIAL_CHANCE)) {
-      const kinds = OFFERED_SPECIALS.filter((k) => k !== this.lastSpecial);
+    if (fits && (this.specialsTaken[this.act] ?? 0) < SPECIALS_PER_ACT && this.rng.chance(SPECIAL_CHANCE)) {
+      // Sur la Route Victoire, seulement des salles de combat : ni soins, ni niveaux, ni leçons
+      // offerts sur l'acte le plus dur (choix du 23 novembre 2026).
+      const kinds = (this.onVictoryRoadAt(next) ? VICTORY_SPECIALS : OFFERED_SPECIALS).filter((k) => k !== this.lastSpecial);
       const special = this.rng.pick(kinds);
       const i = out.length - 1;
       out[i] = { ...this.specialOffer(special, out[i]), exit: out[i].exit };
@@ -531,7 +544,7 @@ export class Run {
     this.special = offer.special ?? null;
     this.hordeSpecies = offer.horde ?? null;
     if (this.special) {
-      this.specialsTaken[this.act]++;
+      this.specialsTaken[this.act] = (this.specialsTaken[this.act] ?? 0) + 1;
       this.lastSpecial = this.special;
     }
   }

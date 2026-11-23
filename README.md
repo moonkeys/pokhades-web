@@ -233,6 +233,12 @@ Au banc, elle se vide plus vite qu'une salle ordinaire (19 s contre 37 au
 deuxième acte : les zones fauchent la colonie), pour un peu plus de casse.
 Panneau → « Horde ».
 
+Sur la Route Victoire (23 novembre 2026), les portes proposent aussi des
+salles spéciales, mais seulement celles où l'on se bat (Défi, Piège, Horde,
+`VICTORY_SPECIALS`) : ni soins, ni niveaux, ni leçons offerts sur l'acte le
+plus dur. Avant, elle n'en avait jamais : le compte des salles spéciales par
+acte n'avait que quatre cases, et la cinquième valait NaN.
+
 Salles calmes (Source, Autel, Dojo, Pension ; retours de test du 16 novembre
 2026 : « une salle couloir, la source sur le chemin… une petite salle faite
 pour, plus de décor, une ambiance différente pour chaque salle ») :
@@ -327,7 +333,7 @@ Charpenti…) : sous un statut, l'Attaque ×1,5 (`Pokemon.attack`).
 Chinchidou) : les attaques de puissance 60 au plus ×1,5. **Sniper**
 (Dardargnan, Piafabec, Rapasdepic) : critiques ×2,25 au lieu de ×1,5, et
 10 % de chance de critique en plus (écart voulu : aucun Pokémon n'en a
-d'office ici, seuls les dons et la Lentille Zoom en donnent). **Médic
+d'office ici, seuls le don Précision et les attaques qui affûtent en donnent). **Médic
 Nature** (Leveinard, Ptiravi, Stari, Staross) : ses statuts s'usent deux fois
 plus vite (écart voulu : les jeux l'effacent au retour dans la Ball, et ici
 toute l'équipe reste sur le terrain). L'intimidateur se montre : il fait son geste d'attaque vers sa cible, avec

@@ -36,6 +36,10 @@ export const PATCH_NOTES: readonly PatchNote[] = [
         items: ['La Horde ❖ : une colonie d’une seule espèce, que la porte annonce. Deux fois plus de sauvages, un peu plus faibles : de quoi remplir d’un coup la jauge d’une recrue.'],
       },
       {
+        title: 'Route Victoire',
+        items: ['Ses portes proposent enfin des salles spéciales : Défi, Piège et Horde, rien de plus doux sur l’acte le plus dur.'],
+      },
+      {
         title: 'Atelier',
         items: ['Queulorior façonne onze CT que le tuteur n’a pas : Éco-Sphère, Bombe Beurk, Luminocanon, Vibrobscur, Lame de Roc… Chacune demande le matériau d’un biome et une herbe du potager. Le tuteur les montre aussi, avec qui peut les apprendre.'],
       },
