@@ -241,8 +241,21 @@ Au banc, elle se vide plus vite qu'une salle ordinaire (19 s contre 37 au
 deuxième acte : les zones fauchent la colonie), pour un peu plus de casse.
 Panneau → « Horde ».
 
+**Duel** ⚔ (ajout, 23 novembre 2026, `DUEL_*` dans run/room.ts) : un
+dresseur légendaire d'Essentials, Red, Leaf ou Brice (Brendan), entre avec
+quatre Pokémon tirés de son équipe emblématique (`LEGEND_TEAMS`,
+data/trainers.ts : le Pikachu et les starters de Kanto de Red, les évolutions
+d'Évoli de Leaf, des Pokémon de Hoenn pour Brice), un par vague, 3 niveaux
+au-dessus de la salle, en Pokémon de champion (le renfort des champions, leurs
+six attaques les plus fortes, deux barres) mais sans la signature du champion
+de l'acte ; la barre dit « Équipe de Red ». La porte promet un don, la salle
+paie ₽ ×2. Jamais avant le troisième acte : au banc, deux ou trois membres
+du deuxième acte y perdaient même à son niveau, comme contre un champion.
+Ensuite, quatre membres gagnent en 30 s, deux perdent ; cinq, au quatrième
+acte, gagnent entamés. Panneau → « Duel ».
+
 Sur la Route Victoire (23 novembre 2026), les portes proposent aussi des
-salles spéciales, mais seulement celles où l'on se bat (Défi, Piège, Horde,
+salles spéciales, mais seulement celles où l'on se bat (Défi, Piège, Horde, Duel,
 `VICTORY_SPECIALS`) : ni soins, ni niveaux, ni leçons offerts sur l'acte le
 plus dur. Avant, elle n'en avait jamais : le compte des salles spéciales par
 acte n'avait que quatre cases, et la cinquième valait NaN.

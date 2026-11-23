@@ -176,6 +176,7 @@ export const LORE: LoreChapter[] = [
       // run/dojo.ts
       { title: 'Le Dojo', color: '#e08a4c', text: 'Machopeur tient un dojo au toit rouge. Monte sur son tatami (E) : une leçon gratuite, apprendre une attaque forte ou en renforcer une, pour le Pokémon de ton choix. Deux leçons par dojo ; refermer le parchemin sans rien prendre ne compte pas.' },
       // run/pension.ts
+      { title: 'Le Duel', color: '#e8584c', text: 'Red, Leaf ou Brice te défient avec quatre de leurs Pokémon, un à la fois, forts comme ceux d’un champion. Gagne, et un don t’attend. Pas avant le troisième acte.' },
       { title: 'La Horde', color: '#9ad46a', text: 'Toute une colonie d’une même espèce, plus faible mais deux fois plus nombreuse. La porte dit laquelle : viens-y remplir la jauge d’une recrue que tu veux.' },
       { title: 'La Pension', color: '#e8a8c8', text: 'Écrémeuh garde un grand enclos. Parle-lui (E) : elle entraîne l’équipe (des niveaux que tu répartis comme tu veux, plus nombreux à chaque acte, et d’autres contre des ₽) ou échange un membre contre un Pokémon du Repaire, chacun une fois.' },
       // entities/actor.ts (terrainMult), run/hazards.ts, run/room.ts (Village), world/generate.ts (hide)

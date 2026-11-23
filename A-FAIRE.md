@@ -405,6 +405,12 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
   propose maintenant Défi, Piège et Horde, jamais de salle calme
   (`VICTORY_SPECIALS`) ; sur 300 graines, autant de portes spéciales qu'au
   quatrième acte.
+- Duel ⚔ (23 novembre 2026) : une légende (Red, Leaf, Brice), quatre de ses
+  Pokémon en Pokémon de champion, un par vague, +3 niveaux ; un don promis.
+  Dès le troisième acte seulement (au deuxième, le banc y perdait comme
+  contre un champion). Le dresseur d'un Duel ne fuit qu'après sa dernière
+  vague (`TrainerGroup.until`). Reste : juger en jeu (la capture par la
+  légende quand un membre faiblit est-elle de trop ?).
 - Reste : d'autres salles.
 
 ### 1.9 bis Combats de champion plus épiques (17 novembre 2026)
@@ -868,8 +874,9 @@ Si d'autres se voient en jeu, noter leur emplacement.
   (stats, attaques, talent, poids) ; le carnet de Xatu aussi ; les écrans du
   Repaire passent sur une colonne en petit écran. Puis : carnet de Xatu en
   bento à cases inégales (Carte du monde en grande case), titres lisibles, « Tout réclamer » en gros ; rail de défilement visible.
-- Reste : d'autres dresseurs connus d'Essentials (Red, Leaf, Brendan) si l'on
-  ajoute des biomes. Plan vu en jeu le 23 novembre 2026 : les routes prises
+- Red, Leaf et Brice (Brendan) : les légendes de la salle Duel (23 novembre
+  2026, voir 1.9). Reste : leur portrait de combat pour un dialogue, s'il en
+  faut un. Plan vu en jeu le 23 novembre 2026 : les routes prises
   s'y pointillent d'encre, la traversée vers l'Océan d'écume pâle, « CS
   Surf » à côté ; rien à reprendre.
 

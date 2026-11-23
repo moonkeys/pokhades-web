@@ -32,8 +32,11 @@ export const PATCH_NOTES: readonly PatchNote[] = [
         ],
       },
       {
-        title: 'Nouvelle salle',
-        items: ['La Horde ❖ : une colonie d’une seule espèce, que la porte annonce. Deux fois plus de sauvages, un peu plus faibles : de quoi remplir d’un coup la jauge d’une recrue.'],
+        title: 'Nouvelles salles',
+        items: [
+          'La Horde ❖ : une colonie d’une seule espèce, que la porte annonce. Deux fois plus de sauvages, un peu plus faibles : de quoi remplir d’un coup la jauge d’une recrue.',
+          'Le Duel ⚔ : Red, Leaf ou Brice t’attendent avec quatre de leurs Pokémon, aussi forts que ceux d’un champion. Un don à la clé, à partir du troisième acte.',
+        ],
       },
       {
         title: 'Carte du monde',

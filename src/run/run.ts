@@ -87,7 +87,7 @@ const REWARD_WEIGHTS: [Reward, number][] = [
  *   une embuscade plus forte, et elle ne se prend qu'une fois la salle libérée ;
  * - Marchand : Miaouss propose un pari sur les ₽ et un don contre des PV.
  */
-export type SpecialId = 'challenge' | 'trap' | 'merchant' | 'spring' | 'altar' | 'dojo' | 'pension' | 'horde';
+export type SpecialId = 'challenge' | 'trap' | 'merchant' | 'spring' | 'altar' | 'dojo' | 'pension' | 'horde' | 'duel';
 export const SPECIALS: Record<SpecialId, { name: string; glyph: string; color: string }> = {
   challenge: { name: 'Défi', glyph: '⏱', color: '#f2c14e' },
   trap: { name: 'Piège', glyph: '⚠', color: '#e8604c' },
@@ -104,6 +104,9 @@ export const SPECIALS: Record<SpecialId, { name: string; glyph: string; color: s
   // espèce, annoncée par la porte. On recrute une espèce en en battant assez (meta/save.ts,
   // recordDefeat) : la Horde est la salle où l'on vient remplir une jauge choisie.
   horde: { name: 'Horde', glyph: '❖', color: '#9ad46a' },
+  // Ajout (23 novembre 2026) : un dresseur légendaire (Red, Leaf, Brice) et quatre Pokémon
+  // de champion, contre un don garanti (run/room.ts, DUEL_*). Jamais avant le troisième acte.
+  duel: { name: 'Duel', glyph: '⚔', color: '#e8584c' },
 };
 
 /**
@@ -124,9 +127,9 @@ const CURSE_LEVELS = 2;
  * marchand, j'en veux pas du tout » — Miaouss (run/merchant.ts) n'est plus
  * tiré ; son code reste, pour le jour où il reviendrait sous une autre forme.
  */
-const OFFERED_SPECIALS: readonly SpecialId[] = ['challenge', 'trap', 'spring', 'altar', 'dojo', 'pension', 'horde'];
+const OFFERED_SPECIALS: readonly SpecialId[] = ['challenge', 'trap', 'spring', 'altar', 'dojo', 'pension', 'horde', 'duel'];
 /** Les salles spéciales de la Route Victoire : celles où l'on se bat. */
-const VICTORY_SPECIALS: readonly SpecialId[] = ['challenge', 'trap', 'horde'];
+const VICTORY_SPECIALS: readonly SpecialId[] = ['challenge', 'trap', 'horde', 'duel'];
 /** Chance qu'une porte devienne une salle spéciale, et plafond par acte. */
 const SPECIAL_CHANCE = 0.35;
 const SPECIALS_PER_ACT = 3;
@@ -475,7 +478,9 @@ export class Run {
     if (fits && (this.specialsTaken[this.act] ?? 0) < SPECIALS_PER_ACT && this.rng.chance(SPECIAL_CHANCE)) {
       // Sur la Route Victoire, seulement des salles de combat : ni soins, ni niveaux, ni leçons
       // offerts sur l'acte le plus dur (choix du 23 novembre 2026).
-      const kinds = (this.onVictoryRoadAt(next) ? VICTORY_SPECIALS : OFFERED_SPECIALS).filter((k) => k !== this.lastSpecial);
+      // Pas de Duel avant le troisième acte : quatre Pokémon de champion d'une légende, un combat
+      // de champion en plus, trop lourd pour une équipe qui se cherche (run/room.ts, DUEL_*).
+      const kinds = (this.onVictoryRoadAt(next) ? VICTORY_SPECIALS : OFFERED_SPECIALS).filter((k) => k !== this.lastSpecial && !(k === 'duel' && this.act < 2));
       const special = this.rng.pick(kinds);
       const i = out.length - 1;
       out[i] = { ...this.specialOffer(special, out[i]), exit: out[i].exit };
@@ -489,7 +494,7 @@ export class Run {
    * remplacent).
    */
   specialOffer(special: SpecialId, base: ExitOffer): ExitOffer {
-    const reward: Reward = special === 'challenge' ? 'boon' : special === 'merchant' || special === 'spring' || special === 'altar' || special === 'dojo' || special === 'pension' ? 'loot' : base.reward;
+    const reward: Reward = special === 'challenge' || special === 'duel' ? 'boon' : special === 'merchant' || special === 'spring' || special === 'altar' || special === 'dojo' || special === 'pension' ? 'loot' : base.reward;
     const donor = reward === 'boon' ? (base.donor ?? this.boons.pickDonor(this.rng) ?? undefined) : undefined;
     const prize = special === 'merchant' ? '' : special === 'spring' ? ' · soins' : special === 'altar' ? ' · pacte' : special === 'dojo' ? ' · leçons' : special === 'pension' ? ' · niveaux' : ` · ${donor ? donorLabel(donor) : REWARD_LABEL[reward]}`;
     // Le Piège garde l'étiquette de la porte qu'il remplace : rien ne le trahit.

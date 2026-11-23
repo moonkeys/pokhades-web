@@ -39,6 +39,8 @@ export interface BalanceHost {
   readonly world: { hub?: { x: number; y: number } };
   readonly save: Save;
   readonly mode: string;
+  /** Les écrans qui figent le jeu (évolution, récompense) : le banc les valide. */
+  readonly ui?: { evolutionScreen?: { open: boolean }; rewardScreen?: { open: boolean } };
   newRun(): void;
   goto(room: number, special?: SpecialId | null): void;
   step(n: number): void;
@@ -160,6 +162,11 @@ export function installBalance(P: BalanceHost): {
     // Lancée depuis le Repaire ou un écran de fin, la première run part parfois avec l'équipe
     // d'avant : on relance tant que l'équipe en jeu n'est pas celle du test.
     for (let tries = 0; tries < 3; tries++) {
+      // Le bilan d'une run finie (« DÉFAITE », « VICTOIRE ») fige le jeu tant qu'il est ouvert : on le ferme.
+      for (let k = 0; k < 2 && [...document.querySelectorAll<HTMLElement>('.reward')].some((e) => !e.hidden && /DÉFAITE|VICTOIRE/.test(e.innerText)); k++) {
+        tap('Escape', 'Escape');
+        await new Promise((r) => setTimeout(r, 400));
+      }
       P.newRun();
       await new Promise((r) => setTimeout(r, 2500));
       if (P.mode === 'run' && P.team.map((m) => m.speciesId).join() === setup.team.join()) break;
@@ -203,6 +210,8 @@ export function installBalance(P: BalanceHost): {
       while (gt < (setup.secs ?? 240)) {
         // Les répliques du champion (« Entrée pour passer ») figent le combat : on les passe.
         if (document.body.innerText.includes('Entrée pour passer')) tap('Enter', 'Enter');
+        // Une évolution en route (l'équipe de test monte de niveau) ouvre son écran, qui fige le jeu.
+        if (P.ui?.evolutionScreen?.open || P.ui?.rewardScreen?.open) tap('Enter', 'Enter');
         for (let k = 0; k < 400 && P.wild.some((w) => w.deathT < 0 && !w.pokemon); k++) await new Promise((r) => setTimeout(r, 0));
         pilot();
         P.step(FRAMES);

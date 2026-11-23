@@ -62,6 +62,12 @@ export const TRAINER_CLASSES = {
   // Les top dresseurs : demi-boss.
   aceM: { name: 'Topdresseur', sprite: 'trainer_COOLTRAINER_M.png', types: [] },
   aceF: { name: 'Topdresseuse', sprite: 'trainer_COOLTRAINER_F.png', types: [] },
+  // Les dresseurs légendaires du Duel (23 novembre 2026, A-FAIRE 2.10 : « d'autres dresseurs
+  // connus d'Essentials, Red, Leaf, Brendan ») ; leur équipe est fixe (LEGEND_TEAMS), jamais
+  // tirée par pickClass. Brendan s'appelle Brice en français, comme May s'appelle Flora.
+  red: { name: 'Red', sprite: 'trainer_POKEMONTRAINER_Red.png', types: [] },
+  leaf: { name: 'Leaf', sprite: 'trainer_POKEMONTRAINER_Leaf.png', types: [] },
+  brendan: { name: 'Brice', sprite: 'trainer_POKEMONTRAINER_Brendan.png', types: [] },
 } as const satisfies Record<string, TrainerClass>;
 export type TrainerClassId = keyof typeof TRAINER_CLASSES;
 
@@ -82,6 +88,17 @@ export const BIOME_TRAINERS: Record<BiomeId, readonly TrainerClassId[]> = {
 /** Les classes qui passent partout (une sur trois environ). */
 export const ROAMING: readonly TrainerClassId[] = ['psychicM', 'psychicF', 'birdkeeper', 'pokemaniac', 'engineer', 'rocker', 'juggler', 'gambler', 'tamer', 'breeder'];
 export const ACES: readonly TrainerClassId[] = ['aceM', 'aceF'];
+/**
+ * Les légendes du Duel et leurs Pokémon emblématiques, formes finales embarquées : Red, son
+ * Pikachu et les starters de Kanto ; Leaf, Florizarre et les évolutions d'Évoli ; Brice, des
+ * Pokémon de Hoenn (ses starters ne sont pas embarqués). Le Duel en tire quatre.
+ */
+export const LEGEND_TEAMS: Readonly<Partial<Record<TrainerClassId, readonly number[]>>> = {
+  red: [25, 3, 6, 9, 143, 131],
+  leaf: [3, 134, 135, 136, 26],
+  brendan: [373, 376, 330, 272, 306, 359],
+};
+export const LEGENDS = Object.keys(LEGEND_TEAMS) as TrainerClassId[];
 
 /** La faune de toute la Ligue, par type (relevé des fiches PokéAPI importées). */
 const BY_TYPE: Record<string, readonly number[]> = {
