@@ -18,6 +18,21 @@ export interface PatchNote {
 
 export const PATCH_NOTES: readonly PatchNote[] = [
   {
+    id: '2026-11-23',
+    date: '23 novembre 2026',
+    title: 'Nouveaux talents',
+    sections: [
+      {
+        title: 'Talents',
+        items: [
+          'Chlorophylle, Glissade, Baigne Sable et Chasse-Neige : sous leur temps, le Pokémon attaque et court plus vite (Chétiflor au soleil, Hypotrempe sous la pluie…).',
+          'Isograisse : Ronflex, Écrémeuh, Otaria ou Marill ne prennent que la moitié des coups Feu et Glace.',
+          'Cran : brûlé, empoisonné ou paralysé, Machoc, Scarhino ou Charpenti frappent moitié plus fort.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-11-20-equipes',
     date: '20 novembre 2026',
     title: 'Des champions au complet',

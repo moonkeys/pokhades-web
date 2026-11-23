@@ -1,4 +1,4 @@
-import { ABSORB, FLASH_FIRE, LEVITATE, PINCH } from '../data/abilities';
+import { ABSORB, FLASH_FIRE, LEVITATE, PINCH, THICK_FAT } from '../data/abilities';
 // Table des types Gen 6 et formule de dégâts Gen 5+, reprises telles quelles
 // de scripts/combat/DamageCalculator.gd (sans STAB, comme le jeu). Seule
 // différence : le tirage aléatoire est injecté, pour des combats rejouables.
@@ -96,6 +96,8 @@ export function calculateDamage(
   const immune = absorb || flash || (type === 'ground' && LEVITATE.has(did));
   const effectiveness = immune ? 0 : typeMultiplier(type, defender.types);
   let modifier = effectiveness * weatherMultiplier(weather, type);
+  // Isograisse : sa graisse amortit le Feu et la Glace.
+  if ((type === 'fire' || type === 'ice') && THICK_FAT.has(did)) modifier *= 0.5;
   // Torche embrasée, et Engrais / Brasier / Torrent sous un tiers des PV.
   if (type === 'fire' && flashed.has(attacker)) modifier *= 1.5;
   const pinch = PINCH[aid];

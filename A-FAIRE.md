@@ -317,8 +317,13 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
   Sol (`LEVITATE`, `calculateDamage`) ; Statik, Corps Ardent, Point Poison
   (`CONTACT_TALENTS`, 30 %, `Combat.contactTalent`, mêlée des deux camps).
   Puis (même jour) : Absorb Eau, Absorb Volt, Torche, Engrais / Brasier /
-  Torrent (`ABSORB`, `FLASH_FIRE`, `PINCH`, `calculateDamage`). Reste :
-  d'autres talents (Glissade, Chlorophylle, Isograisse…).
+  Torrent (`ABSORB`, `FLASH_FIRE`, `PINCH`, `calculateDamage`). Puis
+  (23 novembre 2026) : Chlorophylle, Glissade, Baigne Sable, Chasse-Neige
+  (cadence ×1,5 et pas ×1,2 sous leur temps, `WEATHER_SPEED`), Isograisse
+  (Feu et Glace ×0,5, `THICK_FAT`), Cran (Attaque ×1,5 sous un statut,
+  `GUTS`) ; 50 espèces, talents des jeux vérifiés, cachés compris. Reste :
+  juger en jeu la vitesse sous la pluie ; d'autres talents (Technicien,
+  Sniper, Joli Sourire, Médic Nature…).
 
 ### 1.9 Salles spéciales (fait)
 - Une porte sur plusieurs peut mener à une salle spéciale (`Run.offers`,

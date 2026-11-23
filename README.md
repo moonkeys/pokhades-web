@@ -304,7 +304,15 @@ blesse pas, il soigne d'un quart des PV. **Torche** (Goupix, Pyroli, Malosse,
 Démolosse) : le Feu ne blesse pas, et embrase ses propres attaques Feu
 (×1,5). **Engrais, Brasier, Torrent** (les starters de toutes les
 générations) : sous un tiers des PV, les attaques du type gagnent 50 %. Tout
-se joue dans `calculateDamage` (damage.ts). L'intimidateur se montre : il fait son geste d'attaque vers sa cible, avec
+se joue dans `calculateDamage` (damage.ts). **Chlorophylle, Glissade, Baigne
+Sable, Chasse-Neige** (23 novembre 2026 : Mystherbe, Chétiflor, Granivol ;
+Psykokwak, Hypotrempe, Barpau ; Sabelette ; Polarhume) : sous leur temps, la
+cadence des attaques ×1,5 et le pas ×1,2 (`WEATHER_SPEED`,
+`Pokemon.speed`, `speedMult` ; écart voulu : les jeux doublent la Vitesse,
+qui n'y règle que l'ordre des tours, et un pas doublé traverserait la salle).
+**Isograisse** (Ronflex, Écrémeuh, Otaria, Marill, Obalie, Makuhita…) : Feu
+et Glace à moitié. **Cran** (Rattata, Machoc, Scarhino, Ursaring,
+Charpenti…) : sous un statut, l'Attaque ×1,5 (`Pokemon.attack`). L'intimidateur se montre : il fait son geste d'attaque vers sa cible, avec
 l'animation de Rugissement et « Intimidation » au-dessus de lui (une fois
 par seconde au plus). Le talent est écrit sur la fiche de run (C), sur la
 fiche de l'équipe et dans le Pokédex au Repaire (celui d'une évolution aussi :

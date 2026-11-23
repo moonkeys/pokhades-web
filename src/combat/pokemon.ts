@@ -1,6 +1,7 @@
 import { sfx } from '../audio/audio';
 import { loadMove, type Move } from './moves';
-import type { Fighter } from './damage';
+import { currentWeather, type Fighter } from './damage';
+import { GUTS, GUTS_MULT, WEATHER_SPEED, WEATHER_SPEED_CADENCE, WEATHER_SPEED_MOVE } from '../data/abilities';
 import { growthOf, xpAt } from '../data/growth';
 import { sheetOf } from '../data/bestiary';
 import { fetchJson } from '../assets/json';
@@ -183,7 +184,13 @@ export class Pokemon implements Fighter {
 
   /** Stat de Vitesse (elle règle la cadence des capacités). */
   get speed(): number {
-    return Math.floor(this.baseSpeed * this.mult.speed);
+    return Math.floor(this.baseSpeed * this.mult.speed * (this.weatherSpeed ? WEATHER_SPEED_CADENCE : 1));
+  }
+
+  /** Chlorophylle, Glissade, Baigne Sable, Chasse-Neige : son temps souffle sur la salle. */
+  get weatherSpeed(): boolean {
+    const w = WEATHER_SPEED[this.id];
+    return !!w && w.weather === currentWeather();
   }
 
   /** PV max imposés (jeu en ligne : ceux que l'hôte ou l'invité a calculés chez lui), PV courants inchangés. */
@@ -211,7 +218,9 @@ export class Pokemon implements Fighter {
   }
 
   get attack(): number {
-    return Math.floor(this.baseAttack * this.mult.atk * this.buff('atk'));
+    // Cran : le statut qui l'accable l'enrage (gel et sommeil l'empêchent de toute façon d'attaquer).
+    const guts = this.status && GUTS.has(this.id) ? GUTS_MULT : 1;
+    return Math.floor(this.baseAttack * this.mult.atk * this.buff('atk') * guts);
   }
   get spAttack(): number {
     return Math.floor(this.baseSpAttack * this.mult.spAtk * this.buff('atk'));
@@ -245,7 +254,7 @@ export class Pokemon implements Fighter {
 
   /** Paralysie : vitesse de moitié ; bonus de VIT (soutien, Célérité). */
   get speedMult(): number {
-    return (this.status === 'paralysis' ? 0.5 : 1) * this.buff('spd') * this.mult.speed;
+    return (this.status === 'paralysis' ? 0.5 : 1) * this.buff('spd') * this.mult.speed * (this.weatherSpeed ? WEATHER_SPEED_MOVE : 1);
   }
 
   /** Un statut actif n'est jamais écrasé (PokemonInstance.apply_status). `duration` : allongée par un don. */
