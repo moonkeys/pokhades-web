@@ -2715,9 +2715,11 @@ async function boot(): Promise<void> {
     // Aller à une salle : 1ʳᵉ salle de combat, boutique ou boss de l'acte (PV et dons conservés).
     // Depuis le Repaire, une run part d'abord.
     if (mode === 'camp') newRun();
-    const special = kind === 'challenge' || kind === 'trap' || kind === 'merchant' || kind === 'spring' || kind === 'altar' || kind === 'dojo' || kind === 'pension' ? kind : null;
+    const special = kind === 'challenge' || kind === 'trap' || kind === 'merchant' || kind === 'spring' || kind === 'altar' || kind === 'dojo' || kind === 'pension' || kind === 'horde' ? kind : null;
     run.room = act * ROOMS_PER_ACT + (special ? 1 : kind === 'combat' ? 0 : kind === 'shop' ? COMBATS_PER_ACT : ROOMS_PER_ACT - 1);
     run.special = special;
+    // Horde forcée au panneau : la première espèce possible de la faune de la salle.
+    run.hordeSpecies = special === 'horde' ? (run.hordePool()[0] ?? null) : null;
     endT = -1;
     loadRoom(false);
   });

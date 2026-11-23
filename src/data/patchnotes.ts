@@ -20,7 +20,7 @@ export const PATCH_NOTES: readonly PatchNote[] = [
   {
     id: '2026-11-23',
     date: '23 novembre 2026',
-    title: 'Nouveaux talents',
+    title: 'Nouveaux talents, la Horde',
     sections: [
       {
         title: 'Talents',
@@ -29,6 +29,10 @@ export const PATCH_NOTES: readonly PatchNote[] = [
           'Isograisse : Ronflex, Écrémeuh, Otaria ou Marill ne prennent que la moitié des coups Feu et Glace.',
           'Cran : brûlé, empoisonné ou paralysé, Machoc, Scarhino ou Charpenti frappent moitié plus fort.',
         ],
+      },
+      {
+        title: 'Nouvelle salle',
+        items: ['La Horde ❖ : une colonie d’une seule espèce, que la porte annonce. Deux fois plus de sauvages, un peu plus faibles : de quoi remplir d’un coup la jauge d’une recrue.'],
       },
     ],
   },

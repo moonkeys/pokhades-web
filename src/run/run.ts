@@ -87,7 +87,7 @@ const REWARD_WEIGHTS: [Reward, number][] = [
  *   une embuscade plus forte, et elle ne se prend qu'une fois la salle libérée ;
  * - Marchand : Miaouss propose un pari sur les ₽ et un don contre des PV.
  */
-export type SpecialId = 'challenge' | 'trap' | 'merchant' | 'spring' | 'altar' | 'dojo' | 'pension';
+export type SpecialId = 'challenge' | 'trap' | 'merchant' | 'spring' | 'altar' | 'dojo' | 'pension' | 'horde';
 export const SPECIALS: Record<SpecialId, { name: string; glyph: string; color: string }> = {
   challenge: { name: 'Défi', glyph: '⏱', color: '#f2c14e' },
   trap: { name: 'Piège', glyph: '⚠', color: '#e8604c' },
@@ -100,6 +100,10 @@ export const SPECIALS: Record<SpecialId, { name: string; glyph: string; color: s
   dojo: { name: 'Dojo', glyph: '✊', color: '#e08a4c' },
   // Ajout (A-FAIRE 1.9) : Écrémeuh y entraîne l'équipe, un niveau chacun (run/pension.ts).
   pension: { name: 'Pension', glyph: '❀', color: '#e8a8c8' },
+  // Ajout (23 novembre 2026, A-FAIRE 1.9 : « d'autres salles ») : toute une colonie d'une même
+  // espèce, annoncée par la porte. On recrute une espèce en en battant assez (meta/save.ts,
+  // recordDefeat) : la Horde est la salle où l'on vient remplir une jauge choisie.
+  horde: { name: 'Horde', glyph: '❖', color: '#9ad46a' },
 };
 
 /**
@@ -120,7 +124,7 @@ const CURSE_LEVELS = 2;
  * marchand, j'en veux pas du tout » — Miaouss (run/merchant.ts) n'est plus
  * tiré ; son code reste, pour le jour où il reviendrait sous une autre forme.
  */
-const OFFERED_SPECIALS: readonly SpecialId[] = ['challenge', 'trap', 'spring', 'altar', 'dojo', 'pension'];
+const OFFERED_SPECIALS: readonly SpecialId[] = ['challenge', 'trap', 'spring', 'altar', 'dojo', 'pension', 'horde'];
 /** Chance qu'une porte devienne une salle spéciale, et plafond par acte. */
 const SPECIAL_CHANCE = 0.35;
 const SPECIALS_PER_ACT = 3;
@@ -141,6 +145,8 @@ export interface ExitOffer {
   exit?: number;
   /** Sortie de boss vers la Route Victoire. */
   victory?: boolean;
+  /** Horde : l'espèce de toute la salle, que la porte annonce. */
+  horde?: number;
   /** Sortie de boss : le champion qui garde ce biome, s'il est sûr (Run.championAhead). */
   champion?: { name: string; type: string };
 }
@@ -175,6 +181,8 @@ export class Run {
   private readonly beaten: readonly string[];
   /** Salle spéciale en cours (la porte prise l'annonçait), sinon null. */
   special: SpecialId | null = null;
+  /** Salle de Horde : son espèce (ExitOffer.horde). */
+  hordeSpecies: number | null = null;
   /** Salles spéciales prises à chaque acte, et la dernière (jamais deux pareilles de suite). */
   private readonly specialsTaken = [0, 0, 0, 0];
   private lastSpecial: SpecialId | null = null;
@@ -473,6 +481,13 @@ export class Run {
     const prize = special === 'merchant' ? '' : special === 'spring' ? ' · soins' : special === 'altar' ? ' · pacte' : special === 'dojo' ? ' · leçons' : special === 'pension' ? ' · niveaux' : ` · ${donor ? donorLabel(donor) : REWARD_LABEL[reward]}`;
     // Le Piège garde l'étiquette de la porte qu'il remplace : rien ne le trahit.
     if (special === 'trap') return { ...base, special };
+    // La Horde garde aussi la récompense de sa porte, et dit son espèce : une forme de base
+    // de la faune de la salle d'après (jamais un nageur : la colonie charge à pied).
+    if (special === 'horde') {
+      const pool = this.hordePool(this.room + 1);
+      const horde = pool.length ? this.rng.pick(pool) : undefined;
+      return horde === undefined ? base : { ...base, special, horde, label: `${SPECIALS.horde.name}${prize}` };
+    }
     return { reward, donor, special, label: `${SPECIALS[special].name}${prize}` };
   }
 
@@ -514,6 +529,7 @@ export class Run {
     this.reward = offer.reward;
     this.donor = offer.donor;
     this.special = offer.special ?? null;
+    this.hordeSpecies = offer.horde ?? null;
     if (this.special) {
       this.specialsTaken[this.act]++;
       this.lastSpecial = this.special;
@@ -587,10 +603,15 @@ export class Run {
    * premières de la liste du biome, des formes de base. La Route Victoire mêle la faune
    * des quatre biomes du dernier étage.
    */
-  fauna(): number[] {
+  /** Les espèces dont une Horde peut être faite dans `room` : formes de base de sa faune, à pied. */
+  hordePool(room = this.room): number[] {
+    return this.fauna(room).filter((id) => escortPreviousOf(id) === null && !SWIMMERS.has(id));
+  }
+
+  fauna(room = this.room): number[] {
     if (this.onVictoryRoad) return [...new Set((['volcan', 'rocailleux', 'glace', 'marais'] as BiomeId[]).flatMap((b) => BIOMES[b].fauna))];
     const all = BIOMES[this.biome].fauna;
-    const early = this.room % ROOMS_PER_ACT < 2;
+    const early = room % ROOMS_PER_ACT < 2;
     if (this.act === 0) return all.slice(0, early ? 3 : 5);
     return early ? all.slice(0, 9) : [...all];
   }

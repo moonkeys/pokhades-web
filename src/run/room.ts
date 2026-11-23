@@ -16,6 +16,7 @@ import { VICTORY_ROAD } from '../world/worldmap';
 import { Trainer } from '../entities/trainer';
 import { CaptureThreat } from './capture';
 import { typePill } from '../ui/hud';
+import { loadInfo } from '../assets/pmd';
 import { ACES, TRAINER_CLASSES, pickClass, pickMember, type TrainerClassId } from '../data/trainers';
 
 // Déroulé d'une salle, repris de CombatArena.gd (_start_zone, vagues,
@@ -80,6 +81,17 @@ const TRAP_RADIUS = 3;
 const TRAP_LEVELS = 3;
 const TRAP_WAVES = 3;
 const TRAP_CROWD = 1.5;
+/**
+ * Horde : deux vagues d'une seule espèce, deux fois l'effectif d'une salle (36 au plus), à 2
+ * niveaux de moins. Au premier acte, une salle ordinaire en compte une douzaine sur trois
+ * espèces : il en faut 10 d'une même espèce pour la première recrue, 20 pour la deuxième
+ * (recruitThreshold) ; une Horde en remplit une jauge d'un coup, et ses Pokémon, plus
+ * faibles et plus nombreux, se battent comme une marée plutôt qu'un à un.
+ */
+const HORDE_CROWD = 2;
+const HORDE_WAVES = 2;
+const HORDE_LEVELS = -2;
+const HORDE_MAX = 36;
 /**
  * Surface libre (cases où l'on marche) d'une salle de taille moyenne. Les effectifs
  * des vagues suivent la racine du rapport, entre CROWD_MIN et CROWD_MAX : une Arène
@@ -340,6 +352,11 @@ export class RoomDirector {
       this.level = plan.level + TRAP_LEVELS;
       for (let w = 0; w < TRAP_WAVES; w++) this.waves.push([]);
       for (let n = 0; n < count; n++) this.waves[n % TRAP_WAVES].push({ id: this.rng.pick(pool), level: this.level, role: 'wild' });
+    } else if (this.special === 'horde' && run.hordeSpecies !== null && enemiesOn) {
+      const count = Math.min(HORDE_MAX, Math.max(HORDE_WAVES * 4, Math.round(plan.count * plan.perWave * crowd * HORDE_CROWD)));
+      this.level = Math.max(2, plan.level + HORDE_LEVELS);
+      for (let w = 0; w < HORDE_WAVES; w++) this.waves.push([]);
+      for (let n = 0; n < count; n++) this.waves[n % HORDE_WAVES].push({ id: run.hordeSpecies, level: this.level, role: 'wild' });
     } else if (!run.isShop() && !this.peaceful && enemiesOn) {
       // Répartition égale, le reste sur les premières vagues (CombatArena.gd:1636-1654).
       // Ligne de front : autant d'ennemis, en une vague de moins (deux au moins) —
@@ -355,7 +372,8 @@ export class RoomDirector {
     }
     this.boss = run.isBoss();
     this.groups = [];
-    if (!this.boss && this.waves.length) this.assignTrainers(world, run);
+    // Pas de dresseur dans une Horde : ils mêleraient leurs Pokémon à la colonie.
+    if (!this.boss && this.waves.length && this.special !== 'horde') this.assignTrainers(world, run);
     this.total = this.waves.reduce((s, w) => s + w.length, 0);
     // Portes fermées dès l'arrivée : autant que la carte en offre, une seule autour de la boutique et du boss.
     // Chaque offre dit sur quelle sortie elle s'ouvre (Run.pickExits : les routes du côté de leur biome).
@@ -452,6 +470,10 @@ export class RoomDirector {
           // Le Défi s'annonce (retour de test du 16 novembre 2026 : « le défi et le piège, c'est
           // la même chose ») : l'objectif en grand, puis le compte à côté du chrono.
           if (this.special === 'challenge' && this.wave === 0) this.host.toast(`Défi : ${this.total} sauvages en ${Math.round(this.clock)} s`, `₽ ×3 et un don`);
+          if (this.special === 'horde' && this.wave === 0 && run.hordeSpecies !== null) {
+            const n = this.total;
+            void loadInfo(run.hordeSpecies).then((inf) => this.host.toast(`Horde : ${n} ${inf.name}`, 'Autant de pas vers une recrue'));
+          }
           this.startWave(world, player);
         }
         break;
@@ -846,6 +868,14 @@ export class RoomDirector {
     name.textContent = `${sp.glyph} ${sp.name}`;
     name.style.setProperty('--b', sp.color);
     el.prepend(name);
+    // Horde : son espèce sous le nom, pour venir y chercher une recrue.
+    if (offer.special === 'horde' && offer.horde !== undefined) {
+      const who = document.createElement('span');
+      who.className = 'room-champ';
+      who.textContent = '…';
+      name.after(who);
+      void loadInfo(offer.horde).then((inf) => (who.textContent = inf.name));
+    }
     return el;
   }
 

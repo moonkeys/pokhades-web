@@ -223,6 +223,16 @@ l'équipe ni en mission) prend sa place, au niveau du partant s'il est plus
 bas, PV pleins, avec ses attaques et son objet ; l'équipe du Repaire suit.
 Pas en ligne.
 
+**Horde** ❖ (ajout, 23 novembre 2026, `HORDE_*` dans run/room.ts) : toute une
+colonie d'une seule espèce, que la porte annonce sous son nom (une forme de
+base de la faune de la salle, jamais un nageur, `Run.hordePool`) : deux
+vagues, deux fois l'effectif d'une salle (36 au plus), 2 niveaux en dessous,
+sans dresseur ; la porte garde sa récompense. On recrute une espèce en en
+battant assez (10, puis 20) : la Horde remplit une jauge choisie d'un coup.
+Au banc, elle se vide plus vite qu'une salle ordinaire (19 s contre 37 au
+deuxième acte : les zones fauchent la colonie), pour un peu plus de casse.
+Panneau → « Horde ».
+
 Salles calmes (Source, Autel, Dojo, Pension ; retours de test du 16 novembre
 2026 : « une salle couloir, la source sur le chemin… une petite salle faite
 pour, plus de décor, une ambiance différente pour chaque salle ») :

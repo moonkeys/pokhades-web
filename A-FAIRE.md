@@ -392,6 +392,12 @@ rejoignent le camp), des mini-boss avec récompenses, des coffres.
 - 9 salles par biome (16 novembre 2026, retour de test : « entre 8 et 10 ») :
   7 combats ou salles spéciales, la boutique, le champion
   (`COMBATS_PER_ACT`, `ROOMS_PER_ACT`) ; niveaux à la même pente par acte.
+- Horde ❖ (23 novembre 2026) : une colonie d'une seule espèce, annoncée
+  par la porte ; deux vagues, effectif ×2 (36 au plus), −2 niveaux, sans
+  dresseur ; de quoi remplir la jauge de recrue d'une espèce choisie.
+  Reste : juger en jeu la place qu'elle prend parmi les portes (une salle
+  spéciale de plus dilue les autres) ; la Route Victoire n'a jamais de
+  salle spéciale (`specialsTaken` n'a que quatre actes : à trancher).
 - Reste : d'autres salles.
 
 ### 1.9 bis Combats de champion plus épiques (17 novembre 2026)

@@ -25,7 +25,7 @@
 //   await pokhades.balance.series({ room: 44, team: [6, 9], level: 70, league: true, champion: 'Peter' }, 4)
 
 import type { Actor } from '../entities/actor';
-import type { Run } from '../run/run';
+import type { Run, SpecialId } from '../run/run';
 import type { Save } from '../meta/save';
 
 /** Ce que le banc lit et pilote de l'objet de debug (main.ts). */
@@ -40,7 +40,7 @@ export interface BalanceHost {
   readonly save: Save;
   readonly mode: string;
   newRun(): void;
-  goto(room: number): void;
+  goto(room: number, special?: SpecialId | null): void;
   step(n: number): void;
 }
 
@@ -52,6 +52,8 @@ export interface FightSetup {
   level: number;
   /** Route Victoire ouverte (les champions de la Ligue comptés comme battus). */
   league?: boolean;
+  /** Une salle spéciale à la place (Défi, Piège, Horde…) ; `room` hors boss, alors. */
+  special?: SpecialId;
   /** Forcer le champion de l'acte (sinon celui que la graine tire). */
   champion?: string;
   /** Durée de jeu au plus, en secondes. */
@@ -178,16 +180,18 @@ export function installBalance(P: BalanceHost): {
       mon.moves.splice(0, mon.moves.length, ...best);
       mon.movesVersion++;
     }
-    P.goto(setup.room);
+    // Une Horde forcée prend la première espèce possible, comme le panneau.
+    P.run.hordeSpecies = setup.special === 'horde' ? (P.run.hordePool(setup.room)[0] ?? null) : null;
+    P.goto(setup.room, setup.special ?? null);
 
-    // Les dégâts portés aux Pokémon du champion (pas aux sbires), par source.
+    // Les dégâts portés aux Pokémon du champion (pas aux sbires), par source ; hors boss, à tous.
     const combat = P.combat as unknown as { hitEnemy: (...a: unknown[]) => void };
     const hit = combat.hitEnemy;
     const damage = { played: 0, companions: 0 };
     combat.hitEnemy = function (this: unknown, ...a: unknown[]) {
       const [e, dmg] = a as [Actor, number];
       const by = a[10] as Actor | null | undefined;
-      if (e.role !== 'wild') damage[by && by !== P.player ? 'companions' : 'played'] += dmg;
+      if (e.role !== 'wild' || !P.run.isBoss()) damage[by && by !== P.player ? 'companions' : 'played'] += dmg;
       return hit.apply(this, a);
     };
 
