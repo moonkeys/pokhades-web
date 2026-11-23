@@ -142,6 +142,7 @@ export const LORE: LoreChapter[] = [
       { title: 'La boutique', text: 'Avant chaque champion : des potions, une CT, un lot de Baies, un lot de ressources pour le Repaire et des mercenaires. Un mercenaire réclame sa solde à la boutique suivante.' },
       // run/berries.ts, run/chests.ts
       { title: 'Baies et coffres', text: 'Frappe deux fois un arbre à baies pour en faire tomber. Beaucoup de salles cachent un coffre (E) : Baies, Bois, Pierre, Nourriture. Les plus riches demandent une CS : Coupe, Éclate-Roc ou Force.' },
+      { title: 'Les routes gardées', text: 'Certaines routes de la carte du monde demandent une CS : Surf vers l’Océan, Coupe vers l’Automne, Éclate-Roc du Marais au Volcan, Force vers la Montagne glacée. Le plan, près de l’arche, dit laquelle. Une autre route reste toujours ouverte.' },
       // data/forms.ts, data/evolutions.ts (REGIONAL_EVOLUTIONS)
       { title: 'Les formes régionales', text: 'Des sauvages d’autres régions : Rattata d’Alola, Miaouss de Galar, Caninos de Hisui… Et certains évoluent selon le biome : Pikachu en Raichu d’Alola à la Plage, Osselait en Ossatueur d’Alola au Volcan.' },
       // main.ts (nuzlockeToll), ui/options.ts

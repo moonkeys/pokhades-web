@@ -885,8 +885,12 @@ Si d'autres se voient en jeu, noter leur emplacement.
 - **Contenu en plus** (plus tard, 18 novembre 2026) : d'autres talents,
   salles spéciales, visiteurs par zone, récoltes, dresseurs connus.
 - Le graphe de biomes est un premier jet (`BIOME_LINKS`) : à rééquilibrer
-  au fil des tests, et d'autres CS pourront y garder des branches (Coupe,
-  Éclate-Roc). (Un champion par biome depuis le 17 novembre 2026 : voir 2.10.)
+  au fil des tests. (Un champion par biome depuis le 17 novembre 2026 : voir
+  2.10.) Fait le 23 novembre 2026 : Coupe garde Forêt → Automne, Éclate-Roc
+  Marais → Volcan, Force Automne → Montagne glacée (une autre route reste
+  ouverte de chaque biome) ; le plan écrit la CS qui manque. À juger en jeu :
+  sans CS, Pierre, Auguste et Olga sont hors de portée, et la Route Victoire
+  attend donc les CS (600 Baies environ) ; est-ce le bon rythme ?
 - Les objets tenus n'ont pas été vraiment testés en partie par le joueur.
   Relus le 23 novembre 2026 : appliqués à la sortie du Repaire (`applyHeld`),
   gardés à l'évolution (`Pokemon.inherit`), jamais sur un mercenaire ; pas de

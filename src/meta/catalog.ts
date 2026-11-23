@@ -349,9 +349,9 @@ export type CsId = 'surf' | 'cut' | 'strength' | 'rock-smash';
  */
 export const CS_LIST: readonly { id: CsId; name: string; price: number; desc: string; ready: boolean; icon: string }[] = [
   { id: 'surf', name: 'Surf', price: 250, desc: 'Nager dans l’eau, au Repaire comme en run.', ready: true, icon: 'machine_WATER' },
-  { id: 'cut', name: 'Coupe', price: 200, desc: 'Coupe les arbustes qui gardent des coffres.', ready: true, icon: 'machine_GRASS' },
-  { id: 'rock-smash', name: 'Éclate-Roc', price: 180, desc: 'Brise les rochers qui gardent des coffres.', ready: true, icon: 'machine_FIGHTING' },
-  { id: 'strength', name: 'Force', price: 220, desc: 'Pousse les gros rochers qui barrent des coffres.', ready: true, icon: 'machine_NORMAL' },
+  { id: 'cut', name: 'Coupe', price: 200, desc: 'Coupe les arbustes qui gardent des coffres, et ouvre la route de la Forêt à l’Automne.', ready: true, icon: 'machine_GRASS' },
+  { id: 'rock-smash', name: 'Éclate-Roc', price: 180, desc: 'Brise les rochers qui gardent des coffres, et ouvre la route du Marais au Volcan.', ready: true, icon: 'machine_FIGHTING' },
+  { id: 'strength', name: 'Force', price: 220, desc: 'Pousse les gros rochers qui barrent des coffres, et ouvre la route de l’Automne à la Montagne glacée.', ready: true, icon: 'machine_NORMAL' },
 ];
 
 /**

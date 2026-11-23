@@ -36,6 +36,10 @@ export const PATCH_NOTES: readonly PatchNote[] = [
         items: ['La Horde ❖ : une colonie d’une seule espèce, que la porte annonce. Deux fois plus de sauvages, un peu plus faibles : de quoi remplir d’un coup la jauge d’une recrue.'],
       },
       {
+        title: 'Carte du monde',
+        items: ['Coupe ouvre la route de l’Automne, Éclate-Roc celle du Volcan depuis le Marais, Force celle de la Montagne glacée. Le plan du Repaire écrit la CS qui manque sur la route qu’elle garde.'],
+      },
+      {
         title: 'Route Victoire',
         items: ['Ses portes proposent enfin des salles spéciales : Défi, Piège et Horde, rien de plus doux sur l’acte le plus dur.'],
       },

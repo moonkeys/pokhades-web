@@ -1,6 +1,8 @@
 import { fbm } from '../core/noise';
 import { Rng } from '../core/rng';
 import type { BiomeId } from '../data/species';
+import type { CsId } from '../meta/catalog';
+import { WORLD_LINKS } from '../world/worldmap';
 import { Renderer } from '../render/renderer';
 import { BLOB, EXTRA, FLOWERS, GROUND, PROPS, TALL_GRASS, TILE, TOWN_STYLES, TREES, withFill, type Blob, type SpriteDef, type Tile } from '../world/tiles';
 
@@ -99,7 +101,8 @@ const blobAt = (cx: number, cy: number, rx: number, ry: number, seed: number, ro
 /** Ce que le plan dessine, pour que journal.ts pose noms et flèches au même endroit. */
 export interface Plan {
   nodes: { id: Region; x: number; y: number }[];
-  roads: { from: Region; to: Region; cs: boolean; pts: { x: number; y: number }[] }[];
+  /** `cs` : la CS qui garde la route (world/worldmap.ts, WORLD_LINKS). */
+  roads: { from: Region; to: Region; cs?: CsId; pts: { x: number; y: number }[] }[];
   /** Les cases de la mer de l'Océan : seul son rivage reçoit le ressac (journal.ts). */
   sea: Uint8Array;
 }
@@ -278,7 +281,8 @@ export function paintPlan(g: CanvasRenderingContext2D, atlas: CanvasImageSource,
     const end = foot[t.to];
     const via = end && !t.sea ? [...t.via.slice(0, -1), [end.x, end.y] as [number, number]] : t.via;
     const pts = smoothPath(via);
-    roads.push({ from: t.from, to: t.to, cs: Boolean(t.cs), pts });
+    const cs = t.to === 'victoire' || t.from === 'victoire' ? undefined : WORLD_LINKS[t.from as BiomeId]?.find((l) => l.to === t.to)?.cs;
+    roads.push({ from: t.from, to: t.to, cs, pts });
     if (t.sea) continue;
     for (const pt of pts) {
       for (let y = Math.floor(pt.y - 1); y <= pt.y + 1; y++) for (let x = Math.floor(pt.x - 1); x <= pt.x + 1; x++) {
@@ -405,11 +409,11 @@ export const ZONES: { kind: 'embers' | 'fog' | 'snow' | 'leaves' | 'sparkle'; x:
  * mer (journal.ts la pointille d'écume) ; les chemins des falaises finissent au pied d'un
  * escalier.
  */
-const TRAILS: { from: Region; to: Region; via: [number, number][]; cs?: boolean; sea?: boolean }[] = [
+const TRAILS: { from: Region; to: Region; via: [number, number][]; sea?: boolean }[] = [
   { from: 'prairie', to: 'village', via: [[21.5, 26.2], [21.2, 22.5], [22, 19.5], [22, 16.6]] },
   { from: 'prairie', to: 'plage', via: [[19.5, 27.6], [14, 28.2], [10.5, 26], [9.6, 20], [8.2, 14.2]] },
   { from: 'prairie', to: 'foret', via: [[23.6, 27.6], [28, 28], [32, 27], [36, 27.6]] },
-  { from: 'plage', to: 'ocean', via: [[5, 13.6], [3.6, 16.5], [3.4, 19.6]], cs: true, sea: true },
+  { from: 'plage', to: 'ocean', via: [[5, 13.6], [3.6, 16.5], [3.4, 19.6]], sea: true },
   { from: 'plage', to: 'marais', via: [[7.8, 14.4], [9.8, 17.4], [11.6, 20.6]] },
   { from: 'village', to: 'marais', via: [[20.4, 16.8], [17.6, 18.6], [14.6, 20.4]] },
   { from: 'village', to: 'lac', via: [[23.6, 16.8], [25, 18.4], [25.4, 21.6], [27.4, 23.8]] },

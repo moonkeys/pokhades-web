@@ -105,6 +105,14 @@ types, et l'affiche de la boutique arrive quand l'équipe ne peut plus changer ;
 la route, elle, se choisit encore. La Plage mène à
 l'Océan seulement si l'on est parti avec la CS Surf : sans elle, la porte
 reste visible mais fermée (« CS Surf requise »), et le Marais reste ouvert.
+Trois routes de plus sont gardées (23 novembre 2026, `WORLD_LINKS`) : Forêt →
+Automne par **Coupe**, Marais → Volcan par **Éclate-Roc**, Automne → Montagne
+glacée par **Force** ; chaque biome garde une autre route ouverte. Sans CS, 7
+champions sur 11 restent à portée (Pierre demande Coupe, Auguste Surf ou
+Éclate-Roc, Olga Coupe puis Force) : la Route Victoire passe par les CS
+achetées chez Alakazam. Le plan du monde écrit la CS manquante au milieu de la
+route qu'elle garde (`journal.ts`). Vérifié sur 400 graines : jamais de run
+bloquée sans CS, les dix biomes atteints avec toutes.
 
 Sens des salles (ajout, retour de test : « je sors par la droite et j'arrive
 par le haut ») : on entre dans une salle par le bord d'en face de la porte

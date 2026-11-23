@@ -1433,7 +1433,7 @@ export class CampScreen {
         card.addEventListener('click', () =>
           this.buy(c.price, () => {
             ctx.save.cs.push(c.id);
-            ctx.notify(`CS ${c.name}`, c.id === 'surf' ? 'Ton équipe sait nager : le lac et son île t’attendent.' : c.id === 'cut' ? 'Les arbustes ne gardent plus les coffres : [E] devant pour couper.' : c.id === 'rock-smash' ? 'Les rochers fissurés ne gardent plus les coffres : [E] devant pour briser.' : c.desc, STATIONS.upgrades.id);
+            ctx.notify(`CS ${c.name}`, c.id === 'surf' ? 'Ton équipe sait nager : le lac et son île t’attendent.' : c.id === 'cut' ? 'Les arbustes ne gardent plus les coffres, et la route de l’Automne s’ouvre.' : c.id === 'rock-smash' ? 'Les rochers fissurés ne gardent plus les coffres, et la route du Volcan s’ouvre.' : c.id === 'strength' ? 'Les gros rochers se poussent, et la route de la Montagne glacée s’ouvre.' : c.desc, STATIONS.upgrades.id);
             ctx.teamChanged();
           }),
         );

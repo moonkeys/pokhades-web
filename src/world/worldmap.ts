@@ -59,11 +59,14 @@ export const WORLD_LINKS: Record<BiomeId, readonly BiomeLink[]> = {
   prairie: [{ to: 'plage' }, { to: 'village' }, { to: 'foret' }],
   plage: [{ to: 'ocean', cs: 'surf' }, { to: 'marais' }],
   village: [{ to: 'marais' }, { to: 'lac' }],
-  foret: [{ to: 'lac' }, { to: 'automne' }],
+  // Trois routes gardées par une CS de plus que Surf (23 novembre 2026, A-FAIRE 3 : « d'autres
+  // CS pourront y garder des branches ») ; chaque biome garde une autre route ouverte (Run.offers
+  // en laisse toujours une), et les CS s'achètent au Repaire : elles ouvrent la carte au fil des runs.
+  foret: [{ to: 'lac' }, { to: 'automne', cs: 'cut' }],
   ocean: [{ to: 'volcan' }],
-  marais: [{ to: 'volcan' }, { to: 'rocailleux' }],
+  marais: [{ to: 'volcan', cs: 'rock-smash' }, { to: 'rocailleux' }],
   lac: [{ to: 'rocailleux' }],
-  automne: [{ to: 'rocailleux' }, { to: 'glace' }],
+  automne: [{ to: 'rocailleux' }, { to: 'glace', cs: 'strength' }],
   volcan: [],
   rocailleux: [],
   glace: [],
