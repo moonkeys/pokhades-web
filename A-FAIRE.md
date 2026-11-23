@@ -753,8 +753,14 @@ Si d'autres se voient en jeu, noter leur emplacement.
   nettoyée en run, ne rate jamais, se récolte au retour ; « Rappeler » rentre
   sans rien. Deux places, trois avec le Dortoir. Le Pokémon parti quitte le
   camp et l'équipe ; Porygon le montre grisé.
+- Fouilles (23 novembre 2026), Carrière bâtie : 3 matériaux de biome en 6
+  salles, parmi les biomes atteints (`materials`, `collect`). Contrat
+  « Horde » chez Kangourex (à la place du Défi une fois sur deux). Quêtes
+  nouvelles écartées pour l'instant : les espèces libres et embarquées ne
+  sont plus que des légendaires déjà donateurs ou PNJ (il faudrait en
+  importer, `npm run import-assets`).
 - Reste : d'autres places ou missions à débloquer avec de futurs aménagements
-  (Godot : Grange, Palissade, Carrière du sanctuaire).
+  (Godot : Grange, Palissade).
 
 ### 2.5 Quêtes de Kangourex (fait)
 - **Kangourex**, la doyenne, au camp dès le départ, à l'est entre la hutte

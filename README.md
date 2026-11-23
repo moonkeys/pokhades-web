@@ -494,7 +494,12 @@ Démolosse, le pisteur (les expéditions de Godot), envoie des libérés en
 2 salles), Coupe de bois (Bois 6, 3), Ramassage de pierres (Pierre 5, 4),
 Récolte de baies (40 Baies, 4), Entraînement (+2 niveaux de départ, 5 ;
 terrain bâti, plafond du Super Bonbon), Grande chasse (Nourriture 21, 6),
-Grande coupe (Bois 20, 8), Ouvrir une carrière (Pierre 14, 9). Une mission
+Grande coupe (Bois 20, 8), Ouvrir une carrière (Pierre 14, 9), et, la
+Carrière bâtie, les **Fouilles** (23 novembre 2026 : 3 matériaux de biome, 6
+salles, tirés parmi les biomes déjà atteints ; l'annonce au retour dit
+lesquels) : de quoi façonner à l'atelier sans refaire une run au bon endroit.
+Les contrats de Kangourex comptent aussi les Hordes (« Viens à bout d'une
+Horde », à la place du Défi une fois sur deux, payé en Baies et vivres). Une mission
 avance d'un cran à chaque salle nettoyée en run, ne rate jamais, et se
 récolte chez lui au retour ; « Rappeler » fait rentrer le Pokémon les mains
 vides. Parti, il n'est plus au camp et ne peut pas entrer dans l'équipe

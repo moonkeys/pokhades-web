@@ -22,7 +22,7 @@ export type QuestEvent =
   | { kind: 'kill'; types: readonly string[]; weather: WeatherId }
   | { kind: 'berry'; n: number }
   | { kind: 'room'; hurt: boolean }
-  | { kind: 'special'; special: 'challenge' | 'trap'; success: boolean }
+  | { kind: 'special'; special: 'challenge' | 'trap' | 'horde'; success: boolean }
   | { kind: 'champion' }
   /** Acte atteint (0 : le premier). */
   | { kind: 'act'; act: number }
@@ -132,7 +132,7 @@ export function sanitizeQuests(raw: Partial<Save['quests']> | undefined): Save['
 // Tirage déterministe sur un compteur de la sauvegarde (`seed`), pour qu'un
 // rechargement ne rebatte pas les cartes.
 
-export type ContractKind = 'kill_type' | 'kill' | 'berry' | 'clean' | 'challenge' | 'champion';
+export type ContractKind = 'kill_type' | 'kill' | 'berry' | 'clean' | 'challenge' | 'champion' | 'horde';
 
 export interface Contract {
   kind: ContractKind;
@@ -183,7 +183,9 @@ export function rollContract(seed: number): Contract {
   if (pick < 6) return { kind: 'kill', goal: 30 + 5 * r(4, 5), n: 0, reward: { baies: 40 + r(5, 20), food: 3 + r(6, 3), ...bonus } };
   if (pick < 7) return { kind: 'berry', goal: 15 + 5 * r(4, 3), n: 0, reward: { baies: 25, wood: 3 + r(6, 3), stone: 3 + r(7, 3) } };
   if (pick < 8) return { kind: 'clean', goal: 2 + r(4, 2), n: 0, reward: { baies: 50 + r(5, 20), ...bonus } };
-  if (pick < 9) return { kind: 'challenge', goal: 1, n: 0, reward: { baies: 40, [res]: 6 } };
+  // Une fois sur deux, la place du Défi revient à la Horde (23 novembre 2026) : on la cherche
+  // d'une porte à l'autre comme un Défi, et elle paie en vivres, ce que mange la colonie.
+  if (pick < 9) return r(11, 2) ? { kind: 'horde', goal: 1, n: 0, reward: { baies: 40, food: 6 } } : { kind: 'challenge', goal: 1, n: 0, reward: { baies: 40, [res]: 6 } };
   return { kind: 'champion', goal: 1, n: 0, reward: { baies: 40, shards: 1, ...bonus } };
 }
 
@@ -200,6 +202,8 @@ export function contractText(c: Contract): string {
       return `Libère ${c.goal} salles sans que ton meneur encaisse un coup.`;
     case 'challenge':
       return 'Réussis une salle Défi.';
+    case 'horde':
+      return 'Viens à bout d’une Horde.';
     case 'champion':
       return 'Vaincs un champion d’arène.';
   }
@@ -225,6 +229,8 @@ export function contractGain(c: Contract, ev: QuestEvent): number {
       return ev.kind === 'special' && ev.special === 'challenge' && ev.success ? 1 : 0;
     case 'champion':
       return ev.kind === 'champion' ? 1 : 0;
+    case 'horde':
+      return ev.kind === 'special' && ev.special === 'horde' && ev.success ? 1 : 0;
   }
 }
 
@@ -257,7 +263,7 @@ export function claimContract(save: Save, i: number): Contract | null {
 
 /** Nettoie les contrats d'une sauvegarde, et complète la liste. */
 export function sanitizeContracts(raw: Partial<Save['contracts']> | undefined): Save['contracts'] {
-  const kinds: ContractKind[] = ['kill_type', 'kill', 'berry', 'clean', 'challenge', 'champion'];
+  const kinds: ContractKind[] = ['kill_type', 'kill', 'berry', 'clean', 'challenge', 'champion', 'horde'];
   const list = (Array.isArray(raw?.list) ? raw.list : [])
     .filter((c): c is Contract => !!c && kinds.includes(c.kind) && Number(c.goal) > 0 && !!c.reward)
     .slice(0, CONTRACT_SLOTS)

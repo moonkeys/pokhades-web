@@ -531,7 +531,7 @@ export class RoomDirector {
           this.host.setTimer(null);
           this.host.roomCleared();
           this.host.toast(won ? 'Défi réussi !' : this.failed ? 'Défi raté…' : 'Salle libérée !', `+${gold} ₽`);
-          if (this.special === 'challenge' || this.special === 'trap') this.host.specialDone(this.special, !this.failed);
+          if (this.special === 'challenge' || this.special === 'trap' || this.special === 'horde') this.host.specialDone(this.special, !this.failed);
           this.t = OPEN_DELAY;
           break;
         }

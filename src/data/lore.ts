@@ -225,7 +225,7 @@ export const LORE: LoreChapter[] = [
       { title: 'Quêtes et contrats', text: 'Kangourex propose des quêtes au long cours, chacune promettant un Pokémon introuvable ailleurs, et trois contrats de run renouvelés, payés en Baies, ressources ou Éclat, parfois un objet en prime.' },
       // catalog.ts:216-228, meta/missions.ts
       { title: 'Les recrues', text: 'Un Pokémon battu assez souvent, ou un Pokémon de champion, veut te rejoindre : Dracolosse en tient la liste, un « ! » au-dessus de lui quand un nouveau arrive. Lis sa fiche, puis recrute-le ou renvoie-le.' },
-      { title: 'Aménagements et missions', text: 'Charpenti bâtit au fil des runs : bâtiments, dortoir, terrain, champ, maisons, carrière… Chaque chantier fait de la place aux libérés. Démolosse les envoie en mission chercher des ressources.' },
+      { title: 'Aménagements et missions', text: 'Charpenti bâtit au fil des runs : bâtiments, dortoir, terrain, champ, maisons, carrière… Chaque chantier fait de la place aux libérés. Démolosse les envoie en mission chercher des ressources ; la carrière bâtie, en Fouilles, d’où ils rapportent des matériaux de biome pour l’atelier.' },
       // meta/crafting.ts
       { title: 'Potager et matériaux', text: 'Chaque coffre rapporte le matériau de son biome. Au Potager, Héliatronc plante ce que tu veux : ça pousse à chaque salle franchie, et se récolte en herbes et en racines.' },
       { title: 'L’atelier et les nectars', text: 'Queulorior façonne des objets tenus introuvables ailleurs (souvent deux stats), des CT que le tuteur n’a pas (une par biome, à faire une fois) et des nectars. Posé sur la coupelle, un nectar attire en 5 salles un Pokémon pas encore libéré : parle-lui, il reste.' },

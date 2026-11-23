@@ -40,6 +40,13 @@ export const PATCH_NOTES: readonly PatchNote[] = [
         items: ['Coupe ouvre la route de l’Automne, Éclate-Roc celle du Volcan depuis le Marais, Force celle de la Montagne glacée. Le plan du Repaire écrit la CS qui manque sur la route qu’elle garde.'],
       },
       {
+        title: 'Repaire',
+        items: [
+          'Nouvelle mission chez Démolosse, une fois la Carrière bâtie : les Fouilles rapportent trois matériaux des biomes déjà parcourus.',
+          'Kangourex propose parfois un contrat de Horde.',
+        ],
+      },
+      {
         title: 'Route Victoire',
         items: ['Ses portes proposent enfin des salles spéciales : Défi, Piège et Horde, rien de plus doux sur l’acte le plus dur.'],
       },

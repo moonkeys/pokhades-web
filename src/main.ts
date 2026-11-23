@@ -2186,7 +2186,7 @@ async function boot(): Promise<void> {
       wild = wild.filter((e) => e.deathT >= 0);
     },
     specialDone: (special, success) => {
-      if (special === 'challenge' || special === 'trap') questProgress({ kind: 'special', special, success });
+      if (special === 'challenge' || special === 'trap' || special === 'horde') questProgress({ kind: 'special', special, success });
     },
     // Ligne de front : la vague qui arrive fait trembler le sol (coupé avec les secousses, comme les autres).
     rumble: () => combat.addShake(0.25),

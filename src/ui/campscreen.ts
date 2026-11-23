@@ -1685,7 +1685,7 @@ export class CampScreen {
         el('div', 'cs-head', card).append(el('b', '', undefined, m.name));
         el('small', 'cs-info', card, m.desc);
         this.rewardRow(m, card, `${m.rooms} salles`);
-        if (!ok) el('div', 'da-tape cs-tag', card, 'Terrain requis');
+        if (!ok) el('div', 'da-tape cs-tag', card, m.needs === 'quarry' ? 'Carrière requise' : 'Terrain requis');
         else card.addEventListener('click', () => go({ slot: sending.slot, type: m.id }));
       }
       return;
@@ -1724,9 +1724,11 @@ export class CampScreen {
       if (done) {
         el('div', 'da-stamp cs-price', card, 'Récolter');
         card.addEventListener('click', () => {
-          if (!collect(save, i)) return;
+          const got = collect(save, i);
+          if (!got) return;
           ctx.persist();
-          ctx.notify('Mission', `${name} rapporte ${rewardText(m)}.`, speciesOf(save, slot.pid));
+          const found = got.found && Object.entries(got.found).map(([mat, n]) => `${materialName(mat)}${n > 1 ? ` ×${n}` : ''}`).join(', ');
+          ctx.notify('Mission', `${name} rapporte ${found ?? rewardText(m)}.`, speciesOf(save, slot.pid));
           ctx.teamChanged();
           void this.render();
         });
@@ -1755,9 +1757,9 @@ export class CampScreen {
     const row = m.res ? resRow(m.res, card, 'cs-cost cs-reward') : el('div', 'cs-cost cs-reward', card);
     if (!m.res) {
       const chip = el('span', 'cs-res', row);
-      chip.title = m.levels ? 'Niveaux de départ' : 'Baies';
-      el('b', '', chip, m.levels ? `+${m.levels} N.` : String(m.baies ?? 0));
-      icon(m.levels ? CANDY.icon : 'ORANBERRY', chip, 'cs-res-ico');
+      chip.title = m.levels ? 'Niveaux de départ' : m.materials ? 'Matériaux de biome' : 'Baies';
+      el('b', '', chip, m.levels ? `+${m.levels} N.` : m.materials ? `×${m.materials}` : String(m.baies ?? 0));
+      icon(m.levels ? CANDY.icon : m.materials ? MATERIALS['smooth-rock'].icon : 'ORANBERRY', chip, 'cs-res-ico');
     }
     if (tail) el('small', 'cs-next', row, `· ${tail}`);
   }
@@ -1767,7 +1769,7 @@ export class CampScreen {
     const r = Object.keys(m.res ?? {})[0] as ResourceId | undefined;
     const box = el('div', 'cs-icon cs-mission-ico', card);
     if (r) resIcon(r, box);
-    else icon(m.levels ? CANDY.icon : 'ORANBERRY', box, 'cs-res-ico');
+    else icon(m.levels ? CANDY.icon : m.materials ? MATERIALS['smooth-rock'].icon : 'ORANBERRY', box, 'cs-res-ico');
   }
 
   // ── En ligne (Roucarnage) ────────────────────────────────────────────
