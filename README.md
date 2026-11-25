@@ -552,6 +552,11 @@ des starters et des gardiens de grotte (retour de test : on ne recrute pas
 d'évolution, elles n'y ont plus de case) : débloquée, rencontrée (dès qu'elle
 apparaît) ou silhouette d'encre, avec les victoires qui lui manquent ; sa
 fiche montre sa **lignée** (chaque évolution et son niveau, `evolutionsOf`).
+Le filtre **Méga ◈** (25 novembre 2026) garde les lignées qui ont une
+Méga-évolution jouable (`megaInLine`, `data/megaline.ts` : celles dont
+SpriteCollab a les planches), marquées d'un losange ; la fiche du Pokédex la
+nomme et dit à quel niveau elle devient possible, et la fiche de l'équipe
+porte une pastille ◈ Méga.
 
 Au premier lancement, on choisit son **starter** parmi les neuf du jeu
 (Pikachu, Zorua, Absol, Flamiaou, Grenousse, Ouisticram, Pandespiègle,
@@ -1284,6 +1289,25 @@ au Repaire une fois le starter choisi.
   les recrues si le Repaire est plein), une seule fois par espèce (`Save.shared`). Ça permet de débloquer vite
   des Pokémon de départ.
 - **À la fin de la run**, il voit le même bilan que l'hôte (`end` dans `net/net.ts` porte le bilan).
+- **Ses choix, chez lui** (25 novembre 2026) : quand un invité presse E (récompense du centre, boutique,
+  Source, Autel, Dojo, Pension), l'hôte joue l'interaction en son nom (`asGuest`, `main.ts`) ; les écrans
+  qui s'ensuivent (dialogue, dons, nouvelle attaque) ne s'ouvrent pas chez l'hôte mais chez l'invité
+  (`ui` / `pick`, `RemoteUi` dans `net/net.ts`), et la run attend son choix. Un don « Ton Pokémon » va au
+  sien ; ses Baies et ressources achetées vont dans sa sauvegarde ; ses attaques apprises ou renforcées
+  lui reviennent (`moves`). L'invite [E] de ce qui est devant lui lui est envoyée en HTML
+  (`net/prompthtml.ts`, icônes comprises). R lance l'ultime de la run (jauge commune, montrée dans son HUD).
+- **La carte telle qu'elle est** : le message de salle porte les objets posés ou ôtés par la salle
+  après la génération (torches de l'Autel, enclos…), et `tiles` ce qui change ensuite (cases libérées
+  d'un obstacle, coffres ouverts, torches éteintes).
+- **Coupure en pleine run** : l'hôte garde la place (`Net.dropped`, par le jeton du navigateur,
+  `pokhades-net-token`) ; l'invité retente seul 4 fois (`Net.rejoin`), ou revient avec le code s'il a
+  rechargé la page : l'hôte lui relance la run, lui renvoie la carte, et lui rend son Pokémon (PV,
+  attaques). `NET_VERSION` passe à 2.
+- **Restent à l'hôte** : l'entraînement de la Pension, l'affiche du champion, les services des habitants,
+  la grotte.
+
+Tests à deux onglets : deux origines du serveur de dev (`localhost` et `127.0.0.1`), donc deux
+sauvegardes ; sous `?debug`, `pokhades.netHost()`, `pokhades.netJoin(code)`, `pokhades.netStart()`.
 
 ## Mobile : plein écran et départ en run
 

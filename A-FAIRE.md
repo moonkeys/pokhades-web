@@ -900,11 +900,19 @@ Si d'autres se voient en jeu, noter leur emplacement.
 
 - **Jeu en ligne** (src/net/, voir README) : lobby, visite du Repaire de
   l'hôte, run partagée, salle rejouée chez l'invité et butin partagé en
-  place. Reste : l'invité ne prend ni les dons ni les portes, n'achète pas à
-  la boutique, n'a pas d'ultime (seul l'hôte choisit) ; un coffre ouvert et
-  un obstacle coupé restent dessinés intacts chez l'invité (décor « cuit »
-  dans la carte) ; pas de reconnexion en cours de run ; à tester entre deux
-  machines (NAT strict : il faudrait un serveur TURN).
+  place. Fait le 25 novembre 2026 (retour : « je veux régler tous les
+  problèmes du jeu en ligne ») : l'invité choisit son don et sa nouvelle
+  attaque chez lui (récompense, Dojo, CT de la boutique), achète à la
+  boutique, boit à la Source, signe à l'Autel et lance l'ultime ; coffres
+  ouverts, obstacles levés, torches éteintes et objets posés par les salles
+  sont les mêmes chez lui ; il voit ses invites [E] ; il se reconnecte seul
+  après une coupure, ou revient avec le code (sa place est gardée par jeton).
+  Testé à deux onglets (deux origines). Reste : l'entraînement de la Pension
+  (niveaux répartis sur le Repaire de l'hôte) et l'affiche du champion à la
+  boutique restent à l'hôte ; les services des habitants des salles calmes et
+  la grotte (prisonniers, coffre) ne répondent qu'à l'hôte ; un hôte qui se
+  coupe ferme la partie ; à tester entre deux machines (NAT strict : relais
+  TURN, voir README).
 - ~~Revente à la boutique de run~~ : abandonnée (18 novembre 2026 : pas
   d'inventaire en run).
 - **Surf en run** (tranché le 18 novembre 2026 : on garde) : au Repaire, on ne

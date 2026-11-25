@@ -1,5 +1,7 @@
 import Peer, { type DataConnection } from 'peerjs';
+import type { BoonOffer } from '../combat/boons';
 import type { Move } from '../combat/moves';
+import type { SkillOffer } from '../run/rewards';
 import type { Cmd } from './drawrec';
 
 // Le jeu en ligne (le relais de Roucarnage) : portage web de autoloads/Net.gd.
@@ -52,9 +54,30 @@ function iceServers(): RTCIceServer[] {
 const PEER_OPTIONS = { config: { iceServers: iceServers(), sdpSemantics: 'unified-plan' } as RTCConfiguration };
 /** Délai pour établir la liaison avec l'hôte : via un relais TURN, elle prend plus de 12 s. */
 const JOIN_TIMEOUT_MS = 30000;
+/**
+ * Reconnexion de l'invité coupé en pleine run (Wi-Fi qui saute, téléphone mis en veille) :
+ * il retente seul, autant de fois, en laissant ce délai entre deux essais. L'hôte lui garde sa
+ * place (Net.dropped) le temps de la run.
+ */
+const REJOIN_TRIES = 4;
+const REJOIN_DELAY_MS = 2500;
+
+/** Jeton de ce navigateur, gardé d'une session à l'autre : l'hôte reconnaît l'invité qui revient. */
+function browserToken(): string {
+  const KEY = 'pokhades-net-token';
+  try {
+    const t = localStorage.getItem(KEY);
+    if (t) return t;
+    const fresh = Array.from(crypto.getRandomValues(new Uint8Array(9)), (b) => b.toString(16).padStart(2, '0')).join('');
+    localStorage.setItem(KEY, fresh);
+    return fresh;
+  } catch {
+    return `t${Math.random().toString(36).slice(2)}`;
+  }
+}
 
 /** Un hôte et un invité de versions différentes ne se comprendraient pas (Net._reject_version). */
-export const NET_VERSION = 1;
+export const NET_VERSION = 2;
 
 /** Le Pokémon qu'un joueur emmène dans la run en ligne : un seul chacun (MultiplayerLobbyScreen). */
 export interface Loadout {
@@ -70,11 +93,42 @@ export interface LobbyPlayer {
   id: string;
   host: boolean;
   loadout: Loadout | null;
+  /** Jeton du navigateur de l'invité (Net.token) : il le reconnaît s'il revient en pleine run. */
+  token?: string;
+}
+
+/**
+ * Un écran que l'hôte ouvre chez un invité (main.ts, remoteUi) : l'invité a pressé E près de la
+ * récompense, d'un article de la boutique, de Leveinard… Il choisit chez lui, l'hôte applique.
+ */
+export type RemoteUi =
+  | { kind: 'talk'; species: number; name: string; text: string; options: { label: string; disabled?: string }[]; rewards?: { icon: string; label: string; desc?: string }[] }
+  | { kind: 'boons'; offer: BoonOffer }
+  | { kind: 'skill'; offer: SkillOffer; price: number };
+
+/** La réponse de l'invité : l'option, la carte ou l'attaque choisie ; rien s'il a refermé. */
+export interface RemotePick {
+  /** Dialogue : rang de l'option ; dons : rang de la carte. */
+  i?: number;
+  /** Nouvelle attaque : rang dans offer.learn, et l'emplacement qu'elle remplace (-1 : un libre). */
+  learn?: number;
+  replace?: number;
+  /** Renforcer l'attaque de cet emplacement. */
+  upgrade?: number;
 }
 
 /** Ce que l'invité envoie à l'hôte. */
 export type ClientMsg =
-  | { t: 'hello'; version: number; loadout: Loadout }
+  | {
+      t: 'hello';
+      version: number;
+      loadout: Loadout;
+      /** Jeton de ce navigateur, gardé d'une session à l'autre (reconnexion en pleine run). */
+      token: string;
+      /** L'invité est encore dans la run (il revient d'une coupure) ; sinon l'hôte la lui relance. */
+      inRun: boolean;
+    }
+  | { t: 'pick'; id: number; pick: RemotePick | null }
   | { t: 'loadout'; loadout: Loadout }
   | {
       t: 'in';
@@ -92,6 +146,8 @@ export type ClientMsg =
       my: number;
       /** E pressé depuis le dernier envoi (ouvrir un coffre). */
       interact?: boolean;
+      /** R pressé depuis le dernier envoi : l'ultime de la run (jauge commune). */
+      ult?: boolean;
     };
 
 /** De quoi régénérer la carte chez l'invité : la génération est déterministe. */
@@ -164,6 +220,12 @@ export type HostMsg =
       weather: string;
       music: string;
       color: string;
+      /**
+       * Les objets que la salle a posés ou ôtés après la génération (torches de l'Autel, enclos de
+       * la Pension, arbres chassés par une place) : la carte régénérée chez l'invité ne les a pas.
+       */
+      added?: { sprite: unknown; x: number; y: number; fades: boolean }[];
+      removed?: [number, number][];
     }
   | {
       t: 'snap';
@@ -176,8 +238,34 @@ export type HostMsg =
       strikes: StrikeSnap[];
       fx: [string, unknown[]][];
       shake: number;
-      hud: { place: string; money: number; fade: number; boss: { name: string; sub: string; ace: boolean; bars: number; barsLeft: number; ratio: number } | null };
+      hud: {
+        place: string;
+        money: number;
+        fade: number;
+        boss: { name: string; sub: string; ace: boolean; bars: number; barsLeft: number; ratio: number } | null;
+        /** L'ultime de la run et sa jauge : commune à tous, chacun la lance (R). */
+        ult?: [string, number] | null;
+      };
     }
+  | {
+      /**
+       * Ce qui a changé dans la carte depuis sa génération : cases libérées (obstacle coupé),
+       * coffres ouverts, objets retirés (torches de l'Autel). La carte de l'invité est régénérée
+       * depuis sa graine, et ces changements, faits en jeu chez l'hôte, n'y étaient pas.
+       */
+      t: 'tiles';
+      epoch: number;
+      blocked: string;
+      solid: string;
+      opened: [number, number][];
+      gone: [number, number][];
+    }
+  /** L'invite [E] de ce qui est devant mon Pokémon (boutique, coffre, source…), en HTML ; vide sinon. */
+  | { t: 'prompt'; h: string }
+  /** Un écran de choix à ouvrir chez moi (RemoteUi). */
+  | { t: 'ui'; id: number; ui: RemoteUi }
+  /** Mes attaques telles que l'hôte les tient (apprises, renforcées, évolution). */
+  | { t: 'moves'; moves: Move[] }
   | { t: 'hud'; k: 'message' | 'toast' | 'announce'; args: unknown[] }
   | {
       t: 'scene';
@@ -270,6 +358,19 @@ export class Net {
   onLeave: (from: string) => void = () => {};
   /** Hôte : un invité vient d'entrer (il attend le Repaire de l'hôte). */
   onJoin: (id: string) => void = () => {};
+  /**
+   * Hôte : un invité coupé en pleine run revient (nouvel identifiant de pair `id`, l'ancien
+   * `was`) ; `inRun` : il est resté dans la run chez lui, sinon il faut la lui relancer.
+   */
+  onRejoin: (id: string, was: string, inRun: boolean) => void = () => {};
+  /** Ce navigateur, d'une session à l'autre. */
+  readonly token = browserToken();
+  /** Hôte : les invités coupés en pleine run, par jeton, avec leur ancien identifiant (leur place est gardée). */
+  private readonly dropped = new Map<string, LobbyPlayer>();
+  /** Invité : le code et le Pokémon de la partie, pour s'y reconnecter. */
+  private joined: { code: string; loadout: Loadout } | null = null;
+  /** Invité : une reconnexion est en cours. */
+  reconnecting = false;
 
   get active(): boolean {
     return this.role !== 'off';
@@ -326,12 +427,13 @@ export class Net {
   }
 
   private accept(conn: DataConnection): void {
+    const refuse = (reason: string) => {
+      conn.send({ t: 'reject', reason } satisfies HostMsg);
+      setTimeout(() => conn.close(), 500);
+    };
     conn.on('open', () => {
-      if (this.players.length >= MAX_PLAYERS || this.inRun) {
-        conn.send({ t: 'reject', reason: this.inRun ? 'La run a déjà commencé.' : 'La partie est pleine (six joueurs).' } satisfies HostMsg);
-        setTimeout(() => conn.close(), 500);
-        return;
-      }
+      // Pendant la run, seul un invité coupé peut revenir : on attend son « hello » pour le savoir.
+      if (this.players.length >= MAX_PLAYERS && !this.inRun) return refuse('La partie est pleine (six joueurs).');
       this.conns.set(conn.peer, conn);
     });
     conn.on('data', (data) => {
@@ -342,9 +444,18 @@ export class Net {
           setTimeout(() => conn.close(), 500);
           return;
         }
-        if (!this.players.some((p) => p.id === conn.peer)) this.players.push({ id: conn.peer, host: false, loadout: msg.loadout });
+        // Un invité coupé en pleine run revient : il reprend sa place (son Pokémon, ses PV).
+        const back = this.inRun ? this.dropped.get(msg.token) : undefined;
+        if (this.inRun && !back) {
+          this.conns.delete(conn.peer);
+          return refuse('La run a déjà commencé.');
+        }
+        if (!this.players.some((p) => p.id === conn.peer)) this.players.push({ id: conn.peer, host: false, loadout: back?.loadout ?? msg.loadout, token: msg.token });
         this.syncLobby();
-        this.onJoin(conn.peer);
+        if (back) {
+          this.dropped.delete(msg.token);
+          this.onRejoin(conn.peer, back.id, msg.inRun);
+        } else this.onJoin(conn.peer);
         return;
       }
       if (msg.t === 'loadout') {
@@ -362,6 +473,9 @@ export class Net {
   private drop(id: string): void {
     if (!this.conns.has(id) && !this.players.some((p) => p.id === id)) return;
     this.conns.delete(id);
+    // En pleine run, sa place est gardée : il peut revenir avec le même navigateur.
+    const p = this.players.find((q) => q.id === id);
+    if (this.inRun && p?.token) this.dropped.set(p.token, p);
     this.players = this.players.filter((p) => p.id !== id);
     this.onLeave(id);
     this.syncLobby();
@@ -378,15 +492,26 @@ export class Net {
     const clean = cleanCode(code);
     this.role = 'client';
     this.code = clean;
+    this.joined = { code: clean, loadout };
     this.status = 'Connexion à l’hôte…';
     this.changed();
+    return this.connect(clean, loadout, (why) => {
+      this.leave(why);
+      this.changed();
+    });
+  }
+
+  /**
+   * La liaison à l'hôte : un pair, une connexion, le « hello ». `fail` : elle n'a pas pu se faire.
+   * Sert à rejoindre, puis à revenir après une coupure (rejoin).
+   */
+  private connect(clean: string, loadout: Loadout, onFail: (why: string) => void): Promise<void> {
     const peer = new Peer(PEER_OPTIONS);
     this.peer = peer;
     return new Promise((resolve) => {
       const fail = (why: string) => {
         if (this.peer !== peer) return resolve();
-        this.leave(why);
-        this.changed();
+        onFail(why);
         resolve();
       };
       peer.on('error', (err) => fail(err.type === 'peer-unavailable' ? `Aucune partie ouverte sous le code ${clean}.` : `Connexion impossible (${err.type}).`));
@@ -403,7 +528,8 @@ export class Net {
         conn.on('open', () => {
           clearTimeout(timer);
           this.status = '';
-          conn.send({ t: 'hello', version: NET_VERSION, loadout } satisfies ClientMsg);
+          this.reconnecting = false;
+          conn.send({ t: 'hello', version: NET_VERSION, loadout, token: this.token, inRun: this.inRun } satisfies ClientMsg);
           this.changed();
           resolve();
         });
@@ -418,8 +544,9 @@ export class Net {
           if (msg.t === 'bye') return this.hostGone(msg.reason);
           this.onHost(msg);
         });
-        conn.on('close', () => this.hostGone('L’hôte a fermé la partie.'));
-        conn.on('error', () => this.hostGone('Connexion à l’hôte perdue.'));
+        // Une coupure (sans « bye ») : en pleine run, on tente de revenir avant d'abandonner.
+        conn.on('close', () => this.hostConn === conn && this.lost('L’hôte a fermé la partie.'));
+        conn.on('error', () => this.hostConn === conn && this.lost('Connexion à l’hôte perdue.'));
       });
     });
   }
@@ -427,6 +554,39 @@ export class Net {
   private hostGone(reason: string): void {
     if (this.role !== 'client') return;
     this.leave(reason);
+  }
+
+  /** La liaison à l'hôte a lâché sans qu'il ait dit au revoir. */
+  private lost(reason: string): void {
+    if (this.role !== 'client') return;
+    if (!this.inRun || !this.joined) return this.hostGone(reason);
+    void this.rejoin(reason, REJOIN_TRIES);
+  }
+
+  /**
+   * Revenir dans la run après une coupure : l'hôte a gardé la place (dropped). L'écran garde la
+   * dernière image reçue, et un message dit qu'on se reconnecte ; après REJOIN_TRIES essais, on
+   * rentre au Repaire comme avant.
+   */
+  private async rejoin(reason: string, tries: number): Promise<void> {
+    const j = this.joined;
+    if (!j || this.role !== 'client') return;
+    this.reconnecting = true;
+    this.hostConn = null;
+    const old = this.peer;
+    this.peer = null;
+    old?.destroy();
+    this.status = 'Liaison perdue : reconnexion à l’hôte…';
+    this.changed();
+    await new Promise((r) => setTimeout(r, REJOIN_DELAY_MS));
+    if (this.role !== 'client' || !this.reconnecting) return;
+    await this.connect(j.code, j.loadout, (why) => {
+      if (tries > 1) void this.rejoin(reason, tries - 1);
+      else {
+        this.reconnecting = false;
+        this.leave(`${reason} ${why}`);
+      }
+    });
   }
 
   /** Quitte la partie (l'hôte la ferme pour tout le monde). */
@@ -437,6 +597,9 @@ export class Net {
     this.peer = null;
     this.hostConn = null;
     this.conns.clear();
+    this.dropped.clear();
+    this.joined = null;
+    this.reconnecting = false;
     this.players = [];
     this.role = 'off';
     this.code = '';
@@ -452,6 +615,12 @@ export class Net {
   /** Hôte → tous les invités. */
   broadcast(msg: HostMsg): void {
     for (const c of this.conns.values()) if (c.open) c.send(msg);
+  }
+
+  /** Hôte → un seul invité. */
+  sendTo(id: string, msg: HostMsg): void {
+    const c = this.conns.get(id);
+    if (c?.open) c.send(msg);
   }
 
   /** Invité → hôte. */

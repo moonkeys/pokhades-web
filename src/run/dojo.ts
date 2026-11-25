@@ -6,6 +6,7 @@ import type { CombatFx, Projector } from '../render/combatfx';
 import type { WorldMap } from '../world/generate';
 import { CAMP_PROPS, DOJO_HALL, DOJO_MAT, PROPS, type SpriteDef } from '../world/tiles';
 import { Placer } from './placement';
+import { promptHtml } from '../net/prompthtml';
 
 // Dojo, salle spéciale (A-FAIRE 1.9 : « d'autres salles »). Pas d'ennemis,
 // portes ouvertes, comme la Source et l'Autel : au centre, un tatami et un
@@ -189,6 +190,11 @@ export class Dojo {
     this.busy = false;
   }
 
+
+  /** L'invite [E] telle qu'elle s'affiche (HTML), vide si elle est masquée : envoyée aux invités en ligne (main.ts). */
+  promptHtml(): string {
+    return promptHtml(this.prompt);
+  }
   private renderPrompt(): void {
     if (!this.near) {
       this.prompt.hidden = true;

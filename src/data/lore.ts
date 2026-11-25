@@ -57,7 +57,7 @@ export const LORE: LoreChapter[] = [
       // main.ts:405-436, companion.ts
       { title: 'L’équipe et les compagnons', text: 'Tab passe au membre suivant. Ceux que tu ne joues pas se battent seuls à tes côtés : ils te protègent, visent les ennemis affaiblis et esquivent les attaques annoncées au sol. Ils frappent un peu moins fort que celui que tu mènes : choisis bien qui ouvre la marche.' },
       // main.ts (megaEvolve), data/megas.ts, catalog.ts (mega)
-      { title: 'La Méga-évolution', color: '#e85aa8', text: 'Avec le Méga-Anneau (6 Éclats de Champion, chez Alakazam), F fait méga-évoluer le Pokémon que tu joues, s’il a une forme Méga : une fois par salle, jusqu’à la fin de la salle. Il prend les stats et les types de sa forme Méga, grandit et s’entoure d’une aura. Dracaufeu, Mewtwo et quelques autres choisissent entre X et Y.' },
+      { title: 'La Méga-évolution', color: '#e85aa8', text: 'Avec le Méga-Anneau (6 Éclats de Champion, chez Alakazam), F fait méga-évoluer le Pokémon que tu joues, s’il a une forme Méga : une fois par salle, jusqu’à la fin de la salle. Il prend les stats et les types de sa forme Méga, grandit et s’entoure d’une aura. Dracaufeu, Mewtwo et quelques autres choisissent entre X et Y. Au Pokédex, le filtre Méga ◈ liste les lignées qui en ont une, et leur fiche la nomme.' },
       // main.ts:80-86, 1138-1183
       { title: 'K.O. et relève', text: 'Ton Pokémon tombe : le suivant prend la relève. Un Rappel le relève à moitié de ses PV. Toute l’équipe K.O. : la run s’arrête. Entre deux salles, on ne se soigne pas tout seul.' },
     ],
@@ -212,6 +212,8 @@ export const LORE: LoreChapter[] = [
       // meta/save.ts, catalog.ts
       { title: 'Baies, ressources, Éclats', text: 'Les Baies paient presque tout au Repaire. Bois, Pierre et Nourriture paient les chantiers de Charpenti. Les Éclats de Champion paient le Bracelet de charge.' },
       { title: 'Les postes', text: 'Dracolosse : le départ. Porygon : l’équipe et le Pokédex. Charpenti : les chantiers. Les autres gardiens arrivent avec leurs bâtiments : missions, quêtes, CT, objets, améliorations, potager, atelier.' },
+      // main.ts, net/net.ts
+      { title: 'Jouer à plusieurs', text: 'Chez Roucarnage, ouvre une partie et donne son code. En run, chacun mène son Pokémon : l’invité prend ses dons au centre, achète à la boutique avec la bourse commune, boit à la Source, signe à l’Autel et lance l’ultime (R). Une coupure ? Il revient seul, ou avec le code, et retrouve sa place.' },
       // meta/weight.ts
       { title: 'Le poids d’équipe', text: 'Plafond : 24 au départ, le Bracelet de charge le monte. Un Pokémon pèse 3, 5 ou 8 selon son stade et sa force (Ronflex 8 ; légendaire 10), un objet tenu 1 à 3 selon sa puissance, une attaque 0 à 3.' },
       // catalog.ts:21-102

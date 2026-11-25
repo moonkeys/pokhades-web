@@ -3,6 +3,7 @@ import { sfx } from '../audio/audio';
 import { fetchJson } from '../assets/json';
 import { BASE_TEAM_LEVEL, Pokemon } from '../combat/pokemon';
 import { talentInLine } from '../data/abilities';
+import { megaInLine, megaText } from '../data/megaline';
 import { sheetOf } from '../data/bestiary';
 import { dexOf } from '../data/forms';
 import { BUILDINGS, BUNKS, BUNK_ROOM, bunkPrice, CANDY, CS_LIST, csPrice, HELD_ITEMS, RESOURCES, RESOURCE_IDS, SHARDS, TMS, UPGRADES, applyHeld, buildingsShown, canAfford, heldBoosts, heldItem, heldText, teamSlots, type Cost, type HeldItem, type ResourceId, type Upgrade } from '../meta/catalog';
@@ -244,11 +245,13 @@ const NAV_MODAL = '.cs-modal .cs-buy:not(:disabled), .cs-modal .cs-close';
 const ARROWS: Record<string, [number, number]> = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] };
 
 /** Onglets du Pokédex (PokedexScreen) : Débloqués / À débloquer / Rencontrés / Tous. */
-type DexFilter = 'unlocked' | 'locked' | 'seen' | 'all';
+type DexFilter = 'unlocked' | 'locked' | 'seen' | 'mega' | 'all';
 const DEX_FILTERS: readonly [DexFilter, string][] = [
   ['unlocked', 'Débloqués'],
   ['locked', 'À débloquer'],
   ['seen', 'Rencontrés'],
+  // Les lignées qui ont une Méga jouable (data/megaline.ts), croisées ou non : on sait ce qu'on cherche.
+  ['mega', 'Méga ◈'],
   ['all', 'Tous'],
 ];
 
@@ -948,7 +951,7 @@ export class CampScreen {
     const all = [...new Set([...Object.values(FAUNA).flat(), ...STARTER_IDS, ...MERC_POOLS.champion, ...QUEST_SPECIES, ...seen])].filter(isBaseForm).sort((a, b) => dexOf(a) - dexOf(b) || a - b);
     // (Une forme régionale se range juste après son espèce, au même numéro.)
     const shown = all.filter((id) =>
-      this.dexFilter === 'unlocked' ? unlocked.has(id) : this.dexFilter === 'locked' ? seen.has(id) && !unlocked.has(id) : this.dexFilter === 'seen' ? seen.has(id) : true,
+      this.dexFilter === 'unlocked' ? unlocked.has(id) : this.dexFilter === 'locked' ? seen.has(id) && !unlocked.has(id) : this.dexFilter === 'seen' ? seen.has(id) : this.dexFilter === 'mega' ? megaInLine(id).length > 0 : true,
     );
     if (!shown.includes(this.dexId)) this.dexId = shown[0] ?? 0;
     // Les noms des espèces croisées seulement : les autres restent « ??? ».
@@ -977,6 +980,8 @@ export class CampScreen {
       art(id, card, own ? '' : 'shadow');
       if (this.news.has(String(id))) newMark(card);
       el('small', 'no', card, `n°${String(dexOf(id)).padStart(3, '0')}`);
+      // Une Méga dans la lignée : un losange dans le coin de la carte.
+      if (megaInLine(id).length) el('span', 'cs-dex-mega', card, '◈').title = 'Méga-évolution dans la lignée';
       el('b', '', card, names.get(id) ?? '???');
       el('small', 'state', card, waiting(id) ? '! Au Repaire' : own ? '★ Débloqué' : questFor(id) ? 'Quête' : !seen.has(id) ? '—' : gauge(id));
       card.addEventListener('click', () => {
@@ -1002,6 +1007,12 @@ export class CampScreen {
     // Son talent, s'il en a un que le jeu fait jouer, ou celui d'une de ses évolutions.
     const talent = met || own ? talentInLine(id) : null;
     if (talent) el('small', 'cs-info cs-talent', card, `◆ Talent : ${talent.name} — ${talent.desc}${talent.level ? ` (une fois évolué, dès le niveau ${talent.level})` : ''}.`);
+    // Ses Méga-évolutions, nommées une fois l'espèce croisée (sinon juste annoncées).
+    const megas = megaInLine(id);
+    if (megas.length) {
+      const names = await Promise.all(megas.map((m) => (m.level && met ? species(m.species).then((d) => d.name) : Promise.resolve(undefined))));
+      el('small', 'cs-info cs-mega', card, met || own ? `◈ Méga-évolution : ${megas.map((m, i) => megaText(m, names[i])).join(' ou ')}. Avec le Méga-Anneau d’Alakazam, touche F en run.` : '◈ Une Méga-évolution l’attend dans sa lignée.');
+    }
     if (met) {
       const { wild, caves } = habitat(id);
       const parts = [...(wild.length ? [`Vit en : ${wild.join(', ')}`] : []), ...(caves.length ? [`Grottes : ${caves.join(', ')}`] : [])];
@@ -1201,6 +1212,9 @@ export class CampScreen {
     // Le talent (data/abilities.ts), ou celui qu'apportera une évolution (Têtarte → Tarpaud).
     const talent = talentInLine(speciesOf(save, id));
     if (talent) chip('◆', talent.name, `Talent : ${talent.name} — ${talent.desc}${talent.level ? ` (une fois évolué, dès le niveau ${talent.level})` : ''}.`);
+    // Sa Méga-évolution, s'il en a une dans sa lignée (le nom de la forme, et quand elle devient possible).
+    const mega = megaInLine(speciesOf(save, id))[0];
+    if (mega) chip('◈', 'Méga', `${megaText(mega)} : avec le Méga-Anneau d’Alakazam, touche F en run.`);
     const from = originShort(save, id);
     if (from) chip('⚑', '', from);
     const act = el('div', 'cs-actions', who);

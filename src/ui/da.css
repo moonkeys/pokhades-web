@@ -2676,6 +2676,7 @@
   gap: calc(0.6 * var(--u));
 }
 .cs-dex-card {
+  position: relative;
   display: grid;
   justify-items: center;
   padding: calc(0.4 * var(--u)) calc(0.3 * var(--u)) calc(0.5 * var(--u));
@@ -2713,6 +2714,19 @@
   letter-spacing: 0.03em;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+/* Une Méga dans la lignée (filtre « Méga ◈ », data/megaline.ts) : le losange rose de l'anneau. */
+.cs-dex-card .cs-dex-mega {
+  position: absolute;
+  top: calc(0.2 * var(--u));
+  right: calc(0.4 * var(--u));
+  font-size: calc(1.1 * var(--u));
+  line-height: 1;
+  color: #e85aa8;
+}
+.cs-dex-detail .cs-mega {
+  color: #c23c86;
+  font-weight: 700;
 }
 .cs-dex-card .state {
   font-size: calc(0.8 * var(--u));
@@ -5591,4 +5605,11 @@ body.net-on .hud-team {
   .cs-quote {
     font-size: calc(1.6 * var(--u));
   }
+}
+
+/* En ligne : l'icône de l'article dans l'invite reçue de l'hôte (canvas changé en image, net/prompthtml.ts). */
+.shop-prompt .prompt-icon {
+  width: calc(4.4 * var(--u));
+  height: calc(4.4 * var(--u));
+  image-rendering: pixelated;
 }

@@ -14,6 +14,7 @@ import { linesOf } from '../data/bestiary';
 import { fillLine, GIFT_LINES, MERCENARY, PERSONAS, SLEEPY } from '../data/chatter';
 import { Placer } from './placement';
 import type { Run } from './run';
+import { promptHtml } from '../net/prompthtml';
 
 // Boutique de run, reprise de CombatArena.gd (_enter_boutique, étal,
 // _buy_near_item, mercenaires, figurants) et de ShopStock.gd : sur la place,
@@ -627,6 +628,11 @@ export class Shop {
     }
   }
 
+
+  /** L'invite [E] telle qu'elle s'affiche (HTML), vide si elle est masquée : envoyée aux invités en ligne (main.ts). */
+  promptHtml(): string {
+    return promptHtml(this.prompt);
+  }
   private renderPrompt(player: Actor): void {
     const it = this.near;
     const el = (cls: string, text: string) => Object.assign(document.createElement('div'), { className: cls, textContent: text });
