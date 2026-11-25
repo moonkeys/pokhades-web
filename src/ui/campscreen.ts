@@ -5,7 +5,7 @@ import { BASE_TEAM_LEVEL, Pokemon } from '../combat/pokemon';
 import { talentInLine } from '../data/abilities';
 import { sheetOf } from '../data/bestiary';
 import { dexOf } from '../data/forms';
-import { BUILDINGS, BUNKS, BUNK_ROOM, bunkPrice, CANDY, CS_LIST, HELD_ITEMS, RESOURCES, RESOURCE_IDS, SHARDS, TMS, UPGRADES, applyHeld, buildingsShown, canAfford, heldBoosts, heldItem, heldText, teamSlots, type Cost, type HeldItem, type ResourceId, type Upgrade } from '../meta/catalog';
+import { BUILDINGS, BUNKS, BUNK_ROOM, bunkPrice, CANDY, CS_LIST, csPrice, HELD_ITEMS, RESOURCES, RESOURCE_IDS, SHARDS, TMS, UPGRADES, applyHeld, buildingsShown, canAfford, heldBoosts, heldItem, heldText, teamSlots, type Cost, type HeldItem, type ResourceId, type Upgrade } from '../meta/catalog';
 import { evolutionsOf } from '../data/evolutions';
 import { BIOME_IDS, CAMP_NPCS, FAUNA, LEGENDARY_SPECIES, MERC_POOLS, QUEST_SPECIES, STARTER_IDS, type BiomeId } from '../data/species';
 import { BIOME_MATERIAL, CRAFTED_TMS, GARDEN, MATERIALS, NECTARS, NECTAR_ROOMS, RECIPES, canCraft, craft, harvest, materialName, pickVisitor, plots, recipeOutput, sow } from '../meta/crafting';
@@ -1419,19 +1419,22 @@ export class CampScreen {
 
   // ── CS ───────────────────────────────────────────────────────────────
   private renderCs(grid: HTMLElement, ctx: CampCtx): void {
-    el('p', 'cs-quote wide', grid, 'Une CS est définitive, pour toute l’équipe.');
+    el('p', 'cs-quote wide', grid, 'Une CS est définitive, pour toute l’équipe. Chaque champion battu m’en fait baisser le prix.');
     for (const c of CS_LIST) {
       const owned = ctx.save.cs.includes(c.id);
-      const card = el('div', `cs-card da-paper${owned ? ' owned' : !c.ready ? ' soon' : ctx.save.baies < c.price ? ' poor' : ''}`, grid);
+      // Moins chère à chaque champion de biome battu (meta/catalog.ts, csPrice).
+      const price = csPrice(c.price, ctx.save.beaten);
+      const card = el('div', `cs-card da-paper${owned ? ' owned' : !c.ready ? ' soon' : ctx.save.baies < price ? ' poor' : ''}`, grid);
       icon(c.icon, card);
       el('div', 'cs-head', card).append(el('b', '', undefined, `CS ${c.name}`));
       el('small', 'cs-info', card, c.desc);
       if (owned) el('div', 'da-tape cs-tag', card, 'Acquise');
       else if (!c.ready) el('div', 'da-tape cs-tag', card, 'Bientôt');
       else {
-        el('div', 'da-stamp cs-price', card, String(c.price));
+        el('div', 'da-stamp cs-price', card, String(price));
+        if (price < c.price) el('small', 'cs-info', card, `Prix des badges : ${c.price} → ${price} Baies.`);
         card.addEventListener('click', () =>
-          this.buy(c.price, () => {
+          this.buy(price, () => {
             ctx.save.cs.push(c.id);
             ctx.notify(`CS ${c.name}`, c.id === 'surf' ? 'Ton équipe sait nager : le lac et son île t’attendent.' : c.id === 'cut' ? 'Les arbustes ne gardent plus les coffres, et la route de l’Automne s’ouvre.' : c.id === 'rock-smash' ? 'Les rochers fissurés ne gardent plus les coffres, et la route du Volcan s’ouvre.' : c.id === 'strength' ? 'Les gros rochers se poussent, et la route de la Montagne glacée s’ouvre.' : c.desc, STATIONS.upgrades.id);
             ctx.teamChanged();

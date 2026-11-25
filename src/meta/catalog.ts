@@ -1,3 +1,4 @@
+import { BIOME_CHAMPIONS } from '../data/champions';
 // Ce que vend le Repaire, en Baies : les améliorations permanentes
 // (UpgradeShopScreen et ShopScreen « La Réserve »), les CT du tuteur
 // (MoveShopScreen.MOVE_LIST) et les objets tenus (ItemCatalog.ITEMS).
@@ -353,6 +354,24 @@ export const CS_LIST: readonly { id: CsId; name: string; price: number; desc: st
   { id: 'rock-smash', name: 'Éclate-Roc', price: 180, desc: 'Brise les rochers qui gardent des coffres, et ouvre la route du Marais au Volcan.', ready: true, icon: 'machine_FIGHTING' },
   { id: 'strength', name: 'Force', price: 220, desc: 'Pousse les gros rochers qui barrent des coffres, et ouvre la route de l’Automne à la Montagne glacée.', ready: true, icon: 'machine_NORMAL' },
 ];
+
+/** Baisse du prix des CS par champion de biome battu, et plancher (fraction du prix). */
+const CS_BADGE_DISCOUNT = 0.1;
+const CS_PRICE_FLOOR = 0.5;
+
+/**
+ * Prix d'une CS au Repaire, selon les champions de biome déjà battus (`save.beaten`) :
+ * −10 % par badge, jusqu'à moitié prix, arrondi à 10 Baies. Écart voulu (25 novembre 2026) :
+ * Coupe, Éclate-Roc et Force gardent les routes de Pierre, Auguste et Olga, et la Route
+ * Victoire attend leurs badges ; à plein prix (600 Baies les trois), un joueur qui a battu
+ * tout ce qui lui est ouvert piétinait encore une run ou deux. Les badges qu'il a gagnés
+ * rapprochent maintenant la suite : après cinq champions, les trois CS de route coûtent 300.
+ */
+export function csPrice(price: number, beaten: readonly string[]): number {
+  // Les champions de biome seulement : le Conseil et le Maître viennent après les CS.
+  const badges = beaten.filter((n) => Object.values(BIOME_CHAMPIONS).some((l) => l?.includes(n))).length;
+  return Math.round((price * Math.max(CS_PRICE_FLOOR, 1 - CS_BADGE_DISCOUNT * badges)) / 10) * 10;
+}
 
 /**
  * Baies gagnées (CombatArena.gd) : boss, victoire finale, et consolation d'une défaite.

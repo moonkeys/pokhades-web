@@ -113,6 +113,9 @@ champions sur 11 restent à portée (Pierre demande Coupe, Auguste Surf ou
 achetées chez Alakazam. Le plan du monde écrit la CS manquante au milieu de la
 route qu'elle garde (`journal.ts`). Vérifié sur 400 graines : jamais de run
 bloquée sans CS, les dix biomes atteints avec toutes.
+Chaque champion de biome battu baisse le prix des CS de 10 %, jusqu'à moitié
+prix (`csPrice`, 25 novembre 2026) : après cinq badges, Coupe, Éclate-Roc et
+Force coûtent 300 Baies à elles trois au lieu de 600.
 
 Sens des salles (ajout, retour de test : « je sors par la droite et j'arrive
 par le haut ») : on entre dans une salle par le bord d'en face de la porte
@@ -1088,7 +1091,14 @@ Retour de test : la première run est dure, puis une équipe de six au niveau
   Tygnon, Stalgamin pour Momartik…) servent aux seules escortes
   (`escortPreviousOf`, `LEAGUE_PREVIOUS` dans data/evolutions.ts) : dans la
   table des évolutions, elles feraient partir une recrue d'une forme qui
-  n'évoluerait jamais ; ses sbires passent de 2 au premier acte à 3 + 2 × acte,
+  n'évoluerait jamais ; dès le deuxième acte, un champion de biome garde un
+  Pokémon de couverture (`coverOf`, 25 novembre 2026) : d'un type qui frappe
+  super efficace le plus de types qui battent son arène, sous sa forme de base,
+  premier renfort ou, équipe déjà complète, à la place de l'ouvreur (au banc,
+  l'équipe Eau bat Auguste en 43 s au lieu de 35, une équipe Feu-Plante ne
+  bat plus Pierre qu'une fois sur deux ; sous sa forme finale, la couverture
+  renversait le combat) ; les compagnons frappent à 80 % (`COMPANION_DAMAGE`,
+  combat.ts : ils faisaient autant que le Pokémon mené, ou plus) ; ses sbires passent de 2 au premier acte à 3 + 2 × acte,
   plus un par paire de membres de l'équipe ; l'affiche de la boutique montre
   les vrais niveaux (`Run.bossLevel`) ;
 - **l'équipe compte** : dès le deuxième acte, un sauvage de plus par vague par

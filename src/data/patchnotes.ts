@@ -18,6 +18,21 @@ export interface PatchNote {
 
 export const PATCH_NOTES: readonly PatchNote[] = [
   {
+    id: '2026-11-25',
+    date: '25 novembre 2026',
+    title: 'Badges, couverture et chef de file',
+    sections: [
+      {
+        title: 'Équilibre',
+        items: [
+          'Chaque champion battu fait baisser le prix des CS chez Alakazam : 10 % par badge, jusqu’à moitié prix. Les routes de Pierre, Auguste et Olga s’ouvrent plus tôt.',
+          'Dès le deuxième acte, un champion garde un Pokémon d’un autre type, qui frappe ceux qui battent son arène (un Blizzi face à Auguste ou à Pierre…) : le bon type aide toujours, il ne suffit plus.',
+          'Les compagnons frappent à 80 % : celui que tu mènes compte davantage.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-11-23',
     date: '23 novembre 2026',
     title: 'Talents, Horde et CT de l’atelier',

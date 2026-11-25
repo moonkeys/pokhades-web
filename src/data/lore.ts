@@ -55,7 +55,7 @@ export const LORE: LoreChapter[] = [
       // pokemon.ts:8-11, 115-117
       { title: 'Les niveaux', text: 'Un niveau donne des PV et frappe plus fort. Attaque, Défense et Vitesse viennent de l’espèce : objets, dons et capacités de statut les font monter. L’XP va à chaque membre qui a frappé.' },
       // main.ts:405-436, companion.ts
-      { title: 'L’équipe et les compagnons', text: 'Tab passe au membre suivant. Ceux que tu ne joues pas se battent seuls à tes côtés : ils te protègent, visent les ennemis affaiblis et esquivent les attaques annoncées au sol.' },
+      { title: 'L’équipe et les compagnons', text: 'Tab passe au membre suivant. Ceux que tu ne joues pas se battent seuls à tes côtés : ils te protègent, visent les ennemis affaiblis et esquivent les attaques annoncées au sol. Ils frappent un peu moins fort que celui que tu mènes : choisis bien qui ouvre la marche.' },
       // main.ts (megaEvolve), data/megas.ts, catalog.ts (mega)
       { title: 'La Méga-évolution', color: '#e85aa8', text: 'Avec le Méga-Anneau (6 Éclats de Champion, chez Alakazam), F fait méga-évoluer le Pokémon que tu joues, s’il a une forme Méga : une fois par salle, jusqu’à la fin de la salle. Il prend les stats et les types de sa forme Méga, grandit et s’entoure d’une aura. Dracaufeu, Mewtwo et quelques autres choisissent entre X et Y.' },
       // main.ts:80-86, 1138-1183
@@ -142,7 +142,7 @@ export const LORE: LoreChapter[] = [
       { title: 'La boutique', text: 'Avant chaque champion : des potions, une CT, un lot de Baies, un lot de ressources pour le Repaire et des mercenaires. Un mercenaire réclame sa solde à la boutique suivante.' },
       // run/berries.ts, run/chests.ts
       { title: 'Baies et coffres', text: 'Frappe deux fois un arbre à baies pour en faire tomber. Beaucoup de salles cachent un coffre (E) : Baies, Bois, Pierre, Nourriture. Les plus riches demandent une CS : Coupe, Éclate-Roc ou Force.' },
-      { title: 'Les routes gardées', text: 'Certaines routes de la carte du monde demandent une CS : Surf vers l’Océan, Coupe vers l’Automne, Éclate-Roc du Marais au Volcan, Force vers la Montagne glacée. Le plan, près de l’arche, dit laquelle. Une autre route reste toujours ouverte.' },
+      { title: 'Les routes gardées', text: 'Certaines routes de la carte du monde demandent une CS : Surf vers l’Océan, Coupe vers l’Automne, Éclate-Roc du Marais au Volcan, Force vers la Montagne glacée. Le plan, près de l’arche, dit laquelle. Une autre route reste toujours ouverte. Chaque champion battu fait baisser le prix des CS chez Alakazam, jusqu’à moitié prix.' },
       // data/forms.ts, data/evolutions.ts (REGIONAL_EVOLUTIONS)
       { title: 'Les formes régionales', text: 'Des sauvages d’autres régions : Rattata d’Alola, Miaouss de Galar, Caninos de Hisui… Et certains évoluent selon le biome : Pikachu en Raichu d’Alola à la Plage, Osselait en Ossatueur d’Alola au Volcan.' },
       // main.ts (nuzlockeToll), ui/options.ts
@@ -198,7 +198,7 @@ export const LORE: LoreChapter[] = [
       { title: 'Ils visent ta faiblesse', text: 'Un sauvage choisit sa cible selon l’efficacité de son type : un Pokémon Feu dans une équipe attirera tous les sauvages Eau de la salle.' },
       // enemy.ts:56-81, main.ts
       { title: 'Les phases du champion', text: 'Chaque barre brisée, une phase : sbires, Méga, puis rage à la dernière (lueur rouge). Il prend le centre et frappe autour, ou bondit sur toi. À la fin, sa plus forte attaque couvre l’arène : file dans un cercle vert.' },
-      { title: 'Les champions', text: 'Plusieurs barres et de grandes attaques annoncées au sol. Son équipe grandit avec l’acte et avec la tienne : jusqu’à six Pokémon, complétée par d’autres de son type. Battu, il te cède un Pokémon, du plus faible à son as. Ses Éclats de Champion t’attendent au centre : [E], avant de passer la porte.' },
+      { title: 'Les champions', text: 'Plusieurs barres et de grandes attaques annoncées au sol. Son équipe grandit avec l’acte et avec la tienne : jusqu’à six Pokémon, complétée par d’autres de son type. Dès le deuxième acte, il garde aussi un Pokémon d’un autre type, de quoi frapper ceux qui battent son arène : le bon type ne suffit plus à tout. Battu, il te cède un Pokémon, du plus faible à son as. Ses Éclats de Champion t’attendent au centre : [E], avant de passer la porte.' },
       { title: 'L’as', text: 'Le dernier Pokémon du champion : cinq barres, sept attaques, des zones plus fréquentes. Celui du premier champion retient ses coups (moins de vie, moins de force, ses attaques les plus douces). Aux deux dernières barres, il méga-évolue s’il le peut, et son champion sort sa surprise : jumeau, temps, renforts…' },
       // combat/signatures.ts
       { title: 'Les signatures', text: 'Chaque champion ouvre le bal avec son attaque fétiche : cage de rochers de Pierre, vagues d’Ondine, croix électrique de Major Bob, flaques de Koga, anneau de feu d’Auguste… Apprends-les.' },
