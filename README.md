@@ -1392,6 +1392,10 @@ Au lancement, le jeu attend le serveur 4 secondes au plus (hors ligne, on joue t
 | a joué | a avancé | conflit : le joueur choisit (deux cartes résumées) |
 | les deux identiques | | rien |
 
+Après un envoi, le serveur ne renvoie que le numéro de version (`select=rev`) : le trafic sortant
+est compté dans l'offre gratuite, pas l'entrant. Une partie ne redescend qu'au lancement, et
+seulement si elle a changé ailleurs.
+
 La partie écartée est gardée sur l'appareil (`pokhades-save-avant-compte`), jamais effacée. Un
 conflit découvert en pleine partie s'annonce une fois (« Partie modifiée ailleurs ») et la
 synchro s'arrête jusqu'au choix. Pas de bibliothèque `supabase-js` : sept `fetch`.
@@ -1456,3 +1460,18 @@ node scripts/shoot.mjs --url http://localhost:5175
 
 Pour une nouveauté : ajouter une scène à `SCENES`, la lancer, regarder l'image, puis la citer
 dans la note. Une note déjà publiée garde son texte ; on peut lui ajouter des images.
+
+`pokhades.spawn(espèce, niveau, dx, dy)` fait apparaître un sauvage près du joueur : la scène
+`faune-village` lance une run au Village par temps clair, met le joueur au centre de la place et
+y pose quatre des nouvelles lignées. `--out DOSSIER` écrit des captures de contrôle ailleurs que
+dans le jeu. Chrome sans fenêtre met jusqu'à une demi-minute à démarrer sur macOS.
+
+## Icônes d'Essentials plutôt que des symboles
+
+Retour du 26 novembre 2026 : pas de symboles dessinés hors de la DA, des sprites d'Essentials,
+pixelisés. `src/ui/essicon.ts` (`essIcon`, `iconText`) remplace ◈ par le symbole Méga de
+l'interface de combat (`UI/Battle/icon_mega.png`), ⚖ par le Poids Pouvoir (`POWERWEIGHT`) et le ✦
+des Éclats de Champion par leur Comète (`COMETSHARD`) : Pokédex (coin des cartes, filtre, fiche),
+hutte de Porygon (jauge d'équipe, cartes, puces, attaques lourdes), recrues, départ, HUD de la
+Méga, bilan de run. Affichées à la hauteur du texte, sans flou (`img.ess-ico`). Les fichiers sont
+dans la liste de `scripts/import-assets.ts`.

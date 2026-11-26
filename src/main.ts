@@ -4086,6 +4086,11 @@ async function boot(): Promise<void> {
         campScreen,
         /** Parle au gardien d'un poste du Repaire (ouvre son écran) : captures des notes de version (scripts/shoot.mjs). */
         talk: (station: Station) => talkTo(station),
+        /**
+         * Fait apparaître un sauvage de cette espèce près du joueur (dx, dy en cases) : les captures des
+         * notes de version montrent ainsi une nouvelle espèce dans son biome (scripts/shoot.mjs).
+         */
+        spawn: (id: number, level = 12, dx = 3, dy = 0) => spawnEnemy(id, level, player.x + dx, player.y + dy),
         /** Ouvre l'écran Compte (captures). */
         account: () => accountScreen.show(() => input.flush()),
         save,

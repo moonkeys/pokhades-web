@@ -58,6 +58,17 @@ export const PATCH_NOTES: readonly PatchNote[] = [
         title: 'Notes de version',
         items: ['Les nouveautés s’illustrent : captures du jeu et vignettes des nouveaux Pokémon et objets, ici même.'],
       },
+      {
+        title: 'Interface',
+        items: [
+          'Les petits symboles deviennent des sprites du jeu, en pixel art : le symbole Méga (Pokédex, fiches, Méga prête en run), le Poids Pouvoir pour le poids de l’équipe, la Comète pour les Éclats de Champion.',
+        ],
+        images: [
+          { src: '/game/assets/essentials/ui/icon_mega.png', caption: 'Méga', kind: 'icon', pixel: true },
+          { src: '/game/assets/essentials/items/POWERWEIGHT.png', caption: 'Poids', kind: 'icon', pixel: true },
+          { src: '/game/assets/essentials/items/COMETSHARD.png', caption: 'Éclats', kind: 'icon', pixel: true },
+        ],
+      },
     ],
   },
   {
@@ -73,8 +84,11 @@ export const PATCH_NOTES: readonly PatchNote[] = [
           'Marais : Gobou. Volcan : Gruikui. Rocailleux : Kranidos. Village : Abra, Tarsal, Lixy, Wattouat. Plage et Montagne glacée : Tiplouf.',
           'Alakazam et Ectoplasma ont une Méga-évolution : cherche-les au Pokédex, filtre Méga ◈.',
         ],
-        // Les formes finales des dix-sept lignées (illustrations ajoutées après coup, texte inchangé).
-        images: artIcons([
+        // Une capture en run et les formes finales des dix-sept lignées (illustrations ajoutées après
+        // coup, texte inchangé).
+        images: [
+          { src: '/game/patchnotes/faune-village.webp', caption: 'Abra, Tarsal, Lixy et Wattouat sur la place du Village.', kind: 'shot' },
+          ...artIcons([
           ['Florizarre', 3],
           ['Tortank', 9],
           ['Méganium', 154],
@@ -92,7 +106,8 @@ export const PATCH_NOTES: readonly PatchNote[] = [
           ['Gardevoir', 282],
           ['Luxray', 405],
           ['Pharamp', 181],
-        ]),
+          ]),
+        ],
       },
     ],
   },

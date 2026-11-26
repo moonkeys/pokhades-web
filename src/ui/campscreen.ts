@@ -1,3 +1,4 @@
+import { essIcon, iconText, isEssIcon } from './essicon';
 import { loadMove, type Move } from '../combat/moves';
 import { sfx } from '../audio/audio';
 import { fetchJson } from '../assets/json';
@@ -252,7 +253,7 @@ const DEX_FILTERS: readonly [DexFilter, string][] = [
   ['locked', 'À débloquer'],
   ['seen', 'Rencontrés'],
   // Les lignées qui ont une Méga jouable (data/megaline.ts), croisées ou non : on sait ce qu'on cherche.
-  ['mega', 'Méga ◈'],
+  ['mega', 'Méga'],
   ['all', 'Tous'],
 ];
 
@@ -967,6 +968,8 @@ export class CampScreen {
     const filters = el('div', 'cs-tabs cs-dex-filters', main);
     for (const [id, label] of DEX_FILTERS) {
       const t = el('button', this.dexFilter === id ? 'sel' : '', filters, label);
+      // Le filtre Méga porte le symbole Méga d'Essentials, comme les cartes qu'il garde.
+      if (id === 'mega') essIcon('mega', t);
       t.addEventListener('click', () => {
         this.dexFilter = id;
         void this.render();
@@ -982,7 +985,7 @@ export class CampScreen {
       if (this.news.has(String(id))) newMark(card);
       el('small', 'no', card, `n°${String(dexOf(id)).padStart(3, '0')}`);
       // Une Méga dans la lignée : un losange dans le coin de la carte.
-      if (megaInLine(id).length) el('span', 'cs-dex-mega', card, '◈').title = 'Méga-évolution dans la lignée';
+      if (megaInLine(id).length) essIcon('mega', card, 'cs-dex-mega').title = 'Méga-évolution dans la lignée';
       el('b', '', card, names.get(id) ?? '???');
       el('small', 'state', card, waiting(id) ? '! Au Repaire' : own ? '★ Débloqué' : questFor(id) ? 'Quête' : !seen.has(id) ? '—' : gauge(id));
       card.addEventListener('click', () => {
@@ -1012,7 +1015,7 @@ export class CampScreen {
     const megas = megaInLine(id);
     if (megas.length) {
       const names = await Promise.all(megas.map((m) => (m.level && met ? species(m.species).then((d) => d.name) : Promise.resolve(undefined))));
-      el('small', 'cs-info cs-mega', card, met || own ? `◈ Méga-évolution : ${megas.map((m, i) => megaText(m, names[i])).join(' ou ')}. Avec le Méga-Anneau d’Alakazam, touche F en run.` : '◈ Une Méga-évolution l’attend dans sa lignée.');
+      iconText('small', 'cs-info cs-mega', card, 'mega', met || own ? ` Méga-évolution : ${megas.map((m, i) => megaText(m, names[i])).join(' ou ')}. Avec le Méga-Anneau d’Alakazam, touche F en run.` : ' Une Méga-évolution l’attend dans sa lignée.');
     }
     if (met) {
       const { wild, caves } = habitat(id);
@@ -1107,7 +1110,7 @@ export class CampScreen {
     // ── Colonne de gauche : l'équipe (places achetées), puis les Pokémon restés au camp.
     const col = el('div', 'cs-roster', wrap);
     const label = el('div', 'cs-label', col, `Équipe ${save.team.length}/${slots} · `);
-    const gauge = el('span', `cs-weight${load > cap ? ' over' : ''}`, label, `⚖ ${load} / ${cap}`);
+    const gauge = iconText('span', `cs-weight${load > cap ? ' over' : ''}`, label, 'weight', ` ${load} / ${cap}`);
     gauge.title = load > cap ? 'Trop lourd pour partir : retire un Pokémon, un objet ou une grosse attaque.' : 'Poids d’équipe : Pokémon (selon le stade et la force), objets tenus (selon leur puissance) et grosses attaques.';
     for (let i = 0; i < slots; i++) {
       const sid = save.team[i];
@@ -1121,7 +1124,9 @@ export class CampScreen {
       if (this.news.has(String(sid))) newMark(row);
       const txt = el('div', '', row);
       el('b', '', txt, nameOf(sid));
-      el('small', '', txt, `N.${startLevel(save, sid, BASE_TEAM_LEVEL)} · ⚖ ${weights.get(sid)?.total ?? '?'}`);
+      const lv = el('small', '', txt, `N.${startLevel(save, sid, BASE_TEAM_LEVEL)} · `);
+      essIcon('weight', lv);
+      lv.append(` ${weights.get(sid)?.total ?? '?'}`);
       const held = heldItem(save.held[sid]);
       if (held) icon(held.icon, row, 'cs-held');
       this.dragSource(row, { kind: 'mon', id: sid, from: 'team' });
@@ -1147,7 +1152,7 @@ export class CampScreen {
       const chip = el('div', `cs-chip${uid === id ? ' sel' : ''}${away ? ' away' : ''}`, bench);
       art(spOf(uid), chip);
       if (this.news.has(String(uid))) newMark(chip);
-      el('i', 'cs-wt', chip, `⚖${weights.get(uid)?.total ?? '?'}`);
+      iconText('i', 'cs-wt', chip, 'weight', String(weights.get(uid)?.total ?? '?'));
       const nature = natureText(save.mons[uid].nature);
       chip.title = away ? `${nameOf(uid)} — en mission` : `${nameOf(uid)} — ${nature} — poids ${weights.get(uid)?.total ?? '?'}`;
       if (away) {
@@ -1203,19 +1208,21 @@ export class CampScreen {
     const chips = el('div', 'cs-chips', who);
     const chip = (icon: string, text: string, tip: string) => {
       const c = el('span', 'cs-chip2', chips);
-      el('i', '', c, icon);
+      // Méga et poids : les sprites d'Essentials (ui/essicon.ts) ; le reste garde son signe.
+      if (isEssIcon(icon)) essIcon(icon, el('i', '', c));
+      else el('i', '', c, icon);
       if (text) c.append(text);
       c.title = tip;
     };
     const w0 = weights.get(id);
-    if (w0) chip('⚖', String(w0.total), `Poids ${w0.total} : Pokémon ${w0.mon} · attaques ${w0.moves} · objet ${w0.item}. L’équipe ne doit pas dépasser son plafond pour partir.`);
+    if (w0) chip('weight', String(w0.total), `Poids ${w0.total} : Pokémon ${w0.mon} · attaques ${w0.moves} · objet ${w0.item}. L’équipe ne doit pas dépasser son plafond pour partir.`);
     chip('✦', natureText(indiv.nature).split(' (')[0], `Nature : ${natureText(indiv.nature)}`);
     // Le talent (data/abilities.ts), ou celui qu'apportera une évolution (Têtarte → Tarpaud).
     const talent = talentInLine(speciesOf(save, id));
     if (talent) chip('◆', talent.name, `Talent : ${talent.name} — ${talent.desc}${talent.level ? ` (une fois évolué, dès le niveau ${talent.level})` : ''}.`);
     // Sa Méga-évolution, s'il en a une dans sa lignée (le nom de la forme, et quand elle devient possible).
     const mega = megaInLine(speciesOf(save, id))[0];
-    if (mega) chip('◈', 'Méga', `${megaText(mega)} : avec le Méga-Anneau d’Alakazam, touche F en run.`);
+    if (mega) chip('mega', 'Méga', `${megaText(mega)} : avec le Méga-Anneau d’Alakazam, touche F en run.`);
     const from = originShort(save, id);
     if (from) chip('⚑', '', from);
     const act = el('div', 'cs-actions', who);
@@ -1278,7 +1285,7 @@ export class CampScreen {
       if (save.tms.includes(m.api)) el('i', 'ct', row, 'CT');
       // Les grosses frappes pèsent (meta/weight.ts) ; les faibles et les statuts, rien.
       const mw = moveWeight(m.power);
-      if (mw) el('i', 'wt', row, `⚖${mw}`);
+      if (mw) iconText('i', 'wt', row, 'weight', String(mw));
       this.dragSource(row, { kind: 'move', api: m.api, from });
       row.addEventListener('click', () => setLoadout(from === 'slot' ? equipped.filter((a) => a !== m.api) : equipped.length < 4 ? [...equipped, m.api] : equipped));
       return row;
@@ -2010,12 +2017,13 @@ export class CampScreen {
     const chips = el('div', 'cs-chips', who);
     const chip = (icon: string, text: string, tip: string) => {
       const ch = el('span', 'cs-chip2', chips);
-      el('i', '', ch, icon);
+      if (isEssIcon(icon)) essIcon(icon, el('i', '', ch));
+      else el('i', '', ch, icon);
       if (text) ch.append(text);
       ch.title = tip;
     };
     const w = pokemonWeight(c.species);
-    chip('⚖', String(w), `Poids ${w} (sans ses attaques ni son objet) : l’équipe ne doit pas dépasser son plafond pour partir.`);
+    chip('weight', String(w), `Poids ${w} (sans ses attaques ni son objet) : l’équipe ne doit pas dépasser son plafond pour partir.`);
     const from = originLabel(c.origin ?? '');
     if (from) chip('⚑', from, `Provenance : ${from}`);
     const act = el('div', 'cs-actions cs-rec-act', who);
@@ -2170,7 +2178,7 @@ export class CampScreen {
     }
     const w = await teamWeight(save);
     const over = w.total > w.cap;
-    el('p', `cs-load${over ? ' over' : ''}`, main, over ? `⚖ Poids ${w.total} / ${w.cap} — trop lourd : allège l’équipe à la hutte de Porygon, ou monte le plafond chez Alakazam.` : `⚖ Poids ${w.total} / ${w.cap}`);
+    iconText('p', `cs-load${over ? ' over' : ''}`, main, 'weight', over ? ` Poids ${w.total} / ${w.cap} — trop lourd : allège l’équipe à la hutte de Porygon, ou monte le plafond chez Alakazam.` : ` Poids ${w.total} / ${w.cap}`);
     const go = el('button', `cs-go${over ? ' heavy' : ''}`, main) as HTMLButtonElement;
     go.disabled = over;
     el('span', 'cs-go-word', go, 'Partir');

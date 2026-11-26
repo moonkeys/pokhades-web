@@ -132,6 +132,10 @@ for (const name of attackSheetFiles()) {
   renamed.push([`${ESSENTIALS}/Animations/${name}.png`, `assets/essentials/animations/${name}.png`]);
 }
 renamed.push([`${ESSENTIALS}/UI/Party/overlay_hp.png`, 'assets/essentials/ui/overlay_hp.png']);
+// Icônes de l'interface (src/ui/essicon.ts, retour du 26 novembre 2026 : « pas de symboles dessinés,
+// des sprites d'Essentials, pixelisés ») : le symbole Méga du combat et le Poids Pouvoir pour le poids.
+renamed.push([`${ESSENTIALS}/UI/Battle/icon_mega.png`, 'assets/essentials/ui/icon_mega.png']);
+renamed.push([`${ESSENTIALS}/Items/POWERWEIGHT.png`, 'assets/essentials/items/POWERWEIGHT.png']);
 // Le « ! » des dresseurs qui vous repèrent : le repère de nouveauté du Repaire (run/camp.ts).
 renamed.push([`${ESSENTIALS}/Animations/!.png`, 'assets/essentials/animations/exclaim.png']);
 // Champions d'arène (PokePools.CHAMPION_SPRITE) et Poké Ball de leurs envois (PokeballFX.gd).

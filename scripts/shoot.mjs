@@ -20,13 +20,16 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const CHROME = process.env.CHROME ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-const OUT = new URL('../public/game/patchnotes/', import.meta.url).pathname;
+let OUT = new URL('../public/game/patchnotes/', import.meta.url).pathname;
 const W = 1280;
 const H = 720;
 
 const args = process.argv.slice(2);
 const urlAt = args.indexOf('--url');
 const BASE = (urlAt >= 0 ? args.splice(urlAt, 2)[1] : 'http://localhost:5173').replace(/\/$/, '');
+// --out DOSSIER : écrire ailleurs (captures de contrôle, qui n'ont pas à partir dans le jeu).
+const outAt = args.indexOf('--out');
+if (outAt >= 0) OUT = args.splice(outAt, 2)[1];
 const only = new Set(args);
 
 /** Une partie commencée, de quoi montrer un Repaire vivant. */
@@ -45,7 +48,8 @@ const SAVE = {
 
 /**
  * Les scènes. `path` : la page ; `save` : la sauvegarde posée avant (null : partie neuve) ;
- * `run` : le code joué dans la page pour la mise en scène (async) ; `wait` : ms avant la capture.
+ * `run` : le code joué dans la page pour la mise en scène (async) ; `css` : des règles en plus (masquer
+ * un bandeau) ; `wait` : ms avant la capture.
  */
 const SCENES = [
   {
@@ -69,10 +73,48 @@ const SCENES = [
       pokhades.talk('team');
       await until(() => [...document.querySelectorAll('button')].find((b) => b.textContent === 'Pokédex'));
       [...document.querySelectorAll('button')].find((b) => b.textContent === 'Pokédex').click();
-      await until(() => [...document.querySelectorAll('button')].find((b) => b.textContent === 'Méga ◈'));
-      [...document.querySelectorAll('button')].find((b) => b.textContent === 'Méga ◈').click();
+      await until(() => [...document.querySelectorAll('.cs-dex-filters button')].find((b) => b.textContent.trim() === 'Méga'));
+      [...document.querySelectorAll('.cs-dex-filters button')].find((b) => b.textContent.trim() === 'Méga').click();
       // La première fiche (Salamèche) s'ouvre d'elle-même, avec sa ligne Méga-Dracaufeu.`,
     wait: 1200,
+  },
+  {
+    // Les nouvelles lignées dans leur biome : une run au Village (dégagé : en Forêt, les arbres
+    // les cachaient) par temps clair, et quatre sauvages des nouvelles lignées (Abra, Tarsal, Lixy,
+    // Wattouat) posés autour du joueur, au centre de la place. Le bandeau du nom de zone est masqué.
+    name: 'faune-village',
+    path: '/?debug',
+    save: SAVE,
+    css: '.run-title { display: none !important; }',
+    run: `
+      await until(() => window.pokhades);
+      Object.assign(pokhades.opts, { biome: 'village', weather: 'clear' });
+      pokhades.newRun();
+      await until(() => pokhades.mode === 'run' && pokhades.world);
+      await sleep(1500);
+      const p = pokhades.player, hub = pokhades.world.hub;
+      p.x = p.prevX = hub.x;
+      p.y = p.prevY = hub.y;
+      // Les sauvages de la salle s'écartent : on ne garde que ceux qu'on veut montrer.
+      pokhades.wild.length = 0;
+      const mons = [pokhades.spawn(63, 14, -2.6, -1.2), pokhades.spawn(280, 14, 2.4, -1.4), pokhades.spawn(403, 14, 2.8, 1.2), pokhades.spawn(179, 14, -2.4, 1.4)];
+      // Leurs planches se chargent à part : on attend qu'elles soient là.
+      await until(() => mons.every((m) => m.pokemon));
+      await sleep(900);`,
+    wait: 200,
+  },
+  {
+    // Contrôle : la hutte de Porygon, onglet Équipe (poids de l'équipe, de chacun, des attaques). Pas
+    // dans les notes : prise seulement si on la nomme (node scripts/shoot.mjs --out /tmp equipe).
+    name: 'equipe',
+    control: true,
+    path: '/?debug',
+    save: SAVE,
+    run: `
+      await until(() => window.pokhades);
+      pokhades.talk('team');
+      await until(() => document.querySelector('.cs-weight'));`,
+    wait: 1000,
   },
 ];
 
@@ -82,11 +124,11 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /**
  * Chrome choisit lui-même un port libre (--remote-debugging-port=0) et l'écrit dans son profil
- * (DevToolsActivePort) une fois prêt : jusqu'à une quinzaine de secondes au premier lancement.
+ * (DevToolsActivePort) une fois prêt : jusqu'à une demi-minute sur macOS.
  */
 async function cdp() {
   const file = join(profile, 'DevToolsActivePort');
-  for (let i = 0; i < 300; i++) {
+  for (let i = 0; i < 600; i++) {
     if (existsSync(file)) {
       const [port] = readFileSync(file, 'utf8').split('\n');
       try {
@@ -160,6 +202,14 @@ const chrome = spawn(CHROME, [
   '--mute-audio',
   '--no-first-run',
   '--no-default-browser-check',
+  // Sans ces réglages, Chrome sans fenêtre restait parfois bloqué au démarrage sur macOS (accès au
+  // trousseau, mises à jour de composants) et n'ouvrait jamais son port de débogage.
+  '--use-mock-keychain',
+  '--password-store=basic',
+  '--disable-gpu',
+  '--disable-extensions',
+  '--disable-background-networking',
+  '--disable-component-update',
   'about:blank',
   // Chrome sans écran se plaint en boucle sur sa sortie d'erreur : non lue, elle remplit le tuyau et
   // le bloque au démarrage.
@@ -172,14 +222,15 @@ try {
   await c.send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: 1, mobile: false });
   mkdirSync(OUT, { recursive: true });
   for (const s of SCENES) {
-    if (only.size && !only.has(s.name)) continue;
+    if (only.size ? !only.has(s.name) : s.control) continue;
     try {
       // La sauvegarde se pose sur l'origine du jeu, avant d'ouvrir la page de la scène.
       await go(c, '/');
       await evaluate(c, `localStorage.clear(); ${s.save ? `localStorage.setItem('pokhades-save', ${JSON.stringify(JSON.stringify(s.save))});` : ''}`);
       await go(c, s.path);
       // Ni le panneau de test (outil de DA du serveur de dev) ni les notifications par-dessus la scène.
-      await evaluate(c, `const st = document.createElement('style'); st.textContent = '#panel, .notif { display: none !important; }'; document.head.append(st); await document.fonts.ready;` + s.run);
+      const css = `#panel, .notif { display: none !important; } ${s.css ?? ''}`;
+      await evaluate(c, `const st = document.createElement('style'); st.textContent = ${JSON.stringify(css)}; document.head.append(st); await document.fonts.ready;` + s.run);
       await sleep(s.wait ?? 800);
       const shot = await c.send('Page.captureScreenshot', { format: 'webp', quality: 82 });
       const file = join(OUT, `${s.name}.webp`);

@@ -2637,7 +2637,7 @@
   opacity: 0.85;
   cursor: pointer;
 }
-.cs-slot img:first-child {
+.cs-slot > img:first-child {
   width: calc(4.8 * var(--u));
   margin: calc(-0.4 * var(--u)) calc(-0.3 * var(--u));
 }
@@ -2766,14 +2766,15 @@
   white-space: nowrap;
   text-overflow: ellipsis;
 }
-/* Une Méga dans la lignée (filtre « Méga ◈ », data/megaline.ts) : le losange rose de l'anneau. */
-.cs-dex-card .cs-dex-mega {
+/* Une Méga dans la lignée (filtre Méga, data/megaline.ts) : le symbole Méga d'Essentials dans le
+   coin (ui/essicon.ts). Plus spécifique que « .cs-dex-card img », qui taille l'illustration. */
+.cs-dex-card img.cs-dex-mega {
   position: absolute;
-  top: calc(0.2 * var(--u));
+  top: calc(0.3 * var(--u));
   right: calc(0.4 * var(--u));
-  font-size: calc(1.1 * var(--u));
-  line-height: 1;
-  color: #e85aa8;
+  width: auto;
+  height: max(16px, calc(1.6 * var(--u)));
+  margin: 0;
 }
 .cs-dex-detail .cs-mega {
   color: #c23c86;
@@ -5825,4 +5826,31 @@ body.net-on .hud-team {
 }
 .title-screen.under .title-cloud {
   opacity: 0;
+}
+
+/* ── Icônes d'Essentials dans le texte (ui/essicon.ts) ──────────────────────────────────────
+ * Le symbole Méga (14 × 22) et les icônes d'objets (48 × 48, l'objet au centre) remplacent ◈, ⚖
+ * et ✦ : à la hauteur du texte, agrandies sans flou. Les objets ont une marge vide dans leur case
+ * de 48 px : on les affiche plus grands et on rogne cette marge (marges négatives). */
+img.ess-ico {
+  display: inline-block;
+  width: auto;
+  height: 1.15em;
+  margin: 0 0.15em 0 0;
+  vertical-align: -0.2em;
+  image-rendering: pixelated;
+}
+img.ess-weight,
+img.ess-shard {
+  height: 1.9em;
+  margin: -0.45em -0.15em -0.45em -0.1em;
+  vertical-align: -0.55em;
+}
+/* Le contour d'encre des petits chiffres (poids sur les puces) ne doit pas déborder sur l'icône. */
+.cs-wt img.ess-ico,
+.cs-moves .wt img.ess-ico {
+  vertical-align: -0.6em;
+}
+.cs-dex-filters img.ess-ico {
+  margin: 0 0 0 0.35em;
 }

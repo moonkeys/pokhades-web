@@ -1,3 +1,4 @@
+import { essIcon } from './essicon';
 import { WEATHERS } from '../world/weather';
 import type { Combat } from '../combat/combat';
 import { DONORS, ULT_MAX } from '../combat/boons';
@@ -164,8 +165,13 @@ export class Hud {
   setMega(state: 'ready' | 'on' | null): void {
     this.mega.hidden = !state;
     if (!state) return;
-    const text = state === 'ready' ? '◈ Méga-évolution — F' : '◈ Méga-évolué';
-    if (this.mega.textContent !== text) this.mega.textContent = text;
+    const text = state === 'ready' ? ' Méga-évolution — F' : ' Méga-évolué';
+    if (this.mega.textContent !== text) {
+      // Le symbole Méga d'Essentials devant le texte (ui/essicon.ts).
+      this.mega.replaceChildren();
+      essIcon('mega', this.mega);
+      this.mega.append(text);
+    }
     this.mega.classList.toggle('ready', state === 'ready');
   }
 

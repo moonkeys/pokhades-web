@@ -276,10 +276,11 @@ async function pull(): Promise<Row | null> {
   return rows[0] ?? null;
 }
 
-function remember(row: Row): void {
+/** `hash` : l'empreinte de la partie envoyée, quand le serveur ne la renvoie pas (voir push). */
+function remember(row: Pick<Row, 'rev'> & { data?: unknown }, hash = hashOf(row.data)): void {
   if (!session) return;
   session.rev = row.rev;
-  session.hash = hashOf(row.data);
+  session.hash = hash;
   writeSession();
   lastSyncAt = new Date();
 }
@@ -380,19 +381,29 @@ function take(row: Row): void {
 /** Compare la partie du navigateur à celle du compte, et fait ce qui s'impose (voir en tête). */
 async function reconcile(): Promise<Outcome> {
   if (!session) return 'same';
-  let row: Row | null;
-  try {
-    row = await pull();
-  } catch {
-    if (session) setStatus('offline', 'Hors ligne : la partie sera envoyée plus tard.');
-    return 'offline';
-  }
   const local = localData();
   const localHash = local ? hashOf(local) : null;
   const done = (o: Outcome): Outcome => {
     if (o !== 'conflict') setStatus('ok');
     return o;
   };
+  let row: Row | null;
+  try {
+    // D'abord le seul numéro de version : si le compte n'a pas bougé depuis notre dernière synchro,
+    // inutile de télécharger la partie (le trafic sortant est compté chez Supabase).
+    if (session.rev !== null) {
+      const meta = ((await call('/rest/v1/saves?select=rev', { auth: true })) as Pick<Row, 'rev'>[])[0];
+      if (meta && meta.rev === session.rev) {
+        lastSyncAt = new Date();
+        if (localHash === session.hash) return done('same');
+        return done((await pushNow()) ? 'pushed' : 'offline');
+      }
+    }
+    row = await pull();
+  } catch {
+    if (session) setStatus('offline', 'Hors ligne : la partie sera envoyée plus tard.');
+    return 'offline';
+  }
   if (!row) {
     // Pas encore de partie sur le compte : on y met celle d'ici (si elle vaut quelque chose).
     session.rev = null;
@@ -542,24 +553,26 @@ async function push(): Promise<boolean> {
   if (h === session.hash) return true;
   setStatus('busy');
   try {
-    let rows: Row[];
+    // La réponse ne rapporte que le numéro de version : la partie, on vient de l'envoyer. Le trafic
+    // sortant du serveur est compté (5 Go par mois en offre gratuite) ; l'entrant, non.
+    let rows: Pick<Row, 'rev'>[];
     if (session.rev === null) {
-      rows = (await call('/rest/v1/saves?select=data,rev,updated_at', {
+      rows = (await call('/rest/v1/saves?select=rev', {
         method: 'POST',
         auth: true,
         headers: { Prefer: 'return=representation' },
         body: JSON.stringify({ data, rev: 1 }),
-      })) as Row[];
+      })) as Pick<Row, 'rev'>[];
     } else {
-      rows = (await call(`/rest/v1/saves?select=data,rev,updated_at&user_id=eq.${encodeURIComponent(session.uid)}&rev=eq.${session.rev}`, {
+      rows = (await call(`/rest/v1/saves?select=rev&user_id=eq.${encodeURIComponent(session.uid)}&rev=eq.${session.rev}`, {
         method: 'PATCH',
         auth: true,
         headers: { Prefer: 'return=representation' },
         body: JSON.stringify({ data, rev: session.rev + 1 }),
-      })) as Row[];
+      })) as Pick<Row, 'rev'>[];
     }
     if (rows[0]) {
-      remember(rows[0]);
+      remember(rows[0], h);
       setStatus('ok');
       return true;
     }
