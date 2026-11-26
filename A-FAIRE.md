@@ -917,6 +917,15 @@ e-mail, irrécupérable si on la perd).
 - Pas encore testé contre un vrai projet Supabase (formats exacts des
   réponses d'erreur, envoi des e-mails).
 
+### 2.12 Notes de version illustrées (26 novembre 2026)
+
+- Captures et vignettes dans les notes (`PatchImage`, `artIcons`), outil
+  `scripts/shoot.mjs` (Chrome sans fenêtre). Illustrées : le compte, le
+  filtre Méga du Pokédex, les dix-sept lignées.
+- À chaque nouveauté visible : une scène et une image dans sa note. Pas
+  encore de scène en run (salle, faune) : il faudra savoir y amener un
+  Pokémon précis, par exemple pour montrer une nouvelle espèce sauvage.
+
 ## 3. Déjà notés, toujours en attente
 
 - **Jeu en ligne** (src/net/, voir README) : lobby, visite du Repaire de

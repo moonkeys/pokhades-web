@@ -1430,3 +1430,29 @@ connexion se lit sur `http://127.0.0.1:54321/__state`), puis la configuration `d
 Vérifié ainsi : création du compte, reprise sur un second appareil, envoi automatique, conflit
 au lancement et en pleine partie (dans les deux sens), parties identiques sans conflit, jeton
 expiré renouvelé, lancement hors ligne, déconnexion, suppression du compte, écran sur téléphone.
+
+## Notes de version illustrées
+
+Demande du 26 novembre 2026 : « montrer des screenshots du jeu pour mieux visualiser les
+nouveautés, mettre aussi les sprites de nouveaux objets ». Une section de note
+(`src/data/patchnotes.ts`) porte des `images` : des **captures** (`kind: 'shot'`, sur toute la
+largeur, légende dessous) et des **vignettes** (`kind: 'icon'`, en rangée : Pokémon, objets ;
+`pixel: true` pour un sprite agrandi sans flou). `artIcons([['Florizarre', 3], …])` fait les
+vignettes à partir des illustrations du jeu (`public/game/artwork`). Les images se chargent à
+l'approche (`loading=lazy`) ; une image absente disparaît sans laisser de cadre vide.
+
+**Les captures** viennent du vrai jeu, prises par `scripts/shoot.mjs` : il pilote un Chrome sans
+fenêtre (profil neuf, la vraie sauvegarde n'est pas touchée), pose une sauvegarde de
+démonstration, met chaque scène en place (`window.pokhades` sous `?debug`, dont `talk(poste)` et
+`account()`), masque le panneau de test et les notifications, et écrit
+`public/game/patchnotes/<scène>.webp` (1280 × 720, une soixantaine de Ko).
+
+```
+npm run dev
+node scripts/shoot.mjs                    # toutes les scènes
+node scripts/shoot.mjs pokedex-mega       # une seule
+node scripts/shoot.mjs --url http://localhost:5175
+```
+
+Pour une nouveauté : ajouter une scène à `SCENES`, la lancer, regarder l'image, puis la citer
+dans la note. Une note déjà publiée garde son texte ; on peut lui ajouter des images.

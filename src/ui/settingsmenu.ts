@@ -2,7 +2,7 @@ import { sfx } from '../audio/audio';
 import type { Options } from './options';
 import { hint } from './hints';
 import { isTouch } from '../input/touch';
-import { markNotesSeen, PATCH_NOTES } from '../data/patchnotes';
+import { markNotesSeen, PATCH_NOTES, type PatchImage } from '../data/patchnotes';
 import { cloudEmail, cloudEnabled, cloudStatus } from '../net/cloud';
 import { ACTIONS, customized, keyLabel, keysOf, rebind, RESERVED, resetBindings, type Action } from '../input/bindings';
 
@@ -498,7 +498,37 @@ export class SettingsMenu {
         el('h4', '', note, sec.title);
         const ul = el('ul', '', note);
         for (const it of sec.items) el('li', '', ul, it);
+        this.renderNoteImages(note, sec.images ?? []);
       }
+    }
+  }
+
+  /**
+   * Les images d'une section : les captures l'une sous l'autre, légende dessous, puis les vignettes
+   * en rangée. Chargées à l'approche seulement (loading=lazy) : l'onglet a des dizaines de notes.
+   */
+  private renderNoteImages(note: HTMLElement, images: readonly PatchImage[]): void {
+    const img = (parent: HTMLElement, im: PatchImage) => {
+      const i = el('img', im.pixel ? 'pixel' : '', parent) as HTMLImageElement;
+      i.src = im.src;
+      i.alt = im.caption;
+      i.loading = 'lazy';
+      i.decoding = 'async';
+      // Une image absente ne laisse pas de cadre vide dans la note.
+      i.addEventListener('error', () => parent.remove());
+    };
+    for (const im of images.filter((x) => x.kind === 'shot')) {
+      const fig = el('figure', 'opt-shot', note);
+      img(fig, im);
+      el('figcaption', '', fig, im.caption);
+    }
+    const icons = images.filter((x) => x.kind === 'icon');
+    if (!icons.length) return;
+    const row = el('div', 'opt-icons', note);
+    for (const im of icons) {
+      const fig = el('figure', '', row);
+      img(fig, im);
+      el('figcaption', '', fig, im.caption);
     }
   }
 

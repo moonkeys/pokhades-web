@@ -2017,6 +2017,57 @@
 .opt-note li::marker {
   color: var(--red, #e84040);
 }
+/* Les images d'une note (patchnotes.ts, PatchImage) : une capture scotchée sur le papier, sa
+   légende au feutre dessous ; les vignettes (Pokémon, objets) en rangée de cartes. */
+.opt-shot {
+  margin: calc(0.8 * var(--u)) 0 calc(0.4 * var(--u));
+}
+.opt-shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  background: var(--ink);
+  border: calc(0.25 * var(--u)) solid var(--ink);
+  box-shadow: calc(0.35 * var(--u)) calc(0.35 * var(--u)) 0 color-mix(in srgb, var(--ink) 25%, transparent);
+  rotate: -0.6deg;
+}
+.opt-shot figcaption,
+.opt-icons figcaption {
+  margin-top: calc(0.35 * var(--u));
+  font-size: max(11px, calc(1 * var(--u)));
+  font-weight: 700;
+  color: var(--muted);
+}
+.opt-icons {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(max(64px, calc(7 * var(--u))), 1fr));
+  gap: calc(0.6 * var(--u));
+  margin-top: calc(0.8 * var(--u));
+}
+.opt-icons figure {
+  margin: 0;
+  padding: calc(0.4 * var(--u));
+  text-align: center;
+  background: var(--paper-hi);
+  border: calc(0.15 * var(--u)) solid color-mix(in srgb, var(--ink) 30%, transparent);
+}
+.opt-icons img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: contain;
+}
+.opt-icons figcaption {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.opt-note img.pixel {
+  image-rendering: pixelated;
+}
 
 /* ── Boutique : étiquettes de prix, fiche d'article, bulles, mercenaires ── */
 /* Prix de l'étal : une petite ardoise cerclée de bois, le prix à la craie ; elle

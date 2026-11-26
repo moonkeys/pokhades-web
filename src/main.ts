@@ -4084,6 +4084,10 @@ async function boot(): Promise<void> {
           return me;
         },
         campScreen,
+        /** Parle au gardien d'un poste du Repaire (ouvre son écran) : captures des notes de version (scripts/shoot.mjs). */
+        talk: (station: Station) => talkTo(station),
+        /** Ouvre l'écran Compte (captures). */
+        account: () => accountScreen.show(() => input.flush()),
         save,
         enterCamp,
         newRun,
