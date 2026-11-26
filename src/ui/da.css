@@ -3047,13 +3047,13 @@
   color: #fff;
 }
 .cs-lineup .lead b::before {
-  /* L'étoile chromatique d'Essentials (ui/essicon.ts, star), plus le signe ★. */
+  /* Le ruban doré (ui/essicon.ts, star), plus le signe ★. */
   content: '';
   display: inline-block;
   width: 0.8em;
   height: 0.9em;
   margin-right: 0.3em;
-  background: url('/game/assets/essentials/ui/shiny.png') center / contain no-repeat;
+  background: url('/game/assets/pixel/ruban.png') center / 210% no-repeat;
   image-rendering: pixelated;
 }
 .cs-lineup .cs-held {
@@ -5870,10 +5870,11 @@ img.ess-mon {
   margin: 0;
   vertical-align: 0;
 }
-/* Le Pokémon est posé bas dans sa case de 64 px : on le remonte au centre de la pastille. */
-.rw-icon img.ess-mon,
-.stats-boons .boon i img.ess-mon {
-  translate: -4% -14%;
+/* Le VS du Duel remplit sa case (pas de marge comme les objets) : plus bas, pour rester à la taille des autres. */
+img.ess-duel {
+  height: 1.2em;
+  margin: 0 0.2em 0 0;
+  vertical-align: -0.15em;
 }
 /* Le contour d'encre des petits chiffres (poids sur les puces) ne doit pas déborder sur l'icône. */
 .cs-wt img.ess-ico,

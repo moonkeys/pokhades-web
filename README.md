@@ -1480,6 +1480,9 @@ Puis tous les autres signes, chacun par un sprite qui a le bon sens dans les jeu
 en tête de `essicon.ts`) : portes des salles spéciales, grotte, météo, as et MVP, Débloqué,
 Nuzlocke, talent, nature, provenance, contrats, exploits, Route Victoire, dons. Les légendaires
 donateurs montrent leur icône de menu (`Graphics/Pokemon/Icons`, première des deux images,
-`donorIcon`). Un seul manque, le Duel : deux épées dessinées en pixel art au style des objets
-d'Essentials (`public/game/assets/pixel/duel.png`, hors de la copie d'import). Scènes de contrôle
+`donorIcon`, recentrée par un décalage mesuré pour chaque espèce). Sur une planche de choix, le
+joueur a retenu le VS des transitions de combat (Duel), le ruban doré (as, MVP) et le rocher
+d'Éclate-Roc (grotte), et voulu des dessins en pixel art pour le chrono du Défi, la Horde (trois
+silhouettes de Pikachu) et la météo. `python3 scripts/pixel-icons.py` (Pillow) recadre les uns et
+dessine les autres dans `public/game/assets/pixel/`, hors de la copie d'import. Scènes de contrôle
 de l'outil de captures : `node scripts/shoot.mjs --out /tmp ctl-hud ctl-dons equipe`.

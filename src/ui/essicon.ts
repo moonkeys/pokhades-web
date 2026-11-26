@@ -4,15 +4,16 @@
 // qui correspond vraiment, sinon un symbole pixel art dessiné dans le même style »). Elles
 // remplacent les caractères ◈ ⚖ ✦ ★ ☠ ⛰ ⚔ ✚ ✊ ❀ ❖ ⏱ ⚠ ¤ ◆ ⚑ ✎ ✧ ⚡ et ceux de la météo.
 //
-// Chaque icône est choisie pour son sens dans les jeux : Chrono Ball pour le Défi chronométré,
-// Piquants pour le Piège, Pièce Rune pour le marchand, Eau Fraîche pour la Source, Rune Sort pour
-// les pactes, Ceinture Noire pour le Dojo, Œuf Chance pour la Pension, Miel (il attire les hordes)
-// pour la Horde, Corde Sortie pour la grotte, Nœud Destin pour les dons duo, les Roches de météo
-// pour la météo, l'étoile chromatique pour l'as et le MVP, la Poké Ball « possédé » du Pokédex
-// pour un Pokémon débloqué. Un seul manque, le Duel : deux épées dessinées en pixel art
-// (public/game/assets/pixel/duel.png), au contour et aux tons des objets d'Essentials.
+// Chaque icône est choisie pour son sens dans les jeux : Piquants pour le Piège, Pièce Rune pour le
+// marchand, Eau Fraîche pour la Source, Rune Sort pour les pactes, Ceinture Noire pour le Dojo, Œuf
+// Chance pour la Pension, Nœud Destin pour les dons duo, la Poké Ball « possédé » du Pokédex pour un
+// Pokémon débloqué. Puis, sur une planche de choix (même jour) : le VS des transitions de combat pour
+// le Duel, le ruban doré pour l'as et le MVP, le rocher d'Éclate-Roc pour la grotte ; et, dessinés en
+// pixel art faute de mieux, un chrono pour le Défi, trois silhouettes de Pikachu pour la Horde et les
+// pictogrammes de météo (public/game/assets/pixel/, scripts/pixel-icons.py).
 //
-// Les fichiers viennent de npm run import-assets (scripts/import-assets.ts), sauf assets/pixel/.
+// Les fichiers viennent de npm run import-assets (scripts/import-assets.ts), sauf ceux d'assets/pixel/,
+// faits par scripts/pixel-icons.py.
 // Affichées à la hauteur du texte, agrandies sans flou (da.css, .ess-ico).
 
 const item = (name: string): string => `/game/assets/essentials/items/${name}.png`;
@@ -21,23 +22,23 @@ const SRC = {
   mega: '/game/assets/essentials/ui/icon_mega.png',
   weight: item('POWERWEIGHT'),
   shard: item('COMETSHARD'),
-  /** L'as d'un champion, le MVP de la run, un vœu exaucé. */
-  star: '/game/assets/essentials/ui/shiny.png',
+  /** L'as d'un champion, le MVP de la run : le ruban doré du résumé de Pokémon. */
+  star: '/game/assets/pixel/ruban.png',
   /** Un Pokémon débloqué (« possédé » au Pokédex d'Essentials). */
   own: '/game/assets/essentials/ui/icon_own.png',
   /** Un Pokémon perdu (Nuzlocke) : la Poké Ball éteinte du combat. */
   faint: '/game/assets/essentials/ui/icon_ball_faint.png',
   // Salles spéciales (run/run.ts, SPECIALS).
-  challenge: item('TIMERBALL'),
+  challenge: '/game/assets/pixel/chrono.png',
   trap: item('STICKYBARB'),
   merchant: item('AMULETCOIN'),
   spring: item('FRESHWATER'),
   curse: item('SPELLTAG'),
   dojo: item('BLACKBELT'),
   pension: item('LUCKYEGG'),
-  horde: item('HONEY'),
-  duel: '/game/assets/pixel/duel.png',
-  cave: item('ESCAPEROPE'),
+  horde: '/game/assets/pixel/horde.png',
+  duel: '/game/assets/pixel/vs.png',
+  cave: '/game/assets/pixel/rocher.png',
   // Fiches de Pokémon et du Repaire.
   talent: item('ABILITYURGE'),
   nature: item('MENTALHERB'),
@@ -48,19 +49,19 @@ const SRC = {
   berry: item('ORANBERRY'),
   damage: item('MUSCLEBAND'),
   duo: item('DESTINYKNOT'),
-  // Météo (world/weather.ts).
-  clear: item('SUNSTONE'),
-  rain: item('DAMPROCK'),
-  sun: item('HEATROCK'),
-  sand: item('SMOOTHROCK'),
-  hail: item('ICYROCK'),
-  fog: item('SMOKEBALL'),
+  // Météo (world/weather.ts) : des pictogrammes dessinés en pixel art (scripts/pixel-icons.py).
+  clear: '/game/assets/pixel/meteo-clair.png',
+  rain: '/game/assets/pixel/meteo-pluie.png',
+  sun: '/game/assets/pixel/meteo-soleil.png',
+  sand: '/game/assets/pixel/meteo-sable.png',
+  hail: '/game/assets/pixel/meteo-grele.png',
+  fog: '/game/assets/pixel/meteo-brouillard.png',
 } as const;
 
 export type EssIconKind = keyof typeof SRC;
 
 /** Les icônes d'objets (48 × 48, l'objet au centre) : affichées plus grandes, leur marge rognée (da.css). */
-const ITEM_SIZED = new Set<EssIconKind>(Object.keys(SRC).filter((k) => SRC[k as EssIconKind].includes('/items/') || k === 'duel') as EssIconKind[]);
+const ITEM_SIZED = new Set<EssIconKind>(Object.keys(SRC).filter((k) => /\/(items|pixel)\//.test(SRC[k as EssIconKind])) as EssIconKind[]);
 
 export const isEssIcon = (s: string | undefined): s is EssIconKind => !!s && s in SRC;
 
@@ -90,26 +91,32 @@ export function iconText<K extends keyof HTMLElementTagNameMap>(tag: K, cls: str
  * (Graphics/Pokemon/Icons, deux images de 64 px côte à côte : on montre la première), à la place de
  * leur ancien signe (⚡ Électhor, ✧ Mew…).
  */
-const DONOR_ICON: Record<number, string> = {
-  144: 'ARTICUNO',
-  145: 'ZAPDOS',
-  146: 'MOLTRES',
-  151: 'MEW',
-  250: 'HOOH',
-  251: 'CELEBI',
-  383: 'GROUDON',
-  384: 'RAYQUAZA',
-  385: 'JIRACHI',
-  491: 'DARKRAI',
+const DONOR_ICON: Record<number, [file: string, dx: number, dy: number]> = {
+  // [fichier, décalage horizontal et vertical en % de la case] : chaque Pokémon est posé bas dans sa
+  // case de 64 px, et pas au même endroit selon l'espèce. Mesuré sur la zone dessinée de la première
+  // image (retour du 26 novembre 2026 : « qu'ils soient centrés dans leur carré »).
+  144: ['ARTICUNO', 0, -9.4],
+  145: ['ZAPDOS', 0, -9.4],
+  146: ['MOLTRES', 0, -10.9],
+  151: ['MEW', -1.6, -14.1],
+  250: ['HOOH', 1.6, -14.1],
+  251: ['CELEBI', 0, -14.1],
+  383: ['GROUDON', -1.6, -12.5],
+  384: ['RAYQUAZA', -1.6, -12.5],
+  385: ['JIRACHI', -1.6, -14.1],
+  491: ['DARKRAI', 1.6, -12.5],
 };
 
 /** Les fichiers d'icônes des donateurs, pour scripts/import-assets.ts. */
-export const DONOR_ICON_FILES = Object.values(DONOR_ICON);
+export const DONOR_ICON_FILES = Object.values(DONOR_ICON).map(([f]) => f);
 
 export function donorIcon(dex: number, parent?: HTMLElement, cls = ''): HTMLImageElement {
   const img = document.createElement('img');
   img.className = `ess-ico ess-mon${cls ? ` ${cls}` : ''}`;
-  img.src = `/game/assets/essentials/icons/${DONOR_ICON[dex] ?? 'MEW'}.png`;
+  const [file, dx, dy] = DONOR_ICON[dex] ?? DONOR_ICON[151];
+  img.src = `/game/assets/essentials/icons/${file}.png`;
+  // Recentré sur le Pokémon lui-même (le % se rapporte à la case affichée, carrée comme l'image).
+  img.style.translate = `${dx}% ${dy}%`;
   img.alt = '';
   img.draggable = false;
   parent?.append(img);

@@ -62,7 +62,7 @@ export const PATCH_NOTES: readonly PatchNote[] = [
         title: 'Interface',
         items: [
           'Les petits symboles deviennent des sprites du jeu, en pixel art : le symbole Méga (Pokédex, fiches, Méga prête en run), le Poids Pouvoir pour le poids de l’équipe, la Comète pour les Éclats de Champion.',
-          'Et tous les autres : Chrono Ball du Défi, Eau Fraîche de la Source, Rune Sort de l’Autel, Ceinture Noire du Dojo, Œuf Chance de la Pension, Miel de la Horde, Corde Sortie des grottes, Roches de la météo, et l’icône de chaque légendaire sur ses dons.',
+          'Et tous les autres : le VS des Duels, l’Eau Fraîche de la Source, la Rune Sort de l’Autel, la Ceinture Noire du Dojo, l’Œuf Chance de la Pension, le rocher des grottes, le ruban de l’as et du MVP, un chrono pour le Défi, une horde de silhouettes, des pictogrammes de météo, et l’icône de chaque légendaire sur ses dons.',
         ],
         images: [
           { src: '/game/assets/essentials/ui/icon_mega.png', caption: 'Méga', kind: 'icon', pixel: true },
@@ -70,9 +70,11 @@ export const PATCH_NOTES: readonly PatchNote[] = [
           { src: '/game/assets/essentials/items/COMETSHARD.png', caption: 'Éclats', kind: 'icon', pixel: true },
           { src: '/game/assets/essentials/items/FRESHWATER.png', caption: 'Source', kind: 'icon', pixel: true },
           { src: '/game/assets/essentials/items/SPELLTAG.png', caption: 'Autel', kind: 'icon', pixel: true },
-          { src: '/game/assets/essentials/items/HONEY.png', caption: 'Horde', kind: 'icon', pixel: true },
-          { src: '/game/assets/pixel/duel.png', caption: 'Duel', kind: 'icon', pixel: true },
-          { src: '/game/assets/essentials/items/ESCAPEROPE.png', caption: 'Grotte', kind: 'icon', pixel: true },
+          { src: '/game/assets/pixel/horde.png', caption: 'Horde', kind: 'icon', pixel: true },
+          { src: '/game/assets/pixel/vs.png', caption: 'Duel', kind: 'icon', pixel: true },
+          { src: '/game/assets/pixel/rocher.png', caption: 'Grotte', kind: 'icon', pixel: true },
+          { src: '/game/assets/pixel/chrono.png', caption: 'Défi', kind: 'icon', pixel: true },
+          { src: '/game/assets/pixel/meteo-pluie.png', caption: 'Pluie', kind: 'icon', pixel: true },
         ],
       },
     ],

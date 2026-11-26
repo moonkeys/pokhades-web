@@ -137,12 +137,12 @@ renamed.push([`${ESSENTIALS}/UI/Party/overlay_hp.png`, 'assets/essentials/ui/ove
 renamed.push([`${ESSENTIALS}/UI/Battle/icon_mega.png`, 'assets/essentials/ui/icon_mega.png']);
 renamed.push([`${ESSENTIALS}/Items/POWERWEIGHT.png`, 'assets/essentials/items/POWERWEIGHT.png']);
 // Puis tous les autres signes (ui/essicon.ts, liste à tenir avec SRC) : objets au sens qui va, étoile
-// chromatique, Poké Ball « possédé » du Pokédex et Poké Ball éteinte du combat, icônes de menu des
-// légendaires donateurs. Le Duel, dessiné à la main, vit hors de cette copie (assets/pixel/).
-renamed.push([`${ESSENTIALS}/UI/shiny.png`, 'assets/essentials/ui/shiny.png']);
+// Poké Ball « possédé » du Pokédex et Poké Ball éteinte du combat, icônes de menu des légendaires
+// donateurs. Les icônes recadrées ou dessinées (VS, ruban, rocher, chrono, Horde, météo) vivent hors
+// de cette copie, dans assets/pixel/ (scripts/pixel-icons.py).
 renamed.push([`${ESSENTIALS}/UI/Pokedex/icon_own.png`, 'assets/essentials/ui/icon_own.png']);
 renamed.push([`${ESSENTIALS}/UI/Battle/icon_ball_faint.png`, 'assets/essentials/ui/icon_ball_faint.png']);
-for (const f of ['TIMERBALL', 'STICKYBARB', 'AMULETCOIN', 'FRESHWATER', 'SPELLTAG', 'BLACKBELT', 'LUCKYEGG', 'HONEY', 'ESCAPEROPE', 'ABILITYURGE', 'MENTALHERB', 'TOWNMAP', 'AIRMAIL', 'STARPIECE', 'RELICCROWN', 'ORANBERRY', 'MUSCLEBAND', 'DESTINYKNOT', 'SUNSTONE', 'DAMPROCK', 'HEATROCK', 'SMOOTHROCK', 'ICYROCK', 'SMOKEBALL'])
+for (const f of ['STICKYBARB', 'AMULETCOIN', 'FRESHWATER', 'SPELLTAG', 'BLACKBELT', 'LUCKYEGG', 'HONEY', 'ABILITYURGE', 'MENTALHERB', 'TOWNMAP', 'AIRMAIL', 'STARPIECE', 'RELICCROWN', 'ORANBERRY', 'MUSCLEBAND', 'DESTINYKNOT', 'SMOOTHROCK'])
   renamed.push([`${ESSENTIALS}/Items/${f}.png`, `assets/essentials/items/${f}.png`]);
 for (const f of ['ARTICUNO', 'ZAPDOS', 'MOLTRES', 'MEW', 'HOOH', 'CELEBI', 'GROUDON', 'RAYQUAZA', 'JIRACHI', 'DARKRAI'])
   renamed.push([`${ESSENTIALS}/Pokemon/Icons/${f}.png`, `assets/essentials/icons/${f}.png`]);

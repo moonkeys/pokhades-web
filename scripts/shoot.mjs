@@ -119,7 +119,8 @@ const SCENES = [
       await until(() => pokhades.mode === 'run' && pokhades.team[0]?.pokemon);
       await sleep(1500);
       const h = pokhades.ui.runHud;
-      for (const [title, icon] of [['Pluie', 'rain'], ['Pacte scellé', 'curse'], ['Nuzlocke', 'faint'], ['Exploit', 'feat'], ['Retour au Repaire', 'berry'], ['Route Victoire', 'league']])
+      // Les notifications vont par cinq au plus : les six météos, la dernière chasse la première.
+      for (const [title, icon] of [['Temps clair', 'clear'], ['Soleil ardent', 'sun'], ['Pluie', 'rain'], ['Tempête de sable', 'sand'], ['Grêle', 'hail'], ['Brouillard', 'fog']])
         h.notify({ title, text: 'Icône : ' + icon, icon });
       h.setTimer(83, '5 / 12 sauvages');
       pokhades.run.boons.ult = 'electhor';
