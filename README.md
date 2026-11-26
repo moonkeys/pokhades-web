@@ -1475,3 +1475,11 @@ des Éclats de Champion par leur Comète (`COMETSHARD`) : Pokédex (coin des car
 hutte de Porygon (jauge d'équipe, cartes, puces, attaques lourdes), recrues, départ, HUD de la
 Méga, bilan de run. Affichées à la hauteur du texte, sans flou (`img.ess-ico`). Les fichiers sont
 dans la liste de `scripts/import-assets.ts`.
+
+Puis tous les autres signes, chacun par un sprite qui a le bon sens dans les jeux (liste et raisons
+en tête de `essicon.ts`) : portes des salles spéciales, grotte, météo, as et MVP, Débloqué,
+Nuzlocke, talent, nature, provenance, contrats, exploits, Route Victoire, dons. Les légendaires
+donateurs montrent leur icône de menu (`Graphics/Pokemon/Icons`, première des deux images,
+`donorIcon`). Un seul manque, le Duel : deux épées dessinées en pixel art au style des objets
+d'Essentials (`public/game/assets/pixel/duel.png`, hors de la copie d'import). Scènes de contrôle
+de l'outil de captures : `node scripts/shoot.mjs --out /tmp ctl-hud ctl-dons equipe`.

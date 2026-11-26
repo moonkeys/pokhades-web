@@ -1,3 +1,4 @@
+import type { EssIconKind } from '../ui/essicon';
 import { Boons, DONORS, type DonorId } from '../combat/boons';
 import { Rng, hash2 } from '../core/rng';
 import { BIOME_CHAMPIONS, CHAMPIONS, type Champion } from '../data/champions';
@@ -89,25 +90,26 @@ const REWARD_WEIGHTS: [Reward, number][] = [
  * - Marchand : Miaouss propose un pari sur les ₽ et un don contre des PV.
  */
 export type SpecialId = 'challenge' | 'trap' | 'merchant' | 'spring' | 'altar' | 'dojo' | 'pension' | 'horde' | 'duel';
-export const SPECIALS: Record<SpecialId, { name: string; glyph: string; color: string }> = {
-  challenge: { name: 'Défi', glyph: '⏱', color: '#f2c14e' },
-  trap: { name: 'Piège', glyph: '⚠', color: '#e8604c' },
-  merchant: { name: 'Marchand ambulant', glyph: '¤', color: '#e0b25a' },
+/** `icon` : son icône d'Essentials sur la porte (ui/essicon.ts ; elle remplace un signe, ⏱ ⚠ ¤ ✚ ☠ ✊ ❀ ❖ ⚔). */
+export const SPECIALS: Record<SpecialId, { name: string; icon: EssIconKind; color: string }> = {
+  challenge: { name: 'Défi', icon: 'challenge', color: '#f2c14e' },
+  trap: { name: 'Piège', icon: 'trap', color: '#e8604c' },
+  merchant: { name: 'Marchand ambulant', icon: 'merchant', color: '#e0b25a' },
   // Ajout (A-FAIRE 1.9) : une salle de soin, sans ennemis (run/spring.ts).
-  spring: { name: 'Source', glyph: '✚', color: '#6fd3e0' },
+  spring: { name: 'Source', icon: 'spring', color: '#6fd3e0' },
   // Ajout (A-FAIRE 1.9 : « autel à dons maudits ») : un pacte, un don plus rare contre une malédiction (run/altar.ts).
-  altar: { name: 'Autel maudit', glyph: '☠', color: '#b48ce8' },
+  altar: { name: 'Autel maudit', icon: 'curse', color: '#b48ce8' },
   // Ajout (A-FAIRE 1.9 : « d'autres salles ») : Machopeur y enseigne deux attaques, gratuitement (run/dojo.ts).
-  dojo: { name: 'Dojo', glyph: '✊', color: '#e08a4c' },
+  dojo: { name: 'Dojo', icon: 'dojo', color: '#e08a4c' },
   // Ajout (A-FAIRE 1.9) : Écrémeuh y entraîne l'équipe, un niveau chacun (run/pension.ts).
-  pension: { name: 'Pension', glyph: '❀', color: '#e8a8c8' },
+  pension: { name: 'Pension', icon: 'pension', color: '#e8a8c8' },
   // Ajout (23 novembre 2026, A-FAIRE 1.9 : « d'autres salles ») : toute une colonie d'une même
   // espèce, annoncée par la porte. On recrute une espèce en en battant assez (meta/save.ts,
   // recordDefeat) : la Horde est la salle où l'on vient remplir une jauge choisie.
-  horde: { name: 'Horde', glyph: '❖', color: '#9ad46a' },
+  horde: { name: 'Horde', icon: 'horde', color: '#9ad46a' },
   // Ajout (23 novembre 2026) : un dresseur légendaire (Red, Leaf, Brice) et quatre Pokémon
   // de champion, contre un don garanti (run/room.ts, DUEL_*). Jamais avant le troisième acte.
-  duel: { name: 'Duel', glyph: '⚔', color: '#e8584c' },
+  duel: { name: 'Duel', icon: 'duel', color: '#e8584c' },
 };
 
 /**
@@ -508,7 +510,7 @@ export class Run {
       const boss = this.isBoss(this.room + 1);
       // Le donateur est tiré dès la porte, pour qu'elle porte son badge (aucun : la récompense part en ₽).
       const donor = reward === 'boon' && !boss ? (this.boons.pickDonor(this.rng) ?? undefined) : undefined;
-      const head = this.act === this.victoryAct ? (this.champion.name === LEAGUE_MASTER ? '☠ MAÎTRE DE LA LIGUE' : '☠ CONSEIL') : this.act >= this.acts - 1 ? '☠ DRESSEUR FINAL' : '☠ BOSS';
+      const head = this.act === this.victoryAct ? (this.champion.name === LEAGUE_MASTER ? 'MAÎTRE DE LA LIGUE' : 'CONSEIL') : this.act >= this.acts - 1 ? 'DRESSEUR FINAL' : 'BOSS';
       const label = boss ? `${head} · ${this.champion.name}` : donor ? donorLabel(donor) : REWARD_LABEL[reward];
       const link = links[i];
       const ahead = link && this.championAhead(link);

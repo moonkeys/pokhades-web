@@ -338,16 +338,16 @@ export class BoonHooks {
         mon.hp = Math.max(1, Math.floor(mon.maxHp * Math.min(1, b.v('feu_phoenix'))));
         for (const e of this.around(enemies, player.x, player.y, 6)) this.inflict(e, 'burn');
         this.host.fx.attackAnim('fire', player.x, player.y);
-        this.host.notify('🔥 Phénix ! Tu te relèves.');
+        this.host.notify('Phénix ! Tu te relèves.');
       } else if (b.has('astre_wish') && !b.wishUsed) {
         b.wishUsed = true;
         mon.hp = 1;
-        this.host.notify('★ Souhait : tu tiens à 1 PV.');
+        this.host.notify('Souhait : tu tiens à 1 PV.');
       } else if (b.has('sacre_rebirth') && !b.rebirthUsed) {
         b.rebirthUsed = true;
         mon.hp = Math.floor(mon.maxHp / 2);
         this.host.fx.attackAnim('fx_heal', player.x, player.y);
-        this.host.notify('✹ Renaissance !');
+        this.host.notify('Renaissance !');
       }
     }
     if (b.has('sol_thorns')) {
@@ -433,7 +433,7 @@ export class BoonHooks {
       if (mon && !mon.fainted) mon.hp = Math.min(mon.maxHp, mon.hp + Math.round(mon.maxHp * b.v('temps_journey')));
     }
     if (newAct && b.has('astre_wish_granted')) {
-      if (b.wishGranted(rng)) this.host.notify(`★ Vœu Exaucé : un don monte d'une rareté.`);
+      if (b.wishGranted(rng)) this.host.notify(`Vœu Exaucé : un don monte d'une rareté.`);
     }
   }
 
@@ -520,7 +520,7 @@ export class BoonHooks {
     sfx('ability');
     const donor: DonorId = b.ult;
     const d = DONORS[donor];
-    this.host.notify(`⚡ ${d.ult} !`);
+    this.host.notify(`${d.ult} !`);
     this.host.addShake(0.45);
     const P = this.basePower(player) * ULT_POWER_MULT;
     const all = this.around(enemies, player.x, player.y, Infinity);

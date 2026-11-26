@@ -3047,8 +3047,14 @@
   color: #fff;
 }
 .cs-lineup .lead b::before {
-  content: '★ ';
-  color: var(--yel);
+  /* L'étoile chromatique d'Essentials (ui/essicon.ts, star), plus le signe ★. */
+  content: '';
+  display: inline-block;
+  width: 0.8em;
+  height: 0.9em;
+  margin-right: 0.3em;
+  background: url('/game/assets/essentials/ui/shiny.png') center / contain no-repeat;
+  image-rendering: pixelated;
 }
 .cs-lineup .cs-held {
   top: calc(1 * var(--u));
@@ -5840,11 +5846,34 @@ img.ess-ico {
   vertical-align: -0.2em;
   image-rendering: pixelated;
 }
-img.ess-weight,
-img.ess-shard {
+img.ess-item {
   height: 1.9em;
   margin: -0.45em -0.15em -0.45em -0.1em;
   vertical-align: -0.55em;
+}
+/* Les légendaires donateurs : leur icône de menu (deux images de 64 px côte à côte), dont on ne
+   montre que la première, recadrée au carré. */
+img.ess-mon {
+  width: 1.9em;
+  height: 1.9em;
+  margin: -0.45em 0.05em -0.45em -0.15em;
+  vertical-align: -0.6em;
+  object-fit: cover;
+  object-position: 0 50%;
+}
+/* Dans les pastilles rondes des dons (écran des récompenses, fiche des dons) : l'icône remplit la
+   pastille, à la place de l'ancien signe blanc. */
+.rw-icon img.ess-ico,
+.stats-boons .boon i img.ess-ico {
+  width: 120%;
+  height: 120%;
+  margin: 0;
+  vertical-align: 0;
+}
+/* Le Pokémon est posé bas dans sa case de 64 px : on le remonte au centre de la pastille. */
+.rw-icon img.ess-mon,
+.stats-boons .boon i img.ess-mon {
+  translate: -4% -14%;
 }
 /* Le contour d'encre des petits chiffres (poids sur les puces) ne doit pas déborder sur l'icône. */
 .cs-wt img.ess-ico,

@@ -62,11 +62,17 @@ export const PATCH_NOTES: readonly PatchNote[] = [
         title: 'Interface',
         items: [
           'Les petits symboles deviennent des sprites du jeu, en pixel art : le symbole Méga (Pokédex, fiches, Méga prête en run), le Poids Pouvoir pour le poids de l’équipe, la Comète pour les Éclats de Champion.',
+          'Et tous les autres : Chrono Ball du Défi, Eau Fraîche de la Source, Rune Sort de l’Autel, Ceinture Noire du Dojo, Œuf Chance de la Pension, Miel de la Horde, Corde Sortie des grottes, Roches de la météo, et l’icône de chaque légendaire sur ses dons.',
         ],
         images: [
           { src: '/game/assets/essentials/ui/icon_mega.png', caption: 'Méga', kind: 'icon', pixel: true },
           { src: '/game/assets/essentials/items/POWERWEIGHT.png', caption: 'Poids', kind: 'icon', pixel: true },
           { src: '/game/assets/essentials/items/COMETSHARD.png', caption: 'Éclats', kind: 'icon', pixel: true },
+          { src: '/game/assets/essentials/items/FRESHWATER.png', caption: 'Source', kind: 'icon', pixel: true },
+          { src: '/game/assets/essentials/items/SPELLTAG.png', caption: 'Autel', kind: 'icon', pixel: true },
+          { src: '/game/assets/essentials/items/HONEY.png', caption: 'Horde', kind: 'icon', pixel: true },
+          { src: '/game/assets/pixel/duel.png', caption: 'Duel', kind: 'icon', pixel: true },
+          { src: '/game/assets/essentials/items/ESCAPEROPE.png', caption: 'Grotte', kind: 'icon', pixel: true },
         ],
       },
     ],

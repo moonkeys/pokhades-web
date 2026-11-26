@@ -20,23 +20,22 @@ export interface Donor {
   name: string;
   dex: number;
   type: string;
-  sym: string;
   line: string;
   ult: string;
 }
 
 /** RunBoons.GODS (RB:97-108) et ULTIMATES (RB:390-401). */
 export const DONORS: Record<DonorId, Donor> = {
-  electhor: { name: 'Électhor', dex: 145, type: 'electric', sym: '⚡', line: "Prends ma foudre. Qu'elle ne frappe plus jamais une seule cible.", ult: 'Tonnerre' },
-  sulfura: { name: 'Sulfura', dex: 146, type: 'fire', sym: '🔥', line: "Ce que j'allume ne s'éteint pas. Laisse le sol brûler derrière toi.", ult: 'Déflagration' },
-  artikodin: { name: 'Artikodin', dex: 144, type: 'ice', sym: '❄', line: "Un ennemi immobile n'a jamais touché personne. Fige-les.", ult: 'Blizzard' },
-  mew: { name: 'Mew', dex: 151, type: 'psychic', sym: '✧', line: "Tu n'es pas seul sur ce terrain. Je te donne les autres.", ult: 'Psycho-Boost' },
-  darkrai: { name: 'Darkrai', dex: 491, type: 'dark', sym: '☾', line: 'Je peux te rendre terrible. Tu paieras — mais plus tard.', ult: 'Trou Noir' },
-  groudon: { name: 'Groudon', dex: 383, type: 'ground', sym: '◆', line: "On ne t'esquivera plus. Deviens ce qu'on subit.", ult: 'Fin du Monde' },
-  celebi: { name: 'Célébi', dex: 251, type: 'grass', sym: '❃', line: "Recommence autant qu'il faudra. Je te rends le temps.", ult: 'Distorsion' },
-  hooh: { name: 'Ho-Oh', dex: 250, type: 'fire', sym: '✹', line: 'Tombe si tu veux. Tu te relèveras plus grand.', ult: 'Rapace Sacré' },
-  rayquaza: { name: 'Rayquaza', dex: 384, type: 'dragon', sym: '➤', line: "Trop haut pour qu'on te suive. Va vite, ne t'arrête jamais.", ult: 'Draco-Ascension' },
-  jirachi: { name: 'Jirachi', dex: 385, type: 'steel', sym: '★', line: 'Fais un vœu. Je te rembourserai au centuple.', ult: 'Météore' },
+  electhor: { name: 'Électhor', dex: 145, type: 'electric', line: "Prends ma foudre. Qu'elle ne frappe plus jamais une seule cible.", ult: 'Tonnerre' },
+  sulfura: { name: 'Sulfura', dex: 146, type: 'fire', line: "Ce que j'allume ne s'éteint pas. Laisse le sol brûler derrière toi.", ult: 'Déflagration' },
+  artikodin: { name: 'Artikodin', dex: 144, type: 'ice', line: "Un ennemi immobile n'a jamais touché personne. Fige-les.", ult: 'Blizzard' },
+  mew: { name: 'Mew', dex: 151, type: 'psychic', line: "Tu n'es pas seul sur ce terrain. Je te donne les autres.", ult: 'Psycho-Boost' },
+  darkrai: { name: 'Darkrai', dex: 491, type: 'dark', line: 'Je peux te rendre terrible. Tu paieras — mais plus tard.', ult: 'Trou Noir' },
+  groudon: { name: 'Groudon', dex: 383, type: 'ground', line: "On ne t'esquivera plus. Deviens ce qu'on subit.", ult: 'Fin du Monde' },
+  celebi: { name: 'Célébi', dex: 251, type: 'grass', line: "Recommence autant qu'il faudra. Je te rends le temps.", ult: 'Distorsion' },
+  hooh: { name: 'Ho-Oh', dex: 250, type: 'fire', line: 'Tombe si tu veux. Tu te relèveras plus grand.', ult: 'Rapace Sacré' },
+  rayquaza: { name: 'Rayquaza', dex: 384, type: 'dragon', line: "Trop haut pour qu'on te suive. Va vite, ne t'arrête jamais.", ult: 'Draco-Ascension' },
+  jirachi: { name: 'Jirachi', dex: 385, type: 'steel', line: 'Fais un vœu. Je te rembourserai au centuple.', ult: 'Météore' },
 };
 export const DONOR_IDS = Object.keys(DONORS) as DonorId[];
 

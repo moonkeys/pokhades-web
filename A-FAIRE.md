@@ -932,16 +932,20 @@ Retour : « je veux pas de symboles dessinés qui n'ont pas la DA du jeu ;
 des sprites d'Essentials, pixelisés ». Fait : ◈ (Méga), ⚖ (poids) et ✦ des
 Éclats de Champion (bilan de run) → `src/ui/essicon.ts`.
 
-Restent des caractères qui tiennent lieu d'icônes, à passer en sprites si le
-joueur le veut (candidats d'Essentials entre parenthèses, à valider) :
-- portes des salles spéciales (`run/run.ts`, `glyph`) : Source ✚
-  (FRESHWATER), Autel ☠ (SPELLTAG), Dojo ✊ (BLACKBELT), Pension ❀,
-  Horde ❖, Duel ⚔ ; étiquette de grotte ⛰ (`run/room.ts`) ;
-- ★ (as du champion, MVP, « Débloqué »), ✦ (icône par défaut des
-  notifications, nature, « Tout réclamer » des exploits), ◆ (talent),
-  ⚑ (provenance), ⚡ et ✧ (dons d'ultime et de duo), ✎ (aménagement à venir) ;
-- deux dessins SVG à l'écran des récompenses (`BALL_X`, `LEAF`).
-Les flèches, ✕ et ✔ restent : ce sont des signes typographiques.
+Puis tous les autres (« un sprite qui correspond vraiment, sinon un symbole
+pixel art dans le même style ») : portes des salles spéciales (Chrono Ball,
+Piquants, Pièce Rune, Eau Fraîche, Rune Sort, Ceinture Noire, Œuf Chance,
+Miel), grotte (Corde Sortie), météo (Roches), as et MVP (étoile chromatique),
+Débloqué (Poké Ball « possédé » du Pokédex), Nuzlocke (Poké Ball éteinte),
+talent (Ability Urge), nature (Herbe Mental), provenance (Carte), contrats
+(Lettre), exploits (Morceau d'Étoile), Route Victoire (Couronne Antique),
+dégâts du bilan (Bandeau Muscle), dons duo (Nœud Destin), légendaires
+donateurs (leurs icônes de menu). Seul dessin : le Duel, deux épées en pixel
+art (`public/game/assets/pixel/duel.png`). Les ☠ des portes de boss et ★ des
+textes de notification sont retirés (l'illustration suffit).
+Gardés exprès : la Poké Ball barrée de l'écran des récompenses (motif du
+logo, pas un petit signe) et les particules d'aura (feuilles, arcs : des
+effets animés). Les flèches, ✕ et ✔ restent : ce sont des signes typographiques.
 
 ## 3. Déjà notés, toujours en attente
 

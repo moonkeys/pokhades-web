@@ -136,6 +136,16 @@ renamed.push([`${ESSENTIALS}/UI/Party/overlay_hp.png`, 'assets/essentials/ui/ove
 // des sprites d'Essentials, pixelisés ») : le symbole Méga du combat et le Poids Pouvoir pour le poids.
 renamed.push([`${ESSENTIALS}/UI/Battle/icon_mega.png`, 'assets/essentials/ui/icon_mega.png']);
 renamed.push([`${ESSENTIALS}/Items/POWERWEIGHT.png`, 'assets/essentials/items/POWERWEIGHT.png']);
+// Puis tous les autres signes (ui/essicon.ts, liste à tenir avec SRC) : objets au sens qui va, étoile
+// chromatique, Poké Ball « possédé » du Pokédex et Poké Ball éteinte du combat, icônes de menu des
+// légendaires donateurs. Le Duel, dessiné à la main, vit hors de cette copie (assets/pixel/).
+renamed.push([`${ESSENTIALS}/UI/shiny.png`, 'assets/essentials/ui/shiny.png']);
+renamed.push([`${ESSENTIALS}/UI/Pokedex/icon_own.png`, 'assets/essentials/ui/icon_own.png']);
+renamed.push([`${ESSENTIALS}/UI/Battle/icon_ball_faint.png`, 'assets/essentials/ui/icon_ball_faint.png']);
+for (const f of ['TIMERBALL', 'STICKYBARB', 'AMULETCOIN', 'FRESHWATER', 'SPELLTAG', 'BLACKBELT', 'LUCKYEGG', 'HONEY', 'ESCAPEROPE', 'ABILITYURGE', 'MENTALHERB', 'TOWNMAP', 'AIRMAIL', 'STARPIECE', 'RELICCROWN', 'ORANBERRY', 'MUSCLEBAND', 'DESTINYKNOT', 'SUNSTONE', 'DAMPROCK', 'HEATROCK', 'SMOOTHROCK', 'ICYROCK', 'SMOKEBALL'])
+  renamed.push([`${ESSENTIALS}/Items/${f}.png`, `assets/essentials/items/${f}.png`]);
+for (const f of ['ARTICUNO', 'ZAPDOS', 'MOLTRES', 'MEW', 'HOOH', 'CELEBI', 'GROUDON', 'RAYQUAZA', 'JIRACHI', 'DARKRAI'])
+  renamed.push([`${ESSENTIALS}/Pokemon/Icons/${f}.png`, `assets/essentials/icons/${f}.png`]);
 // Le « ! » des dresseurs qui vous repèrent : le repère de nouveauté du Repaire (run/camp.ts).
 renamed.push([`${ESSENTIALS}/Animations/!.png`, 'assets/essentials/animations/exclaim.png']);
 // Champions d'arène (PokePools.CHAMPION_SPRITE) et Poké Ball de leurs envois (PokeballFX.gd).
@@ -234,7 +244,7 @@ for (const id of species) {
 
 const OUT = path.join(WEB, 'public', 'game');
 // On repart de zéro (sauf le fichier extrait à la main) : une espèce retirée de la liste disparaît aussi.
-for (const sub of ['assets/tilesets', 'assets/cs', 'assets/fx', 'assets/essentials/animations', 'assets/essentials/ui', 'assets/essentials/trainers', 'assets/essentials/battle', 'assets/essentials/items', 'assets/essentials/tilesets', 'assets/essentials/autotiles', 'audio', 'data']) fs.rmSync(path.join(OUT, sub), { recursive: true, force: true });
+for (const sub of ['assets/tilesets', 'assets/cs', 'assets/fx', 'assets/essentials/animations', 'assets/essentials/ui', 'assets/essentials/trainers', 'assets/essentials/battle', 'assets/essentials/items', 'assets/essentials/icons', 'assets/essentials/tilesets', 'assets/essentials/autotiles', 'audio', 'data']) fs.rmSync(path.join(OUT, sub), { recursive: true, force: true });
 
 let copied = 0;
 let remote = 0;

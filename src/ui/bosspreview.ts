@@ -1,3 +1,4 @@
+import { iconText } from './essicon';
 import { sfx } from '../audio/audio';
 import { loadInfo } from '../assets/pmd';
 import { TYPE_CHART, typeMultiplier } from '../combat/damage';
@@ -102,7 +103,7 @@ export class BossPreview {
       const name = el('b', '', c, '…');
       el('small', '', c, `Niv. ${levels[i] ?? '?'}`);
       if (ace) {
-        el('small', 'ace-tag', c, '★ son as');
+        iconText('small', 'ace-tag', c, 'star', ' son as');
         // Entouré à la bombe par la rébellion, en deux arcs.
         c.insertAdjacentHTML(
           'beforeend',

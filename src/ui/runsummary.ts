@@ -1,4 +1,4 @@
-import { essIcon, type EssIconKind } from './essicon';
+import { essIcon, iconText, type EssIconKind } from './essicon';
 import { sfx } from '../audio/audio';
 import type { Champion } from '../data/champions';
 import type { Actor } from '../entities/actor';
@@ -115,7 +115,7 @@ export class RunSummary {
       img.src = `/game/artwork/${mvp.speciesId}.png`;
       img.alt = '';
       el('b', '', box, mvp.pokemon?.name ?? '?');
-      el('small', 'ace-tag', box, '★ MVP');
+      iconText('small', 'ace-tag', box, 'star', ' MVP');
       box.insertAdjacentHTML(
         'beforeend',
         spray({ ...curve([8, 30, 4, -6, 96, -6, 92, 30]), viewBox: '0 0 100 60', color: '#ffd23f', width: 2.6, drips: 1, dripMax: 2, dots: 6, seed: 21, delay: 0.7, draw: 0.3 }) +
@@ -171,7 +171,7 @@ export class RunSummary {
       el('small', '', c, `Niv. ${a.pokemon?.level ?? '?'}${ko ? ' · K.O.' : ''}`);
       const bar = el('i', 'bar', c);
       bar.style.setProperty('--w', `${(m.dealt / top1) * 100}%`);
-      el('small', '', c, `⚔ ${fmt(m.dealt)}`);
+      iconText('small', '', c, 'damage', ` ${fmt(m.dealt)}`);
     }
     el('p', 'keys', poster, hint('Entrée, E ou Échap : rentrer au Repaire', 'Touche pour rentrer au Repaire'));
     for (const [side, rot] of [

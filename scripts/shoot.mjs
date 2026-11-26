@@ -104,6 +104,50 @@ const SCENES = [
     wait: 200,
   },
   {
+    // Contrôle : le HUD de run et ses icônes (notifications de météo, de pacte, de Nuzlocke, d'exploit,
+    // de Baies et de Route Victoire ; chrono du Défi ; as du champion ; jauge d'ultime d'Électhor).
+    name: 'ctl-hud',
+    control: true,
+    keepNotifs: true,
+    path: '/?debug',
+    save: SAVE,
+    css: '.run-title { display: none !important; }',
+    run: `
+      await until(() => window.pokhades);
+      Object.assign(pokhades.opts, { biome: 'prairie', weather: 'clear' });
+      pokhades.newRun();
+      await until(() => pokhades.mode === 'run' && pokhades.team[0]?.pokemon);
+      await sleep(1500);
+      const h = pokhades.ui.runHud;
+      for (const [title, icon] of [['Pluie', 'rain'], ['Pacte scellé', 'curse'], ['Nuzlocke', 'faint'], ['Exploit', 'feat'], ['Retour au Repaire', 'berry'], ['Route Victoire', 'league']])
+        h.notify({ title, text: 'Icône : ' + icon, icon });
+      h.setTimer(83, '5 / 12 sauvages');
+      pokhades.run.boons.ult = 'electhor';
+      pokhades.run.boons.ultGauge = 9999;`,
+    wait: 800,
+  },
+  {
+    // Contrôle : l'écran des dons (icônes de menu des légendaires, Nœud Destin des duos).
+    name: 'ctl-dons',
+    control: true,
+    path: '/?debug',
+    save: SAVE,
+    css: '.run-title { display: none !important; }',
+    run: `
+      await until(() => window.pokhades);
+      Object.assign(pokhades.opts, { biome: 'prairie', weather: 'clear' });
+      pokhades.newRun();
+      await until(() => pokhades.mode === 'run' && pokhades.team[0]?.pokemon);
+      await sleep(1200);
+      const rng = { next: () => 0.3, int: (a, b) => a, pick: (l) => l[0], chance: () => false };
+      const offer = pokhades.run.boons.offer(pokhades.run.rng ?? rng, 3, 1, 'mew') ?? pokhades.run.boons.offer(rng, 3, 1);
+      pokhades.ui.rewardScreen.showBoons(offer, () => {}, () => {}, pokhades.team.map((a) => a.pokemon));
+      // Les cartes entrent l'une après l'autre.
+      await until(() => document.querySelectorAll('.rw-card').length >= 2);
+      await sleep(2500);`,
+    wait: 300,
+  },
+  {
     // Contrôle : la hutte de Porygon, onglet Équipe (poids de l'équipe, de chacun, des attaques). Pas
     // dans les notes : prise seulement si on la nomme (node scripts/shoot.mjs --out /tmp equipe).
     name: 'equipe',
@@ -229,7 +273,7 @@ try {
       await evaluate(c, `localStorage.clear(); ${s.save ? `localStorage.setItem('pokhades-save', ${JSON.stringify(JSON.stringify(s.save))});` : ''}`);
       await go(c, s.path);
       // Ni le panneau de test (outil de DA du serveur de dev) ni les notifications par-dessus la scène.
-      const css = `#panel, .notif { display: none !important; } ${s.css ?? ''}`;
+      const css = `#panel${s.keepNotifs ? '' : ', .notif'} { display: none !important; } ${s.css ?? ''}`;
       await evaluate(c, `const st = document.createElement('style'); st.textContent = ${JSON.stringify(css)}; document.head.append(st); await document.fonts.ready;` + s.run);
       await sleep(s.wait ?? 800);
       const shot = await c.send('Page.captureScreenshot', { format: 'webp', quality: 82 });

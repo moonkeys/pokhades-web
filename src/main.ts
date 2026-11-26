@@ -357,7 +357,7 @@ async function boot(): Promise<void> {
   /** Une espèce vient d'être débloquée : on la salue (CombatArena, « ★ X rejoint la rébellion ! »). */
   const welcome = (id: number) => {
     sfx('pkmnGet', -4);
-    void loadInfo(id).then((i) => runHud.notify({ title: 'Débloqué', text: `★ ${i.name} rejoint la rébellion !`, art: id, color: 'var(--yel)' }));
+    void loadInfo(id).then((i) => runHud.notify({ title: 'Débloqué', text: `${i.name} rejoint la rébellion !`, art: id, color: 'var(--yel)' }));
   };
   // Chaque ennemi tombé en run compte pour son espèce, qui l'achève importe peu
   // (GameManager.record_defeat) ; le dixième d'une forme de base la débloque.
@@ -435,7 +435,7 @@ async function boot(): Promise<void> {
       renderer.bake(world);
       run.curse = curse;
       run.curseAct = run.act;
-      runHud.notify({ title: `Pacte scellé : ${CURSES[curse].name}`, text: `${CURSES[curse].desc} Jusqu’à la fin de l’acte.`, icon: '☠', color: '#b48ce8' });
+      runHud.notify({ title: `Pacte scellé : ${CURSES[curse].name}`, text: `${CURSES[curse].desc} Jusqu’à la fin de l’acte.`, icon: 'curse', color: '#b48ce8' });
       run.donor = run.boons.pickDonor(run.rng) ?? undefined;
       run.boons.bonus = 1;
       director.grant('boon');
@@ -1582,7 +1582,7 @@ async function boot(): Promise<void> {
     run.money = 100 * level(save, 'purse');
     runNuzlocke = opts.nuzlocke && !net.inRun;
     nuzCaptured.clear();
-    if (runNuzlocke) runHud.notify({ title: 'Mode Nuzlocke', text: 'Un Pokémon encore K.O. ou capturé en fin de run sera relâché pour de bon.', icon: '☠', color: '#e84040' });
+    if (runNuzlocke) runHud.notify({ title: 'Mode Nuzlocke', text: 'Un Pokémon encore K.O. ou capturé en fin de run sera relâché pour de bon.', icon: 'faint', color: '#e84040' });
     runBaies = 0;
     for (const r of RESOURCE_IDS) runRes[r] = 0;
     stats.reset();
@@ -1683,9 +1683,9 @@ async function boot(): Promise<void> {
     // Hôte : au retour de run, les invités réapparaissent à côté de lui.
     for (const v of visitors) v.remoteIn = null;
     netCamp();
-    if (runBaies > 0) runHud.notify({ title: 'Retour au Repaire', text: `+${runBaies} Baies rapportées de la run.`, icon: '✦', color: 'var(--yel)' });
+    if (runBaies > 0) runHud.notify({ title: 'Retour au Repaire', text: `+${runBaies} Baies rapportées de la run.`, icon: 'berry', color: 'var(--yel)' });
     const resGain = RESOURCE_IDS.filter((r) => runRes[r] > 0).map((r) => `+${runRes[r]} ${RESOURCES[r].name}`);
-    if (resGain.length) runHud.notify({ title: 'Ressources', text: `${resGain.join(' · ')} ramassés en chemin.`, icon: '✦', color: 'var(--yel)' });
+    if (resGain.length) runHud.notify({ title: 'Ressources', text: `${resGain.join(' · ')} ramassés en chemin.`, res: RESOURCE_IDS.find((r) => runRes[r] > 0), color: 'var(--yel)' });
     for (const r of RESOURCE_IDS) runRes[r] = 0;
     runBaies = 0;
     const back = save.missions.filter((m) => m && m.left <= 0).length;
@@ -1697,7 +1697,7 @@ async function boot(): Promise<void> {
     if (save.started && !save.intros.includes('journal-hint')) {
       save.intros.push('journal-hint');
       writeSave(save);
-      runHud.notify({ title: 'Plan du monde', text: 'Le panneau près de l’arche montre la carte du monde ; Xatu, à côté, tient le carnet des exploits.', icon: '✦', color: 'var(--yel)' });
+      runHud.notify({ title: 'Plan du monde', text: 'Le panneau près de l’arche montre la carte du monde ; Xatu, à côté, tient le carnet des exploits.', icon: 'origin', color: 'var(--yel)' });
     }
     const feats = readyFeats(save).length;
     if (feats) runHud.notify({ title: 'Exploits', text: `${feats > 1 ? `${feats} exploits sont` : 'Un exploit est'} à réclamer auprès de Xatu, près de l’arche.`, art: CAMP_NPCS.feats, color: 'var(--yel)' });
@@ -2069,7 +2069,7 @@ async function boot(): Promise<void> {
       if (roomWeather !== 'clear') {
         roomWeather = 'clear';
         setWeather(weatherNow());
-        runHud.notify({ title: 'Éclaircie', text: 'Le ciel se dégage.', icon: '☀' });
+        runHud.notify({ title: 'Éclaircie', text: 'Le ciel se dégage.', icon: 'clear' });
       }
       // La salle libérée, les membres à terre se relèvent avec 1 PV pour la suivante (retour de
       // test : « quand un Pokémon meurt et qu'on finit la zone, il revient avec un seul point de
@@ -2132,7 +2132,7 @@ async function boot(): Promise<void> {
             writeSave(save);
             sfx('pkmnGet', -4);
             void loadInfo(got.id).then((i) =>
-              runHud.notify({ title: 'Recrue de champion', text: got.waiting ? `${i.name} quitte ${run.champion.name} : il t’attend au Repaire.` : `★ ${i.name} quitte ${run.champion.name} et rejoint la rébellion !`, art: got.id, color: 'var(--yel)' }),
+              runHud.notify({ title: 'Recrue de champion', text: got.waiting ? `${i.name} quitte ${run.champion.name} : il t’attend au Repaire.` : `${i.name} quitte ${run.champion.name} et rejoint la rébellion !`, art: got.id, color: 'var(--yel)' }),
             );
           }
         }
@@ -2270,8 +2270,8 @@ async function boot(): Promise<void> {
     const was = leagueOpen(save);
     save.beaten.push(name);
     writeSave(save);
-    runHud.notify({ title: 'Exploit', text: `${name} vaincu pour la première fois : réclame l’exploit à Xatu, au Repaire.`, icon: '✦', color: 'var(--yel)' });
-    if (!was && leagueOpen(save)) runHud.notify({ title: 'Route Victoire', text: 'Tous les champions sont tombés. La Route Victoire s’ouvre au bout de la carte du monde.', icon: '★', color: 'var(--yel)' });
+    runHud.notify({ title: 'Exploit', text: `${name} vaincu pour la première fois : réclame l’exploit à Xatu, au Repaire.`, icon: 'feat', color: 'var(--yel)' });
+    if (!was && leagueOpen(save)) runHud.notify({ title: 'Route Victoire', text: 'Tous les champions sont tombés. La Route Victoire s’ouvre au bout de la carte du monde.', icon: 'league', color: 'var(--yel)' });
   }
 
   /** Les répliques du dernier boss : le Dresseur final, ou le Maître au bout de la Route Victoire. */
@@ -2324,7 +2324,7 @@ async function boot(): Promise<void> {
     message: (text) => runHud.message(text),
     toast: (text, stamp) => runHud.toast(text, stamp),
     announce: (name, kicker) => runHud.announce(name, '#8fa8ff', kicker),
-    notify: (title, text, art) => runHud.notify({ title, text, art, icon: art ? undefined : '✦', color: '#8fa8ff' }),
+    notify: (title, text, art) => runHud.notify({ title, text, art, icon: art ? undefined : 'feat', color: '#8fa8ff' }),
     heal: () => {
       for (const m of team) if (m.pokemon && m.deathT < 0 && !m.pokemon.fainted) m.pokemon.hp = m.pokemon.maxHp;
     },
@@ -3186,7 +3186,7 @@ async function boot(): Promise<void> {
       got = true;
       sfx('pkmnGet', -4);
       void loadInfo(r.id).then((i) =>
-        runHud.notify({ title: 'Allié rencontré', text: r.waiting ? `${i.name} veut te rejoindre : il t’attend au Repaire.` : `★ ${i.name} rejoint la rébellion !`, art: r.id, color: '#7ac0e8' }),
+        runHud.notify({ title: 'Allié rencontré', text: r.waiting ? `${i.name} veut te rejoindre : il t’attend au Repaire.` : `${i.name} rejoint la rébellion !`, art: r.id, color: '#7ac0e8' }),
       );
     }
     if (got) writeSave(save);
@@ -3283,7 +3283,7 @@ async function boot(): Promise<void> {
       : null;
   };
   // La malédiction d'un pacte (Autel maudit) reste écrite sous le lieu jusqu'à la fin de l'acte.
-  const curseTag = () => (run.cursed() ? ` · ☠ ${CURSES[run.curse!].name}` : '');
+  const curseTag = () => (run.cursed() ? ` · Pacte : ${CURSES[run.curse!].name}` : '');
   const placeName = () => (cave.active ? cave.title : run.isShop() ? `Boutique${curseTag()}` : `${run.placeName}${weatherNow() !== 'clear' ? ` · ${WEATHERS[weatherNow()].name}` : ''}${curseTag()}`);
 
   /** Hôte : l'instantané du terrain, à tous les invités. */
@@ -3954,7 +3954,7 @@ async function boot(): Promise<void> {
             opts.seed += 1;
             saveOptions(opts);
             enterCamp();
-            if (nuzLost.length) runHud.notify({ title: 'Nuzlocke', text: `${nuzLost.join(', ')} ${nuzLost.length > 1 ? 'ont quitté' : 'a quitté'} la rébellion pour de bon.`, icon: '☠', color: '#e84040' });
+            if (nuzLost.length) runHud.notify({ title: 'Nuzlocke', text: `${nuzLost.join(', ')} ${nuzLost.length > 1 ? 'ont quitté' : 'a quitté'} la rébellion pour de bon.`, icon: 'faint', color: '#e84040' });
           },
         );
       }

@@ -1,4 +1,4 @@
-import { essIcon } from './essicon';
+import { donorIcon, essIcon } from './essicon';
 import { WEATHERS } from '../world/weather';
 import type { Combat } from '../combat/combat';
 import { DONORS, ULT_MAX } from '../combat/boons';
@@ -310,7 +310,9 @@ export class Hud {
       const d = DONORS[boons.ult];
       this.ult.classList.toggle('full', full);
       this.ultFill.style.width = `${(boons.ultGauge / ULT_MAX) * 100}%`;
-      this.ultLabel.textContent = full ? `${d.sym} ${d.ult} — R` : `${d.sym} ${d.ult} · ${Math.floor((boons.ultGauge / ULT_MAX) * 100)} %`;
+      const text = full ? ` ${d.ult} — R` : ` ${d.ult} · ${Math.floor((boons.ultGauge / ULT_MAX) * 100)} %`;
+      // L'icône de menu du légendaire devant son ultime (ui/essicon.ts) ; redessinée quand le texte change.
+      if (this.ultLabel.textContent !== text) this.ultLabel.replaceChildren(donorIcon(d.dex), text);
     }
     // Bonus et statut à côté des dashs : vert en hausse, brique en baisse, statut à sa couleur.
     const chips: [string, string, string?][] = buffTexts(mon).map((t) => [t, t.startsWith('−') ? 'down' : '']);
