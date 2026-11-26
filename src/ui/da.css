@@ -5613,3 +5613,165 @@ body.net-on .hud-team {
   height: calc(4.4 * var(--u));
   image-rendering: pixelated;
 }
+
+/* ── Compte et sauvegarde en ligne (ui/accountscreen.ts) : la feuille des réglages ─────────
+ * Des tailles planchées en pixels : on s'y connecte souvent depuis un téléphone, où --u
+ * (1vw) rendrait le champ et le texte illisibles. */
+.acct .poster-wrap {
+  width: min(92vw, max(340px, calc(56 * var(--u))));
+}
+.acct-body {
+  display: grid;
+  align-content: start;
+  gap: max(8px, calc(0.9 * var(--u)));
+  min-height: 0;
+  padding: max(6px, calc(0.6 * var(--u))) 0;
+}
+.acct-body p {
+  margin: 0;
+}
+.acct .acct-lead {
+  font-size: max(15px, calc(1.45 * var(--u)));
+  font-weight: 700;
+}
+.acct .acct-fine {
+  font-size: max(13px, calc(1.1 * var(--u)));
+  color: var(--muted);
+}
+.acct-form {
+  display: grid;
+  gap: max(8px, calc(0.8 * var(--u)));
+}
+/* 16 px au moins : en dessous, Safari sur iPhone zoome la page quand on touche le champ. */
+.acct-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: max(8px, calc(0.7 * var(--u))) max(10px, calc(1 * var(--u)));
+  font: 700 max(16px, calc(1.5 * var(--u))) var(--body);
+  color: var(--ink);
+  background: var(--paper-hi);
+  border: 3px solid var(--ink);
+  border-radius: 0;
+  outline: none;
+}
+.acct-input:focus {
+  box-shadow: 0 0 0 3px var(--yel);
+}
+.acct-code {
+  font-family: var(--head);
+  font-size: max(26px, calc(2.6 * var(--u)));
+  letter-spacing: 0.4em;
+  text-align: center;
+}
+.acct-form .opt-big:disabled,
+.acct-actions button:disabled,
+.acct-card:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+.acct-link {
+  justify-self: start;
+  padding: 0;
+  font: 700 max(13px, calc(1.1 * var(--u))) var(--body);
+  color: var(--ink);
+  text-decoration: underline;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.acct .acct-error {
+  font-size: max(13px, calc(1.15 * var(--u)));
+  font-weight: 700;
+  color: #b3261e;
+}
+/* (Préfixés par .acct : « .poster p » fixerait sinon leur taille.) */
+/* L'état de la synchro : un liseré, vert à l'abri, gris hors ligne. */
+.acct .acct-state {
+  padding: max(6px, calc(0.5 * var(--u))) max(10px, calc(0.9 * var(--u)));
+  font-size: max(13px, calc(1.15 * var(--u)));
+  border-left: 4px solid #3f8f4e;
+  background: color-mix(in srgb, #3f8f4e 12%, transparent);
+}
+.acct .acct-state.offline {
+  border-left-color: var(--muted);
+  background: color-mix(in srgb, var(--muted) 12%, transparent);
+}
+.acct-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: max(8px, calc(0.8 * var(--u)));
+}
+.acct-actions .opt-switch {
+  min-height: 40px;
+  font-size: max(15px, calc(1.35 * var(--u)));
+}
+.acct-danger.sure {
+  color: var(--paper);
+  background: var(--spray);
+}
+/* Le conflit : deux cartes côte à côte (l'une sous l'autre sur téléphone). */
+.acct-pick {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: max(8px, calc(1 * var(--u)));
+}
+.acct-card {
+  display: grid;
+  gap: 4px;
+  padding: max(10px, calc(1 * var(--u)));
+  text-align: left;
+  font: inherit;
+  color: var(--ink);
+  background: var(--paper-hi);
+  border: 3px solid var(--ink);
+  cursor: pointer;
+}
+.acct-card:hover,
+.acct-card:focus-visible {
+  background: var(--yel);
+}
+.acct-card b {
+  font: normal max(20px, calc(2 * var(--u))) var(--head);
+  letter-spacing: 0.06em;
+}
+.acct-card small {
+  font-size: max(12px, calc(1 * var(--u)));
+  color: var(--muted);
+}
+.acct-card span {
+  font-size: max(13px, calc(1.15 * var(--u)));
+  font-weight: 700;
+}
+.acct-close {
+  display: block;
+  margin: max(10px, calc(1 * var(--u))) 0 0 auto;
+  padding: 4px 12px;
+  font: normal max(15px, calc(1.35 * var(--u))) var(--head);
+  letter-spacing: 0.06em;
+  color: var(--ink);
+  background: none;
+  border: 2px solid var(--ink);
+  cursor: pointer;
+}
+/* Le petit mot de l'écran titre : créer un compte pour garder sa progression. */
+.title-cloud {
+  max-width: max(280px, calc(40 * var(--u)));
+  margin: 0;
+  padding: 0;
+  font: 700 max(11px, calc(1.1 * var(--u))) var(--body);
+  text-align: center;
+  color: color-mix(in srgb, var(--paper) 70%, transparent);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.title-cloud b {
+  color: var(--yel);
+}
+.title-cloud.warn b {
+  color: var(--spray);
+}
+.title-screen.under .title-cloud {
+  opacity: 0;
+}

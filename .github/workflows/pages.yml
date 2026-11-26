@@ -37,6 +37,10 @@ jobs:
           VITE_TURN_URLS: ${{ vars.TURN_URLS }}
           VITE_TURN_USERNAME: ${{ vars.TURN_USERNAME }}
           VITE_TURN_CREDENTIAL: ${{ secrets.TURN_CREDENTIAL }}
+          # Sauvegarde en ligne (net/cloud.ts, README « Compte et sauvegarde en ligne ») : l'adresse du
+          # projet Supabase et sa clé publique. Sans elles, pas d'entrée « Compte » dans le jeu.
+          VITE_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

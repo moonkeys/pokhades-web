@@ -25,6 +25,16 @@
       "url": "http://127.0.0.1:5174"
     },
     {
+      "name": "dev-cloud",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "VITE_SUPABASE_URL=http://127.0.0.1:54321 VITE_SUPABASE_ANON_KEY=test-anon npx vite --port 5177 --strictPort --host 127.0.0.1"
+      ],
+      "port": 5177,
+      "url": "http://127.0.0.1:5177"
+    },
+    {
       "name": "pages-preview",
       "runtimeExecutable": "sh",
       "runtimeArgs": [

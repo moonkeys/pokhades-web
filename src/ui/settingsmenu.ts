@@ -3,6 +3,7 @@ import type { Options } from './options';
 import { hint } from './hints';
 import { isTouch } from '../input/touch';
 import { markNotesSeen, PATCH_NOTES } from '../data/patchnotes';
+import { cloudEmail, cloudEnabled, cloudStatus } from '../net/cloud';
 import { ACTIONS, customized, keyLabel, keysOf, rebind, RESERVED, resetBindings, type Action } from '../input/bindings';
 
 // Menu des réglages, ouvert par Échap au Repaire comme en run (le jeu se
@@ -87,6 +88,11 @@ export class SettingsMenu {
   /** Une sortie proposée dans les réglages (quitter la run), avec sa confirmation en deux temps. */
   private leave: LeaveOffer | null = null;
   private confirming = false;
+  /**
+   * Ouvre l'écran Compte (main.ts) : le menu se ferme d'abord. En pleine partie, c'est le seul
+   * chemin vers le compte (l'écran titre n'est qu'au lancement).
+   */
+  onAccount: ((back: () => void) => void) | null = null;
   /** Action dont on attend la nouvelle touche (onglet Commandes), ou null. */
   private waiting: Action | null = null;
 
@@ -342,6 +348,31 @@ export class SettingsMenu {
     };
   }
 
+  /** Le compte (sauvegarde en ligne) : son état, et Entrée pour l'ouvrir. */
+  private accountRow(): Row {
+    const go = () => {
+      const open = this.onAccount;
+      const back = this.onClose;
+      if (!open) return;
+      sfx('confirm');
+      // On ferme sans rendre la main au jeu : elle lui revient à la fermeture du compte.
+      this.onClose = null;
+      this.close();
+      open(() => back?.());
+    };
+    const st = cloudStatus();
+    return {
+      label: 'Compte',
+      hint: st === 'out' ? 'Garde ta progression sur tous tes appareils.' : st === 'conflict' ? 'Deux parties : choisis laquelle garder.' : `Connecté : ${cloudEmail()}`,
+      render: (box) => {
+        const b = el('button', `opt-switch${st === 'out' || st === 'conflict' ? ' on' : ''}`, box, st === 'out' ? 'CRÉER' : 'OUVRIR');
+        b.addEventListener('click', go);
+      },
+      adjust: () => {},
+      activate: go,
+    };
+  }
+
   private resetRow(): Row {
     const reset = () => {
       if (!customized()) return;
@@ -374,6 +405,7 @@ export class SettingsMenu {
           this.toggle('muted', 'Couper le son', hint('Touche M, partout.', '')),
           this.toggle('shake', 'Secousses de l’écran', 'Coups, explosions, champions.'),
           this.toggle('nuzlocke', 'Mode Nuzlocke', 'Un Pokémon encore K.O. ou capturé en fin de run est relâché pour de bon. Vaut à la prochaine run.'),
+          ...(cloudEnabled && this.onAccount ? [this.accountRow()] : []),
         ];
       case 'Run':
         return this.leave ? [this.continueRow(), this.leaveRow(this.leave)] : [];

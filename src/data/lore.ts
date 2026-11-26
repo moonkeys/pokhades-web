@@ -214,6 +214,8 @@ export const LORE: LoreChapter[] = [
       { title: 'Les postes', text: 'Dracolosse : le départ. Porygon : l’équipe et le Pokédex. Charpenti : les chantiers. Les autres gardiens arrivent avec leurs bâtiments : missions, quêtes, CT, objets, améliorations, potager, atelier.' },
       // main.ts, net/net.ts
       { title: 'Jouer à plusieurs', text: 'Chez Roucarnage, ouvre une partie et donne son code. En run, chacun mène son Pokémon : l’invité prend ses dons au centre, achète à la boutique avec la bourse commune, boit à la Source, signe à l’Autel et lance l’ultime (R). Une coupure ? Il revient seul, ou avec le code, et retrouve sa place.' },
+      // net/cloud.ts : la fiche n'a de sens que si le jeu publié a son projet Supabase (README).
+      { title: 'Ta partie partout', text: 'Ta progression vit dans ce navigateur. Pour la retrouver sur un autre appareil, ouvre Compte au menu principal : ton e-mail, le code reçu, et elle s’envoie toute seule. Si tu as joué des deux côtés, tu choisis la partie à garder ; l’autre reste de côté.' },
       // meta/weight.ts
       { title: 'Le poids d’équipe', text: 'Plafond : 24 au départ, le Bracelet de charge le monte. Un Pokémon pèse 3, 5 ou 8 selon son stade et sa force (Ronflex 8 ; légendaire 10), un objet tenu 1 à 3 selon sa puissance, une attaque 0 à 3.' },
       // catalog.ts:21-102

@@ -896,6 +896,27 @@ Si d'autres se voient en jeu, noter leur emplacement.
   beaucoup d'une partie à l'autre (Pierre contre Feu-Plante : deux victoires
   sur quatre).
 
+### 2.11 Compte et sauvegarde en ligne (26 novembre 2026)
+
+Demande : « créer une espèce de compte juste pour sauvegarder nos données […]
+même si on passe du mobile à l'ordi » ; « sécurisé », « on garde le moins de
+choses possible », compte facultatif, un petit mot pour le proposer. Choix
+du joueur : e-mail et code à 6 chiffres (plutôt qu'une clé secrète sans
+e-mail, irrécupérable si on la perd).
+
+- Supabase : `supabase/schema.sql` (table `saves`, RLS, `delete_account`),
+  client `src/net/cloud.ts` (fetch seuls), écran `src/ui/accountscreen.ts`,
+  entrée *Compte* au menu principal et dans Échap → Réglages. Voir README.
+- Testé avec `scripts/fake-supabase.mjs` (deux origines) et le schéma sur
+  PostgreSQL 16 local.
+- **À faire par le propriétaire** : créer le projet Supabase, coller le
+  schéma, mettre le code `{{ .Token }}` dans les modèles d'e-mail, brancher
+  un SMTP (le serveur intégré n'écrit qu'à l'équipe du projet), puis les
+  variables GitHub `SUPABASE_URL` et `SUPABASE_ANON_KEY` (README, étapes 1
+  à 7). Sans elles, rien ne change dans le jeu publié.
+- Pas encore testé contre un vrai projet Supabase (formats exacts des
+  réponses d'erreur, envoi des e-mails).
+
 ## 3. Déjà notés, toujours en attente
 
 - **Jeu en ligne** (src/net/, voir README) : lobby, visite du Repaire de

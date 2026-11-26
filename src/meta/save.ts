@@ -231,7 +231,19 @@ const DEFAULTS: Save = {
   evolved: [],
 };
 
-const KEY = 'pokhades-save';
+/** La clé du localStorage : net/cloud.ts lit et réécrit la même, pour la sauvegarde en ligne. */
+export const SAVE_KEY = 'pokhades-save';
+const KEY = SAVE_KEY;
+
+/**
+ * Appelé après chaque écriture réussie : la sauvegarde en ligne (net/cloud.ts) s'y abonne pour
+ * envoyer la progression. Un rappel plutôt qu'un import : save.ts reste sans réseau (et les
+ * scripts Node qui le lisent aussi).
+ */
+let onWritten: (() => void) | null = null;
+export const onSaveWritten = (f: () => void): void => {
+  onWritten = f;
+};
 
 export function loadSave(): Save {
   let raw: string | null = null;
@@ -330,7 +342,9 @@ export function writeSave(save: Save): void {
     localStorage.setItem(KEY, JSON.stringify(save));
   } catch {
     // Stockage indisponible : la progression vit le temps de l'onglet.
+    return;
   }
+  onWritten?.();
 }
 
 export const level = (save: Save, id: UpgradeId): number => save.upgrades[id] ?? 0;

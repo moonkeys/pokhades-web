@@ -18,6 +18,22 @@ export interface PatchNote {
 
 export const PATCH_NOTES: readonly PatchNote[] = [
   {
+    id: '2026-11-26-compte',
+    date: '26 novembre 2026',
+    title: 'Ta partie sur tous tes appareils',
+    sections: [
+      {
+        title: 'Compte',
+        items: [
+          'Menu principal → Compte : ton e-mail, puis le code à 6 chiffres reçu. Pas de mot de passe.',
+          'Ta progression part en ligne toute seule pendant que tu joues, et tu la retrouves sur ton téléphone, ta tablette ou un autre ordinateur en te connectant avec la même adresse.',
+          'Si tu as joué des deux côtés sans connexion, le jeu te montre les deux parties et tu choisis laquelle garder ; l’autre reste de côté sur l’appareil.',
+          'Le compte est facultatif. On ne garde que ton e-mail et ta sauvegarde, et tu peux tout effacer depuis le même écran.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-11-26',
     date: '26 novembre 2026',
     title: 'Dix-sept nouvelles lignées',

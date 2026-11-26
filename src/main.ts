@@ -19,7 +19,7 @@ import { Camp, CAMP_SEED, campPockets, STATIONS, stationId, type Station } from 
 import { CampScreen, movePool, teamWeight, type CampCtx } from './ui/campscreen';
 import { NetBadge } from './ui/netbadge';
 import { BAIES, FIELD_FOOD, QUARRY_STONE, RESOURCES, RESOURCE_IDS, ROOM_RES, SHARDS, UPGRADES, applyHeld, heldItem, teamSlots, type ResourceId } from './meta/catalog';
-import { addMon, capacity, exile, grantAlly, grantChampion, isFull, level, loadSave, markSeen, monName, ownedSpecies, ownsSpecies, recordDefeat, resetSave, roster, speciesOf, startLevel, welcomeMon, writeSave } from './meta/save';
+import { addMon, capacity, exile, grantAlly, grantChampion, isFull, level, loadSave, markSeen, onSaveWritten, monName, ownedSpecies, ownsSpecies, recordDefeat, resetSave, roster, speciesOf, startLevel, welcomeMon, writeSave } from './meta/save';
 import { applyTraits, natureText } from './meta/mons';
 import { quest, questEvent, type QuestEvent, contractEvent, contractText } from './meta/quests';
 import { leagueOpen, readyFeats } from './meta/feats';
@@ -85,6 +85,8 @@ import { TrainScreen } from './ui/trainscreen';
 import { StarterScreen } from './ui/starterscreen';
 import { QuizScreen, STARTER_NATURE } from './ui/quizscreen';
 import { TitleScreen } from './ui/titlescreen';
+import { AccountScreen } from './ui/accountscreen';
+import { cloudBoot, cloudStatus, onCloudChange, startCloud } from './net/cloud';
 import { StatSheet, type SheetEntry } from './ui/statsheet';
 import { BIOME_COLOR, BIOME_ORDER, BIOMES, REPAIRE, type Ambiance } from './world/biomes';
 import { generate, landReachable, type WorldMap, type WorldObject } from './world/generate';
@@ -161,6 +163,9 @@ const FIRST_ACE_ATK = 0.8;
 const FIRST_ACE_HP = 0.5;
 
 async function boot(): Promise<void> {
+  // Sauvegarde en ligne (net/cloud.ts) : la partie du compte se récupère pendant que les images
+  // se chargent ; on ne l'attend qu'au moment de lire la sauvegarde, quelques secondes au plus.
+  const cloudReady = cloudBoot();
   const canvas = document.getElementById('screen') as HTMLCanvasElement;
   const loading = document.getElementById('loading')!;
   const [tileset, surf, fieldSheet] = await Promise.all([
@@ -176,7 +181,10 @@ async function boot(): Promise<void> {
   audio.setVolumes(opts);
   audio.preload();
   /** Progression permanente (Baies, équipe, CT, améliorations, objets) : src/meta/save.ts. */
+  await cloudReady;
   const save = loadSave();
+  // Chaque écriture de la sauvegarde part ensuite en ligne (si le joueur a un compte).
+  startCloud(onSaveWritten);
   const renderer = new Renderer(canvas, atlas, surf, fieldSheet);
   // ?debug : le menu principal sauté et l'objet `window.pokhades` exposé, pour les tests automatisés. Réservé au
   // serveur de dev : dans le jeu publié, le paramètre ne fait rien (retour de test : « les gens vont faire n'importe quoi »).
@@ -219,6 +227,12 @@ async function boot(): Promise<void> {
   const quizScreen = new QuizScreen(document.body);
   /** Le menu principal, au lancement (ui/titlescreen.ts) : montré plus bas, juste avant le premier enterCamp. */
   const titleScreen = new TitleScreen(document.body);
+  // Créé après l'écran titre : leurs écouteurs clavier passent dans cet ordre, et le titre se
+  // retire (sub) tant que le compte est ouvert par-dessus. La partie du compte remplace celle
+  // d'ici : on recharge la page, toute la partie en mémoire en découle.
+  const accountScreen = new AccountScreen(document.body, () => location.reload());
+  /** Le conflit de sauvegarde a déjà été annoncé pendant la partie (une seule fois). */
+  let conflictToldAt = 0;
   const dialogue = new Dialogue(document.body);
   /** Dresseur du champion, en salle de boss. */
   let trainer: Trainer | null = null;
@@ -1023,7 +1037,7 @@ async function boot(): Promise<void> {
     cry(player.speciesId, -4);
   };
   /** Un écran ouvert par-dessus le jeu : la simulation se fige. */
-  const paused = () => rewardScreen.open || evolutionScreen.open || bossPreview.open || runSummary.open || settingsMenu.open || campScreen.open || statSheet.open || recruitScreen.open || swapScreen.open || talkScreen.open || trainScreen.open || starterScreen.open || quizScreen.open || journal.open || titleScreen.open;
+  const paused = () => rewardScreen.open || evolutionScreen.open || bossPreview.open || runSummary.open || settingsMenu.open || campScreen.open || statSheet.open || recruitScreen.open || swapScreen.open || talkScreen.open || trainScreen.open || starterScreen.open || quizScreen.open || journal.open || titleScreen.open || accountScreen.open;
   /** Clic sur un membre du HUD : comme Tab, mais vers celui-là, s'il est debout et qu'on l'est aussi. */
   const pickMember = (i: number) => {
     const m = team[i];
@@ -2705,6 +2719,17 @@ async function boot(): Promise<void> {
     applyOption(changed);
     panel.sync();
   });
+  settingsMenu.onAccount = (back) => accountScreen.show(() => {
+    input.flush();
+    back();
+  });
+  // Un autre appareil a écrit pendant qu'on jouait (net/cloud.ts) : la synchro s'arrête, rien
+  // n'est perdu, et on le dit une fois ; le choix se fait dans Échap → Réglages → Compte.
+  onCloudChange(() => {
+    if (cloudStatus() !== 'conflict' || titleScreen.open || accountScreen.open || conflictToldAt > 0) return;
+    conflictToldAt = performance.now();
+    runHud.toast('Partie modifiée ailleurs', 'Échap → Réglages → Compte');
+  });
   addEventListener('keydown', (e) => {
     if (e.code !== 'Escape' || e.repeat || paused() || dialogue.open) return;
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement) return;
@@ -3678,11 +3703,18 @@ async function boot(): Promise<void> {
             input.flush();
             back();
           }, tab),
+        account: (back) =>
+          accountScreen.show(() => {
+            input.flush();
+            back();
+          }),
       },
       save.started,
       invite,
     );
   enterCamp();
+  // Deux parties ont avancé chacune de leur côté (net/cloud.ts) : on demande tout de suite laquelle garder.
+  if (titleScreen.open && cloudStatus() === 'conflict') titleScreen.account();
   // L'écran-titre a sa musique (Title.ogg) ; quitter le menu lance celle du Repaire.
   if (titleScreen.open) audio.playMusic('title');
 

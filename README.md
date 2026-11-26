@@ -1357,3 +1357,69 @@ Ces identifiants sont lisibles dans le jeu publié : c'est un compte gratuit à 
 en abuse, « Refresh Username, Password » dans le tableau de bord les change (puis mettre à jour
 les variables GitHub). Sans ces variables, le jeu marche seulement entre deux appareils qui se
 joignent directement.
+
+## Compte et sauvegarde en ligne (Supabase)
+
+Demande du joueur : garder sa progression en passant du téléphone à l'ordinateur, sans être
+obligé d'avoir un compte pour jouer. Sans compte, rien ne change : la partie reste dans le
+navigateur (`localStorage['pokhades-save']`). Avec un compte, elle suit le joueur partout.
+
+**Côté joueur.** Écran titre → *Compte* (ou Échap → Réglages → Compte en pleine partie). Il tape
+son e-mail, reçoit un code à 6 chiffres, le tape : c'est tout, pas de mot de passe. Tant qu'il
+n'est pas connecté, un petit mot sous le menu propose de créer un compte. Il peut se
+déconnecter (cet appareil seulement) ou supprimer son compte (e-mail et sauvegarde effacés du
+serveur ; la partie reste sur l'appareil).
+
+**Ce qu'on garde, rien de plus.** L'e-mail (dans Supabase Auth, pour envoyer le code) et une
+ligne par joueur dans la table `saves` : la sauvegarde (le même JSON que le localStorage), un
+numéro de version et la date d'écriture. Ni pseudo à part, ni appareil.
+
+**Sécurité.** La clé « anon » (ou *publishable*) du projet est publique, dans le jeu. Ce qui
+protège les données, ce sont les règles RLS de `supabase/schema.sql` : une requête ne lit et
+n'écrit que la ligne de son propre jeton de connexion ; sans jeton, rien. Testé sur PostgreSQL
+(lecture et écriture d'un autre compte refusées, accès anonyme refusé, taille bornée à 512 Ko,
+suppression en cascade).
+
+**La synchro (`src/net/cloud.ts`).** Chaque écriture de la sauvegarde part en ligne 4 secondes
+après (une requête par rafale), et tout de suite quand on quitte la page. On n'écrit que
+par-dessus la version qu'on a vue (`PATCH …?rev=eq.N`) : deux appareils ne s'écrasent jamais.
+Au lancement, le jeu attend le serveur 4 secondes au plus (hors ligne, on joue tout de suite) :
+
+| Ici depuis la dernière synchro | Sur le compte | Ce qui se passe |
+|---|---|---|
+| rien joué | a avancé | la partie du compte est reprise, sans question |
+| a joué | n'a pas bougé | la partie d'ici est envoyée |
+| a joué | a avancé | conflit : le joueur choisit (deux cartes résumées) |
+| les deux identiques | | rien |
+
+La partie écartée est gardée sur l'appareil (`pokhades-save-avant-compte`), jamais effacée. Un
+conflit découvert en pleine partie s'annonce une fois (« Partie modifiée ailleurs ») et la
+synchro s'arrête jusqu'au choix. Pas de bibliothèque `supabase-js` : sept `fetch`.
+
+**Mise en place, une fois** (à faire par le propriétaire du jeu) :
+
+1. Créer un compte et un projet gratuit sur <https://supabase.com> (région Europe). Un projet
+   gratuit sans aucune activité pendant une semaine est mis en pause : on le relance depuis le
+   tableau de bord.
+2. *SQL Editor* : coller `supabase/schema.sql`, *Run*. Le script se relance sans casse.
+3. *Authentication → Sign In / Providers* : laisser **Email** activé, couper le reste.
+4. *Authentication → Emails → Templates* : dans **Magic Link** et **Confirm signup**, remplacer
+   le lien par le code, par exemple : `Ton code Pokhades : {{ .Token }}` (sinon le joueur reçoit
+   un lien et pas de code).
+5. *Authentication → Emails → SMTP Settings* : brancher un service d'envoi (Brevo, Resend…).
+   Le serveur d'e-mails intégré de Supabase est fait pour les tests : très peu d'envois par
+   heure, et seulement vers les adresses de l'équipe du projet.
+6. *Project Settings → API* : copier l'adresse du projet (`https://xxxx.supabase.co`) et la clé
+   publique (*anon* ou *publishable*, **jamais** la clé *service_role* ou *secret*).
+7. GitHub : *Settings → Secrets and variables → Actions → Variables* : `SUPABASE_URL` et
+   `SUPABASE_ANON_KEY`. Relancer le déploiement. En local : `VITE_SUPABASE_URL` et
+   `VITE_SUPABASE_ANON_KEY` dans `.env.local`.
+
+Sans ces variables, l'entrée *Compte* n'existe pas et le jeu est celui d'avant.
+
+**Tester sans projet.** `node scripts/fake-supabase.mjs` imite Supabase en mémoire (le code de
+connexion se lit sur `http://127.0.0.1:54321/__state`), puis la configuration `dev-cloud` de
+`.claude/launch.json`. Deux « appareils » : `http://127.0.0.1:5177` et `http://localhost:5177`.
+Vérifié ainsi : création du compte, reprise sur un second appareil, envoi automatique, conflit
+au lancement et en pleine partie (dans les deux sens), parties identiques sans conflit, jeton
+expiré renouvelé, lancement hors ligne, déconnexion, suppression du compte, écran sur téléphone.

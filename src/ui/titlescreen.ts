@@ -2,6 +2,7 @@ import { sfx } from '../audio/audio';
 import { logo } from './logo';
 import { hasUnseenNotes } from '../data/patchnotes';
 import { autoFullscreen, toggleFullscreen, wantsFullscreenButton } from './fullscreen';
+import { cloudEmail, cloudEnabled, cloudStatus, onCloudChange } from '../net/cloud';
 
 // Le menu principal (demande du joueur : « ajouter un menu principal »), au lancement. Le
 // Repaire se charge derrière, figé (main.ts compte cet écran dans `paused()`) et flouté :
@@ -39,6 +40,8 @@ export interface TitleHooks {
   join: (code: string) => void;
   /** Ouvre le menu des réglages sur cet onglet, et appelle `back` à sa fermeture. */
   settings: (tab: TitleTab, back: () => void) => void;
+  /** Ouvre l'écran Compte (sauvegarde en ligne), et appelle `back` à sa fermeture. */
+  account: (back: () => void) => void;
 }
 
 export class TitleScreen {
@@ -49,10 +52,16 @@ export class TitleScreen {
   private sel = 0;
   /** Le menu des réglages est ouvert par-dessus : il a la main sur le clavier. */
   private sub = false;
+  /** Une partie existe (le petit mot du compte ne s'adresse qu'à ceux qui ont quelque chose à garder). */
+  private started = false;
 
   constructor(parent: HTMLElement) {
     this.root = el('div', 'title-screen', parent);
     this.root.hidden = true;
+    // L'état du compte change (connexion, conflit) : l'indication de la ligne « Compte » suit.
+    onCloudChange(() => {
+      if (!this.root.hidden && !this.sub) this.render();
+    });
     // En capture, comme les autres écrans : le jeu (figé derrière) ne reçoit rien. Ce
     // gestionnaire est posé avant celui des réglages (main.ts crée cet écran plus tôt) :
     // tant qu'ils sont ouverts par-dessus, on les laisse faire.
@@ -90,6 +99,7 @@ export class TitleScreen {
   /** `started` : une partie existe déjà (« Jouer » ramène au Repaire, sinon le questionnaire). */
   show(hooks: TitleHooks, started: boolean, invite = ''): void {
     this.hooks = hooks;
+    this.started = started;
     this.sel = 0;
     this.sub = false;
     this.items = [
@@ -103,6 +113,8 @@ export class TitleScreen {
       ...(wantsFullscreenButton()
         ? [{ label: 'Plein écran', hint: 'Sans la barre du navigateur', run: () => void this.fullscreen() }]
         : []),
+      // La sauvegarde en ligne, quand le jeu publié a son projet Supabase (net/cloud.ts).
+      ...(cloudEnabled ? [{ label: 'Compte', hint: '', run: () => this.account() }] : []),
       { label: 'Réglages', hint: 'Musique, bruitages, secousses', run: () => this.open_('Réglages') },
       { label: 'Commandes', hint: 'Clavier et manette tactile', run: () => this.open_('Commandes') },
       { label: 'Nouveautés', hint: hasUnseenNotes() ? 'Nouveau ! La mise à jour en détail' : 'Les notes de version', run: () => this.open_('Nouveautés') },
@@ -162,6 +174,33 @@ export class TitleScreen {
     });
   }
 
+  /** Ouvre l'écran Compte par-dessus, comme les réglages. */
+  account(): void {
+    if (!this.hooks) return;
+    sfx('confirm');
+    this.sub = true;
+    this.root.classList.add('under');
+    this.hooks.account(() => {
+      this.sub = false;
+      this.root.classList.remove('under');
+      this.render();
+    });
+  }
+
+  /** L'indication de la ligne « Compte » : ce qu'il faut savoir d'un coup d'œil. */
+  private accountHint(): string {
+    switch (cloudStatus()) {
+      case 'out':
+        return 'Sauvegarde sur tous tes appareils';
+      case 'conflict':
+        return 'Deux parties : choisis laquelle garder';
+      case 'offline':
+        return 'Hors ligne : envoi plus tard';
+      default:
+        return cloudEmail();
+    }
+  }
+
   private select(i: number): void {
     if (i === this.sel) return;
     this.sel = i;
@@ -187,7 +226,8 @@ export class TitleScreen {
     this.buttons = this.items.map((it, i) => {
       const b = el('button', `title-item${i === this.sel ? ' sel' : ''}`, menu);
       el('b', '', b, it.label.toUpperCase());
-      if (it.hint) el('small', '', b, it.hint);
+      const hint = it.label === 'Compte' ? this.accountHint() : it.hint;
+      if (hint) el('small', '', b, hint);
       b.addEventListener('pointerenter', () => this.select(i));
       b.addEventListener('click', () => {
         this.select(i);
@@ -196,6 +236,22 @@ export class TitleScreen {
       return b;
     });
 
+    // Le petit mot (demande : « mettre un petit message pour dire si tu veux garder tes données,
+    // crée-toi un compte ») : tant qu'on n'est pas connecté, et une fois la partie commencée
+    // (avant, il n'y a rien à garder). Un conflit à trancher s'annonce ici aussi.
+    const st = cloudStatus();
+    if (cloudEnabled && ((st === 'out' && this.started) || st === 'conflict')) {
+      const note = el('button', `title-cloud${st === 'conflict' ? ' warn' : ''}`, wrap);
+      if (st === 'conflict') {
+        el('b', '', note, 'Ta partie a avancé sur deux appareils. ');
+        note.append('Ouvre Compte pour choisir laquelle garder.');
+      } else {
+        note.append('Tu joues aussi sur un autre appareil ? ');
+        el('b', '', note, 'Crée-toi un compte');
+        note.append(' pour garder ta progression partout.');
+      }
+      note.addEventListener('click', () => this.account());
+    }
     el('p', 'title-keys', wrap, '↑↓ choisir · Entrée valider');
     el('p', 'title-credits', this.root, 'Prototype web · jeu de fan non officiel · Pokémon © Nintendo, Game Freak, The Pokémon Company');
     // La version, pour savoir quelle mise en ligne on teste (cf. vite.config.ts).
