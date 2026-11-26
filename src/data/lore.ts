@@ -223,7 +223,7 @@ export const LORE: LoreChapter[] = [
       // catalog.ts:172-177, data/evolutions.ts
       { title: 'Évolution et Super Bonbon', text: 'On évolue en pleine run, au bon niveau, avec tous ses PV rendus. Un Super Bonbon donne +5 niveaux de départ (20 au plus) : assez haut, le Pokémon part déjà évolué.' },
       // meta/save.ts:166-194
-      { title: 'Recruter des Pokémon', text: 'Bats dix fois une espèce : l’un d’eux t’attendra près du feu, parle-lui. Les suivants en demandent plus. Le Repaire a des places limitées : bâtis pour en loger davantage.' },
+      { title: 'Recruter des Pokémon', text: 'Bats dix fois une espèce : l’un d’eux t’attendra près du feu, parle-lui. Les suivants en demandent plus. Le Repaire a des places limitées : bâtis pour en loger davantage. Les starters d’autres régions vivent aussi dans la Ligue : Arcko en Forêt, Kaiminus au Lac, Gruikui au Volcan…' },
       // meta/quests.ts (contrats)
       { title: 'Quêtes et contrats', text: 'Kangourex propose des quêtes au long cours, chacune promettant un Pokémon introuvable ailleurs, et trois contrats de run renouvelés, payés en Baies, ressources ou Éclat, parfois un objet en prime.' },
       // catalog.ts:216-228, meta/missions.ts

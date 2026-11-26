@@ -44,6 +44,23 @@ le jeu lit (faune des biomes, attaques imposées, répliques à la boutique et
 au Repaire) ; le jeu ouvert se recharge. « Importer les assets » lance
 `import-assets` pour copier ce qu'il manque aux espèces ajoutées.
 
+**Nouvelles lignées** (26 novembre 2026, retour de test : « le seul contenu qu'on
+peut se permettre d'ajouter, ce sont de nouveaux Pokémon qui ont toutes leurs
+évolutions ») : 17 lignées complètes rejoignent la faune, leur forme de base dans
+un biome, leurs évolutions dans `data/evolutions.ts` (niveaux des jeux) :
+Bulbizarre, Arcko, Tortipouss et Étourmi (Forêt), Germignon
+et Fantominus (Automne), Carapuce, Kaiminus et Moustillon (Lac), Gobou (Marais),
+Gruikui (Volcan), Kranidos (Rocailleux), Abra, Tarsal, Lixy et Wattouat (Village),
+Tiplouf (Plage et Montagne glacée). Ajoutées après les espèces déjà là (les 9
+premières de chaque biome peuplent le début des actes : on n'y touche pas) et avant
+les formes régionales ; on les croise donc à partir de la troisième salle d'un acte.
+Aucune dans la Prairie : on n'y passe qu'au premier acte, qui ne tire que ses 5
+premières espèces (`Run.fauna`). Choisies parce que SpriteCollab a toutes leurs planches (marche,
+attente, attaques, tir, charge, coup, sommeil, bond), à chaque stade. Les
+pseudo-légendaires (Minidraco, Terhal, Griknot…) restent des gardiens de grotte,
+rares à dessein. Leurs talents étaient déjà dans `data/abilities.ts` (Engrais,
+Brasier, Torrent, Lévitation, Statik, Intimidation).
+
 `import-assets` prend d'abord dans le dépôt Godot ; ce qu'il n'y trouve pas
 (espèce ajoutée depuis la page, action PMD que le dépôt n'a pas copiée, fiche
 d'attaque) est tiré des planches PMD de SpriteCollab et des fiches de PokéAPI,

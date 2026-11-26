@@ -917,8 +917,13 @@ Si d'autres se voient en jeu, noter leur emplacement.
   d'inventaire en run).
 - **Surf en run** (tranché le 18 novembre 2026 : on garde) : au Repaire, on ne
   nage qu'avec Surf ; en run, on nage toujours ; seul l'Océan demande Surf.
-- **Contenu en plus** (plus tard, 18 novembre 2026) : d'autres talents,
-  salles spéciales, visiteurs par zone, récoltes, dresseurs connus.
+- **Contenu en plus** : en pause (retour du 25 novembre 2026 : « niveau contenu, on est
+  super ; avant d'en rajouter, je veux un jeu vraiment bien »). Seule exception : de
+  nouvelles lignées complètes. Fait le 26 novembre 2026 : 17 lignées dans la faune
+  (voir README, « Nouvelles lignées »). Candidates suivantes, déjà vérifiées complètes
+  chez SpriteCollab : Vipelierre (495), Charmilly (333), et les pseudo-légendaires
+  gardés pour les grottes (Minidraco, Terhal, Griknot, Draby, Solochi, Mucuscule,
+  Coupenotte).
 - Le graphe de biomes est un premier jet (`BIOME_LINKS`) : à rééquilibrer
   au fil des tests. (Un champion par biome depuis le 17 novembre 2026 : voir
   2.10.) Fait le 23 novembre 2026 : Coupe garde Forêt → Automne, Éclate-Roc

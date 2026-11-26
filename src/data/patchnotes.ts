@@ -18,6 +18,22 @@ export interface PatchNote {
 
 export const PATCH_NOTES: readonly PatchNote[] = [
   {
+    id: '2026-11-26',
+    date: '26 novembre 2026',
+    title: 'Dix-sept nouvelles lignées',
+    sections: [
+      {
+        title: 'Nouveaux Pokémon',
+        items: [
+          'Dix-sept lignées complètes rejoignent la faune, chacune avec toutes ses évolutions : à battre dix fois pour les recruter, comme les autres. On les croise dès le deuxième acte, à partir de la troisième salle.',
+          'Forêt : Bulbizarre, Arcko, Tortipouss, Étourmi. Automne : Germignon, Fantominus. Lac : Carapuce, Kaiminus, Moustillon.',
+          'Marais : Gobou. Volcan : Gruikui. Rocailleux : Kranidos. Village : Abra, Tarsal, Lixy, Wattouat. Plage et Montagne glacée : Tiplouf.',
+          'Alakazam et Ectoplasma ont une Méga-évolution : cherche-les au Pokédex, filtre Méga ◈.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-11-25',
     date: '25 novembre 2026',
     title: 'Jeu en ligne complet, badges et Méga au Pokédex',

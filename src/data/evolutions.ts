@@ -193,6 +193,25 @@ const EVOLUTIONS: Record<number, readonly [level: number, next: number]> = {
   236: [20, 237], // Debugant → Kapoera
   155: [14, 156], // Héricendre → Feurisson
   156: [36, 157], // → Typhlosion
+  // ── Nouvelles lignées de la faune (26 novembre 2026) ─────────────
+  // Retour de test : « le seul contenu qu'on peut se permettre d'ajouter, ce sont de nouveaux
+  // Pokémon qui ont toutes leurs évolutions ». Lignées complètes chez SpriteCollab (marche,
+  // attaques, poses), niveaux des jeux. Les autres lignées du lot avaient déjà leur entrée.
+  152: [16, 153], // Germignon → Macronium
+  153: [32, 154], // → Méganium
+  158: [18, 159], // Kaiminus → Crocrodil
+  159: [30, 160], // → Aligatueur
+  252: [16, 253], // Arcko → Massko
+  253: [36, 254], // → Jungko
+  393: [16, 394], // Tiplouf → Prinplouf
+  394: [36, 395], // → Pingoléon
+  498: [17, 499], // Gruikui → Grotichon
+  499: [36, 500], // → Roitiflam
+  501: [17, 502], // Moustillon → Mateloutre
+  502: [36, 503], // → Clamiral
+  387: [18, 388], // Tortipouss → Boskara
+  388: [32, 389], // → Torterra
+  408: [30, 409], // Kranidos → Charkos
   // ── Formes régionales (data/forms.ts) ────────────────────────────
   // Mêmes seuils que la forme ordinaire quand le jeu en a un ; sinon ceux des
   // jeux. Les évolutions de Galar et de Hisui sans équivalent ordinaire
