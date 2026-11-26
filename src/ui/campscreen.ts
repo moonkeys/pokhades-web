@@ -3,6 +3,7 @@ import { sfx } from '../audio/audio';
 import { fetchJson } from '../assets/json';
 import { BASE_TEAM_LEVEL, Pokemon } from '../combat/pokemon';
 import { talentInLine } from '../data/abilities';
+import { BIOME_CHAMPIONS } from '../data/champions';
 import { megaInLine, megaText } from '../data/megaline';
 import { sheetOf } from '../data/bestiary';
 import { dexOf } from '../data/forms';
@@ -1437,7 +1438,7 @@ export class CampScreen {
     for (const c of CS_LIST) {
       const owned = ctx.save.cs.includes(c.id);
       // Moins chère à chaque champion de biome battu (meta/catalog.ts, csPrice).
-      const price = csPrice(c.price, ctx.save.beaten);
+      const price = csPrice(c.price, ctx.save.beaten.filter((n) => Object.values(BIOME_CHAMPIONS).some((l) => l?.includes(n))).length);
       const card = el('div', `cs-card da-paper${owned ? ' owned' : !c.ready ? ' soon' : ctx.save.baies < price ? ' poor' : ''}`, grid);
       icon(c.icon, card);
       el('div', 'cs-head', card).append(el('b', '', undefined, `CS ${c.name}`));

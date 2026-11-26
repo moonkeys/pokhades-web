@@ -1,4 +1,3 @@
-import { BIOME_CHAMPIONS } from '../data/champions';
 // Ce que vend le Repaire, en Baies : les améliorations permanentes
 // (UpgradeShopScreen et ShopScreen « La Réserve »), les CT du tuteur
 // (MoveShopScreen.MOVE_LIST) et les objets tenus (ItemCatalog.ITEMS).
@@ -367,9 +366,9 @@ const CS_PRICE_FLOOR = 0.5;
  * tout ce qui lui est ouvert piétinait encore une run ou deux. Les badges qu'il a gagnés
  * rapprochent maintenant la suite : après cinq champions, les trois CS de route coûtent 300.
  */
-export function csPrice(price: number, beaten: readonly string[]): number {
-  // Les champions de biome seulement : le Conseil et le Maître viennent après les CS.
-  const badges = beaten.filter((n) => Object.values(BIOME_CHAMPIONS).some((l) => l?.includes(n))).length;
+// `badges` : champions de biome battus (ui/campscreen.ts les compte). Le catalogue n'importe pas
+// data/champions : scripts/import-assets.ts le lit sous Node, qui ne résout pas les imports sans extension.
+export function csPrice(price: number, badges: number): number {
   return Math.round((price * Math.max(CS_PRICE_FLOOR, 1 - CS_BADGE_DISCOUNT * badges)) / 10) * 10;
 }
 
