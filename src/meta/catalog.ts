@@ -354,6 +354,24 @@ export const CS_LIST: readonly { id: CsId; name: string; price: number; desc: st
   { id: 'strength', name: 'Force', price: 220, desc: 'Pousse les gros rochers qui barrent des coffres, et ouvre la route de l’Automne à la Montagne glacée.', ready: true, icon: 'machine_NORMAL' },
 ];
 
+/** Baisse du prix des CS par champion de biome battu, et plancher (fraction du prix). */
+const CS_BADGE_DISCOUNT = 0.1;
+const CS_PRICE_FLOOR = 0.5;
+
+/**
+ * Prix d'une CS au Repaire, selon les champions de biome déjà battus (`save.beaten`) :
+ * −10 % par badge, jusqu'à moitié prix, arrondi à 10 Baies. Écart voulu (25 novembre 2026) :
+ * Coupe, Éclate-Roc et Force gardent les routes de Pierre, Auguste et Olga, et la Route
+ * Victoire attend leurs badges ; à plein prix (600 Baies les trois), un joueur qui a battu
+ * tout ce qui lui est ouvert piétinait encore une run ou deux. Les badges qu'il a gagnés
+ * rapprochent maintenant la suite : après cinq champions, les trois CS de route coûtent 300.
+ */
+// `badges` : champions de biome battus (ui/campscreen.ts les compte). Le catalogue n'importe pas
+// data/champions : scripts/import-assets.ts le lit sous Node, qui ne résout pas les imports sans extension.
+export function csPrice(price: number, badges: number): number {
+  return Math.round((price * Math.max(CS_PRICE_FLOOR, 1 - CS_BADGE_DISCOUNT * badges)) / 10) * 10;
+}
+
 /**
  * Baies gagnées (CombatArena.gd) : boss, victoire finale, et consolation d'une défaite.
  * Écart voulu (retour de test : « on se fait de l'argent beaucoup trop facilement… une

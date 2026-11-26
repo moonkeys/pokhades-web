@@ -87,12 +87,12 @@ import { QuizScreen, STARTER_NATURE } from './ui/quizscreen';
 import { TitleScreen } from './ui/titlescreen';
 import { StatSheet, type SheetEntry } from './ui/statsheet';
 import { BIOME_COLOR, BIOME_ORDER, BIOMES, REPAIRE, type Ambiance } from './world/biomes';
-import { generate, landReachable, type WorldMap } from './world/generate';
+import { generate, landReachable, type WorldMap, type WorldObject } from './world/generate';
 import type { LayoutId } from './world/layouts';
 import { generateCave } from './world/cave';
 import { decorateArena } from './world/arena';
-import { FIELD_FX, SURF, TILE } from './world/tiles';
-import { net, type HostMsg, type Loadout, type WorldKey } from './net/net';
+import { CHEST, CHEST_OPEN, FIELD_FX, SURF, TILE } from './world/tiles';
+import { net, type HostMsg, type Loadout, type RemotePick, type RemoteUi, type WorldKey } from './net/net';
 import { ClientField, NetIds, snapActor } from './net/sync';
 import { DrawRecorder, ImageBank, replay, type Cmd } from './net/drawrec';
 
@@ -247,7 +247,9 @@ async function boot(): Promise<void> {
       message: (text) => runHud.message(text),
       team: () => team,
       earnBaies: (n) => {
-        // Achetées avec la bourse de l'hôte : pas partagées avec les invités (contrairement à `earn`).
+        // Achetées par un invité (bourse commune) : elles vont dans sa sauvegarde, chez lui.
+        if (uiTarget?.remote) return net.sendTo(uiTarget.remote, { t: 'loot', baies: n, text: `+${n} Baies` });
+        // Achetées par l'hôte : pas partagées avec les invités (contrairement à `earn`).
         save.baies += n;
         runBaies += n;
         stats.baies += n;
@@ -255,6 +257,11 @@ async function boot(): Promise<void> {
         runHud.notify({ title: 'Baies', text: 'Pour le Repaire', item: 'SITRUSBERRY', qty: `+${n}`, color: 'var(--yel)' });
       },
       giveRes: (res, n) => {
+        // Achetées par un invité : pour son Repaire à lui.
+        if (uiTarget?.remote) {
+          net.sendTo(uiTarget.remote, { t: 'loot', res: { [res]: n }, text: `${RESOURCES[res].name} +${n}` });
+          return true;
+        }
         if (net.role === 'client' || !save.started) return false;
         save.resources[res] += n;
         writeSave(save);
@@ -268,7 +275,8 @@ async function boot(): Promise<void> {
         team.push(m);
         mercs.set(m, price);
       },
-      openPoster: () => bossPreview.show(run.champion, run.isFinal || run.act === run.acts - 1, run.champion.team.map((_, w) => run.bossLevel(w, run.room + 1)), () => input.flush()),
+      // L'affiche s'ouvre chez qui l'étudie ; un invité la lit sur son propre écran… pas encore : on la saute.
+      openPoster: () => !uiTarget && bossPreview.show(run.champion, run.isFinal || run.act === run.acts - 1, run.champion.team.map((_, w) => run.bossLevel(w, run.room + 1)), () => input.flush()),
       openMoves: (price, paid) => {
         const mons = teamMons();
         if (!mons.length) return;
@@ -535,7 +543,8 @@ async function boot(): Promise<void> {
         'Écrémeuh',
         'Meuh ! J’entraîne tes Pokémon, ou j’en échange un contre un ami du Repaire. Qu’est-ce qui te ferait plaisir ?',
         [
-          { label: 'Entraîner l’équipe', disabled: state.trained ? 'Déjà fait dans cette pension.' : undefined, pick: () => pensionTrain(trained, closed) },
+          // L'entraînement répartit des niveaux entre les membres du Repaire de l'hôte : c'est lui qui le fait.
+          { label: 'Entraîner l’équipe', disabled: state.trained ? 'Déjà fait dans cette pension.' : uiTarget ? 'L’hôte répartit l’entraînement : demande-lui.' : undefined, pick: () => pensionTrain(trained, closed) },
           { label: 'Échanger un membre', disabled: state.swapped ? 'Déjà fait dans cette pension.' : net.inRun ? 'Pas en ligne.' : undefined, pick: () => pensionSwap(swapped) },
           { label: 'Au revoir', pick: closed },
         ],
@@ -1326,6 +1335,7 @@ async function boot(): Promise<void> {
     const layout = calmRoom ? 'sanctuaire' : opts.layout === 'auto' ? undefined : opts.layout;
     roomKey = { kind: 'room', biome: run.biome, seed, store: run.isShop(), cave: run.hasCave(), layout, mouthUsed: false, entry: arena ? 'S' : run.entrySide, arena };
     world = roomWorld(roomKey);
+    genObjs.set(world, new Set(world.objects));
     outdoor = null;
     megaRevert();
     megaUsed = false;
@@ -1539,7 +1549,8 @@ async function boot(): Promise<void> {
       return;
     }
     const got = boons.grant(id, rarity);
-    if (STAT_BOONS[id]) combat.hooks.applyStat(player, id);
+    // Un don « Ton Pokémon » va à celui qui l'a choisi : l'invité en ligne (uiTarget), sinon le Pokémon joué.
+    if (STAT_BOONS[id]) combat.hooks.applyStat(uiTarget ?? player, id);
     runHud.notify({ title: 'Don obtenu', text: `${BOONS[id].name} · ${RARITY_NAME[got]}`, art: DONORS[offer.donor].dex, color: RARITY_COLOR[got] });
   };
 
@@ -2137,7 +2148,9 @@ async function boot(): Promise<void> {
       run.boons.bonus = 0;
       if (reward === 'skill' && player.pokemon) void rollSkillOffer(player.pokemon, run.rng).then((o) => (skillOffer = o));
     },
-    openReward: (reward, consume) => {
+    // `by` : un invité qui a pressé E près de la récompense la choisit chez lui (asGuest). Sans
+    // preneur (le don de l'Autel, accordé quand on signe), c'est l'invité qui a signé, s'il y en a un.
+    openReward: (reward, consume, by) => asGuest(by ?? uiTarget, () => {
       const done = () => input.flush();
       if (reward === 'boon') {
         const offer = boonOffer;
@@ -2164,6 +2177,7 @@ async function boot(): Promise<void> {
         rewardScreen.showSkill(
           mons,
           Math.max(0, mons.indexOf(player.pokemon)),
+          // Pour un invité, son offre est tirée pour son Pokémon (skillOffers en tire une à la demande).
           skillOffers(skillOffer),
           (mon, move, replace) => {
             learnMove(mon, move, replace);
@@ -2178,7 +2192,7 @@ async function boot(): Promise<void> {
           done,
         );
       }
-    },
+    }),
     enterCave: () => enterCave(),
     setTimer: (seconds, goal) => runHud.setTimer(seconds, goal),
     // Défi raté : les sauvages encore debout s'enfuient dans un nuage.
@@ -2392,6 +2406,7 @@ async function boot(): Promise<void> {
     outdoor = { world, x: player.x, y: player.y };
     const layout = generateCave(run.mapSeed);
     world = layout.world;
+    genObjs.set(world, new Set(world.objects));
     renderer.bake(world);
     player.x = player.prevX = world.spawn.x;
     player.y = player.prevY = world.spawn.y;
@@ -2734,6 +2749,8 @@ async function boot(): Promise<void> {
   let netStep = 0;
   /** N° de la carte en cours : une position d'invité d'avant le changement de salle est ignorée. */
   let netEpoch = 0;
+  /** Hôte : les objets de chaque carte tels que sa génération les a posés (net : ce que l'invité régénère). */
+  const genObjs = new WeakMap<WorldMap, Set<WorldObject>>();
   /** Hôte : de quoi régénérer la salle du dehors chez les invités. */
   let roomKey: WorldKey = { kind: 'room', biome: 'prairie', seed: 0, store: false, cave: false, mouthUsed: false };
   /** Hôte : effets visuels joués depuis le dernier instantané, rejoués chez les invités. */
@@ -2754,6 +2771,171 @@ async function boot(): Promise<void> {
   const remoteInteract = new Set<Actor>();
   /** Invité : E pressé, à envoyer avec la prochaine position. */
   let pendingInteract = false;
+  /** Invité : R pressé (l'ultime), à envoyer avec la prochaine position. */
+  let pendingUlt = false;
+  /** Hôte : les invités qui ont pressé R depuis le dernier pas. */
+  const remoteUlts = new Set<Actor>();
+  /** Hôte : les relances de Psycho-Boost d'une ultime lancée par un invité (secondes avant chacune). */
+  let remoteAgain: { a: Actor; t: number }[] = [];
+  /**
+   * Hôte : l'invité dont on joue l'interaction (E devant la récompense, la boutique, la source,
+   * le dojo…). Tant qu'il est posé, les écrans de choix (talkScreen, rewardScreen) s'ouvrent chez
+   * lui (remoteUi) au lieu de chez l'hôte : c'est lui qui choisit son don, son attaque, son achat.
+   * Retour de test du 25 novembre 2026 : « je veux régler tous les problèmes du jeu en ligne ».
+   */
+  let uiTarget: Actor | null = null;
+  /** Hôte : les écrans ouverts chez un invité, qui attendent sa réponse ; le jeu attend avec eux. */
+  const remoteUi = new Map<number, { who: Actor; answer: (pick: RemotePick | null) => void }>();
+  let remoteUiSeq = 0;
+  /** Hôte : la dernière invite [E] envoyée à chaque invité, et la version de ses attaques. */
+  const sentPrompt = new Map<string, string>();
+  const sentMoves = new Map<Actor, number>();
+  /** Hôte : les objets de la carte à son ouverture (pour dire aux invités ceux qui sont partis), et le dernier état envoyé. */
+  let roomObjs: WorldObject[] = [];
+  let lastTiles = '';
+  /** Hôte : la carte en cours (clé, couleur, musique), à renvoyer à un invité qui revient d'une coupure. */
+  let lastRoom: { key: WorldKey; color: string; music: string } | null = null;
+  /** Hôte : les Pokémon des invités coupés en pleine run, par ancien identifiant de pair (Net.onRejoin). */
+  const droppedActors = new Map<string, Actor>();
+  /** Invité : l'invite [E] reçue de l'hôte (même apparence que celle des salles). */
+  const netPrompt = document.createElement('div');
+  netPrompt.className = 'net-prompt';
+  document.body.append(netPrompt);
+  let netPromptHtml = '';
+  const setNetPrompt = (h: string) => {
+    if (h === netPromptHtml) return;
+    netPromptHtml = h;
+    netPrompt.innerHTML = h;
+  };
+
+  /** Joue `f` au nom de l'invité `who` (null : l'hôte) : ses écrans de choix s'ouvriront chez lui. */
+  const asGuest = <T,>(who: Actor | null | undefined, f: () => T): T => {
+    const prev = uiTarget;
+    uiTarget = who?.remote ? who : null;
+    try {
+      return f();
+    } finally {
+      uiTarget = prev;
+    }
+  };
+  /** Hôte : ouvre l'écran `ui` chez l'invité en cours (uiTarget) ; `answer` reçoit son choix. */
+  const openRemote = (ui: RemoteUi, answer: (pick: RemotePick | null) => void) => {
+    const who = uiTarget;
+    if (!who?.remote) return answer(null);
+    const id = ++remoteUiSeq;
+    remoteUi.set(id, { who, answer: (pick) => asGuest(who, () => answer(pick)) });
+    net.sendTo(who.remote, { t: 'ui', id, ui });
+    runHud.message(`${who.pokemon?.name ?? 'Un allié'} choisit…`);
+  };
+  // Les trois écrans de choix de la run, aiguillés vers l'invité qui a pressé E.
+  {
+    const talk = talkScreen.show.bind(talkScreen);
+    talkScreen.show = (species, name, text, options, onClose, rewards) => {
+      if (!uiTarget) return talk(species, name, text, options, onClose, rewards);
+      openRemote({ kind: 'talk', species, name, text, options: options.map((o) => ({ label: o.label, disabled: o.disabled })), rewards: rewards ? [...rewards] : undefined }, (pick) => {
+        const o = pick?.i !== undefined ? options[pick.i] : undefined;
+        if (o && !o.disabled) o.pick();
+        else onClose?.();
+      });
+    };
+    const boons = rewardScreen.showBoons.bind(rewardScreen);
+    rewardScreen.showBoons = (offer, onPick, onClose, mons, sel) => {
+      if (!uiTarget) return boons(offer, onPick, onClose, mons, sel);
+      openRemote({ kind: 'boons', offer }, (pick) => {
+        const card = pick?.i !== undefined ? offer.cards[pick.i] : undefined;
+        if (card) onPick(card);
+        else onClose();
+      });
+    };
+    const skill = rewardScreen.showSkill.bind(rewardScreen);
+    rewardScreen.showSkill = (mons, sel, offerFor, onLearn, onUpgrade, onClose, price = 0) => {
+      const who = uiTarget;
+      if (!who) return skill(mons, sel, offerFor, onLearn, onUpgrade, onClose, price);
+      // L'invité choisit pour son Pokémon, le seul qu'il mène.
+      const mon = who.pokemon;
+      if (!mon) return onClose();
+      void offerFor(mon).then((offer) =>
+        asGuest(who, () =>
+          openRemote({ kind: 'skill', offer, price }, (pick) => {
+            const move = pick?.learn !== undefined ? offer.learn[pick.learn] : undefined;
+            if (move) onLearn(mon, move, pick?.replace ?? -1);
+            else if (pick?.upgrade !== undefined) onUpgrade(mon, pick.upgrade);
+            else onClose();
+          }),
+        ),
+      );
+    };
+  }
+  /** Invité : l'écran que l'hôte ouvre chez moi ; mon choix lui revient. */
+  const showRemoteUi = (id: number, ui: RemoteUi) => {
+    const reply = (pick: RemotePick | null) => {
+      input.flush();
+      net.send({ t: 'pick', id, pick });
+    };
+    setNetPrompt('');
+    const mon = me?.pokemon;
+    if (ui.kind === 'talk') {
+      talkScreen.show(ui.species, ui.name, ui.text, ui.options.map((o, i) => ({ label: o.label, disabled: o.disabled, pick: () => reply({ i }) })), () => reply(null), ui.rewards);
+    } else if (ui.kind === 'boons') {
+      rewardScreen.showBoons(ui.offer, (card) => reply({ i: ui.offer.cards.findIndex((c) => c.id === card.id) }), () => reply(null), mon ? [mon] : [], 0);
+    } else if (mon) {
+      rewardScreen.showSkill(
+        [mon],
+        0,
+        () => Promise.resolve(ui.offer),
+        (_m, move, replace) => reply({ learn: ui.offer.learn.findIndex((x) => x === move || x.name === move.name), replace }),
+        (_m, slot) => reply({ upgrade: slot }),
+        () => reply(null),
+        ui.price,
+      );
+    } else reply(null);
+  };
+  /** Hôte : l'invite [E] de l'invité, s'il a changé. */
+  const sendPrompt = (m: Actor, h: string) => {
+    if (!m.remote || sentPrompt.get(m.remote) === h) return;
+    sentPrompt.set(m.remote, h);
+    net.sendTo(m.remote, { t: 'prompt', h });
+  };
+  /** Hôte : un invité est parti, ou revient : ses écrans en attente se referment sans choix. */
+  const dropRemoteUi = (who: Actor) => {
+    for (const [id, r] of remoteUi) {
+      if (r.who !== who) continue;
+      remoteUi.delete(id);
+      r.answer(null);
+    }
+  };
+  /** Hôte : ce qui a changé dans la carte depuis son ouverture (obstacle levé, coffre ouvert, torches éteintes). */
+  const sendTiles = () => {
+    const bits = (a: ArrayLike<number>) => Array.from(a, (v) => (v ? '1' : '0')).join('');
+    const now = new Set(world.objects);
+    const opened = world.objects.filter((o) => o.sprite === CHEST_OPEN).map((o): [number, number] => [o.x, o.y]);
+    const gone = roomObjs.filter((o) => !now.has(o)).map((o): [number, number] => [o.x, o.y]);
+    const blocked = bits(world.blocked);
+    const solid = bits(world.solid);
+    const key = `${blocked}|${solid}|${opened.join(';')}|${gone.join(';')}`;
+    if (key === lastTiles) return;
+    lastTiles = key;
+    net.broadcast({ t: 'tiles', epoch: netEpoch, blocked, solid, opened, gone });
+  };
+  /** Invité : la carte de l'hôte telle qu'elle est devenue. */
+  const clientTiles = (msg: Extract<HostMsg, { t: 'tiles' }>) => {
+    if (msg.epoch !== netEpoch) return;
+    if (msg.blocked.length === world.blocked.length) for (let i = 0; i < msg.blocked.length; i++) world.blocked[i] = msg.blocked.charCodeAt(i) - 48;
+    if (msg.solid.length === world.solid.length) for (let i = 0; i < msg.solid.length; i++) world.solid[i] = msg.solid.charCodeAt(i) - 48;
+    for (const [x, y] of msg.opened) {
+      const o = world.objects.find((q) => q.x === x && q.y === y && q.sprite === CHEST);
+      if (o) o.sprite = CHEST_OPEN;
+    }
+    let removed = false;
+    for (const [x, y] of msg.gone) {
+      const i = world.objects.findIndex((q) => q.x === x && q.y === y);
+      if (i < 0) continue;
+      world.objects.splice(i, 1);
+      removed = true;
+    }
+    // Les torches éteintes de l'Autel : leur halo est cuit avec la carte.
+    if (removed) renderer.bake(world);
+  };
   /** Hôte : enregistre ce qu'il dessine de la salle, rejoué chez les invités (net/drawrec.ts). */
   let recorder = new DrawRecorder();
   let lastScene = '';
@@ -2918,13 +3100,53 @@ async function boot(): Promise<void> {
   };
 
   net.onClient = (from, msg) => {
+    if (msg.t === 'pick') {
+      // Le choix d'un invité dans l'écran ouvert chez lui (remoteUi).
+      const r = remoteUi.get(msg.id);
+      if (!r || r.who.remote !== from) return;
+      remoteUi.delete(msg.id);
+      r.answer(msg.pick);
+      return;
+    }
     if (msg.t !== 'in') return;
     const a = (mode === 'run' ? team : visitors).find((m) => m.remote === from);
     if (!a) return;
     if (msg.epoch === netEpoch) a.remoteIn = { x: msg.x, y: msg.y, dir: msg.dir, moving: msg.moving, dashT: msg.dashT, swimming: msg.swimming };
     if (msg.interact && mode === 'run') remoteInteract.add(a);
+    if (msg.ult && mode === 'run') remoteUlts.add(a);
     if (msg.move >= 0 && mode === 'run') remoteMoves.push({ a, slot: msg.move, mx: msg.mx, my: msg.my });
   };
+  // Un invité coupé en pleine run revient : il reprend son Pokémon (ses PV, ses attaques) près de l'hôte,
+  // et reçoit la carte en cours ; s'il avait rechargé la page, on lui relance d'abord la run.
+  net.onRejoin = (id, was, stillIn) => {
+    const a = droppedActors.get(was);
+    droppedActors.delete(was);
+    const lo = net.players.find((p) => p.id === id)?.loadout;
+    if (mode !== 'run' || !net.inRun || !lastRoom || (!a && !lo)) return;
+    const m = a ?? remoteMember(id, lo!, player.x, player.y);
+    m.remote = id;
+    m.remoteIn = null;
+    m.x = m.prevX = player.x;
+    m.y = m.prevY = player.y;
+    if (!team.includes(m)) team.push(m);
+    sentMoves.delete(m);
+    sentPrompt.delete(id);
+    if (!stillIn) net.sendTo(id, { t: 'start' });
+    net.sendTo(id, roomMsg(lastRoom.key, lastRoom.color, lastRoom.music, { [id]: { x: m.x, y: m.y } }));
+    // La scène et la carte repartent en entier au prochain envoi.
+    lastScene = '';
+    lastTiles = '';
+    runHud.notify({ title: 'En ligne', text: `${m.pokemon?.name ?? 'Un allié'} est de retour !`, art: m.speciesId, color: '#7ac0e8' });
+  };
+  // Invité : la liaison saute et revient (Net.rejoin) ; on le dit, l'écran garde sa dernière image.
+  {
+    let was = false;
+    net.onChange(() => {
+      if (net.role !== 'client' || net.reconnecting === was) return;
+      was = net.reconnecting;
+      runHud.notify({ title: 'En ligne', text: was ? 'Liaison perdue : reconnexion à l’hôte…' : 'Liaison retrouvée, de retour dans la partie !', art: CAMP_NPCS.online, color: '#7ac0e8' });
+    });
+  }
   /**
    * En ligne, chacun reçoit le Pokémon de tête des autres joueurs, sous sa forme de base, s'il ne l'a pas (retour de
    * test : « chez un joueur qui n'a pas Évoli, ça le débloque dans le Pokédex, et vice versa »). Une fois par espèce.
@@ -2990,6 +3212,17 @@ async function boot(): Promise<void> {
     net.broadcast({ t: 'snap', epoch: netEpoch, actors, own, cd: {}, strikes: [], fx: [], shake: 0, hud: { place: REPAIRE.name, money: 0, fade: 0, boss: null } });
   };
 
+  /** Hôte : le message d'une carte, pour tous ou pour un invité qui revient. */
+  const roomMsg = (key: WorldKey, color: string, music: string, spawn: Record<string, { x: number; y: number }>): Extract<HostMsg, { t: 'room' }> => {
+    const bits = (a: ArrayLike<number>) => Array.from(a, (v) => (v ? '1' : '0')).join('');
+    // Ce que la salle a changé dans la génération : l'invité régénère la carte, puis le rejoue.
+    const gen = genObjs.get(world);
+    const now = new Set(world.objects);
+    const added = gen ? world.objects.filter((o) => !gen.has(o)) : [];
+    const removed = gen ? [...gen].filter((o) => !now.has(o)).map((o): [number, number] => [o.x, o.y]) : [];
+    return { t: 'room', epoch: netEpoch, key, spawn, blocked: bits(world.blocked), solid: bits(world.solid), weather: weatherNow(), music, color, added, removed };
+  };
+
   /** Hôte : une nouvelle carte (salle, grotte, retour au dehors) ; chaque invité y apparaît près de l'hôte. */
   const netRoom = (key: WorldKey, color: string, music: string) => {
     if (net.role !== 'host' || !net.inRun) return;
@@ -3001,8 +3234,11 @@ async function boot(): Promise<void> {
       spawn[m.remote] = { x: m.x, y: m.y };
     }
     fxQueue = [];
-    const bits = (a: ArrayLike<number>) => Array.from(a, (v) => (v ? '1' : '0')).join('');
-    net.broadcast({ t: 'room', epoch: netEpoch, key, spawn, blocked: bits(world.blocked), solid: bits(world.solid), weather: weatherNow(), music, color });
+    lastRoom = { key, color, music };
+    roomObjs = [...world.objects];
+    lastTiles = '';
+    sentPrompt.clear();
+    net.broadcast(roomMsg(key, color, music, spawn));
   };
 
   /** La barre du Pokémon de champion en jeu (un à la fois : un par vague). */
@@ -3036,6 +3272,12 @@ async function boot(): Promise<void> {
         if (a.remote) {
           own[a.remote] = n;
           cd[a.remote] = [a.atk.moveCd.map(r2), a.atk.moveCdMax.map(r2)];
+          // Ses attaques ont changé chez moi (apprise, renforcée, évolution) : il les reçoit.
+          const v = a.pokemon?.movesVersion;
+          if (v !== undefined && sentMoves.get(a) !== v) {
+            sentMoves.set(a, v);
+            net.sendTo(a.remote, { t: 'moves', moves: a.pokemon!.moves });
+          }
         }
         return snapActor(a, n, true);
       }),
@@ -3052,7 +3294,7 @@ async function boot(): Promise<void> {
       strikes: combat.exportStrikes(),
       fx: fxQueue,
       shake: r2(combat.shake),
-      hud: { place: placeName(), money: run.money, fade: r2(Math.max(director.fade, cave.fade)), boss: bossBar() },
+      hud: { place: placeName(), money: run.money, fade: r2(Math.max(director.fade, cave.fade)), boss: bossBar(), ult: run.boons.ult ? [run.boons.ult, Math.round(run.boons.ultGauge)] : null },
     });
     fxQueue = [];
   };
@@ -3105,13 +3347,19 @@ async function boot(): Promise<void> {
       // Un invité part en pleine run : son Pokémon quitte le terrain.
       const a = team.find((m) => m.remote === from);
       if (!a) return;
+      dropRemoteUi(a);
+      remoteInteract.delete(a);
+      remoteUlts.delete(a);
       fx.poof(a.x, a.y);
       team.splice(team.indexOf(a), 1);
       active = team.indexOf(player);
-      runHud.notify({ title: 'En ligne', text: `${a.pokemon?.name ?? 'Un allié'} a quitté la partie.`, art: a.speciesId, color: '#7ac0e8' });
+      // En pleine run, sa place est gardée : il peut revenir (Net.onRejoin).
+      if (net.inRun) droppedActors.set(from, a);
+      runHud.notify({ title: 'En ligne', text: `${a.pokemon?.name ?? 'Un allié'} a perdu la liaison${net.inRun ? ' : sa place l’attend' : ''}.`, art: a.speciesId, color: '#7ac0e8' });
       return;
     }
     // Partie quittée, ou l'hôte a coupé : retour dans son propre Repaire.
+    setNetPrompt('');
     const visiting = !!hostCamp;
     hostCamp = null;
     field.clear();
@@ -3131,6 +3379,12 @@ async function boot(): Promise<void> {
     }
     if (msg.blocked.length === world.blocked.length) for (let i = 0; i < msg.blocked.length; i++) world.blocked[i] = msg.blocked.charCodeAt(i) - 48;
     if (msg.solid.length === world.solid.length) for (let i = 0; i < msg.solid.length; i++) world.solid[i] = msg.solid.charCodeAt(i) - 48;
+    // Les objets que la salle de l'hôte a posés ou ôtés après la génération (torches, enclos…).
+    for (const [x, y] of msg.removed ?? []) {
+      const i = world.objects.findIndex((o) => o.x === x && o.y === y);
+      if (i >= 0) world.objects.splice(i, 1);
+    }
+    for (const o of msg.added ?? []) world.objects.push(o as WorldObject);
     renderer.bake(world);
     netEpoch = msg.epoch;
     const at = msg.spawn[net.id];
@@ -3193,6 +3447,11 @@ async function boot(): Promise<void> {
     active = 0;
     player = me;
     director.fade = 1;
+    // Le HUD lit l'ultime sur combat.run : celle de l'hôte, recopiée à chaque instantané.
+    combat.run = run;
+    run.boons.ult = null;
+    run.boons.ultGauge = 0;
+    setNetPrompt('');
     runHud.announce('En ligne', '#7ac0e8', 'RUN À PLUSIEURS');
   };
 
@@ -3230,7 +3489,20 @@ async function boot(): Promise<void> {
     if (mode !== 'run' || !me) return;
     if (msg.t === 'room') {
       clearNetScene();
+      setNetPrompt('');
       return clientRoom(msg);
+    }
+    if (msg.t === 'tiles') return clientTiles(msg);
+    if (msg.t === 'prompt') return setNetPrompt(msg.h);
+    if (msg.t === 'ui') return showRemoteUi(msg.id, msg.ui);
+    if (msg.t === 'moves') {
+      // Mes attaques telles que l'hôte les tient : apprise, renforcée, ou changée à l'évolution.
+      const mon = me.pokemon;
+      if (mon) {
+        mon.moves.splice(0, mon.moves.length, ...msg.moves.map((m) => ({ ...m })));
+        mon.movesVersion++;
+      }
+      return;
     }
     if (msg.t === 'scene') {
       if (msg.epoch !== netEpoch) return;
@@ -3263,6 +3535,7 @@ async function boot(): Promise<void> {
     if (msg.t === 'end') {
       // Les Baies de la run, versées au Repaire de l'invité comme à l'hôte.
       net.inRun = false;
+      setNetPrompt('');
       clientEndT = 0;
       clientEnd = msg;
       if (msg.won) runHud.announce('Victoire !', '#ffd23f', 'MAÎTRE DE LA LIGUE');
@@ -3290,6 +3563,9 @@ async function boot(): Promise<void> {
       cd[1].forEach((v, i) => (me!.atk.moveCdMax[i] = v));
     }
     clientHud = msg.hud;
+    // L'ultime de la run (jauge commune), pour mon HUD.
+    run.boons.ult = (msg.hud.ult?.[0] ?? null) as typeof run.boons.ult;
+    run.boons.ultGauge = msg.hud.ult?.[1] ?? 0;
   };
 
   /** Invité : un pas. Je pilote mon Pokémon ; les autres suivent l'hôte. */
@@ -3299,6 +3575,7 @@ async function boot(): Promise<void> {
     if (me) {
       me.updatePlayer(dt, sample, world);
       if (sample.interact) pendingInteract = true;
+      if (sample.ult) pendingUlt = true;
       if (me.bonked) {
         fieldFx.puff(me.bonked.x, me.bonked.y);
         combat.addShake(0.06);
@@ -3307,7 +3584,7 @@ async function boot(): Promise<void> {
       if (sample.move >= 0) pendingMove = sample.move;
       me.atk.tick(dt);
       combat.focus(me);
-      if (++netStep % 2 === 0 || pendingMove >= 0 || pendingInteract) {
+      if (++netStep % 2 === 0 || pendingMove >= 0 || pendingInteract || pendingUlt) {
         let mx = sample.mx;
         let my = sample.my;
         if (Math.hypot(mx, my) < 0.5) {
@@ -3315,9 +3592,10 @@ async function boot(): Promise<void> {
           mx = Math.sin(a);
           my = Math.cos(a);
         }
-        net.send({ t: 'in', epoch: netEpoch, x: me.x, y: me.y, dir: me.dir, moving: me.moving, dashT: me.dashT, swimming: me.swimming, move: pendingMove, mx, my, interact: pendingInteract });
+        net.send({ t: 'in', epoch: netEpoch, x: me.x, y: me.y, dir: me.dir, moving: me.moving, dashT: me.dashT, swimming: me.swimming, move: pendingMove, mx, my, interact: pendingInteract, ult: pendingUlt });
         pendingMove = -1;
         pendingInteract = false;
+        pendingUlt = false;
       }
     }
     field.update(dt);
@@ -3429,7 +3707,10 @@ async function boot(): Promise<void> {
     if (net.role === 'host' && net.inRun && mode === 'run' && ++netStep % SNAP_EVERY === 0) {
       sendSnap();
       // La scène (décor, portes, récompense) change moins vite : deux fois moins souvent.
-      if (netStep % (SNAP_EVERY * 2) === 0) sendScene();
+      if (netStep % (SNAP_EVERY * 2) === 0) {
+        sendScene();
+        sendTiles();
+      }
     }
     // Au Repaire, en ligne : chacun se promène chez l'hôte, même derrière un écran ouvert.
     if (net.role === 'host' && mode === 'camp' && net.guests.length) {
@@ -3442,11 +3723,13 @@ async function boot(): Promise<void> {
       if (++netStep % 2 === 0) net.send({ t: 'in', epoch: netEpoch, x: player.x, y: player.y, dir: player.dir, moving: player.moving, dashT: player.dashT, swimming: player.swimming, move: -1, mx: 0, my: 0 });
     }
     if (net.role === 'client' && mode === 'run') {
-      if (!settingsMenu.open && !statSheet.open) clientUpdate(dt);
+      // Un écran de choix ouvert chez moi (don, attaque, Leveinard…) : l'hôte attend, moi aussi.
+      if (!settingsMenu.open && !statSheet.open && !rewardScreen.open && !talkScreen.open) clientUpdate(dt);
       return;
     }
     // Écran de récompense ouvert : le jeu se fige (BoutiqueScreen met l'arbre en pause).
-    if (paused()) return;
+    // Un invité choisit chez lui (remoteUi) : la run l'attend, comme pour l'écran de l'hôte.
+    if (paused() || remoteUi.size) return;
     // Hitstop : toute la simulation se fige (les touches pressées restent en attente).
     if (combat.hitstop > 0) {
       combat.hitstop = Math.max(0, combat.hitstop - dt);
@@ -3482,6 +3765,21 @@ async function boot(): Promise<void> {
     combat.update(dt, sample, player, wild, world, allies.filter((c) => c.deathT < 0));
     // Les attaques des invités, reçues depuis le dernier pas.
     for (const r of remoteMoves.splice(0)) if (team.includes(r.a)) combat.remoteAttack(r.a, r.slot, r.mx, r.my, wild);
+    // L'ultime d'un invité : la jauge est commune, n'importe quel joueur la lance (R).
+    for (const a of remoteUlts) {
+      if (!team.includes(a) || !a.pokemon || a.deathT >= 0 || a.evolve || a.trapped) continue;
+      combat.hooks.ultimate(a, wild, world, () => remoteAgain.push({ a, t: 0.35 * remoteAgain.filter((r) => r.a === a).length }));
+    }
+    remoteUlts.clear();
+    // Psycho-Boost : ses relances de l'attaque choisie, droit devant lui.
+    if (remoteAgain.length) {
+      for (const r of remoteAgain) r.t -= dt;
+      for (const r of remoteAgain.filter((x) => x.t <= 0)) {
+        const ang = (r.a.dir * Math.PI) / 4;
+        if (team.includes(r.a)) combat.remoteAttack(r.a, r.a.atk.selected, Math.sin(ang), Math.cos(ang), wild);
+      }
+      remoteAgain = remoteAgain.filter((x) => x.t > 0);
+    }
     // Un membre K.O. reste couché là où il est tombé (TeamMember._play_faint_anim) : on peut le ranimer.
     // Ceinture de Rappels : un membre qui tombe se relève aussitôt à moitié de ses PV, tant qu'il en reste dans la réserve.
     for (const m of team) {
@@ -3516,11 +3814,28 @@ async function boot(): Promise<void> {
     // L'Aimant à Baies d'Alakazam attire les baies tombées.
     // En ligne : les invités ramassent aussi les baies tombées et ouvrent les coffres (avant l'hôte,
     // dont l'invite « [E] » doit rester la sienne). Le gain revient à tous (shareLoot).
-    if (outside() && net.inRun) {
+    // Les invités font aussi leurs achats à la boutique, boivent à la Source, prennent leurs leçons
+    // au Dojo, à la Pension et signent à l'Autel : chaque salle joue leur E comme celui de l'hôte,
+    // et les écrans qui s'ensuivent s'ouvrent chez eux (asGuest). Leur invite [E] leur est envoyée.
+    if (net.inRun) {
       for (const m of team) {
-        if (!m.remote || m.deathT >= 0) continue;
-        berries.update(0, m, false);
-        chests.update(0, { mx: 0, my: 0, dash: false, move: -1, interact: remoteInteract.delete(m), ult: false, swap: false }, m, run);
+        if (!m.remote) continue;
+        const press = remoteInteract.delete(m);
+        if (m.deathT >= 0 || !outside()) {
+          sendPrompt(m, '');
+          continue;
+        }
+        const s = { mx: 0, my: 0, dash: false, move: -1, interact: press, ult: false, swap: false };
+        asGuest(m, () => {
+          berries.update(0, m, false);
+          chests.update(0, s, m, run);
+          shop.update(0, s, m, world);
+          spring.update(0, s, m, Math.random);
+          altar.update(0, s, m, Math.random);
+          dojo.update(0, s, m, Math.random);
+          pension.update(0, s, m, Math.random);
+        });
+        sendPrompt(m, [chests, shop, spring, altar, dojo, pension].map((x) => x.promptHtml()).join(''));
       }
     }
     if (outside()) berries.update(dt, player, level(save, 'magnet') > 0);
@@ -3726,6 +4041,16 @@ async function boot(): Promise<void> {
         camp,
         /** Jeu en ligne : la scène reçue (invité), le décor de la salle (hôte), la session. */
         netDebug: () => ({ scene: hostScene, extras: runExtras().length, net, field }),
+        /** Jeu en ligne, pour les tests à deux onglets (deux origines : deux sauvegardes) : héberger, rejoindre, partir. */
+        netHost: async () => {
+          await net.host(await myLoadout());
+          return net.code;
+        },
+        netJoin: async (code: string) => net.join(code, await myLoadout()),
+        netStart: () => campCtx.online.start(),
+        get me() {
+          return me;
+        },
         campScreen,
         save,
         enterCamp,

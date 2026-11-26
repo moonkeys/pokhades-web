@@ -7,6 +7,7 @@ import type { WorldMap, WorldObject } from '../world/generate';
 import { ALTAR_CIRCLE, ALTAR_FLOOR, ALTAR_PROPS, CAMP_PROPS, PROPS, TILE, TREES, type SpriteDef } from '../world/tiles';
 import { Placer } from './placement';
 import { CURSES, CURSE_IDS, type CurseId } from './run';
+import { promptHtml } from '../net/prompthtml';
 
 // Autel maudit, salle spéciale (A-FAIRE 1.9 : « d'autres salles (autel à dons
 // maudits…) »). Pas d'ennemis, portes ouvertes, comme à la Source : au centre,
@@ -191,6 +192,11 @@ export class Altar {
     this.host.pact(this.curse);
   }
 
+
+  /** L'invite [E] telle qu'elle s'affiche (HTML), vide si elle est masquée : envoyée aux invités en ligne (main.ts). */
+  promptHtml(): string {
+    return promptHtml(this.prompt);
+  }
   private renderPrompt(): void {
     if (!this.near) {
       this.prompt.hidden = true;

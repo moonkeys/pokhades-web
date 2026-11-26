@@ -882,28 +882,57 @@ Si d'autres se voient en jeu, noter leur emplacement.
 
 ---
 
+### 1.9 quinquies Rythme et équilibre (25 novembre 2026)
+
+- Fréquence des salles spéciales mesurée sur 2 000 runs simulées : en run
+  classique, une porte propose en moyenne 1 Horde et 0,56 Duel par run (sur
+  8 salles spéciales environ) ; avec la Route Victoire, 1,5 et 1,1. Dosage
+  gardé tel quel.
+- Prix des CS : −10 % par champion de biome battu, jusqu'à moitié prix.
+- Champions : un Pokémon de couverture dès le deuxième acte (`coverOf`), sous
+  sa forme de base.
+- Compagnons : 80 % des dégâts (`COMPANION_DAMAGE`).
+- À juger en jeu : le pilote du banc joue mal, et les combats varient
+  beaucoup d'une partie à l'autre (Pierre contre Feu-Plante : deux victoires
+  sur quatre).
+
 ## 3. Déjà notés, toujours en attente
 
 - **Jeu en ligne** (src/net/, voir README) : lobby, visite du Repaire de
   l'hôte, run partagée, salle rejouée chez l'invité et butin partagé en
-  place. Reste : l'invité ne prend ni les dons ni les portes, n'achète pas à
-  la boutique, n'a pas d'ultime (seul l'hôte choisit) ; un coffre ouvert et
-  un obstacle coupé restent dessinés intacts chez l'invité (décor « cuit »
-  dans la carte) ; pas de reconnexion en cours de run ; à tester entre deux
-  machines (NAT strict : il faudrait un serveur TURN).
+  place. Fait le 25 novembre 2026 (retour : « je veux régler tous les
+  problèmes du jeu en ligne ») : l'invité choisit son don et sa nouvelle
+  attaque chez lui (récompense, Dojo, CT de la boutique), achète à la
+  boutique, boit à la Source, signe à l'Autel et lance l'ultime ; coffres
+  ouverts, obstacles levés, torches éteintes et objets posés par les salles
+  sont les mêmes chez lui ; il voit ses invites [E] ; il se reconnecte seul
+  après une coupure, ou revient avec le code (sa place est gardée par jeton).
+  Testé à deux onglets (deux origines). Reste : l'entraînement de la Pension
+  (niveaux répartis sur le Repaire de l'hôte) et l'affiche du champion à la
+  boutique restent à l'hôte ; les services des habitants des salles calmes et
+  la grotte (prisonniers, coffre) ne répondent qu'à l'hôte ; un hôte qui se
+  coupe ferme la partie ; à tester entre deux machines (NAT strict : relais
+  TURN, voir README).
 - ~~Revente à la boutique de run~~ : abandonnée (18 novembre 2026 : pas
   d'inventaire en run).
 - **Surf en run** (tranché le 18 novembre 2026 : on garde) : au Repaire, on ne
   nage qu'avec Surf ; en run, on nage toujours ; seul l'Océan demande Surf.
-- **Contenu en plus** (plus tard, 18 novembre 2026) : d'autres talents,
-  salles spéciales, visiteurs par zone, récoltes, dresseurs connus.
+- **Contenu en plus** : en pause (retour du 25 novembre 2026 : « niveau contenu, on est
+  super ; avant d'en rajouter, je veux un jeu vraiment bien »). Seule exception : de
+  nouvelles lignées complètes. Fait le 26 novembre 2026 : 17 lignées dans la faune
+  (voir README, « Nouvelles lignées »). Candidates suivantes, déjà vérifiées complètes
+  chez SpriteCollab : Vipelierre (495), Charmilly (333), et les pseudo-légendaires
+  gardés pour les grottes (Minidraco, Terhal, Griknot, Draby, Solochi, Mucuscule,
+  Coupenotte).
 - Le graphe de biomes est un premier jet (`BIOME_LINKS`) : à rééquilibrer
   au fil des tests. (Un champion par biome depuis le 17 novembre 2026 : voir
   2.10.) Fait le 23 novembre 2026 : Coupe garde Forêt → Automne, Éclate-Roc
   Marais → Volcan, Force Automne → Montagne glacée (une autre route reste
   ouverte de chaque biome) ; le plan écrit la CS qui manque. À juger en jeu :
   sans CS, Pierre, Auguste et Olga sont hors de portée, et la Route Victoire
-  attend donc les CS (600 Baies environ) ; est-ce le bon rythme ?
+  attend donc les CS (600 Baies environ) ; est-ce le bon rythme ? Adouci le
+  25 novembre 2026 : −10 % par champion de biome battu, jusqu'à moitié prix
+  (`csPrice`). Reste à juger en jeu.
 - Les objets tenus n'ont pas été vraiment testés en partie par le joueur.
   Relus le 23 novembre 2026 : appliqués à la sortie du Repaire (`applyHeld`),
   gardés à l'évolution (`Pokemon.inherit`), jamais sur un mercenaire ; pas de

@@ -7,6 +7,7 @@ import { blobTile, useGrid, type WorldMap } from '../world/generate';
 import { hash2 } from '../core/rng';
 import { BLOB, CAMP_PROPS, FLOWERS, LILIES, PROPS, TILE } from '../world/tiles';
 import { Placer } from './placement';
+import { promptHtml } from '../net/prompthtml';
 
 // Source, salle spéciale de soin (A-FAIRE 1.9 : « d'autres salles (soin…) »).
 // Pas d'ennemis, portes ouvertes, comme chez le marchand : au centre, un
@@ -201,6 +202,11 @@ export class Spring {
     this.bubbleT = 2.5;
   }
 
+
+  /** L'invite [E] telle qu'elle s'affiche (HTML), vide si elle est masquée : envoyée aux invités en ligne (main.ts). */
+  promptHtml(): string {
+    return promptHtml(this.prompt);
+  }
   private renderPrompt(): void {
     if (!this.near) {
       this.prompt.hidden = true;

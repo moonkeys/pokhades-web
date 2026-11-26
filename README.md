@@ -44,6 +44,23 @@ le jeu lit (faune des biomes, attaques imposées, répliques à la boutique et
 au Repaire) ; le jeu ouvert se recharge. « Importer les assets » lance
 `import-assets` pour copier ce qu'il manque aux espèces ajoutées.
 
+**Nouvelles lignées** (26 novembre 2026, retour de test : « le seul contenu qu'on
+peut se permettre d'ajouter, ce sont de nouveaux Pokémon qui ont toutes leurs
+évolutions ») : 17 lignées complètes rejoignent la faune, leur forme de base dans
+un biome, leurs évolutions dans `data/evolutions.ts` (niveaux des jeux) :
+Bulbizarre, Arcko, Tortipouss et Étourmi (Forêt), Germignon
+et Fantominus (Automne), Carapuce, Kaiminus et Moustillon (Lac), Gobou (Marais),
+Gruikui (Volcan), Kranidos (Rocailleux), Abra, Tarsal, Lixy et Wattouat (Village),
+Tiplouf (Plage et Montagne glacée). Ajoutées après les espèces déjà là (les 9
+premières de chaque biome peuplent le début des actes : on n'y touche pas) et avant
+les formes régionales ; on les croise donc à partir de la troisième salle d'un acte.
+Aucune dans la Prairie : on n'y passe qu'au premier acte, qui ne tire que ses 5
+premières espèces (`Run.fauna`). Choisies parce que SpriteCollab a toutes leurs planches (marche,
+attente, attaques, tir, charge, coup, sommeil, bond), à chaque stade. Les
+pseudo-légendaires (Minidraco, Terhal, Griknot…) restent des gardiens de grotte,
+rares à dessein. Leurs talents étaient déjà dans `data/abilities.ts` (Engrais,
+Brasier, Torrent, Lévitation, Statik, Intimidation).
+
 `import-assets` prend d'abord dans le dépôt Godot ; ce qu'il n'y trouve pas
 (espèce ajoutée depuis la page, action PMD que le dépôt n'a pas copiée, fiche
 d'attaque) est tiré des planches PMD de SpriteCollab et des fiches de PokéAPI,
@@ -113,6 +130,9 @@ champions sur 11 restent à portée (Pierre demande Coupe, Auguste Surf ou
 achetées chez Alakazam. Le plan du monde écrit la CS manquante au milieu de la
 route qu'elle garde (`journal.ts`). Vérifié sur 400 graines : jamais de run
 bloquée sans CS, les dix biomes atteints avec toutes.
+Chaque champion de biome battu baisse le prix des CS de 10 %, jusqu'à moitié
+prix (`csPrice`, 25 novembre 2026) : après cinq badges, Coupe, Éclate-Roc et
+Force coûtent 300 Baies à elles trois au lieu de 600.
 
 Sens des salles (ajout, retour de test : « je sors par la droite et j'arrive
 par le haut ») : on entre dans une salle par le bord d'en face de la porte
@@ -549,6 +569,11 @@ des starters et des gardiens de grotte (retour de test : on ne recrute pas
 d'évolution, elles n'y ont plus de case) : débloquée, rencontrée (dès qu'elle
 apparaît) ou silhouette d'encre, avec les victoires qui lui manquent ; sa
 fiche montre sa **lignée** (chaque évolution et son niveau, `evolutionsOf`).
+Le filtre **Méga ◈** (25 novembre 2026) garde les lignées qui ont une
+Méga-évolution jouable (`megaInLine`, `data/megaline.ts` : celles dont
+SpriteCollab a les planches), marquées d'un losange ; la fiche du Pokédex la
+nomme et dit à quel niveau elle devient possible, et la fiche de l'équipe
+porte une pastille ◈ Méga.
 
 Au premier lancement, on choisit son **starter** parmi les neuf du jeu
 (Pikachu, Zorua, Absol, Flamiaou, Grenousse, Ouisticram, Pandespiègle,
@@ -1088,7 +1113,14 @@ Retour de test : la première run est dure, puis une équipe de six au niveau
   Tygnon, Stalgamin pour Momartik…) servent aux seules escortes
   (`escortPreviousOf`, `LEAGUE_PREVIOUS` dans data/evolutions.ts) : dans la
   table des évolutions, elles feraient partir une recrue d'une forme qui
-  n'évoluerait jamais ; ses sbires passent de 2 au premier acte à 3 + 2 × acte,
+  n'évoluerait jamais ; dès le deuxième acte, un champion de biome garde un
+  Pokémon de couverture (`coverOf`, 25 novembre 2026) : d'un type qui frappe
+  super efficace le plus de types qui battent son arène, sous sa forme de base,
+  premier renfort ou, équipe déjà complète, à la place de l'ouvreur (au banc,
+  l'équipe Eau bat Auguste en 43 s au lieu de 35, une équipe Feu-Plante ne
+  bat plus Pierre qu'une fois sur deux ; sous sa forme finale, la couverture
+  renversait le combat) ; les compagnons frappent à 80 % (`COMPANION_DAMAGE`,
+  combat.ts : ils faisaient autant que le Pokémon mené, ou plus) ; ses sbires passent de 2 au premier acte à 3 + 2 × acte,
   plus un par paire de membres de l'équipe ; l'affiche de la boutique montre
   les vrais niveaux (`Run.bossLevel`) ;
 - **l'équipe compte** : dès le deuxième acte, un sauvage de plus par vague par
@@ -1274,6 +1306,25 @@ au Repaire une fois le starter choisi.
   les recrues si le Repaire est plein), une seule fois par espèce (`Save.shared`). Ça permet de débloquer vite
   des Pokémon de départ.
 - **À la fin de la run**, il voit le même bilan que l'hôte (`end` dans `net/net.ts` porte le bilan).
+- **Ses choix, chez lui** (25 novembre 2026) : quand un invité presse E (récompense du centre, boutique,
+  Source, Autel, Dojo, Pension), l'hôte joue l'interaction en son nom (`asGuest`, `main.ts`) ; les écrans
+  qui s'ensuivent (dialogue, dons, nouvelle attaque) ne s'ouvrent pas chez l'hôte mais chez l'invité
+  (`ui` / `pick`, `RemoteUi` dans `net/net.ts`), et la run attend son choix. Un don « Ton Pokémon » va au
+  sien ; ses Baies et ressources achetées vont dans sa sauvegarde ; ses attaques apprises ou renforcées
+  lui reviennent (`moves`). L'invite [E] de ce qui est devant lui lui est envoyée en HTML
+  (`net/prompthtml.ts`, icônes comprises). R lance l'ultime de la run (jauge commune, montrée dans son HUD).
+- **La carte telle qu'elle est** : le message de salle porte les objets posés ou ôtés par la salle
+  après la génération (torches de l'Autel, enclos…), et `tiles` ce qui change ensuite (cases libérées
+  d'un obstacle, coffres ouverts, torches éteintes).
+- **Coupure en pleine run** : l'hôte garde la place (`Net.dropped`, par le jeton du navigateur,
+  `pokhades-net-token`) ; l'invité retente seul 4 fois (`Net.rejoin`), ou revient avec le code s'il a
+  rechargé la page : l'hôte lui relance la run, lui renvoie la carte, et lui rend son Pokémon (PV,
+  attaques). `NET_VERSION` passe à 2.
+- **Restent à l'hôte** : l'entraînement de la Pension, l'affiche du champion, les services des habitants,
+  la grotte.
+
+Tests à deux onglets : deux origines du serveur de dev (`localhost` et `127.0.0.1`), donc deux
+sauvegardes ; sous `?debug`, `pokhades.netHost()`, `pokhades.netJoin(code)`, `pokhades.netStart()`.
 
 ## Mobile : plein écran et départ en run
 

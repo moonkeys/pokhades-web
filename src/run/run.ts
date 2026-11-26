@@ -8,6 +8,7 @@ import { OPPOSITE, type Side } from '../world/generate';
 import { VICTORY_ROAD, WORLD, WORLD_LINKS, type BiomeLink } from '../world/worldmap';
 import { escortPreviousOf } from '../data/evolutions';
 import { typeMates } from '../data/trainers';
+import { TYPE_CHART, typeMultiplier } from '../combat/damage';
 
 // Structure d'une run, reprise de RunManager.gd : 4 actes de 9 salles (7
 // combats, une boutique, un boss), un biome par acte. Écart voulu (retour de
@@ -283,8 +284,20 @@ export class Run {
     // premier acte, six ensuite. Seul, on retrouve le plancher de l'acte.
     const floor = MIN_CHAMPION_TEAM[Math.min(act, MIN_CHAMPION_TEAM.length - 1)];
     const want = Math.min(act === 0 ? 4 : 6, Math.max(floor, this.teamSize - 1 + act));
-    if (champ.team.length >= want) return champ;
     const have = new Set(champ.team.map(([f]) => f));
+    // Dès le deuxième acte, un champion de biome garde un Pokémon de couverture (coverOf) : un
+    // Pokémon d'un autre type, qui frappe fort les types qui battent son arène. Le Conseil et le
+    // Maître alignent déjà des types mêlés. Sous sa forme de base : au banc du 25 novembre 2026,
+    // un Blizzaroi en ouverture d'Auguste (acte 3, niveau 40) faisait perdre une équipe Eau qui
+    // gagnait en 35 s sans lui ; il doit gêner le bon type, pas le renverser.
+    const rng = new Rng(hash2(this.seed, act, 4411) * 1e9);
+    const cover = act >= 1 && Object.values(BIOME_CHAMPIONS).some((l) => l?.includes(champ.name)) ? this.coverOf(champ.type, have, rng) : null;
+    if (champ.team.length >= want) {
+      // Équipe déjà complète : la couverture prend la place de l'ouvreur (souvent la forme
+      // intermédiaire de l'as, Kadabra devant Alakazam), jamais celle de l'as.
+      if (cover !== null && champ.team.length > 1) champ.team = [[baseOf(cover), baseOf(cover)], ...champ.team.slice(1)];
+      return champ;
+    }
     const others = typeMates(champ.type).filter((id) => !have.has(id));
     const mates = others.filter((id) => escortPreviousOf(id) !== null);
     // Repli : les autres Pokémon du type, sans forme de base connue (leur escorte prend leur
@@ -296,13 +309,44 @@ export class Run {
     // Conseil tombait plus vite que le champion d'avant. Jamais un nageur hors de l'eau.
     const spare = others.filter((id) => escortPreviousOf(id) === null && !SWIMMERS.has(id));
     const extra: [number, number][] = [];
-    const rng = new Rng(hash2(this.seed, act, 4411) * 1e9);
+    // La couverture est le premier renfort.
+    if (cover !== null) extra.push([baseOf(cover), baseOf(cover)]);
     while (champ.team.length + extra.length < want && (mates.length || spare.length)) {
       const pool = mates.length ? mates : spare;
       const id = pool.splice(rng.int(pool.length), 1)[0];
       extra.push([id, baseOf(id)]);
     }
     return { ...champ, team: [...champ.team.slice(0, -1), ...extra, champ.team[champ.team.length - 1]] };
+  }
+
+  /**
+   * Le Pokémon de couverture d'un champion de type `type` : l'espèce d'un type qui frappe
+   * super efficace le plus de types qui battent l'arène (Pierre, Roche, craint Eau, Plante,
+   * Combat, Sol et Acier : la Plante en couvre deux, le Feu aussi…), tirée dans la faune de
+   * la Ligue, forme finale de préférence, jamais un nageur ni un Pokémon de l'arène. Écart
+   * voulu (banc d'équilibrage, 25 novembre 2026) : un champion tombait d'un bloc devant une
+   * équipe du bon type, et d'un bloc devant une autre ne passait pas ; les champions des
+   * jeux gardent souvent un Pokémon pour ça (le Lamantine de Pierre, le Raichu d'Ondine…).
+   */
+  private coverOf(type: string, have: ReadonlySet<number>, rng: Rng): number | null {
+    const threats = Object.keys(TYPE_CHART).filter((t) => typeMultiplier(t, [type]) > 1);
+    if (!threats.length) return null;
+    let best: string[] = [];
+    let bestHits = 0;
+    for (const t of Object.keys(TYPE_CHART)) {
+      if (t === type) continue;
+      const hits = threats.filter((w) => typeMultiplier(t, [w]) > 1).length;
+      if (hits > bestHits) [best, bestHits] = [[t], hits];
+      else if (hits === bestHits && hits) best.push(t);
+    }
+    while (best.length) {
+      const t = best.splice(rng.int(best.length), 1)[0];
+      const pool = typeMates(t).filter((id) => !have.has(id) && !SWIMMERS.has(id) && !typeMates(type).includes(id));
+      const evolved = pool.filter((id) => escortPreviousOf(id) !== null);
+      const pick = evolved.length ? evolved : pool;
+      if (pick.length) return rng.pick(pick);
+    }
+    return null;
   }
 
   /** Branches ouvertes depuis le biome de l'acte courant (le biome forcé, s'il y en a un). */

@@ -191,7 +191,8 @@ export interface RoomHost {
   /** La récompense apparaît au centre : on tire son offre maintenant, elle ne changera plus. */
   prepareReward(reward: Reward): void;
   /** Ouvre l'écran de choix ; `consume` retire la récompense une fois prise. */
-  openReward(reward: Reward, consume: () => void): void;
+  /** `by` : le membre qui a pris la récompense (le Pokémon joué, ou un invité en ligne). */
+  openReward(reward: Reward, consume: () => void, by?: Actor): void;
   /** Les Éclats de Champion posés au centre de l'arène sont pris. */
   claimShards(): void;
   /** On s'engage dans la bouche d'une grotte, pendant que l'écran est noir (cf. CaveDirector). */
@@ -821,7 +822,9 @@ export class RoomDirector {
       const nearTo = (a: Actor) => Math.hypot(a.x - p.x, a.y - p.y) < PICKUP_RADIUS + 0.6;
       p.label.classList.toggle('open', everyone.some(nearTo));
       // L'écran de choix s'ouvre chez l'hôte, qu'il soit le preneur ou un invité (le don est pour toute l'équipe).
-      if ((nearTo(player) && input.interact) || claimers.some(nearTo)) this.claim(run);
+      // `by` : qui l'a prise ; un invité choisit chez lui (main.ts, remoteUi).
+      const by = nearTo(player) && input.interact ? player : claimers.find(nearTo);
+      if (by) this.claim(run, by);
     }
     for (const d of this.doors) {
       const who = everyone.find((a) => this.atExit(world, a, d.exit));
@@ -840,7 +843,7 @@ export class RoomDirector {
     }
   }
 
-  private claim(run: Run): void {
+  private claim(run: Run, by: Actor): void {
     const p = this.pedestal;
     if (!p) return;
     if (p.reward === 'shards') {
@@ -850,7 +853,7 @@ export class RoomDirector {
     }
     if (run.reward !== 'loot') {
       // Dons ou nouvelle attaque : l'écran de choix ; la récompense ne part qu'une fois prise.
-      this.host.openReward(run.reward, () => this.consume());
+      this.host.openReward(run.reward, () => this.consume(), by);
       return;
     }
     // CombatArena._grant_loot(room, 2.0) : le double du gain de la salle.

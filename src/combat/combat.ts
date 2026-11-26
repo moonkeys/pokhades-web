@@ -31,6 +31,14 @@ import type { StrikeSnap } from '../net/net';
 
 /** TeamMember.GLOBAL_LOCK : délai minimal entre deux capacités. */
 const GLOBAL_LOCK = 0.34;
+/**
+ * Dégâts d'un compagnon (membre que l'IA joue), par rapport au Pokémon mené. Écart voulu
+ * (banc d'équilibrage, 25 novembre 2026) : les compagnons visent juste, choisissent la
+ * capacité la plus efficace et ne ratent jamais une fenêtre ; à dégâts pleins, ils faisaient
+ * autant que le Pokémon mené, ou plus, et le choix de celui qu'on joue ne comptait guère.
+ * Un invité en ligne joue son Pokémon lui-même : il frappe plein (remoteAttack).
+ */
+const COMPANION_DAMAGE = 0.8;
 /** Combo : 3 coups enchaînés en moins de 1,5 s chacun, le troisième est le finisher. */
 const COMBO_WINDOW = 1.5;
 const COMBO_DMG = [1, 1.18, 1.55];
@@ -155,6 +163,8 @@ interface Strike {
 export class Combat {
   /** État d'attaque de l'attaquant courant : le Pokémon joué, ou un compagnon le temps de son coup. */
   private st = new AttackState();
+  /** Facteur des coups en cours : COMPANION_DAMAGE le temps d'un companionAttack, 1 sinon. */
+  private hitScale = 1;
   /** Éclat de l'anneau de portée au lancer, décroît de 4/s. */
   ringFlash = 0;
   /** Gel de toute la simulation (s), en temps réel. */
@@ -417,7 +427,14 @@ export class Combat {
     this.st = a.atk;
     a.atk.selected = slot;
     const len = Math.hypot(target.x - a.x, target.y - a.y) || 1;
-    this.attack(a, { mx: (target.x - a.x) / len, my: (target.y - a.y) / len, dash: false, move: slot, interact: false, ult: false, swap: false }, enemies, slot);
+    // Les dégâts sont calculés pendant attack (au contact, et au tir où ils sont figés) : le
+    // facteur ne vaut que pour ce coup-ci.
+    this.hitScale = COMPANION_DAMAGE;
+    try {
+      this.attack(a, { mx: (target.x - a.x) / len, my: (target.y - a.y) / len, dash: false, move: slot, interact: false, ult: false, swap: false }, enemies, slot);
+    } finally {
+      this.hitScale = 1;
+    }
     this.st = prev;
   }
 
@@ -874,7 +891,7 @@ export class Combat {
         // Morphing : une attaque Normal prend le type le plus efficace contre chaque cible.
         const t = this.hooks.morph(type, e);
         const res = calculateDamage(player.pokemon!, e.pokemon!, power, t, cls, this.random);
-        const dmg = Math.max(1, Math.round(res.damage * this.hooks.dmgOut(player, e)));
+        const dmg = Math.max(1, Math.round(res.damage * this.hooks.dmgOut(player, e) * this.hitScale));
         if (!first) first = dmg;
         this.hitEnemy(e, dmg, player.x, player.y, t, t === type ? color : typeColor(t), finisher, res.crit ? 'crit' : kindFromMultiplier(res.effectiveness), false, t === type ? moveApi : undefined, player);
         if (cls !== 'special') this.contactTalent(player, e);
@@ -925,7 +942,7 @@ export class Combat {
       strike.type = this.hooks.morph(type, best);
       strike.color = typeColor(strike.type);
       const res = calculateDamage(player.pokemon!, best.pokemon!, power, strike.type, 'special', this.random);
-      strike.damage = Math.max(1, Math.round(res.damage * this.hooks.dmgOut(player, best)));
+      strike.damage = Math.max(1, Math.round(res.damage * this.hooks.dmgOut(player, best) * this.hitScale));
       strike.kind = res.crit ? 'crit' : kindFromMultiplier(res.effectiveness);
       strike.x = best.x;
       strike.y = best.y;

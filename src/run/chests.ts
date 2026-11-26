@@ -9,6 +9,7 @@ import type { CombatFx } from '../render/combatfx';
 import type { WorldMap } from '../world/generate';
 import { CHEST, CHEST_OPEN, TILE } from '../world/tiles';
 import type { Run } from './run';
+import { promptHtml } from '../net/prompthtml';
 
 // Coffre des salles de run (A-FAIRE 1.5 ; Chest.gd et les déclencheurs de CS
 // de CombatArena). La génération le pose dans deux salles sur trois
@@ -219,6 +220,11 @@ export class ChestSite {
     ];
   }
 
+
+  /** L'invite [E] telle qu'elle s'affiche (HTML), vide si elle est masquée : envoyée aux invités en ligne (main.ts). */
+  promptHtml(): string {
+    return promptHtml(this.prompt);
+  }
   private renderPrompt(hint: string | null): void {
     const key = hint ?? '';
     if (this.prompt.dataset.key === key && this.prompt.hidden === !hint) return;

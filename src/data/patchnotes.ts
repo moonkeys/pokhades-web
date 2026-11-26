@@ -18,6 +18,50 @@ export interface PatchNote {
 
 export const PATCH_NOTES: readonly PatchNote[] = [
   {
+    id: '2026-11-26',
+    date: '26 novembre 2026',
+    title: 'Dix-sept nouvelles lignées',
+    sections: [
+      {
+        title: 'Nouveaux Pokémon',
+        items: [
+          'Dix-sept lignées complètes rejoignent la faune, chacune avec toutes ses évolutions : à battre dix fois pour les recruter, comme les autres. On les croise dès le deuxième acte, à partir de la troisième salle.',
+          'Forêt : Bulbizarre, Arcko, Tortipouss, Étourmi. Automne : Germignon, Fantominus. Lac : Carapuce, Kaiminus, Moustillon.',
+          'Marais : Gobou. Volcan : Gruikui. Rocailleux : Kranidos. Village : Abra, Tarsal, Lixy, Wattouat. Plage et Montagne glacée : Tiplouf.',
+          'Alakazam et Ectoplasma ont une Méga-évolution : cherche-les au Pokédex, filtre Méga ◈.',
+        ],
+      },
+    ],
+  },
+  {
+    id: '2026-11-25',
+    date: '25 novembre 2026',
+    title: 'Jeu en ligne complet, badges et Méga au Pokédex',
+    sections: [
+      {
+        title: 'Équilibre',
+        items: [
+          'Chaque champion battu fait baisser le prix des CS chez Alakazam : 10 % par badge, jusqu’à moitié prix. Les routes de Pierre, Auguste et Olga s’ouvrent plus tôt.',
+          'Dès le deuxième acte, un champion garde un Pokémon d’un autre type, qui frappe ceux qui battent son arène (un Blizzi face à Auguste ou à Pierre…) : le bon type aide toujours, il ne suffit plus.',
+          'Les compagnons frappent à 80 % : celui que tu mènes compte davantage.',
+        ],
+      },
+      {
+        title: 'Jeu en ligne',
+        items: [
+          'Un invité qui prend la récompense choisit lui-même son don, ou sa nouvelle attaque, sur son écran.',
+          'Il achète à la boutique avec la bourse commune (CT, potions, Baies et ressources pour son Repaire), boit à la Source, prend ses leçons au Dojo, signe à l’Autel, et lance l’ultime avec R.',
+          'Il voit les coffres ouverts, les obstacles levés et les torches éteintes comme l’hôte, et les invites [E] de ce qui est devant lui.',
+          'Une coupure en pleine run : il se reconnecte tout seul, ou revient avec le code s’il a fermé la page, et retrouve son Pokémon.',
+        ],
+      },
+      {
+        title: 'Pokédex',
+        items: ['Filtre Méga ◈ : les lignées qui ont une Méga-évolution. La fiche du Pokédex et celle de l’équipe la nomment, et disent à quel niveau elle devient possible.'],
+      },
+    ],
+  },
+  {
     id: '2026-11-23',
     date: '23 novembre 2026',
     title: 'Talents, Horde et CT de l’atelier',
