@@ -292,10 +292,24 @@ const friendly = (err: unknown, fallback: string): string => {
   return fallback;
 };
 
-/** Envoie le code de connexion. Le compte se crée tout seul au premier code. */
+/**
+ * L'adresse du jeu où ramène le lien de l'e-mail : la page d'où l'on demande, sans son ancre ni ses
+ * paramètres (un ?join=CODE d'invitation n'a rien à faire là).
+ */
+const backHere = (): string => `${location.origin}${location.pathname}`;
+
+/**
+ * Envoie le code de connexion. Le compte se crée tout seul au premier e-mail.
+ *
+ * Le même e-mail porte aussi un lien (modèles par défaut de Supabase) : retour de test du
+ * 26 novembre 2026, Supabase refuse de modifier ses modèles (pour y mettre le code) tant qu'aucun
+ * serveur d'envoi n'est branché. Le lien ramène au jeu (`redirect_to`), la session dans l'ancre
+ * de l'adresse : `linkLogin` la prend au lancement. Le code reste le chemin sûr sur téléphone, où
+ * le lien peut s'ouvrir dans un autre navigateur que celui du jeu.
+ */
 export async function sendCode(email: string): Promise<string | null> {
   try {
-    await call('/auth/v1/otp', { method: 'POST', body: JSON.stringify({ email: email.trim().toLowerCase(), create_user: true }) });
+    await call(`/auth/v1/otp?redirect_to=${encodeURIComponent(backHere())}`, { method: 'POST', body: JSON.stringify({ email: email.trim().toLowerCase(), create_user: true }) });
     return null;
   } catch (err) {
     return friendly(err, 'Impossible d’envoyer le code à cette adresse.');
@@ -412,11 +426,48 @@ async function reconcile(): Promise<Outcome> {
  * avancé ailleurs. N'attend pas plus de quelques secondes un serveur lent ou absent.
  */
 export async function cloudBoot(): Promise<void> {
-  if (!cloudEnabled || !session) return;
+  if (!cloudEnabled) return;
+  linkLogin();
+  if (!session) return;
   setStatus('busy');
   const timeout = new Promise<'offline'>((r) => setTimeout(() => r('offline'), BOOT_TIMEOUT_MS));
   const o = await Promise.race([reconcile(), timeout]);
   if (o === 'offline' && status === 'busy') setStatus('offline', 'Hors ligne : la partie sera envoyée plus tard.');
+}
+
+/** Le contenu d'un jeton (JWT) : l'identifiant du compte et son e-mail. Pas de vérification ici, le serveur s'en charge. */
+function claimsOf(jwt: string): { sub?: string; email?: string } {
+  try {
+    const b64 = jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const json = decodeURIComponent(
+      [...atob(b64.padEnd(b64.length + ((4 - (b64.length % 4)) % 4), '='))].map((c) => `%${c.charCodeAt(0).toString(16).padStart(2, '0')}`).join(''),
+    );
+    return JSON.parse(json) as { sub?: string; email?: string };
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Retour par le lien de l'e-mail : Supabase renvoie vers le jeu avec la session dans l'ancre
+ * (#access_token=…&refresh_token=…), ou une erreur (#error=…, lien expiré ou déjà servi). On la
+ * prend, puis on efface l'ancre : les jetons ne doivent rester ni dans l'historique ni dans un
+ * lien copié.
+ */
+function linkLogin(): void {
+  if (!location.hash.includes('access_token=') && !location.hash.includes('error=')) return;
+  const h = new URLSearchParams(location.hash.slice(1));
+  history.replaceState(null, '', location.pathname + location.search);
+  const access = h.get('access_token');
+  const refresh = h.get('refresh_token');
+  if (!access || !refresh) {
+    setStatus('out', h.get('error_code') === 'otp_expired' ? 'Ce lien a expiré ou a déjà servi : redemande un e-mail.' : 'La connexion par le lien a échoué : redemande un e-mail.');
+    return;
+  }
+  const c = claimsOf(access);
+  if (!c.sub) return;
+  adopt({ access_token: access, refresh_token: refresh, expires_at: Number(h.get('expires_at')) || undefined, expires_in: Number(h.get('expires_in')) || undefined, user: { id: c.sub, email: c.email } });
+  setStatus('ok');
 }
 
 /** Le conflit en cours, résumé pour le choix. */

@@ -183,7 +183,7 @@ export class AccountScreen {
       });
       requestAnimationFrame(() => input.focus());
     } else {
-      el('p', 'acct-fine', form, `Code envoyé à ${this.email}. Regarde aussi dans les indésirables.`);
+      el('p', 'acct-fine', form, `E-mail envoyé à ${this.email} (regarde aussi dans les indésirables). Tape son code, ou clique sur son lien depuis cet appareil.`);
       const input = el('input', 'acct-input acct-code', form);
       input.inputMode = 'numeric';
       input.autocomplete = 'one-time-code';
@@ -217,7 +217,9 @@ export class AccountScreen {
       });
       requestAnimationFrame(() => input.focus());
     }
-    if (this.message) el('p', 'acct-error', body, this.message);
+    // Sinon, ce que la synchro a à dire (lien d'e-mail expiré, session perdue).
+    const msg = this.message || cloudError();
+    if (msg) el('p', 'acct-error', body, msg);
   }
 
   private renderAccount(body: HTMLElement): void {

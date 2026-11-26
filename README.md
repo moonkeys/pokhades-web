@@ -1403,12 +1403,19 @@ synchro s'arrête jusqu'au choix. Pas de bibliothèque `supabase-js` : sept `fet
    tableau de bord.
 2. *SQL Editor* : coller `supabase/schema.sql`, *Run*. Le script se relance sans casse.
 3. *Authentication → Sign In / Providers* : laisser **Email** activé, couper le reste.
-4. *Authentication → Emails → Templates* : dans **Magic Link** et **Confirm signup**, remplacer
-   le lien par le code, par exemple : `Ton code Pokhades : {{ .Token }}` (sinon le joueur reçoit
-   un lien et pas de code).
+4. *Authentication → URL Configuration* : **Site URL** = `https://moonkeys.github.io/pokhades-web/` ;
+   **Redirect URLs** : la même suivie de `**`, et `http://localhost:5173/**` (et le port du
+   serveur de test). C'est là que ramène le lien de l'e-mail.
 5. *Authentication → Emails → SMTP Settings* : brancher un service d'envoi (Brevo, Resend…).
    Le serveur d'e-mails intégré de Supabase est fait pour les tests : très peu d'envois par
-   heure, et seulement vers les adresses de l'équipe du projet.
+   heure, et seulement vers les adresses de l'équipe du projet. Une fois branché, *Templates* :
+   dans **Magic Link** et **Confirm signup**, ajouter le code, par exemple
+   `Ton code Pokhades : {{ .Token }}` (Supabase refuse de toucher aux modèles sans SMTP).
+
+   Sans code dans l'e-mail, le **lien** marche aussi : il ramène au jeu avec la session dans
+   l'ancre de l'adresse (`#access_token=…`), que `linkLogin` prend au lancement puis efface. Sur
+   téléphone, le lien peut s'ouvrir dans un autre navigateur que celui du jeu : le code est plus
+   sûr.
 6. *Project Settings → API* : copier l'adresse du projet (`https://xxxx.supabase.co`) et la clé
    publique (*anon* ou *publishable*, **jamais** la clé *service_role* ou *secret*).
 7. GitHub : *Settings → Secrets and variables → Actions → Variables* : `SUPABASE_URL` et

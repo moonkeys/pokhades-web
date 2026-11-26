@@ -4,3 +4,5 @@ dist/
 .cache/
 .DS_Store
 .claude/settings.local.json
+# Variables locales (Supabase, TURN) : propres à chaque machine.
+.env.local
