@@ -6,8 +6,8 @@
 //
 // Chaque icône est choisie pour son sens dans les jeux : Piquants pour le Piège, Pièce Rune pour le
 // marchand, Eau Fraîche pour la Source, Rune Sort pour les pactes, Ceinture Noire pour le Dojo, Œuf
-// Chance pour la Pension, Nœud Destin pour les dons duo, la Poké Ball « possédé » du Pokédex pour un
-// Pokémon débloqué. Puis, sur une planche de choix (même jour) : le VS des transitions de combat pour
+// Chance pour la Pension, la Poké Ball « possédé » du Pokédex pour un Pokémon débloqué ; un don duo
+// montre ses deux légendaires (duoIcon). Puis, sur une planche de choix (même jour) : le VS des transitions de combat pour
 // le Duel, le ruban doré pour l'as et le MVP, le rocher d'Éclate-Roc pour la grotte ; et, dessinés en
 // pixel art faute de mieux, un chrono pour le Défi, trois silhouettes de Pikachu pour la Horde et les
 // pictogrammes de météo (public/game/assets/pixel/, scripts/pixel-icons.py).
@@ -48,7 +48,6 @@ const SRC = {
   league: item('RELICCROWN'),
   berry: item('ORANBERRY'),
   damage: item('MUSCLEBAND'),
-  duo: item('DESTINYKNOT'),
   // Météo (world/weather.ts) : des pictogrammes dessinés en pixel art (scripts/pixel-icons.py).
   clear: '/game/assets/pixel/meteo-clair.png',
   rain: '/game/assets/pixel/meteo-pluie.png',
@@ -109,6 +108,19 @@ const DONOR_ICON: Record<number, [file: string, dx: number, dy: number]> = {
 
 /** Les fichiers d'icônes des donateurs, pour scripts/import-assets.ts. */
 export const DONOR_ICON_FILES = Object.values(DONOR_ICON).map(([f]) => f);
+
+/**
+ * Un don duo (deux légendaires à la fois) : leurs deux icônes, l'une devant l'autre (retour du 26
+ * novembre 2026 : le Nœud Destin, « peut-être qu'on peut trouver un truc plus sympa »).
+ */
+export function duoIcon(dexA: number, dexB: number, parent?: HTMLElement, cls = ''): HTMLElement {
+  const box = document.createElement('span');
+  box.className = `ess-duo${cls ? ` ${cls}` : ''}`;
+  donorIcon(dexA, box);
+  donorIcon(dexB, box);
+  parent?.append(box);
+  return box;
+}
 
 export function donorIcon(dex: number, parent?: HTMLElement, cls = ''): HTMLImageElement {
   const img = document.createElement('img');

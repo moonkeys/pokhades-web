@@ -1,4 +1,4 @@
-import { donorIcon, essIcon } from './essicon';
+import { donorIcon, duoIcon } from './essicon';
 import { sfx } from '../audio/audio';
 import { BOONS, DONORS, RARITY_COLOR, RARITY_NAME, valueText, type Boons } from '../combat/boons';
 import type { Pokemon } from '../combat/pokemon';
@@ -139,7 +139,7 @@ export class StatSheet {
       const row = el('div', 'boon', list);
       const i = el('i', '', row);
       if (donor) donorIcon(donor.dex, i);
-      else essIcon('duo', i);
+      else if (def.duo) duoIcon(DONORS[def.duo[0]].dex, DONORS[def.duo[1]].dex, i);
       i.style.setProperty('--c', donor ? typeColor(donor.type) : 'var(--spray)');
       const body = el('div', '', row);
       const name = el('b', '', body, def.name);

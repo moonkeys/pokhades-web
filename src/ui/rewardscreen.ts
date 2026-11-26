@@ -1,4 +1,4 @@
-import { donorIcon, essIcon } from './essicon';
+import { donorIcon, duoIcon } from './essicon';
 import { sfx } from '../audio/audio';
 import { BOONS, DONORS, RARITY_COLOR, RARITY_NAME, STAT_BOONS, valueText, type BoonCard, type BoonOffer, type DonorId } from '../combat/boons';
 import type { Move } from '../combat/moves';
@@ -314,8 +314,8 @@ export class RewardScreen {
       const value = ult ? '' : stat ? stat.label.replace(/^.* (\S+ \S+)$/, '$1') : valueText(card.id, card.result);
       const c = this.card(list, {
         color: typeColor(donor.type),
-        // Le légendaire qui donne (son icône de menu d'Essentials), le Nœud Destin pour un don duo.
-        icon: def?.duo && !ult ? essIcon('duo', undefined, 'rw-ess') : donorIcon(donor.dex, undefined, 'rw-ess'),
+        // Le légendaire qui donne (son icône de menu d'Essentials) ; pour un don duo, les deux.
+        icon: def?.duo && !ult ? duoIcon(DONORS[def.duo[0]].dex, DONORS[def.duo[1]].dex) : donorIcon(donor.dex, undefined, 'rw-ess'),
         name: ult ? donor.ult : (def?.name ?? card.id),
         tag: rar,
         scope,

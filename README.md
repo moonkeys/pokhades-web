@@ -1483,6 +1483,8 @@ donateurs montrent leur icône de menu (`Graphics/Pokemon/Icons`, première des 
 `donorIcon`, recentrée par un décalage mesuré pour chaque espèce). Sur une planche de choix, le
 joueur a retenu le VS des transitions de combat (Duel), le ruban doré (as, MVP) et le rocher
 d'Éclate-Roc (grotte), et voulu des dessins en pixel art pour le chrono du Défi, la Horde (trois
-silhouettes de Pikachu) et la météo. `python3 scripts/pixel-icons.py` (Pillow) recadre les uns et
+silhouettes de Pikachu) et la météo. La météo est ombrée comme les objets des jeux DS : chaque forme
+sur cinq tons éclairés d'en haut à gauche, contour de sa propre couleur assombrie (`paint` dans le
+script). Un don duo montre ses deux légendaires l'un devant l'autre (`duoIcon`). `python3 scripts/pixel-icons.py` (Pillow) recadre les uns et
 dessine les autres dans `public/game/assets/pixel/`, hors de la copie d'import. Scènes de contrôle
 de l'outil de captures : `node scripts/shoot.mjs --out /tmp ctl-hud ctl-dons equipe`.

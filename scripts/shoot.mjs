@@ -128,7 +128,7 @@ const SCENES = [
     wait: 800,
   },
   {
-    // Contrôle : l'écran des dons (icônes de menu des légendaires, Nœud Destin des duos).
+    // Contrôle : l'écran des dons (icônes de menu des légendaires ; les deux légendaires d'un don duo).
     name: 'ctl-dons',
     control: true,
     path: '/?debug',
@@ -140,8 +140,8 @@ const SCENES = [
       pokhades.newRun();
       await until(() => pokhades.mode === 'run' && pokhades.team[0]?.pokemon);
       await sleep(1200);
-      const rng = { next: () => 0.3, int: (a, b) => a, pick: (l) => l[0], chance: () => false };
-      const offer = pokhades.run.boons.offer(pokhades.run.rng ?? rng, 3, 1, 'mew') ?? pokhades.run.boons.offer(rng, 3, 1);
+      // Sulfura, avec trois dons duo (deux légendaires chacun).
+      const offer = { donor: 'sulfura', cards: [{ id: 'duo_firestorm', rarity: 1, result: 1 }, { id: 'duo_eruption', rarity: 2, result: 2 }, { id: 'duo_winter', rarity: 0, result: 0 }] };
       pokhades.ui.rewardScreen.showBoons(offer, () => {}, () => {}, pokhades.team.map((a) => a.pokemon));
       // Les cartes entrent l'une après l'autre.
       await until(() => document.querySelectorAll('.rw-card').length >= 2);

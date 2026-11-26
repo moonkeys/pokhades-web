@@ -142,7 +142,7 @@ renamed.push([`${ESSENTIALS}/Items/POWERWEIGHT.png`, 'assets/essentials/items/PO
 // de cette copie, dans assets/pixel/ (scripts/pixel-icons.py).
 renamed.push([`${ESSENTIALS}/UI/Pokedex/icon_own.png`, 'assets/essentials/ui/icon_own.png']);
 renamed.push([`${ESSENTIALS}/UI/Battle/icon_ball_faint.png`, 'assets/essentials/ui/icon_ball_faint.png']);
-for (const f of ['STICKYBARB', 'AMULETCOIN', 'FRESHWATER', 'SPELLTAG', 'BLACKBELT', 'LUCKYEGG', 'HONEY', 'ABILITYURGE', 'MENTALHERB', 'TOWNMAP', 'AIRMAIL', 'STARPIECE', 'RELICCROWN', 'ORANBERRY', 'MUSCLEBAND', 'DESTINYKNOT', 'SMOOTHROCK'])
+for (const f of ['STICKYBARB', 'AMULETCOIN', 'FRESHWATER', 'SPELLTAG', 'BLACKBELT', 'LUCKYEGG', 'HONEY', 'ABILITYURGE', 'MENTALHERB', 'TOWNMAP', 'AIRMAIL', 'STARPIECE', 'RELICCROWN', 'ORANBERRY', 'MUSCLEBAND', 'SMOOTHROCK'])
   renamed.push([`${ESSENTIALS}/Items/${f}.png`, `assets/essentials/items/${f}.png`]);
 for (const f of ['ARTICUNO', 'ZAPDOS', 'MOLTRES', 'MEW', 'HOOH', 'CELEBI', 'GROUDON', 'RAYQUAZA', 'JIRACHI', 'DARKRAI'])
   renamed.push([`${ESSENTIALS}/Pokemon/Icons/${f}.png`, `assets/essentials/icons/${f}.png`]);

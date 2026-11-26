@@ -939,7 +939,7 @@ Miel), grotte (Corde Sortie), météo (Roches), as et MVP (étoile chromatique),
 Débloqué (Poké Ball « possédé » du Pokédex), Nuzlocke (Poké Ball éteinte),
 talent (Ability Urge), nature (Herbe Mental), provenance (Carte), contrats
 (Lettre), exploits (Morceau d'Étoile), Route Victoire (Couronne Antique),
-dégâts du bilan (Bandeau Muscle), dons duo (Nœud Destin), légendaires
+dégâts du bilan (Bandeau Muscle), dons duo (leurs deux légendaires), légendaires
 donateurs (leurs icônes de menu). Deuxième passe, sur planche de choix (même
 jour) : VS des transitions de combat pour le Duel, ruban doré pour l'as et
 le MVP, rocher d'Éclate-Roc pour la grotte ; dessinés en pixel art (« dans
@@ -947,7 +947,10 @@ la même DA des jeux Pokémon ») : chrono du Défi, trois silhouettes de
 Pikachu pour la Horde, pictogrammes de météo (`scripts/pixel-icons.py`,
 `public/game/assets/pixel/`). Icônes des légendaires recentrées (décalage
 mesuré par espèce). Fiche de toutes les icônes : artefact « Icônes de
-Pokhades ». Les ☠ des portes de boss et ★ des
+Pokhades ». Troisième passe : météo redessinée avec
+cinq tons par matière, reflets et contours colorés (style des objets des jeux
+DS ; tornade de sable, nappes de brume, nuages en bosses), et les dons duo
+montrent leurs deux légendaires au lieu du Nœud Destin. Les ☠ des portes de boss et ★ des
 textes de notification sont retirés (l'illustration suffit).
 Gardés exprès : la Poké Ball barrée de l'écran des récompenses (motif du
 logo, pas un petit signe) et les particules d'aura (feuilles, arcs : des
