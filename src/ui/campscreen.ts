@@ -1,4 +1,5 @@
 import { donorIcon, essIcon, iconText, isEssIcon } from './essicon';
+import { TEMPLE_BAIES_PER_WAVE, TEMPLE_PRIZE_AT, TEMPLE_PRIZE_NAME, TEMPLE_SHARD_STEP } from '../meta/temple';
 import { loadMove, type Move } from '../combat/moves';
 import { sfx } from '../audio/audio';
 import { fetchJson } from '../assets/json';
@@ -9,7 +10,7 @@ import { megaInLine, megaText } from '../data/megaline';
 import { sheetOf } from '../data/bestiary';
 import { dexOf } from '../data/forms';
 import { BUILDINGS, BUNKS, BUNK_ROOM, bunkPrice, CANDY, CS_LIST, csPrice, HELD_ITEMS, RESOURCES, RESOURCE_IDS, SHARDS, TMS, UPGRADES, applyHeld, buildingsShown, canAfford, heldBoosts, heldItem, heldText, teamSlots, type Cost, type HeldItem, type ResourceId, type Upgrade } from '../meta/catalog';
-import { evolutionsOf } from '../data/evolutions';
+import { evolutionsOf, preEvolutionOf } from '../data/evolutions';
 import { BIOME_IDS, CAMP_NPCS, FAUNA, LEGENDARY_SPECIES, MERC_POOLS, QUEST_SPECIES, STARTER_IDS, type BiomeId } from '../data/species';
 import { BIOME_MATERIAL, CRAFTED_TMS, GARDEN, MATERIALS, NECTARS, NECTAR_ROOMS, RECIPES, canCraft, craft, harvest, materialName, pickVisitor, plots, recipeOutput, sow } from '../meta/crafting';
 import { BIOME_GRUNTS, GRUNT_THEMES } from '../data/grunts';
@@ -77,6 +78,8 @@ export interface CampCtx {
    * referme le temps de la fiche, puis la liste se rouvre tant qu'il reste quelqu'un.
    */
   recruit(idx: number): void;
+  /** Lugia : lance l'épreuve du temple (main.ts, startTemple) ; une raison de ne pas pouvoir, sinon null. */
+  temple: { start(): void; blocked(): string | null };
 }
 
 /** Fiche d'espèce embarquée (data/pokeapi/pokemon) : ce que l'écran d'équipe et le tuteur en lisent. */
@@ -183,6 +186,7 @@ export function originLabel(o: string): string {
   if (o === 'quest') return 'Gagné en quête';
   if (o === 'nectar') return 'Attiré par un nectar';
   if (o === 'ally') return 'Rencontré en ligne';
+  if (o === 'temple') return 'Épreuve du temple';
   if (o === 'test') return '';
   if (o.startsWith('champion:')) return `Équipe ${/^[AEIOUÉÈÊ]/.test(o.slice(9)) ? 'd’' : 'de '}${o.slice(9)}`;
   const cave = o.startsWith('cave:');
@@ -236,7 +240,7 @@ const resRow = (amounts: Cost, parent: HTMLElement, cls: string, stock?: Record<
 };
 
 /** Couleur de chaque poste : le liseré de l'écran et l'ombre du titre. */
-const TINT: Record<Station, string> = { start: '#ff7a2a', moves: '#b88ceb', team: '#3ab0e0', upgrades: '#ffd23f', items: '#e8b04a', builder: '#c8963c', missions: '#9a86b8', quests: '#e0a35a', lore: '#7cc46a', online: '#7ac0e8', garden: '#e8c84a', craft: '#d9776a', visitor: '#f0a0c8', recruit: '#ffd23f', feats: '#ffd23f', map: '#c8963c' };
+const TINT: Record<Station, string> = { start: '#ff7a2a', moves: '#b88ceb', team: '#3ab0e0', upgrades: '#ffd23f', items: '#e8b04a', builder: '#c8963c', missions: '#9a86b8', quests: '#e0a35a', lore: '#7cc46a', online: '#7ac0e8', garden: '#e8c84a', craft: '#d9776a', visitor: '#f0a0c8', recruit: '#ffd23f', feats: '#ffd23f', map: '#c8963c', temple: '#9fc4e8' };
 
 /**
  * Ce qui se choisit au clavier, dans l'ordre de l'écran : onglets, cartes,
@@ -446,6 +450,7 @@ export class CampScreen {
     else if (this.station === 'garden') this.renderGarden(main, ctx);
     else if (this.station === 'craft') this.renderCraft(main, ctx);
     else if (this.station === 'feats') this.renderFeats(main, ctx);
+    else if (this.station === 'temple') this.renderTemple(main, ctx);
     else if (this.recruits) await this.renderRecruits(main, ctx);
     else await this.renderStart(main, ctx);
     if (ticket !== this.ticket || this.root !== root) return;
@@ -950,7 +955,7 @@ export class CampScreen {
     const save = ctx.save;
     const unlocked = new Set(ownedSpecies(save));
     const seen = new Set([...save.seen, ...unlocked, ...Object.keys(save.defeats).map(Number)]);
-    const all = [...new Set([...Object.values(FAUNA).flat(), ...STARTER_IDS, ...MERC_POOLS.champion, ...QUEST_SPECIES, ...seen])].filter(isBaseForm).sort((a, b) => dexOf(a) - dexOf(b) || a - b);
+    const all = [...new Set([...Object.values(FAUNA).flat(), ...STARTER_IDS, ...MERC_POOLS.champion, ...QUEST_SPECIES, ...seen])].filter((s) => preEvolutionOf(s) === null).sort((a, b) => dexOf(a) - dexOf(b) || a - b);
     // (Une forme régionale se range juste après son espèce, au même numéro.)
     const shown = all.filter((id) =>
       this.dexFilter === 'unlocked' ? unlocked.has(id) : this.dexFilter === 'locked' ? seen.has(id) && !unlocked.has(id) : this.dexFilter === 'seen' ? seen.has(id) : this.dexFilter === 'mega' ? megaInLine(id).length > 0 : true,
@@ -1039,6 +1044,9 @@ export class CampScreen {
       });
     } else if (questFor(id)) el('p', 'cs-dex-text', card, `Kangourex le promet à qui remplira sa quête « ${questFor(id)!.name} ».`);
     else if (!met) el('p', 'cs-dex-text', card, 'Pas encore rencontré. Il se cache quelque part dans les biomes de la Ligue.');
+    // Une forme évoluée dont la forme de base n'est pas jouable (Blizzaroi, Tarpaud) : elle reste au
+    // Pokédex (on la croise), mais ses victoires ne font venir personne.
+    else if (!isBaseForm(id)) el('p', 'cs-dex-text', card, 'Une forme évoluée : seules les formes de base rejoignent la rébellion.');
     else this.recruitBar(card, save, id, waiting(id));
     if (!own && (MERC_POOLS.champion as readonly number[]).includes(id)) el('p', 'cs-dex-text', card, 'Gardien de grotte : le vaincre le débloque d’office.');
     if (!own && met && Object.values(FAUNA).some((pool) => pool.includes(id))) el('small', 'cs-info', card, 'Libéré d’une grotte, il serait débloqué aussi.');
@@ -2090,6 +2098,42 @@ export class CampScreen {
    * Pokémon sur le côté). Les records, puis par groupe son compte, ce qui est prêt à réclamer et
    * les deux prochains à faire seulement (retour de test : « le carnet est trop chargé »).
    */
+  /**
+   * Lugia, gardien du temple de l'île (meta/temple.ts) : le record, ce que rapporte l'épreuve, et
+   * l'entrée. Les mêmes trois cases que les records du carnet de Xatu.
+   */
+  private renderTemple(main: HTMLElement, ctx: CampCtx): void {
+    const save = ctx.save;
+    const t = save.temple;
+    el('p', 'cs-quote', main, t.tries ? '« Tu reviens. Les pierres se souviennent de ta dernière chute. »' : '« Peu franchissent l’eau. Encore moins entrent ici. Les vagues ne cessent qu’à ta chute. »');
+    const rec = el('div', 'cs-records', main);
+    for (const [v, label] of [
+      [t.best ? String(t.best) : '—', t.best > 1 ? 'vagues, record' : 'vague, record'],
+      [String(t.tries), t.tries > 1 ? 'essais' : 'essai'],
+      [t.prize ? 'Avec toi' : `Vague ${TEMPLE_PRIZE_AT}`, TEMPLE_PRIZE_NAME],
+    ] as const) {
+      const cell = el('div', 'da-paper', rec);
+      el('b', '', cell, v);
+      el('small', '', cell, label);
+    }
+    const card = el('div', 'cs-card da-paper cs-temple', main);
+    el('div', 'cs-head', card).append(el('b', '', undefined, 'L’épreuve'));
+    el('small', 'cs-info', card, 'Ton équipe du Repaire, sans dons, contre des vagues de plus en plus fortes, tirées de tous les biomes. Toutes les cinq vagues, un Pokémon de champion. Pas de porte : on sort en tombant.');
+    el('div', 'cs-label', card, 'Ce qu’elle rapporte');
+    el('small', 'cs-info', card, `${TEMPLE_BAIES_PER_WAVE} Baies par vague vaincue, à chaque essai.`);
+    el('small', 'cs-info', card, `Un Éclat de Champion par palier de ${TEMPLE_SHARD_STEP} vagues franchi pour la première fois.`);
+    el('small', 'cs-info', card, t.prize ? `${TEMPLE_PRIZE_NAME} a rejoint la rébellion.` : `À la ${TEMPLE_PRIZE_AT}ᵉ vague, je te confie ${TEMPLE_PRIZE_NAME}.`);
+    const why = ctx.temple.blocked();
+    const go = el('button', 'cs-net-btn', card, why ?? 'Entrer dans le temple') as HTMLButtonElement;
+    go.disabled = !!why;
+    go.addEventListener('click', () => {
+      if (ctx.temple.blocked()) return;
+      sfx('confirm');
+      this.close();
+      ctx.temple.start();
+    });
+  }
+
   private renderFeats(main: HTMLElement, ctx: CampCtx): void {
     const save = ctx.save;
     el('p', 'cs-quote', main, '« Fais chacun une fois : je t’en récompense, ici, au Repaire. »');

@@ -40,6 +40,49 @@ export interface PatchNote {
 
 export const PATCH_NOTES: readonly PatchNote[] = [
   {
+    id: '2026-11-27-repaire',
+    date: '27 novembre 2026',
+    title: 'Le temple de Lugia',
+    sections: [
+      {
+        title: 'Le temple de Lugia',
+        items: [
+          'Sur l’île du lac, Lugia est désormais seul, et il garde le temple : parle-lui pour y entrer.',
+          'L’épreuve : des vagues de plus en plus fortes, tirées de tous les biomes, avec un champion toutes les cinq. On n’en sort qu’en tombant.',
+          'On y entre dans un hall de pierre, entre deux colonnades de statues et de torches, face à l’autel.',
+          '12 Baies par vague vaincue, un Éclat de Champion à chaque palier de cinq vagues battu, et à la 15ᵉ vague, Lugia te confie Drattak.',
+        ],
+        images: artIcons([['Lugia', 249], ['Drattak', 373]]),
+      },
+      {
+        title: 'Le Repaire s’agrandit',
+        items: [
+          'Deux nouveaux chantiers chez Charpenti, une fois tout le reste bâti : le Verger, au sud-ouest, qui rapporte des Baies à chaque salle, et le Hameau du lac, au sud-est, dix places de plus.',
+        ],
+      },
+      {
+        title: 'Pokédex et recrues',
+        items: [
+          'Seules les formes de base rejoignent la rébellion : Blizzaroi, Tarpaud, Forgella ou Momartik restent au Pokédex mais ne font plus venir de recrue.',
+          'Le Pokédex montre cinq espèces par ligne au lieu de deux.',
+        ],
+      },
+      {
+        title: 'Interface',
+        items: [
+          'Les petites icônes (poids, nature, talent) sont plus discrètes et ne débordent plus des cartes ; celle des contrats de Kangourex tient dans sa case.',
+        ],
+      },
+      {
+        title: 'Le Repaire',
+        items: [
+          'Le chemin de terre rejoint les allées pavées sans bande d’herbe entre les deux.',
+          'Le bac fleuri des jardins n’est plus posé sur le chemin.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-11-27-recrues',
     date: '27 novembre 2026',
     title: 'Une grande équipe, de vrais combats',

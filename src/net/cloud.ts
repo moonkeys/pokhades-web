@@ -628,3 +628,73 @@ export function startCloud(onSaved: (f: () => void) => void): void {
     if (session && status === 'offline') void reconcile();
   });
 }
+
+// ── Tableau de bord des données (supabase/admin.sql, ui/dashboard.ts) ───────────────────────────
+
+/** Un joueur, tel que admin_stats() le résume (ni e-mail ni sauvegarde entière). */
+export interface AdminPlayer {
+  id: string;
+  updated_at: string;
+  rev: number;
+  started: boolean;
+  runs: number;
+  wins: number;
+  best_room: number;
+  baies: number;
+  shards: number;
+  beaten: number;
+  built: number;
+  seen: number;
+  mons: number;
+  temple: number;
+}
+/** Une erreur du jeu, regroupée par message et début de pile. */
+export interface AdminError {
+  message: string;
+  stack: string | null;
+  version: string | null;
+  count: number;
+  first_at: string;
+  last_at: string;
+}
+export interface AdminStats {
+  at: string;
+  players: AdminPlayer[];
+  errors: AdminError[];
+}
+
+/**
+ * Les statistiques de tous les joueurs, pour un administrateur connecté (public.admins) ; null
+ * pour tout autre compte, sans compte, ou si le script supabase/admin.sql n'a pas été passé.
+ */
+export async function adminStats(): Promise<AdminStats | null> {
+  if (!cloudEnabled || !session) return null;
+  try {
+    return (await call('/rest/v1/rpc/admin_stats', { method: 'POST', body: '{}', auth: true })) as AdminStats;
+  } catch {
+    return null;
+  }
+}
+
+/** Erreurs déjà signalées depuis cette page, et combien au plus : un bug en boucle n'inonde rien. */
+const reported = new Set<string>();
+const REPORT_MAX = 5;
+
+/**
+ * Signale une erreur du jeu au journal (public.game_errors), avec ou sans compte : le message, le
+ * début de la pile et la version. Silencieux : un signalement raté ne doit rien casser de plus.
+ */
+export function reportError(message: string, stack: string, version: string): void {
+  if (!cloudEnabled) return;
+  const key = `${message}|${stack.split('\n')[1] ?? ''}`;
+  if (reported.has(key) || reported.size >= REPORT_MAX) return;
+  reported.add(key);
+  const headers: Record<string, string> = { apikey: ANON, 'Content-Type': 'application/json' };
+  if (session && session.exp > Date.now() / 1000 + 30) headers.Authorization = `Bearer ${session.access}`;
+  void fetch(`${URL_}/rest/v1/rpc/report_error`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ p_message: message.slice(0, 300), p_stack: stack.slice(0, 1500), p_version: version.slice(0, 40) }),
+    keepalive: true,
+  }).catch(() => {});
+}

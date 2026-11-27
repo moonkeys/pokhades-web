@@ -14,7 +14,7 @@ import { sanitizeErrands, type Errand } from './errands';
 // individu (`uid`) ; les victoires et le Pokédex, par espèce.
 
 import { hash2 } from '../core/rng';
-import { preEvolutionOf } from '../data/evolutions';
+import { evolvedInGames, preEvolutionOf } from '../data/evolutions';
 import { rollMon, type Mon } from './mons';
 import { campCapacity, RESOURCE_IDS, type BuildingId, type CsId, type ResourceId, type UpgradeId } from './catalog';
 import { GARDEN, MATERIALS, NECTARS, OLD_SEEDS } from './crafting';
@@ -177,6 +177,11 @@ export interface Save {
    * pour une ultime) : les pages des légendaires au carnet de Xatu (meta/feats.ts, noteBoon).
    */
   boonsGot: string[];
+  /**
+   * L'épreuve du temple de Lugia (run/room.ts, special `temple`) : la meilleure vague atteinte
+   * (vagues vaincues), le nombre d'essais, et si sa récompense (meta/temple.ts) a déjà rejoint la rébellion.
+   */
+  temple: { best: number; tries: number; prize: boolean };
 }
 
 /** Longueur d'un surnom dans les jeux principaux (12 depuis la 6ᵉ génération). */
@@ -235,6 +240,7 @@ const DEFAULTS: Save = {
   bestRoom: 0,
   evolved: [],
   boonsGot: [],
+  temple: { best: 0, tries: 0, prize: false },
 };
 
 /** La clé du localStorage : net/cloud.ts lit et réécrit la même, pour la sauvegarde en ligne. */
@@ -337,6 +343,11 @@ export function migrate(save: Save): Save {
   save.wins = Math.max(0, Math.floor(Number(save.wins) || 0));
   save.bestRoom = Math.max(0, Math.floor(Number(save.bestRoom) || 0));
   save.boonsGot = names(save.boonsGot);
+  {
+    const t = (save.temple ?? {}) as Partial<Save['temple']>;
+    const n = (v: unknown) => Math.max(0, Math.floor(Number(v) || 0));
+    save.temple = { best: n(t.best), tries: n(t.tries), prize: t.prize === true };
+  }
   save.evolved = Array.isArray(save.evolved) ? [...new Set(save.evolved.filter((n) => Number.isInteger(n)))] : [];
   return save;
 }
@@ -399,7 +410,7 @@ export function recruitThreshold(save: Save, species: number): number {
  * Seule une forme de base se débloque (is_base_form) : une évolution se gagne
  * en faisant monter sa lignée en run. Ses victoires comptent quand même.
  */
-export const isBaseForm = (id: number): boolean => preEvolutionOf(id) === null;
+export const isBaseForm = (id: number): boolean => preEvolutionOf(id) === null && !evolvedInGames(id);
 
 
 export function markSeen(save: Save, id: number): boolean {

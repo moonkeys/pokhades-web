@@ -89,7 +89,7 @@ const REWARD_WEIGHTS: [Reward, number][] = [
  *   une embuscade plus forte, et elle ne se prend qu'une fois la salle libérée ;
  * - Marchand : Miaouss propose un pari sur les ₽ et un don contre des PV.
  */
-export type SpecialId = 'challenge' | 'trap' | 'merchant' | 'spring' | 'altar' | 'dojo' | 'pension' | 'horde' | 'duel';
+export type SpecialId = 'challenge' | 'trap' | 'merchant' | 'spring' | 'altar' | 'dojo' | 'pension' | 'horde' | 'duel' | 'temple';
 /** `icon` : son icône d'Essentials sur la porte (ui/essicon.ts ; elle remplace un signe, ⏱ ⚠ ¤ ✚ ☠ ✊ ❀ ❖ ⚔). */
 export const SPECIALS: Record<SpecialId, { name: string; icon: EssIconKind; color: string }> = {
   challenge: { name: 'Défi', icon: 'challenge', color: '#f2c14e' },
@@ -110,6 +110,9 @@ export const SPECIALS: Record<SpecialId, { name: string; icon: EssIconKind; colo
   // Ajout (23 novembre 2026) : un dresseur légendaire (Red, Leaf, Brice) et quatre Pokémon
   // de champion, contre un don garanti (run/room.ts, DUEL_*). Jamais avant le troisième acte.
   duel: { name: 'Duel', icon: 'duel', color: '#e8584c' },
+  // Ajout (27 novembre 2026, « faire quelque chose de l'île et du temple de Lugia ») : l'épreuve du
+  // temple, hors run, lancée depuis Lugia au Repaire (run/room.ts). Jamais proposée par une porte.
+  temple: { name: 'Temple de Lugia', icon: 'challenge', color: '#9fc4e8' },
 };
 
 /**
@@ -189,6 +192,8 @@ export class Run {
   private readonly beaten: readonly string[];
   /** Salle spéciale en cours (la porte prise l'annonçait), sinon null. */
   special: SpecialId | null = null;
+  /** Épreuve du temple (main.ts, startTemple) : niveau de la première vague, celui de l'équipe. */
+  templeLevel = 10;
   /** Salle de Horde : son espèce (ExitOffer.horde). */
   hordeSpecies: number | null = null;
   /** Salles spéciales prises à chaque acte, et la dernière (jamais deux pareilles de suite). */

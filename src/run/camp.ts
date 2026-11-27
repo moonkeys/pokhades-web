@@ -10,7 +10,7 @@ import { GARDEN, GARDEN_PLOTS, MATERIALS, NECTARS } from '../meta/crafting';
 import type { Save } from '../meta/save';
 import type { Projector } from '../render/combatfx';
 import { CAMP_ATELIER_GLADE, CAMP_EAST_GLADE, CAMP_GLADE, CAMP_W, cleanThin, clearAreas, useGrid, type Pocket, type WorldMap } from '../world/generate';
-import { BAR, CAMP_PROPS, CAMPFIRE, EXTRA, FENCES, LAMP, LANE, PLAZA_TILES, PROPS, TILE, TOWN_DECOR, type SpriteDef, type Tile } from '../world/tiles';
+import { BAR, CAMP_PROPS, CAMPFIRE, EXTRA, FENCES, LAMP, LANE, PLAZA_TILES, PROPS, TILE, TOWN_DECOR, TREES, type SpriteDef, type Tile } from '../world/tiles';
 import { Placer, type Spot } from './placement';
 import { drawDummy } from './shop';
 import { LEAGUE_GATE } from './run';
@@ -60,6 +60,7 @@ import { MH as PLAN_H, MW as PLAN_W, paintPlan, type Region } from '../ui/worldp
 // En dehors des gardiens des postes, le camp ne compte que des libérés — ceux
 // qu'on a débloqués, qu'on n'emmène pas et qui ne sont pas en mission : endormis sur les rondins du feu ou au
 // dortoir, à l'entraînement, à la nage dans le lac (ceux d'eau), ou à flâner.
+// (27 novembre 2026 : Lugia y est seul, gardien de l'épreuve du temple ; les deux ermites sont partis.)
 // Sur l'île, loin au sud du lac, un temple dont on gravit l'escalier, Lugia et
 // deux ermites : on n'y va qu'à la nage, avec la CS Surf. Un repère tressaute
 // au-dessus du gardien dont on s'approche ; E ouvre son écran (main.ts), après
@@ -69,7 +70,7 @@ import { MH as PLAN_H, MW as PLAN_W, paintPlan, type Region } from '../ui/worldp
 // sur 116 × 96 cases), des aménagements payés en Baies en plus du bois, de la
 // pierre et des vivres, et un camp qui s'agrandit sur la forêt.
 
-export type Station = 'start' | 'team' | 'builder' | 'missions' | 'quests' | 'lore' | 'moves' | 'upgrades' | 'items' | 'online' | 'garden' | 'craft' | 'visitor' | 'recruit' | 'feats' | 'map';
+export type Station = 'start' | 'team' | 'builder' | 'missions' | 'quests' | 'lore' | 'moves' | 'upgrades' | 'items' | 'online' | 'garden' | 'craft' | 'visitor' | 'recruit' | 'feats' | 'map' | 'temple';
 
 export const STATIONS: Record<Station, { id: number; type: string; title: string; kicker: string; intro: string }> = {
   start: {
@@ -194,6 +195,15 @@ export const STATIONS: Record<Station, { id: number; type: string; title: string
     kicker: 'veut rejoindre la rébellion',
     intro: '',
   },
+  // Ajout (27 novembre 2026, « l'île ne sert à rien ; un seul Pokémon, mais qui a un rôle ; entrer
+  // dans le temple ») : Lugia, seul sur l'île, garde l'épreuve du temple (run/room.ts, `temple`).
+  temple: {
+    id: ISLAND_NPCS.sage,
+    type: 'psychic',
+    title: 'Temple',
+    kicker: 'le gardien de l’île',
+    intro: 'Entre, si tu l’oses : les vagues ne cessent qu’à ta chute.',
+  },
 };
 
 /**
@@ -298,6 +308,13 @@ const POSTS = {
   // La carrière, au nord-est derrière le relais, et la trouée qui l'y relie.
   quarry: [20, -11],
   quarryWay: [14, -12],
+  // Les deux chantiers de fin (27 novembre 2026, « agrandir le Repaire ») : le verger dans la forêt
+  // du sud-ouest, au-delà du coin du savant ; le hameau du lac au sud-est, au-delà de l'atelier.
+  // Chacun a sa trouée vers la partie déjà ouverte (le coin du savant, la clairière de l'atelier).
+  orchard: [-31, 16],
+  orchardWay: [-23, 17.5],
+  lakeside: [35, 11],
+  lakesideWay: [28, 14],
 } as const satisfies Record<string, readonly [number, number]>;
 
 /**
@@ -327,6 +344,8 @@ export function campPockets(built: readonly BuildingId[], hub: { x: number; y: n
     ...(has('outpost') ? [p('scout', 5.5, 3.5)] : []),
     ...(has('tavern') ? [p('elder', 7, 4)] : []),
     ...(has('quarry') ? [p('quarry', 6.5, 4.5), p('quarryWay', 4.5, 3)] : []),
+    ...(has('orchard') ? [p('orchard', 9, 6), p('orchardWay', 5, 4)] : []),
+    ...(has('lakeside') ? [p('lakeside', 7.5, 6), p('lakesideWay', 5, 4)] : []),
   ];
 }
 
@@ -533,6 +552,8 @@ export class Camp {
     // pas du chemin du nord : plus d'allée.
     const training = at0('training');
     const quarry = at0('quarry');
+    const orchard = at0('orchard');
+    const lakeside = at0('lakeside');
     // Le relais de Roucarnage, à côté de Dracolosse, à l'est de l'arche : le courrier part
     // avec ceux qui partent (retour de test : il était perdu au sud-est, près du puits).
     const relay = { x: gx + 7.5, y: gy + 2.6 };
@@ -884,6 +905,28 @@ export class Camp {
       put(PROPS.rockSmall[1], quarry.x - 4.4, quarry.y + 1.8, false);
       put(PROPS.paleStones[3], quarry.x + 4.2, quarry.y + 2, false);
     }
+    if (has('orchard')) {
+      // Le verger : trois rangées de fruitiers sur une herbe tondue, des balles de foin et des
+      // tonneaux de récolte au bout des rangs. Les arbres se posent seulement où le sol est libre
+      // (la poche a des bords bruités).
+      const fits = (x: number, y: number) => world.inside[Math.floor(y - 0.5) * W + Math.floor(x)] === 1 && !world.blocked[Math.floor(y - 0.5) * W + Math.floor(x)] && !isWater(Math.floor(x), Math.floor(y - 0.5));
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 4; c++) {
+          const x = orchard.x - 5.5 + c * 3.6 + (r % 2) * 1.2;
+          const y = orchard.y - 2.6 + r * 3;
+          if (fits(x, y)) put(TREES.olive[(r + c) % TREES.olive.length], x, y);
+        }
+      }
+      for (const [dx, dy] of [[7, -1.5], [7.4, 1.6]]) if (fits(orchard.x + dx, orchard.y + dy)) put(CAMP_PROPS.barrels[0], orchard.x + dx, orchard.y + dy);
+      if (fits(orchard.x - 7.5, orchard.y + 3.5)) put(CAMP_PROPS.logs, orchard.x - 7.5, orchard.y + 3.5);
+    }
+    if (has('lakeside')) {
+      // Le hameau du lac : trois huttes moussues en arc sur la rive, des tonneaux et un banc face à l'eau.
+      const fits = (x: number, y: number) => world.inside[Math.floor(y - 0.5) * W + Math.floor(x)] === 1 && !world.blocked[Math.floor(y - 0.5) * W + Math.floor(x)] && !isWater(Math.floor(x), Math.floor(y - 0.5));
+      for (const [dx, dy] of [[-4.5, -1.5], [1, -3], [5.5, -0.5]]) if (fits(lakeside.x + dx, lakeside.y + dy)) put(CAMP_PROPS.mossHut, lakeside.x + dx, lakeside.y + dy);
+      for (const [dx, dy] of [[-1.5, 2.4], [-0.6, 2.6]]) if (fits(lakeside.x + dx, lakeside.y + dy)) put(CAMP_PROPS.barrels[1], lakeside.x + dx, lakeside.y + dy);
+      if (fits(lakeside.x + 3, lakeside.y + 3.5)) put(TOWN_DECOR.bench, lakeside.x + 3, lakeside.y + 3.5);
+    }
     if (has('dorm')) {
       // Décalés vers l'ouest (retour de test du 16 novembre 2026, capture à l'appui : le tipi de
       // droite passait par-dessus le panneau du plan du monde, posé à la même abscisse ; le
@@ -1077,7 +1120,12 @@ export class Camp {
       for (const b of benches) put(TOWN_DECOR.bench, b.x, b.y);
       put(TOWN_DECOR.hydrangeas[0], hx - 6.5, hy - 3.4);
       put(TOWN_DECOR.hydrangeas[1], hx + 6.5, hy - 3.4);
-      put(TOWN_DECOR.planters[0], hx + 0.5, hy + 7.2);
+      // Le bac fleuri, à côté du chemin du sud et non dessus (retour du 27 novembre 2026 : « une
+      // jardinière sur le chemin, ce n'est pas logique ») : la place prévue, sinon un pas de côté.
+      const py = Math.floor(hy + 7.2 - 0.5);
+      const clearOf = (cx: number) => [-1, 0, 1].every((d) => !isPath(Math.floor(cx) + d, py) && !isPath(Math.floor(cx) + d, py - 1));
+      const px = [0, -3, 3, -4.5, 4.5].map((d) => hx + 0.5 + d).find(clearOf);
+      if (px !== undefined) put(TOWN_DECOR.planters[0], px, hy + 7.2);
       put(TOWN_DECOR.bushes[0], hx - 8.2, hy + 4.6);
       put(TOWN_DECOR.bushes[1], hx + 9, hy + 4.6);
       put(TOWN_DECOR.sunflower, hut.x - 4.6, hut.y + 0.3);
@@ -1133,6 +1181,8 @@ export class Camp {
     // (Dessiné centré sur ses deux colonnes d'escalier, pas sur l'île : les marches tombent pile sous les pieds.)
     this.temple = { x: sx + 1, y: island.y, top: Math.floor(island.y) - STEPS };
 
+    // Lugia, au pied du temple, à côté de l'escalier (qu'il ne bouche pas) : le gardien de l'épreuve.
+    posts.push(['temple', place.freeSpot(Math.floor(island.x) + 3, Math.floor(island.y) + 1, 3), 0]);
     for (const [station, spot, rest, arg] of posts) {
       const news = document.createElement('div');
       news.className = 'room-label camp-news';
@@ -1266,6 +1316,9 @@ export class Camp {
       ...(has('clearing') ? [{ x: glade.x, y: glade.y + 1 }] : []),
       ...(has('eastglade') ? [{ x: east.x, y: east.y + 2 }] : []),
       ...(has('hamlet') ? [{ x: square.x + square.w / 2, y: square.y + square.h - 1 }] : []),
+      // Les chantiers de fin : des libérés cueillent au verger et flânent devant les huttes du lac.
+      ...(has('orchard') ? [{ x: orchard.x, y: orchard.y + 3.5 }] : []),
+      ...(has('lakeside') ? [{ x: lakeside.x, y: lakeside.y + 3 }] : []),
     ];
     strollers.forEach((id, i) => {
       const home = yards[i % yards.length];
@@ -1281,16 +1334,6 @@ export class Camp {
       t.wander = { home: { ...s }, radius: 5, goal: { ...s }, wait: rng.range(0.5, 2), water: true };
     });
 
-    // Sur l'île, devant le temple : Lugia et les deux ermites, qui vont et viennent.
-    const islanders: [number, number, string[]][] = [
-      [ISLAND_NPCS.sage, 0, LINES.sage],
-      [ISLAND_NPCS.hermits[0], -5, LINES.hermit],
-      [ISLAND_NPCS.hermits[1], 5, [...LINES.hermit].reverse()],
-    ];
-    for (const [id, dx, lines] of islanders) {
-      const s = place.freeSpot(Math.floor(island.x + dx), Math.floor(island.y) + 1, 3);
-      this.talk(id, s, 0, ['Idle'], lines).wander = { home: { ...s }, radius: dx ? 2.5 : 1.5, goal: { ...s }, wait: rng.range(1, 4) };
-    }
   }
 
   /**

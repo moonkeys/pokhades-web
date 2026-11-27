@@ -441,7 +441,7 @@ nuit (carte de 88 × 66 cases), un feu de camp (la flamme d'Essentials,
 Pokémon qui mène s'y promène, l'équipe ne le suit pas. Au sud, un grand lac ;
 loin au milieu, une île qu'on n'atteint qu'à la nage, avec la CS Surf : un
 temple dont on gravit l'escalier (on y ralentit et l'on grandit en montant),
-Lugia et deux ermites qui vont et viennent. Un chevron tressaute au-dessus du
+et Lugia, seul, gardien de l'épreuve du temple (voir « Le temple de Lugia »). Un chevron tressaute au-dessus du
 gardien dont on s'approche ; E ouvre son écran, après sa présentation la
 première fois. Dans les écrans, les flèches choisissent et Entrée valide.
 
@@ -1544,6 +1544,82 @@ Poséidon dans Hades ». Écart voulu avec `CombatArena._roll_boon_rarity` du je
   - Un don `flag` déjà pris n'est plus reproposé (`Boons.usable`).
   Le banc est bruité (±15 % sur le temps, ±20 points de PV avec trois combats) : il sert à repérer
   un don muet ou un écart flagrant, pas à régler au pour cent.
+
+## Repaire agrandi, temple redécoré, tableau de bord (27 novembre 2026)
+
+Retours du même jour : « j'ai tout construit : agrandir le Repaire » ; « le décor du temple, pas
+celui du village ; et s'il n'y a pas d'animation du tout, on change de Pokémon à débloquer » ;
+« un petit dashboard des données : les gens, leur avancement, pour améliorer le jeu, les bugs ».
+
+- **Deux chantiers de fin** (`meta/catalog.ts`, `run/camp.ts`) : le **Verger** (après l'atelier de
+  l'artisan ; 30 Bois, 20 Nourriture) ouvre la forêt du sud-ouest, au-delà du coin du savant : trois
+  rangées de fruitiers, des tonneaux ; +2 Baies par salle libérée en run (`ORCHARD_BAIES`). Le
+  **Hameau du lac** (après le bourg ; 40 Bois, 30 Pierre, 15 Nourriture) ouvre la forêt du sud-est,
+  au-delà de l'atelier : trois huttes moussues, +10 places au Repaire. Chacun a sa poche
+  (`campPockets`, `POSTS.orchard` / `lakeside`) et sa trouée vers la partie ouverte ; des libérés
+  y flânent.
+- **Le hall du temple** (`world/arena.ts`, `decorateTemple` ; `WorldKey.temple`) : un dallage de
+  galets pâles dans le noir, deux colonnades de statues et de torches, et au fond l'autel (la
+  façade du temple de l'île). Le HUD dit « Temple de Lugia · vague N ».
+- **La récompense du temple** : Drattak (`TEMPLE_PRIZE`), que Lugia confie à la 15ᵉ vague. Lugia
+  restait sans attaque ni tir (ses planches PMD n'en ont pas) ; Mewtwo et Raikou, seuls légendaires
+  complets, sont déjà ceux des quêtes. `Save.temple.prize` remplace `lugia` (jamais en ligne).
+- **Tableau de bord** (`ui/dashboard.ts`, écran Compte → « Données du jeu ») : pour un
+  administrateur seulement. Les chiffres (joueurs, actifs 7 et 30 j, runs, victoires, erreurs),
+  l'entonnoir (compte → partie commencée → une run → un champion → une victoire → le temple), les
+  records par acte, chaque joueur (identifiant court, jamais l'e-mail) et les erreurs du jeu,
+  regroupées. **À faire une fois dans Supabase** : coller `supabase/admin.sql` dans le SQL Editor,
+  puis s'ajouter administrateur avec la ligne `insert into public.admins …` du haut du fichier (son
+  propre e-mail). Le script garde les règles de `schema.sql` : un joueur ne lit toujours que sa
+  ligne ; `admin_stats()` vérifie `public.admins` et ne rend que des compteurs.
+- **Journal des erreurs** (`net/cloud.ts`, `reportError` ; `report_error`) : une erreur JavaScript
+  non rattrapée part au journal (message, début de pile, version = dernière note de version ; ni IP
+  ni navigateur), cinq au plus par page, une même erreur ne fait qu'incrémenter son compteur.
+  Avant `admin.sql`, l'appel échoue en silence. Testable avec `scripts/fake-supabase.mjs`, où tout
+  compte dont l'e-mail commence par « admin » est administrateur.
+
+## Le temple de Lugia (27 novembre 2026)
+
+Retour du même jour : « il faut faire quelque chose de l'île ; un seul Pokémon, mais qui a un
+rôle ; entrer dans le temple pour avoir accès à une salle spéciale ou des jeux ».
+
+- **L'île** (`run/camp.ts`) : Roigada et Noadkoko partent ; Lugia reste, seul, gardien d'un poste
+  (`Station` `temple`) à côté de l'escalier du temple. Son écran (`ui/campscreen.ts`,
+  `renderTemple`) : record, essais, ce que rapporte l'épreuve, « Entrer dans le temple » (pas en
+  ligne, et il faut une équipe).
+- **L'épreuve** (`run/room.ts`, special `temple` ; `main.ts`, `newRun(true)`) : une « run » d'une
+  salle, l'arène d'intérieur du Village (le seul hall clos), sans porte ni récompense au sol, qui ne
+  compte ni comme run ni dans les records. 40 vagues tirées de toute la faune (sans les nageurs) :
+  la première au niveau moyen de l'équipe moins deux, +1,2 niveau et un demi-sauvage par vague (plus
+  un par paire de membres) ; toutes les cinq, un Pokémon de champion (`TEMPLE_*`). Chaque vague
+  s'annonce. Sans dons : l'équipe du Repaire telle quelle.
+- **La fin** (`finishTemple`, `meta/temple.ts`) : à la chute de l'équipe (ou au bout des 40
+  vagues), retour direct au Repaire, sans bilan de run : 12 Baies par vague vaincue, un Éclat de
+  Champion par palier de 5 vagues franchi pour la première fois, et à la 15ᵉ vague, une fois,
+  Drattak rejoint la rébellion (recrue chez Dracolosse, provenance « Épreuve du temple » ; voir
+  plus haut pour Lugia). Record et
+  essais dans `Save.temple`. Les victoires y comptent pour les recrues, comme ailleurs.
+
+## Formes de base, icônes, sols du Repaire (27 novembre 2026)
+
+Retour du même jour : « dans le Pokédex je peux déjà avoir du Blizzaroi, du Tarpaud ; on ne prend
+que les formes de base. Le poids est énorme et mal aligné, les icônes en général sont grosses, les
+contrats de Kangourex débordent. De l'herbe entre chaque texture ; une jardinière sur le chemin ».
+
+- **Formes de base** (`data/evolutions.ts`, `evolvedInGames` ; `meta/save.ts`, `isBaseForm`) : les
+  formes évoluées dans les jeux dont la forme précédente n'est pas jouable (`LEAGUE_PREVIOUS`, et
+  Tarpaud) ne remplissent plus de jauge de recrue ni ne se proposent au nectar. Elles restent au
+  Pokédex (la grille garde toute espèce sans pré-évolution jouable), avec « seules les formes de base
+  rejoignent la rébellion ». Pikachu, Rondoudou et Marill, dont le bébé n'est pas embarqué, restent
+  des formes de base.
+- **Icônes** (`ui/da.css`) : une icône d'objet dans le texte (`img.ess-item`) fait 1,5 em au lieu de
+  1,9 ; sur les puces de poids, 1,3 em ; dans une case de carte (`.cs-icon`), 85 % de la case.
+- **Pokédex** : grille comme celle des recrues (cartes de 5,1 unités, fiche de 32), cinq par ligne.
+- **Sols** (`render/renderer.ts`, `bake`) : les bords du chemin de terre se calculent avec les allées
+  et dallages du Repaire (plus de liseré d'herbe entre eux), et une case d'herbe seule entre une allée
+  et le chemin prend la terre (dessin seulement).
+- **Bac fleuri des jardins** (`run/camp.ts`) : à sa place s'il n'y a pas de chemin dessous, sinon un
+  pas de côté, sinon pas de bac.
 
 ## Grande équipe, dresseurs, routes gardées (27 novembre 2026)
 
