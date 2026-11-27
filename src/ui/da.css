@@ -5449,7 +5449,8 @@ body.net-on .hud-team {
   grid-template-areas:
     'monde champions'
     'monde rebellion'
-    'conseil conseil';
+    'conseil conseil'
+    'dons dons';
   gap: calc(1 * var(--u));
   align-items: stretch;
 }
@@ -5464,6 +5465,20 @@ body.net-on .hud-team {
 }
 .cs-feat-group.g-conseil {
   grid-area: conseil;
+}
+/* Les pages des légendaires (meta/feats.ts) : en bandeau tout en bas, sur deux colonnes, chacune
+ * avec l'icône du légendaire devant son nom et la liste de ce qui manque. */
+.cs-feat-group.g-dons {
+  grid-area: dons;
+}
+.g-dons .cs-feat-rows {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.cs-feat b .ess-mon {
+  margin-right: calc(0.3 * var(--u));
+}
+.cs-feat small.cs-feat-missing {
+  font-style: italic;
 }
 .cs-feat-rows {
   display: grid;
@@ -5657,8 +5672,12 @@ body.net-on .hud-team {
   .cs-feat-group.g-monde,
   .cs-feat-group.g-champions,
   .cs-feat-group.g-rebellion,
-  .cs-feat-group.g-conseil {
+  .cs-feat-group.g-conseil,
+  .cs-feat-group.g-dons {
     grid-area: auto;
+  }
+  .g-dons .cs-feat-rows {
+    grid-template-columns: minmax(0, 1fr);
   }
   .cs-quote {
     font-size: calc(1.6 * var(--u));

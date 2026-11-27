@@ -40,6 +40,64 @@ export interface PatchNote {
 
 export const PATCH_NOTES: readonly PatchNote[] = [
   {
+    id: '2026-11-27',
+    date: '27 novembre 2026',
+    title: 'Des dons qui se méritent',
+    sections: [
+      {
+        title: 'Raretés',
+        items: [
+          'Au début d’une run, les dons sont presque tous Communs ; Rares et Épiques deviennent plus fréquents au fil des salles.',
+          'Une salle passée sans être touché ne fait plus monter toutes les cartes : seulement parfois, et jamais jusqu’au Prismatique.',
+          'Le Prismatique se gagne en reprenant un don que tu as déjà : chaque reprise le monte d’un cran.',
+        ],
+      },
+      {
+        title: 'Légendaires',
+        items: [
+          'Un légendaire qui t’a déjà donné un don revient bien plus souvent, comme les dieux de Hades.',
+          'Une run réunit au plus quatre légendaires : ensuite, ce sont toujours eux, de quoi monter leurs dons et décrocher leurs duos.',
+        ],
+      },
+      {
+        title: 'Le carnet de Xatu',
+        items: [
+          'Une page par légendaire : obtiens chacun de ses dons et son ultime, à n’importe quelle rareté, au fil de tes runs. La page apparaît dès son premier don.',
+          'Le carnet dit ce qui manque à chaque page. Une page remplie rapporte 60 Baies, 2 Éclats et un Super Bonbon.',
+          'Et deux pages de plus : les alliances (tous les dons duo) et le Panthéon (les dix légendaires).',
+        ],
+      },
+      {
+        title: 'Tous les dons revus',
+        items: [
+          'Chaque don a été essayé en combat. Souffle Gelé gèle bien plus souvent ; Braises ou une brûlure déjà posée ne l’empêchent plus de geler.',
+          'Les dons de statistique montent avec la rareté : +20 % au Commun, jusqu’à +48 % au Prismatique.',
+          'Sept dons qui n’étaient jamais proposés arrivent : Empathie, Lien Psychique, Résurrection, Ascension, Pluie d’Étoiles, et les duos Sacrifice et Phénix Doré.',
+          'Fortune, de Jirachi, remplit maintenant ta jauge d’ultime au lieu de soigner comme Plumage.',
+          'Rembobinage ne te ramène en arrière que si tu avais plus de PV, une fois toutes les 8 secondes : ton dash avance de nouveau.',
+          'Les soins des dons sont moins forts, Continent et Vide un peu moins aussi, et Ascendant plafonne à +60 % de vitesse.',
+          'Un don qui n’a pas de valeur chiffrée n’est plus proposé une deuxième fois.',
+        ],
+      },
+      {
+        title: 'Des dons pour toute l’équipe',
+        items: [
+          'Chaque don vaut maintenant pour tous les Pokémon de l’équipe : tes compagnons et tes amis en ligne déclenchent eux aussi gel, brûlures, finishers et soins avec leurs propres coups.',
+          'Un don de statistique monte la stat de toute l’équipe, même d’un Pokémon qui la rejoint plus tard.',
+          'Phénix, Souhait, l’Armure de Givre et les autres protègent chaque Pokémon une fois chacun : celui de ton ami ne te prive plus du tien.',
+          'En ligne, chaque joueur prend sa propre nouvelle attaque pour son Pokémon. Seul, c’est toujours une attaque, pour le membre de ton choix.',
+        ],
+      },
+      {
+        title: 'Rebonds et tirs multiples',
+        items: [
+          'Surtension, d’Électhor, fait vraiment rebondir tes tirs d’ennemi en ennemi : une Flammèche rebondit en Flammèche. Un rebond au Commun, quatre au Prismatique.',
+          'Nouveau don de Mew, Écho : tes tirs se dédoublent vers d’autres ennemis, d’un à quatre tirs en plus selon la rareté.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-11-26-compte',
     date: '26 novembre 2026',
     title: 'Ta partie sur tous tes appareils',

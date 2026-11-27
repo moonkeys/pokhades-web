@@ -178,6 +178,11 @@ export interface ActorSnap {
   h: number;
   tr: number;
   nm?: string;
+  /**
+   * Membre : multiplicateur de vitesse de la run (dons Célérité). L'invité déplace son Pokémon
+   * chez lui : sans lui, un don de vitesse pris par l'équipe ne l'accélérait pas.
+   */
+  ms?: number;
   fl?: [string, number, number, number];
   st?: string | null;
 }

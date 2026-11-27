@@ -57,6 +57,7 @@ export function snapActor(a: Actor, n: number, member: boolean, npc = false): Ac
   if (a.flash.t > 0) s.fl = [a.flash.color, r2(a.flash.t), a.flash.dur, a.flash.alpha];
   if (mon?.status) s.st = mon.status;
   if (mon) s.nm = mon.name;
+  if (member && mon && mon.mult.speed !== 1) s.ms = r2(mon.mult.speed);
   return s;
 }
 
@@ -177,6 +178,8 @@ function applyState(a: Actor, s: ActorSnap): void {
     mon.hp = s.hp;
     mon.status = (s.st ?? null) as Status | null;
     if (s.nm && mon.name !== s.nm) mon.rename(s.nm);
+    // La vitesse des dons de l'équipe, que l'invité applique à son propre déplacement.
+    if (s.r === 3) mon.mult.speed = s.ms ?? 1;
   }
   // K.O. : un membre se couche (et se relève, ranimé) ; un sauvage s'efface.
   if (s.dt >= 0 && a.deathT < 0) {

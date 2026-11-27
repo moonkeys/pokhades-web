@@ -1,7 +1,9 @@
+import { BOONS, DONORS, DONOR_IDS, type DonorId } from '../combat/boons';
 import type { BiomeId } from '../data/species';
 import { ELITE, LEAGUE_GATE, LEAGUE_GATE_V1, LEAGUE_MASTER } from '../run/run';
 import { BIOMES } from '../world/biomes';
 import { WORLD, WORLD_LINKS } from '../world/worldmap';
+import { CANDY_ITEM, itemName } from './quests';
 import { roster, type Save } from './save';
 
 // Le carnet des exploits (ajout, retour de test : « le but du jeu, c'est de
@@ -17,7 +19,7 @@ import { roster, type Save } from './save';
 // vaincus, biomes atteints, runs gagnées, Pokémon de la rébellion). Le module
 // est pur : main.ts l'écrit, ui/journal.ts l'affiche.
 
-export type FeatGroup = 'champions' | 'conseil' | 'monde' | 'rebellion';
+export type FeatGroup = 'champions' | 'conseil' | 'monde' | 'rebellion' | 'dons';
 
 export interface Feat {
   id: string;
@@ -26,7 +28,11 @@ export interface Feat {
   desc: string;
   /** Où en est-on : [fait, objectif]. */
   progress(save: Save): [number, number];
-  reward: { baies?: number; shards?: number };
+  reward: { baies?: number; shards?: number; item?: string };
+  /** Ce qui manque encore, en clair (les dons d'un légendaire pas encore obtenus). */
+  missing?(save: Save): string[];
+  /** Le légendaire de la ligne (son icône devant le nom). */
+  dex?: number;
   /**
    * L'exploit n'apparaît au carnet qu'une fois ceci vrai (retour de test : « faire
    * apparaître les quêtes au fur et à mesure de l'avancement » — celles d'une zone une fois
@@ -40,7 +46,43 @@ export const FEAT_GROUPS: Record<FeatGroup, string> = {
   conseil: 'La Route Victoire',
   monde: 'La carte du monde',
   rebellion: 'La rébellion',
+  dons: 'Les légendaires',
 };
+
+// ── Les dons de chaque légendaire (retour du 27 novembre 2026 : « chez Xatu, une quête par
+// légendaire qui se complète au fur et à mesure, il faut avoir tous ses dons ; ça fait des
+// quêtes et des récompenses en plus »). C'est le Codex de Hades, où chaque dieu se remplit don
+// après don : un don compte dès qu'on l'a pris une fois, à n'importe quelle rareté, dans
+// n'importe quelle run (Save.boonsGot, rempli par main.ts au choix d'un don). Son ultime compte
+// aussi, ce qui demande d'atteindre l'acte 2 avec lui. Les dons `solo: false`, jamais proposés,
+// n'en sont pas : la quête doit pouvoir se finir.
+//
+// Le rythme va avec la fidélité des légendaires (combat/boons.ts, MAX_DONORS) : une run en
+// réunit quatre et les fait revenir, on y remplit donc bien leurs pages, et la run suivante en
+// croise d'autres. Une ligne n'apparaît qu'une fois le légendaire rencontré (un premier don).
+
+/** L'id qu'on note pour l'ultime d'un légendaire (le même que la carte d'ultime). */
+export const ultKey = (g: DonorId): string => `__ult__${g}`;
+
+/** Ce qu'il faut obtenir pour la page d'un légendaire : ses dons proposables, puis son ultime. */
+export const donorPage = (g: DonorId): string[] => [...Object.values(BOONS).filter((d) => d.god === g && d.solo).map((d) => d.id), ultKey(g)];
+
+/** Les dons duo proposables : la page des alliances. */
+export const DUO_PAGE: readonly string[] = Object.values(BOONS).filter((d) => d.duo && d.solo).map((d) => d.id);
+
+const pageName = (id: string): string => {
+  if (id.startsWith('__ult__')) return `ultime ${DONORS[id.slice(7) as DonorId]?.ult ?? ''}`.trim();
+  return BOONS[id]?.name ?? id;
+};
+
+/** Combien de la page sont obtenus, et ce qui manque. */
+const page = (ids: readonly string[]) => ({
+  progress: (save: Save): [number, number] => [ids.filter((id) => save.boonsGot.includes(id)).length, ids.length],
+  missing: (save: Save) => ids.filter((id) => !save.boonsGot.includes(id)).map(pageName),
+});
+
+/** Le premier don noté de ce légendaire : sa page s'ouvre au carnet. */
+const metDonor = (save: Save, g: DonorId) => donorPage(g).some((id) => save.boonsGot.includes(id));
 
 /** Où l'on croise chaque champion des biomes (data/champions.ts, BIOME_CHAMPIONS), pour le carnet. */
 const CHAMPION_HOME: Record<string, string> = {
@@ -131,6 +173,37 @@ export const FEATS: readonly Feat[] = [
   { id: 'win:5', group: 'rebellion', name: 'La rébellion gronde', desc: 'Gagne cinq runs.', progress: (s) => [Math.min(5, s.wins), 5], reward: { baies: 200, shards: 3 }, unlocked: (s) => s.wins >= 1 },
   { id: 'mons:4', group: 'rebellion', name: 'Une petite bande', desc: 'Compte 4 Pokémon dans la rébellion.', progress: (s) => [Math.min(4, roster(s).length), 4], reward: { baies: 40 } },
   { id: 'mons:10', group: 'rebellion', name: 'Un vrai camp', desc: 'Compte 10 Pokémon dans la rébellion.', progress: (s) => [Math.min(10, roster(s).length), 10], reward: { baies: 100 }, unlocked: (s) => roster(s).length >= 4 },
+  // Une page par légendaire : de quoi payer bien plus qu'une ligne de la carte (une page demande
+  // plusieurs runs), en Éclats et en Super Bonbon, ce qu'une run ne donne pas facilement.
+  ...DONOR_IDS.map((g): Feat => ({
+    id: `dons:${g}`,
+    group: 'dons',
+    // « d’Électhor », « d’Artikodin » : l'élision devant une voyelle.
+    name: `Faveur ${/^[AEIOUÉÈ]/.test(DONORS[g].name) ? 'd’' : 'de '}${DONORS[g].name}`,
+    desc: `Obtiens chacun de ses dons et son ultime, à n’importe quelle rareté.`,
+    ...page(donorPage(g)),
+    dex: DONORS[g].dex,
+    reward: { baies: 60, shards: 2, item: CANDY_ITEM },
+    unlocked: (save) => metDonor(save, g),
+  })),
+  {
+    id: 'dons:duos',
+    group: 'dons',
+    name: 'Les alliances',
+    desc: 'Obtiens chacun des dons duo, que deux légendaires d’une même run donnent ensemble.',
+    ...page(DUO_PAGE),
+    reward: { baies: 100, shards: 4 },
+    unlocked: (save) => DUO_PAGE.some((id) => save.boonsGot.includes(id)),
+  },
+  {
+    id: 'dons:all',
+    group: 'dons',
+    name: 'Le Panthéon',
+    desc: 'Remplis la page de chacun des dix légendaires.',
+    progress: (save) => [DONOR_IDS.filter((g) => donorPage(g).every((id) => save.boonsGot.includes(id))).length, DONOR_IDS.length],
+    reward: { baies: 300, shards: 6, item: CANDY_ITEM },
+    unlocked: (save) => DONOR_IDS.filter((g) => metDonor(save, g)).length >= 4,
+  },
   { id: 'mons:20', group: 'rebellion', name: 'Une armée de libres', desc: 'Compte 20 Pokémon dans la rébellion.', progress: (s) => [Math.min(20, roster(s).length), 20], reward: { baies: 200, shards: 2 }, unlocked: (s) => roster(s).length >= 10 },
 ];
 
@@ -155,6 +228,7 @@ export function claimFeat(save: Save, id: string): boolean {
   save.feats.push(id);
   save.baies += f.reward.baies ?? 0;
   save.shards += f.reward.shards ?? 0;
+  if (f.reward.item) save.items[f.reward.item] = (save.items[f.reward.item] ?? 0) + 1;
   return true;
 }
 
@@ -172,5 +246,21 @@ export function rewardText(r: Feat['reward']): string {
   const parts: string[] = [];
   if (r.baies) parts.push(`${r.baies} Baies`);
   if (r.shards) parts.push(`${r.shards} Éclat${r.shards > 1 ? 's' : ''}`);
+  if (r.item) parts.push(itemName(r.item));
   return parts.join(' · ');
+}
+
+/**
+ * Note un don obtenu en run (ou une ultime, `__ult__<légendaire>`). Rend ce que ça change au
+ * carnet : la page du légendaire (ou des alliances) si c'était une première, et si elle vient
+ * d'être remplie ; null si le don était déjà noté.
+ */
+export function noteBoon(save: Save, id: string): { feat: Feat; n: number; goal: number; filled: boolean } | null {
+  if (save.boonsGot.includes(id)) return null;
+  save.boonsGot.push(id);
+  const g = id.startsWith('__ult__') ? id.slice(7) : BOONS[id]?.duo ? 'duos' : BOONS[id]?.god;
+  const feat = FEATS.find((f) => f.id === `dons:${g}`);
+  if (!feat) return null;
+  const [n, goal] = feat.progress(save);
+  return { feat, n, goal, filled: n >= goal };
 }

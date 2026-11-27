@@ -72,6 +72,12 @@ export class Pokemon implements Fighter {
    * de critique et d'esquive ajoutés.
    */
   readonly mult = { atk: 1, def: 1, spAtk: 1, spDef: 1, speed: 1, range: 1, cooldown: 1, crit: 0, dodge: 0 };
+  /**
+   * Dons de statistique déjà portés par ce Pokémon, et à quelle rareté (BoonHooks.syncStats) : un
+   * don de statistique vaut pour toute l'équipe, y compris un membre arrivé après (recrue, invité
+   * qui revient) ; on n'applique à chacun que ce qui lui manque.
+   */
+  readonly boonRanks = new Map<string, number>();
   /** Augmente à chaque capacité apprise, remplacée ou renforcée : le HUD se reconstruit. */
   movesVersion = 0;
 
@@ -159,6 +165,7 @@ export class Pokemon implements Fighter {
     if (prev.nicknamed) this.rename(prev.name);
     this.level = prev.level;
     Object.assign(this.mult, prev.mult);
+    for (const [id, r] of prev.boonRanks) this.boonRanks.set(id, r);
     this.hpMult = prev.hpMult;
     this.baseCrit = prev.baseCrit;
     for (const [stat, b] of prev.buffs) this.buffs.set(stat, { ...b });

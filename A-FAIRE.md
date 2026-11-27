@@ -956,6 +956,31 @@ Gardés exprès : la Poké Ball barrée de l'écran des récompenses (motif du
 logo, pas un petit signe) et les particules d'aura (feuilles, arcs : des
 effets animés). Les flèches, ✕ et ✔ restent : ce sont des signes typographiques.
 
+### 1.9 sexies Raretés des dons, fidélité des légendaires (27 novembre 2026)
+
+- Retour : trop d'Épiques et de Rares trop tôt ; une montée logique ; retrouver
+  un légendaire déjà croisé (Hades). Courbe `RARITY_CURVE`, au plus quatre
+  légendaires par run, ×3 pour ceux déjà rencontrés (README). Banc
+  `src/debug/boonsim.ts`.
+- À juger en jeu : le banc prend toujours la carte la plus rare ; un vrai
+  joueur choisit aussi par effet. Les reprises (un cran chacune) font
+  l'essentiel des Épiques du premier acte.
+- Pages des légendaires au carnet de Xatu (même jour) : tous les dons et
+  l'ultime de chaque légendaire, les duos, le Panthéon (`meta/feats.ts`,
+  `Save.boonsGot`). À voir : une récompense propre à chaque légendaire
+  (un « souvenir » qui oriente la première porte, comme les gages de Hades).
+- Revue de tous les dons (même jour) : compteur `Boons.fire`, banc
+  `src/debug/boonbench.ts`, gel corrigé, dons de stat selon la rareté, sept
+  dons branchés, soins et zones rabotés (README). Restent : Invocation et
+  Conscience Collective (à imaginer pour l'équipe) ; des dons `flag` qui
+  gagneraient une valeur selon la rareté (les sillages de dash, Dette) ; un
+  banc moins bruité (plus de combats, graine fixe).
+- Dons pour toute l'équipe, une nouvelle attaque par joueur en coop, Surtension
+  qui rebondit, Écho (même jour, README). À juger en jeu : les compagnons
+  déclenchent maintenant les dons de finisher (Fortune, Plumage, Vrille),
+  l'ultime peut venir plus vite avec une équipe de trois ou quatre. À tester
+  à deux onglets : la nouvelle attaque de chacun, la vitesse de l'invité.
+
 ## 3. Déjà notés, toujours en attente
 
 - **Jeu en ligne** (src/net/, voir README) : lobby, visite du Repaire de

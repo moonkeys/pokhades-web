@@ -22,7 +22,7 @@ import { BAIES, FIELD_FOOD, QUARRY_STONE, RESOURCES, RESOURCE_IDS, ROOM_RES, SHA
 import { addMon, capacity, exile, grantAlly, grantChampion, isFull, level, loadSave, markSeen, onSaveWritten, monName, ownedSpecies, ownsSpecies, recordDefeat, resetSave, roster, speciesOf, startLevel, welcomeMon, writeSave } from './meta/save';
 import { applyTraits, natureText } from './meta/mons';
 import { quest, questEvent, type QuestEvent, contractEvent, contractText } from './meta/quests';
-import { leagueOpen, readyFeats } from './meta/feats';
+import { leagueOpen, noteBoon, readyFeats } from './meta/feats';
 import { busy, mission, rewardText, tick as tickMissions } from './meta/missions';
 import { MATERIALS, NECTARS, materialName, tickCraft } from './meta/crafting';
 import { campNews, fresh as freshNews, markSeen as markNewsSeen } from './meta/news';
@@ -34,7 +34,7 @@ import { Dialogue, type Speaker } from './ui/dialogue';
 import { Combat, DEATH_TIME } from './combat/combat';
 import { CompanionBrain } from './combat/companion';
 import { EnemyBrain } from './combat/enemy';
-import { BOONS, DONORS, RARITY_COLOR, RARITY_NAME, STAT_BOONS, type BoonOffer } from './combat/boons';
+import { BOONS, DONORS, RARITY_COLOR, RARITY_NAME, STAT_BOONS, ULT_MAX, type BoonOffer } from './combat/boons';
 import { loadMove, tune, type Move } from './combat/moves';
 import { BASE_TEAM_LEVEL, Pokemon, xpForLevel } from './combat/pokemon';
 import { typeMates } from './data/trainers';
@@ -677,6 +677,11 @@ async function boot(): Promise<void> {
         m.info = info;
         m.pokemon = evo;
         runHud.notify({ title: 'Évolution', text: `${old.name} évolue en ${species} !`, art: next, color: 'var(--yel)' });
+        // Phénix Doré (duo Ho-Oh + Jirachi) : l'évolution remplit la jauge d'ultime.
+        if (mode === 'run' && run.boons.has('duo_goldphoenix')) {
+          run.boons.ultGauge = ULT_MAX;
+          run.boons.fire('duo_goldphoenix');
+        }
         // Prime de lignée (retour de test : « une prime quand on complète une évolution ») : la
         // première fois qu'une lignée atteint sa forme finale, un Éclat et quelques Baies.
         if (!save.evolved.includes(next)) {
@@ -791,6 +796,17 @@ async function boot(): Promise<void> {
   /** Offres de la récompense de la salle : tirées quand elle apparaît, fixes ensuite. */
   let boonOffer: BoonOffer | null = null;
   let skillOffer: SkillOffer | null = null;
+  /**
+   * La « Nouvelle attaque » de la salle, par Pokémon (skillOffers), gardée tant que la récompense est
+   * là : refermer l'écran puis le rouvrir ne retire plus une autre offre.
+   */
+  let skillFor: ((mon: Pokemon) => Promise<SkillOffer>) | null = null;
+  /**
+   * En ligne, chaque joueur prend sa propre nouvelle attaque pour son Pokémon (retour du 27 novembre
+   * 2026 : « en coop, chaque Pokémon de l'équipe peut avoir une nouvelle CT ; sinon, c'est une
+   * seule CT »). Ceux qui l'ont déjà prise dans cette salle ; la récompense part avec le dernier.
+   */
+  const skillTakers = new Set<Actor>();
 
   // Les CS apprises au départ ouvrent les branches gardées du graphe des biomes (Surf : l'Océan).
   // Test de la grotte (panneau) : une run au Rocailleux, dont le biome GROTTE hérite (faune, falaises du dehors).
@@ -1404,6 +1420,8 @@ async function boot(): Promise<void> {
     // « on ne voit pas les dresseurs pendant les combats ».)
     boonOffer = null;
     skillOffer = null;
+    skillFor = null;
+    skillTakers.clear();
     trainer = null;
     trainerVanishT = 0;
     dialogue.close();
@@ -1460,7 +1478,11 @@ async function boot(): Promise<void> {
       const spots = { spring: spring.spots, altar: altar.spots, dojo: dojo.spots, pension: pension.spots }[run.special];
       residents.spawn(run.special, spots, save.errands.list, new Rng(run.mapSeed ^ 0x52657369));
     }
-    combat.hooks.onRoomEnter(player, run, !first && run.room % ROOMS_PER_ACT === 0, run.rng);
+    // Les dons valent pour toute l'équipe (BoonHooks) : chaque membre, le Pokémon mené en tête, et
+    // ses dons de statistique à jour (un membre arrivé depuis, recrue ou invité revenu, les reçoit).
+    const field = [player, ...team.filter((m) => m !== player)];
+    for (const m of field) combat.hooks.syncStats(m);
+    combat.hooks.onRoomEnter(field, run, !first && run.room % ROOMS_PER_ACT === 0, run.rng);
     // Test de la grotte (panneau) : chaque salle de combat part de sa grotte ; la salle attend dehors, figée.
     if (opts.biome === 'grotte' && !run.isShop() && !run.isBoss()) enterCave();
     else netRoom(roomKey, BIOME_COLOR[run.biome], roomMusic());
@@ -1560,12 +1582,23 @@ async function boot(): Promise<void> {
       boons.ult = offer.donor;
       boons.ultGauge = 0;
       runHud.notify({ title: 'Ultime obtenue', text: `${DONORS[offer.donor].ult} · touche R`, art: DONORS[offer.donor].dex, color: 'var(--yel)' });
-      return;
+    } else {
+      const got = boons.grant(id, rarity);
+      // Un don de statistique vaut pour chaque membre de l'équipe, invités en ligne compris (il
+      // n'allait qu'à celui qui l'avait choisi) ; repris, il n'ajoute que l'écart de rareté.
+      if (STAT_BOONS[id]) for (const m of team) combat.hooks.syncStats(m);
+      runHud.notify({ title: 'Don obtenu', text: `${BOONS[id].name} · ${RARITY_NAME[got]}`, art: DONORS[offer.donor].dex, color: RARITY_COLOR[got] });
     }
-    const got = boons.grant(id, rarity);
-    // Un don « Ton Pokémon » va à celui qui l'a choisi : l'invité en ligne (uiTarget), sinon le Pokémon joué.
-    if (STAT_BOONS[id]) combat.hooks.applyStat(uiTarget ?? player, id);
-    runHud.notify({ title: 'Don obtenu', text: `${BOONS[id].name} · ${RARITY_NAME[got]}`, art: DONORS[offer.donor].dex, color: RARITY_COLOR[got] });
+    // La page du légendaire au carnet de Xatu (meta/feats.ts) : un don jamais obtenu la fait
+    // avancer, on le dit tout de suite ; une page remplie se réclame au Repaire.
+    const page = noteBoon(save, id);
+    if (!page) return;
+    writeSave(save);
+    runHud.notify(
+      page.filled
+        ? { title: 'Exploit', text: `${page.feat.name} : page remplie. Réclame-la à Xatu, au Repaire.`, icon: 'feat', color: 'var(--yel)' }
+        : { title: 'Nouveau don', text: `${page.feat.name} · ${page.n} / ${page.goal} au carnet de Xatu`, icon: 'feat', color: 'var(--muted)' },
+    );
   };
 
   const newRun = () => {
@@ -1576,6 +1609,9 @@ async function boot(): Promise<void> {
     outdoor = null;
     run = newRunState();
     combat.run = run;
+    // Les dons de compagnons (Empathie, Lien Psychique, Résurrection, Sacrifice) ne sont proposés
+    // qu'à une équipe : seul, ils ne feraient rien.
+    run.boons.teamSize = save.team.length;
     // Améliorations du Repaire : Partage d'XP et Bourse de départ.
     combat.hooks.metaXp = 1 + 0.2 * level(save, 'xp');
     combat.hooks.metaDash = level(save, 'dash');
@@ -2063,7 +2099,7 @@ async function boot(): Promise<void> {
     },
     roomCleared: () => {
       megaRevert();
-      combat.hooks.onRoomClear(player, run);
+      combat.hooks.onRoomClear(team, run);
       // Le ciel se dégage une fois la salle libérée (retour de test : sous la grêle, on ne pouvait
       // ni fouiller ni prendre son don sans perdre trop de PV).
       if (roomWeather !== 'clear') {
@@ -2081,8 +2117,32 @@ async function boot(): Promise<void> {
         if (run.cursed('rest')) continue;
         m.getUp();
         m.pokemon.status = null;
-        m.pokemon.hp = 1;
+        // Résurrection (don de Ho-Oh) : une part de leurs PV plutôt que 1.
+        const revive = run.boons.v('sacre_revive');
+        m.pokemon.hp = revive > 0 ? Math.max(1, Math.round(m.pokemon.maxHp * Math.min(1, revive))) : 1;
+        if (revive > 0) run.boons.fire('sacre_revive');
         fx.ballSend(m.x, m.y);
+      }
+      // Ascension (Ho-Oh) : chaque salle libérée, une part d'un niveau en XP pour toute l'équipe
+      // debout (l'écart entre ce niveau et le suivant, pour que la montée garde son rythme).
+      const ascend = run.boons.v('sacre_level');
+      if (ascend > 0) {
+        run.boons.fire('sacre_level');
+        for (const m of team) {
+          const mon = m.pokemon;
+          if (!mon || mon.fainted || m.runAlly) continue;
+          const gap = xpForLevel(mon.level + 1, mon.id) - xpForLevel(mon.level, mon.id);
+          void mon.addXp(Math.max(1, Math.round(gap * ascend))).then((n) => n && combat.levelUp(m));
+        }
+      }
+      // Pluie d'Étoiles (Jirachi) : du Bois et de la Pierre en plus, comptés au retour au Repaire.
+      const stars = Math.round(run.boons.v('astre_resource'));
+      if (stars > 0) {
+        run.boons.fire('astre_resource');
+        for (const r of ['wood', 'stone'] as const) {
+          save.resources[r] += stars;
+          runRes[r] += stars;
+        }
       }
       questProgress({ kind: 'room', hurt: roomHurt });
       if (run.isBoss()) questProgress({ kind: 'champion' });
@@ -2187,20 +2247,37 @@ async function boot(): Promise<void> {
           Math.max(0, teamMons().indexOf(player.pokemon!)),
         );
       } else if (reward === 'skill' && player.pokemon && skillOffer) {
-        const mons = teamMons();
+        // Seul (l'équipe du Repaire, menée par l'IA) : une seule attaque, pour le membre qu'on choisit
+        // (« Pour qui ? »). En ligne, une par joueur : chacun presse E et la prend pour son Pokémon.
+        const coop = net.role === 'host' && net.inRun && team.some((m) => m.remote);
+        const who = uiTarget ?? player;
+        if (coop && skillTakers.has(who)) {
+          runHud.message(`${who.pokemon?.name ?? 'Ce Pokémon'} a déjà sa nouvelle attaque : place aux autres.`);
+          return done();
+        }
+        const took = () => {
+          if (!coop) return consume();
+          skillTakers.add(who);
+          const waiting = team.filter((m) => (m === player || m.remote) && m.deathT < 0 && m.pokemon && !skillTakers.has(m));
+          if (!waiting.length) return consume();
+          runHud.message(`Nouvelle attaque : ${waiting.map((m) => m.pokemon!.name).join(', ')} peu${waiting.length > 1 ? 'vent' : 't'} encore prendre la sienne [E].`);
+        };
+        // En ligne, l'hôte ne choisit que pour son propre Pokémon (les invités, chacun chez lui).
+        const mons = coop ? [player.pokemon] : teamMons();
+        skillFor ??= skillOffers(skillOffer);
         rewardScreen.showSkill(
           mons,
           Math.max(0, mons.indexOf(player.pokemon)),
           // Pour un invité, son offre est tirée pour son Pokémon (skillOffers en tire une à la demande).
-          skillOffers(skillOffer),
+          skillFor,
           (mon, move, replace) => {
             learnMove(mon, move, replace);
-            consume();
+            took();
             done();
           },
           (mon, slot) => {
             strengthen(mon, slot);
-            consume();
+            took();
             done();
           },
           done,
