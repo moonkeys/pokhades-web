@@ -1077,7 +1077,12 @@ export class Camp {
       for (const b of benches) put(TOWN_DECOR.bench, b.x, b.y);
       put(TOWN_DECOR.hydrangeas[0], hx - 6.5, hy - 3.4);
       put(TOWN_DECOR.hydrangeas[1], hx + 6.5, hy - 3.4);
-      put(TOWN_DECOR.planters[0], hx + 0.5, hy + 7.2);
+      // Le bac fleuri, à côté du chemin du sud et non dessus (retour du 27 novembre 2026 : « une
+      // jardinière sur le chemin, ce n'est pas logique ») : la place prévue, sinon un pas de côté.
+      const py = Math.floor(hy + 7.2 - 0.5);
+      const clearOf = (cx: number) => [-1, 0, 1].every((d) => !isPath(Math.floor(cx) + d, py) && !isPath(Math.floor(cx) + d, py - 1));
+      const px = [0, -3, 3, -4.5, 4.5].map((d) => hx + 0.5 + d).find(clearOf);
+      if (px !== undefined) put(TOWN_DECOR.planters[0], px, hy + 7.2);
       put(TOWN_DECOR.bushes[0], hx - 8.2, hy + 4.6);
       put(TOWN_DECOR.bushes[1], hx + 9, hy + 4.6);
       put(TOWN_DECOR.sunflower, hut.x - 4.6, hut.y + 0.3);

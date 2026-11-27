@@ -9,7 +9,7 @@ import { megaInLine, megaText } from '../data/megaline';
 import { sheetOf } from '../data/bestiary';
 import { dexOf } from '../data/forms';
 import { BUILDINGS, BUNKS, BUNK_ROOM, bunkPrice, CANDY, CS_LIST, csPrice, HELD_ITEMS, RESOURCES, RESOURCE_IDS, SHARDS, TMS, UPGRADES, applyHeld, buildingsShown, canAfford, heldBoosts, heldItem, heldText, teamSlots, type Cost, type HeldItem, type ResourceId, type Upgrade } from '../meta/catalog';
-import { evolutionsOf } from '../data/evolutions';
+import { evolutionsOf, preEvolutionOf } from '../data/evolutions';
 import { BIOME_IDS, CAMP_NPCS, FAUNA, LEGENDARY_SPECIES, MERC_POOLS, QUEST_SPECIES, STARTER_IDS, type BiomeId } from '../data/species';
 import { BIOME_MATERIAL, CRAFTED_TMS, GARDEN, MATERIALS, NECTARS, NECTAR_ROOMS, RECIPES, canCraft, craft, harvest, materialName, pickVisitor, plots, recipeOutput, sow } from '../meta/crafting';
 import { BIOME_GRUNTS, GRUNT_THEMES } from '../data/grunts';
@@ -950,7 +950,7 @@ export class CampScreen {
     const save = ctx.save;
     const unlocked = new Set(ownedSpecies(save));
     const seen = new Set([...save.seen, ...unlocked, ...Object.keys(save.defeats).map(Number)]);
-    const all = [...new Set([...Object.values(FAUNA).flat(), ...STARTER_IDS, ...MERC_POOLS.champion, ...QUEST_SPECIES, ...seen])].filter(isBaseForm).sort((a, b) => dexOf(a) - dexOf(b) || a - b);
+    const all = [...new Set([...Object.values(FAUNA).flat(), ...STARTER_IDS, ...MERC_POOLS.champion, ...QUEST_SPECIES, ...seen])].filter((s) => preEvolutionOf(s) === null).sort((a, b) => dexOf(a) - dexOf(b) || a - b);
     // (Une forme régionale se range juste après son espèce, au même numéro.)
     const shown = all.filter((id) =>
       this.dexFilter === 'unlocked' ? unlocked.has(id) : this.dexFilter === 'locked' ? seen.has(id) && !unlocked.has(id) : this.dexFilter === 'seen' ? seen.has(id) : this.dexFilter === 'mega' ? megaInLine(id).length > 0 : true,
@@ -1039,6 +1039,9 @@ export class CampScreen {
       });
     } else if (questFor(id)) el('p', 'cs-dex-text', card, `Kangourex le promet à qui remplira sa quête « ${questFor(id)!.name} ».`);
     else if (!met) el('p', 'cs-dex-text', card, 'Pas encore rencontré. Il se cache quelque part dans les biomes de la Ligue.');
+    // Une forme évoluée dont la forme de base n'est pas jouable (Blizzaroi, Tarpaud) : elle reste au
+    // Pokédex (on la croise), mais ses victoires ne font venir personne.
+    else if (!isBaseForm(id)) el('p', 'cs-dex-text', card, 'Une forme évoluée : seules les formes de base rejoignent la rébellion.');
     else this.recruitBar(card, save, id, waiting(id));
     if (!own && (MERC_POOLS.champion as readonly number[]).includes(id)) el('p', 'cs-dex-text', card, 'Gardien de grotte : le vaincre le débloque d’office.');
     if (!own && met && Object.values(FAUNA).some((pool) => pool.includes(id))) el('small', 'cs-info', card, 'Libéré d’une grotte, il serait débloqué aussi.');

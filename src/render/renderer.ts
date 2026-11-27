@@ -170,13 +170,14 @@ export class Renderer {
         put(variants.length && roll < variantRate ? variants[Math.floor((roll / variantRate) * variants.length)] : base, x, y);
       }
     }
-    const layer = (mask: Uint8Array, blob: NonNullable<WorldMap['biome']['path']>['blob'], skip?: Uint8Array) => {
+    /** `edge` : le masque qui décide des bords (par défaut, `mask` lui-même). */
+    const layer = (mask: Uint8Array, blob: NonNullable<WorldMap['biome']['path']>['blob'], skip?: Uint8Array, edge: Uint8Array = mask) => {
       for (let y = 0; y < world.h; y++) {
         for (let x = 0; x < world.w; x++) {
           const i = y * world.w + x;
           if (!mask[i] || skip?.[i]) continue;
           if (blob.fill) put(blob.fill, x, y);
-          put(blobTile(mask, x, y, blob), x, y);
+          put(blobTile(edge, x, y, blob), x, y);
         }
       }
     };
@@ -184,12 +185,45 @@ export class Renderer {
     // masque, sinon un liseré d'herbe sépare deux zones de terre qui se touchent.
     const sameGround = (a: Blob, b: Blob) =>
       a.origin[0] === b.origin[0] && a.origin[1] === b.origin[1] && a.fill?.[0] === b.fill?.[0] && a.fill?.[1] === b.fill?.[1];
+    // Les allées et dallages du Repaire comptent comme du sol pour les bords du chemin de terre : il
+    // passe à eux sans liseré d'herbe (retour du 27 novembre 2026 : « de l'herbe entre chaque
+    // texture ; je voudrais passer du carrelage directement à la terre »). Les allées, elles, se
+    // calculaient déjà avec le chemin.
+    const paved = world.lanes?.length || world.paving.length ? new Uint8Array(world.w * world.h) : null;
+    if (paved) {
+      for (const lane of world.lanes ?? []) for (let i = 0; i < paved.length; i++) if (lane.mask[i] && !world.water[i]) paved[i] = 1;
+      for (const p of world.paving) for (let i = 0; i < paved.length; i++) if (p.mask[i]) paved[i] = 1;
+    }
+    const withPaved = (m: Uint8Array) => (paved ? m.map((v, i) => (v || paved[i] ? 1 : 0)) : m);
+    // Une seule case d'herbe entre une allée et le chemin, en ligne droite : elle prend la terre du
+    // chemin (dessin seulement, la carte ne change pas), pour que les deux se touchent.
+    const bridged = (m: Uint8Array) => {
+      if (!paved) return m;
+      const out = m.slice();
+      const at = (x: number, y: number) => x >= 0 && y >= 0 && x < world.w && y < world.h;
+      for (let y = 0; y < world.h; y++) {
+        for (let x = 0; x < world.w; x++) {
+          const i = y * world.w + x;
+          if (m[i] || paved[i] || world.water[i]) continue;
+          for (const [dx, dy] of [[1, 0], [0, 1]] as const) {
+            if (!at(x - dx, y - dy) || !at(x + dx, y + dy)) continue;
+            const a = (y - dy) * world.w + x - dx;
+            const b = (y + dy) * world.w + x + dx;
+            if ((paved[a] && m[b]) || (m[a] && paved[b])) out[i] = 1;
+          }
+        }
+      }
+      return out;
+    };
     if (biome.patch && biome.path && sameGround(biome.patch.blob, biome.path.blob)) {
-      const union = world.path.map((v, i) => (v || world.patch[i] ? 1 : 0));
-      layer(union, biome.path.blob, world.water);
+      const union = bridged(world.path.map((v, i) => (v || world.patch[i] ? 1 : 0)));
+      layer(union, biome.path.blob, world.water, withPaved(union));
     } else {
       if (biome.patch) layer(world.patch, biome.patch.blob);
-      if (biome.path) layer(world.path, biome.path.blob, world.water);
+      if (biome.path) {
+        const path = bridged(world.path);
+        layer(path, biome.path.blob, world.water, withPaved(path));
+      }
     }
     // Les allées du Repaire : leur sol, puis leur liseré d'herbe (hors de l'eau).
     for (const lane of world.lanes ?? []) {

@@ -2715,16 +2715,19 @@
 .cs-dex-filters button {
   font-size: calc(1.3 * var(--u));
 }
+/* Resserré le 27 novembre 2026, comme les recrues de Dracolosse : la fiche (34 unités) ne laissait
+   que deux cartes de 9,5 unités par ligne, et plus de 300 espèces à faire défiler. Cinq par ligne
+   sur un portable. */
 .cs-dex {
   display: grid;
-  grid-template-columns: 1fr calc(34 * var(--u));
-  gap: calc(2 * var(--u));
+  grid-template-columns: minmax(0, 1fr) calc(32 * var(--u));
+  gap: calc(1.4 * var(--u));
   align-items: start;
 }
 .cs-dex-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(calc(9.5 * var(--u)), 1fr));
-  gap: calc(0.6 * var(--u));
+  grid-template-columns: repeat(auto-fill, minmax(calc(5.1 * var(--u)), 1fr));
+  gap: calc(0.45 * var(--u));
 }
 .cs-dex-card {
   position: relative;
@@ -2748,8 +2751,8 @@
   border-color: var(--spray);
 }
 .cs-dex-card img {
-  width: calc(5.5 * var(--u));
-  height: calc(5.5 * var(--u));
+  width: calc(4 * var(--u));
+  height: calc(4 * var(--u));
   object-fit: contain;
 }
 .cs-dex-card .no {
@@ -2760,7 +2763,7 @@
   max-width: 100%;
   overflow: hidden;
   font-family: var(--head);
-  font-size: calc(1.3 * var(--u));
+  font-size: calc(1 * var(--u));
   font-weight: normal;
   letter-spacing: 0.03em;
   white-space: nowrap;
@@ -4399,6 +4402,15 @@
   display: grid;
   place-items: center;
 }
+/* Une icône d'objet dans une case de carte (le contrat de Kangourex) : elle tient dans sa case au lieu
+   de prendre la taille du texte (1,5 em de 3 unités : plus grande que la case, elle débordait). */
+.cs-icon > img.ess-ico {
+  width: auto;
+  max-width: 100%;
+  height: 85%;
+  margin: 0;
+  vertical-align: 0;
+}
 .cs-free .cs-res-ico {
   height: calc(1.6 * var(--u));
 }
@@ -5704,7 +5716,7 @@ body.net-on .hud-team {
     margin-top: 0;
   }
   .cs-dex-grid {
-    grid-template-columns: repeat(auto-fill, minmax(calc(11 * var(--u)), 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(calc(7 * var(--u)), 1fr));
   }
   .cs-records {
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -5909,10 +5921,12 @@ img.ess-ico {
   vertical-align: -0.2em;
   image-rendering: pixelated;
 }
+/* 1,9 em avant le 27 novembre 2026 (« les icônes en général sont un peu grosses ; le poids dans le
+   Pokédex est énorme et mal aligné ») : l'objet dépassait la ligne de texte d'un tiers de chaque côté. */
 img.ess-item {
-  height: 1.9em;
-  margin: -0.45em -0.15em -0.45em -0.1em;
-  vertical-align: -0.55em;
+  height: 1.5em;
+  margin: -0.25em -0.1em -0.25em -0.08em;
+  vertical-align: -0.4em;
 }
 /* Les légendaires donateurs : leur icône de menu (deux images de 64 px côte à côte), dont on ne
    montre que la première, recadrée au carré. */
@@ -5976,7 +5990,8 @@ img.ess-duel {
 /* Le contour d'encre des petits chiffres (poids sur les puces) ne doit pas déborder sur l'icône. */
 .cs-wt img.ess-ico,
 .cs-moves .wt img.ess-ico {
-  vertical-align: -0.6em;
+  height: 1.3em;
+  vertical-align: -0.4em;
 }
 .cs-dex-filters img.ess-ico {
   margin: 0 0 0 0.35em;

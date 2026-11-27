@@ -1545,6 +1545,27 @@ Poséidon dans Hades ». Écart voulu avec `CombatArena._roll_boon_rarity` du je
   Le banc est bruité (±15 % sur le temps, ±20 points de PV avec trois combats) : il sert à repérer
   un don muet ou un écart flagrant, pas à régler au pour cent.
 
+## Formes de base, icônes, sols du Repaire (27 novembre 2026)
+
+Retour du même jour : « dans le Pokédex je peux déjà avoir du Blizzaroi, du Tarpaud ; on ne prend
+que les formes de base. Le poids est énorme et mal aligné, les icônes en général sont grosses, les
+contrats de Kangourex débordent. De l'herbe entre chaque texture ; une jardinière sur le chemin ».
+
+- **Formes de base** (`data/evolutions.ts`, `evolvedInGames` ; `meta/save.ts`, `isBaseForm`) : les
+  formes évoluées dans les jeux dont la forme précédente n'est pas jouable (`LEAGUE_PREVIOUS`, et
+  Tarpaud) ne remplissent plus de jauge de recrue ni ne se proposent au nectar. Elles restent au
+  Pokédex (la grille garde toute espèce sans pré-évolution jouable), avec « seules les formes de base
+  rejoignent la rébellion ». Pikachu, Rondoudou et Marill, dont le bébé n'est pas embarqué, restent
+  des formes de base.
+- **Icônes** (`ui/da.css`) : une icône d'objet dans le texte (`img.ess-item`) fait 1,5 em au lieu de
+  1,9 ; sur les puces de poids, 1,3 em ; dans une case de carte (`.cs-icon`), 85 % de la case.
+- **Pokédex** : grille comme celle des recrues (cartes de 5,1 unités, fiche de 32), cinq par ligne.
+- **Sols** (`render/renderer.ts`, `bake`) : les bords du chemin de terre se calculent avec les allées
+  et dallages du Repaire (plus de liseré d'herbe entre eux), et une case d'herbe seule entre une allée
+  et le chemin prend la terre (dessin seulement).
+- **Bac fleuri des jardins** (`run/camp.ts`) : à sa place s'il n'y a pas de chemin dessous, sinon un
+  pas de côté, sinon pas de bac.
+
 ## Grande équipe, dresseurs, routes gardées (27 novembre 2026)
 
 Retour du même jour : « à six Pokémon on roule sur le boss, le jeu est trop facile ; les routes à CS

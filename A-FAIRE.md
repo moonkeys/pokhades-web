@@ -986,6 +986,11 @@ effets animés). Les flèches, ✕ et ✔ restent : ce sont des signes typograph
   compagnons finissent souvent intacts) ; la solitude reste dure (une salle de
   l'acte 3 perdue une fois sur deux au banc). À voir : la bande d'eau de Surf
   dessinée par-dessus le décor (de vraies cases d'eau seraient plus jolies).
+- Formes de base seules, icônes plus petites, Pokédex resserré, sols raccordés
+  (même jour, README). Demandé, à concevoir : l'île de Lugia (un seul
+  habitant avec un rôle, le temple où l'on entre : salle spéciale ou
+  mini-jeux) et que faire une fois tout bâti chez le bâtisseur (agrandir le
+  Repaire).
 
 ## 3. Déjà notés, toujours en attente
 

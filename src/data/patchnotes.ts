@@ -40,6 +40,33 @@ export interface PatchNote {
 
 export const PATCH_NOTES: readonly PatchNote[] = [
   {
+    id: '2026-11-27-repaire',
+    date: '27 novembre 2026',
+    title: 'Un Repaire plus net',
+    sections: [
+      {
+        title: 'Pokédex et recrues',
+        items: [
+          'Seules les formes de base rejoignent la rébellion : Blizzaroi, Tarpaud, Forgella ou Momartik restent au Pokédex mais ne font plus venir de recrue.',
+          'Le Pokédex montre cinq espèces par ligne au lieu de deux.',
+        ],
+      },
+      {
+        title: 'Interface',
+        items: [
+          'Les petites icônes (poids, nature, talent) sont plus discrètes et ne débordent plus des cartes ; celle des contrats de Kangourex tient dans sa case.',
+        ],
+      },
+      {
+        title: 'Le Repaire',
+        items: [
+          'Le chemin de terre rejoint les allées pavées sans bande d’herbe entre les deux.',
+          'Le bac fleuri des jardins n’est plus posé sur le chemin.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-11-27-recrues',
     date: '27 novembre 2026',
     title: 'Une grande équipe, de vrais combats',

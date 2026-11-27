@@ -362,6 +362,16 @@ const LEAGUE_PREVIOUS: Readonly<Record<number, number>> = {
 /** Forme précédente de `id` pour une escorte de champion : celle du joueur, sinon LEAGUE_PREVIOUS. */
 export const escortPreviousOf = (id: number): number | null => PREVIOUS.get(id) ?? LEAGUE_PREVIOUS[id] ?? null;
 
+/**
+ * Formes évoluées dans les jeux dont la forme précédente n'est pas jouable ici (LEAGUE_PREVIOUS,
+ * et Tarpaud, qui vient de Têtarte par échange) : elles n'ont pas de pré-évolution dans PREVIOUS,
+ * mais ce ne sont pas des formes de base. Retour du 27 novembre 2026 : « dans le Pokédex, je peux
+ * déjà avoir du Blizzaroi, du Tarpaud ; on ne prend que les formes de base ». Les bébés absents du
+ * jeu (Pichu, Toudoudou, Azurill) ne comptent pas : Pikachu, Rondoudou et Marill restent des
+ * formes de base, Pikachu est même un partenaire de départ.
+ */
+export const evolvedInGames = (id: number): boolean => id in LEAGUE_PREVIOUS || id === 186;
+
 /** Forme précédente de `id`, ou null pour une forme de base (ou absente de la table). */
 export const preEvolutionOf = (id: number): number | null => PREVIOUS.get(id) ?? null;
 
