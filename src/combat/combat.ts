@@ -9,7 +9,7 @@ import { CHIP, chips } from '../world/weather';
 import type { Run } from '../run/run';
 import { AttackState } from './attackstate';
 import { BoonHooks } from './boonhooks';
-import { forcedStatus } from './boons';
+import { CHAIN_RATIO, ECHO_RATIO, extraShots, forcedStatus } from './boons';
 import { BUFF_TIME, type Move, type MoveEffect } from './moves';
 import { BUFF_LABEL, STATUS, XP_MULTIPLIER } from './pokemon';
 import { PowerUps } from '../render/powerup';
@@ -22,8 +22,9 @@ import type { StrikeSnap } from '../net/net';
 //
 // Chaque Pokémon garde ses recharges et son combo (Actor.atk) ; Combat
 // travaille sur celui de l'attaquant. Les compagnons (companion.ts) frappent
-// avec les mêmes attaques ; seuls les coups du Pokémon joué déclenchent les
-// dons, le gel d'impact et la secousse — sinon l'écran tremblerait sans cesse.
+// avec les mêmes attaques. Les coups de tous les membres déclenchent les dons
+// (toute l'équipe les porte, BoonHooks) ; seuls ceux du Pokémon joué figent
+// l'image et secouent l'écran — sinon il tremblerait sans cesse.
 //
 // Pas de hitbox, comme le jeu : une attaque physique touche tout ce qui est
 // dans le disque de sa portée, autour du Pokémon ; une attaque spéciale frappe
@@ -155,6 +156,15 @@ interface Strike {
   move?: string;
   /** Membre de l'équipe qui a tiré (ses dons, son XP). */
   owner?: Actor;
+  /**
+   * Tir de don : un rebond de Surtension ou un tir d'Écho. Il frappe comme l'attaque (statut du
+   * type, statut forcé d'un don) mais ne redéclenche pas on_hit, ni d'autres rebonds ou échos.
+   */
+  extra?: boolean;
+  /** Surtension : rebonds qu'il reste, et les ennemis déjà touchés par cette chaîne. */
+  chain?: { left: number; hit: Set<Actor>; scale: number };
+  /** Puissance de l'attaque, pour l'animation du rebond. */
+  power?: number;
   color: string;
   damage: number;
   kind: NumberKind;
@@ -204,7 +214,6 @@ export class Combat {
   readonly hooks: BoonHooks;
   private player: Actor | null = null;
   private enemies: readonly Actor[] = [];
-  private wasDashing = false;
   /** Temps depuis la dernière usure de la météo (sable, grêle). */
   private weatherT = 0;
   /** Psycho-Boost : vagues d'attaque restantes (délais en s). */
@@ -243,17 +252,21 @@ export class Combat {
     this.hooks.reset();
   }
 
-  /** Recharges et verrous à zéro (Vrille, Voyage, Racines). */
-  /** Les compagnons du dernier pas (Lien Psychique, boonhooks.ts). */
+  /** Les compagnons et invités du dernier pas. */
   private allies: readonly Actor[] = [];
-  companions(): readonly Actor[] {
-    return this.allies;
+  /** Toute l'équipe sur le terrain, Pokémon mené en tête (BoonHooks : Lien Psychique, tick). */
+  team(): readonly Actor[] {
+    return this.player ? [this.player, ...this.allies] : this.allies;
   }
 
-  resetCooldowns(): void {
-    this.st.moveCd.fill(0);
-    this.st.globalLock = this.st.actionLock = 0;
+  /** Recharges et verrous d'un membre à zéro (Vrille, Voyage, Racines). */
+  resetCooldowns(a: Actor): void {
+    a.atk.moveCd.fill(0);
+    a.atk.globalLock = a.atk.actionLock = 0;
   }
+
+  /** Les membres menés par un joueur dont le dash a commencé au pas précédent (dons de dash). */
+  private dashing = new WeakSet<Actor>();
 
   /**
    * Retire des PV. Au coup qui devrait être fatal, s'il reste une barre
@@ -499,10 +512,17 @@ export class Combat {
     this.player = player;
     this.enemies = enemies;
     const mon = player.pokemon;
-    // Début de dash : les dons de dash frappent le segment balayé.
-    const dashing = player.dashT > 0;
-    if (dashing && !this.wasDashing) this.hooks.onDashStart(player, player.dashDx, player.dashDy, enemies);
-    this.wasDashing = dashing;
+    // Début de dash : les dons de dash frappent le segment balayé, pour le joueur comme pour un
+    // invité en ligne (son dash arrive avec sa position ; sa direction, celle de son regard).
+    for (const a of [player, ...allies]) {
+      if (a !== player && !a.remote) continue;
+      if (a.dashT > 0 && !this.dashing.has(a)) {
+        this.dashing.add(a);
+        const ang = (a.dir * Math.PI) / 4;
+        const [dx, dy] = a === player ? [player.dashDx, player.dashDy] : [Math.sin(ang), Math.cos(ang)];
+        this.hooks.onDashStart(a, dx, dy, enemies);
+      } else if (a.dashT <= 0) this.dashing.delete(a);
+    }
     if (input.ult && mon && player.deathT < 0 && !player.evolve && !player.trapped) {
       this.hooks.ultimate(player, enemies, world, () => this.psyWaves.push(0.35 * this.psyWaves.length));
     }
@@ -526,7 +546,7 @@ export class Combat {
     this.updateEvolutions(dt, team);
     this.updateStrikes(dt, world, team);
     for (const e of enemies) this.updateEnemy(dt, e);
-    this.hooks.tick(dt, player, enemies);
+    this.hooks.tick(dt, team, enemies);
     for (const m of team) {
       const pm = m.pokemon;
       // En pleine évolution, l'ancienne forme ne s'use plus : la nouvelle repart PV pleins.
@@ -908,11 +928,10 @@ export class Combat {
       }
       if (player === this.player) {
         this.addShake(finisher ? 0.22 : 0.05);
-        if (finisher) {
-          this.freeze(0.075);
-          this.hooks.onFinisher(player, hit[0], first, this.enemies);
-        }
+        if (finisher) this.freeze(0.075);
       }
+      // Les dons de finisher, pour chaque membre (compagnons et invités compris).
+      if (finisher) this.hooks.onFinisher(player, hit[0], first, this.enemies);
     } else {
       // Pas d'ennemi à portée : un arbre à baies tout près prend le coup (sa
       // case est bloquée, on se tient au moins à une case de son centre).
@@ -967,9 +986,42 @@ export class Combat {
     }
     // Morphing a pu changer le type : la planche propre à la capacité ne vaut que pour son type d'origine.
     if (strike.type === type) strike.move = moveApi;
+    strike.power = power;
     this.strikes.push(strike);
     // Le rayon, le projectile ou le souffle part du tireur et suit la marque (qui suit la cible).
     this.fx.moveCast(strike.move, strike.type, true, () => player, () => strike, STRIKE_DELAY, power);
+    const boons = this.run?.boons;
+    if (best && boons) {
+      // Surtension : le tir rebondira à l'impact (updateStrikes), un rebond par rareté.
+      if (boons.has('elec_split')) strike.chain = { left: extraShots(boons.owned.get('elec_split')), hit: new Set([best]), scale: this.hitScale };
+      // Écho : des tirs en plus, chacun vers un autre ennemi à portée, du plus proche au plus loin.
+      if (boons.has('psy_echo')) {
+        const others = targets
+          .filter((e) => e !== best && !e.hidden && Math.hypot(e.x - player.x, e.y - player.y) <= reach)
+          .sort((a, c) => Math.hypot(a.x - player.x, a.y - player.y) - Math.hypot(c.x - player.x, c.y - player.y))
+          .slice(0, extraShots(boons.owned.get('psy_echo')));
+        for (const e of others) {
+          const t = this.hooks.morph(type, e);
+          const res = calculateDamage(player.pokemon!, e.pokemon!, power, t, 'special', this.random);
+          const echo: Strike = {
+            ...strike,
+            target: e,
+            x: e.x,
+            y: e.y,
+            type: t,
+            color: typeColor(t),
+            move: t === type ? moveApi : undefined,
+            damage: Math.max(1, Math.round(res.damage * this.hooks.dmgOut(player, e) * this.hitScale * ECHO_RATIO)),
+            kind: res.crit ? 'crit' : kindFromMultiplier(res.effectiveness),
+            extra: true,
+            chain: undefined,
+          };
+          this.strikes.push(echo);
+          this.fx.moveCast(echo.move, echo.type, true, () => player, () => echo, STRIKE_DELAY, power);
+          boons.fire('psy_echo');
+        }
+      }
+    }
     return player.playAction(['Shoot', 'Charge', 'Attack'], 0.4);
   }
 
@@ -978,6 +1030,8 @@ export class Combat {
   }
 
   private updateStrikes(dt: number, world: WorldMap, team: readonly Actor[]): void {
+    // Rebonds nés pendant ce pas : ajoutés après le tri (filter ne verrait pas ce qu'on pousserait).
+    const spawned: Strike[] = [];
     this.strikes = this.strikes.filter((o) => {
       if (o.area) {
         // Le lanceur est tombé : sa zone s'éteint sans frapper.
@@ -1008,7 +1062,11 @@ export class Combat {
         else this.hitPlayer(t, o.damage, o.fromX, o.fromY, o.type, o.kind);
         this.fx.attackAnim(o.type, t.x, t.y, o.move);
       } else if (!o.hostile && t && alive) {
-        this.hitEnemy(t, o.damage, o.fromX, o.fromY, o.type, o.color, false, o.kind, true, o.move, o.owner ?? null);
+        this.hitEnemy(t, o.damage, o.fromX, o.fromY, o.type, o.color, false, o.kind, true, o.move, o.owner ?? null, o.extra);
+        // Tempête de Feu (duo Électhor + Sulfura) : les rebonds enflamment ce qu'ils touchent.
+        if (o.extra && o.chain && this.run?.boons.has('duo_firestorm') && this.hooks.inflict(t, 'burn')) this.run.boons.fire('duo_firestorm');
+        const next = o.chain && o.chain.left > 0 ? this.bounce(o, t) : null;
+        if (next) spawned.push(next);
       } else {
         this.fx.impact(o.x, o.y, o.color);
         this.fx.attackAnim(o.type, o.x, o.y, o.move);
@@ -1016,6 +1074,52 @@ export class Combat {
       }
       return false;
     });
+    this.strikes.push(...spawned);
+  }
+
+  /**
+   * Surtension : le tir `o` vient de frapper `from` ; il repart vers l'ennemi le plus proche qu'il
+   * n'a pas encore touché (5,5 cases au plus), avec l'attaque elle-même (sa planche, son type) et
+   * 60 % de la force du coup d'avant, efficacité du type recalculée contre la nouvelle cible.
+   */
+  private bounce(o: Strike, from: Actor): Strike | null {
+    const chain = o.chain!;
+    const owner = o.owner;
+    if (!owner?.pokemon || owner.deathT >= 0) return null;
+    let next: Actor | null = null;
+    let bestD = 5.5;
+    for (const e of this.alive(this.enemies)) {
+      if (e.hidden || chain.hit.has(e)) continue;
+      const d = Math.hypot(e.x - from.x, e.y - from.y);
+      if (d <= bestD) {
+        next = e;
+        bestD = d;
+      }
+    }
+    if (!next) return null;
+    chain.hit.add(next);
+    const scale = chain.scale * CHAIN_RATIO;
+    const res = calculateDamage(owner.pokemon, next.pokemon!, o.power ?? 40, o.type, 'special', this.random);
+    const strike: Strike = {
+      ...o,
+      target: next,
+      x: next.x,
+      y: next.y,
+      fromX: from.x,
+      fromY: from.y,
+      startCell: Math.floor(from.y) * 4096 + Math.floor(from.x),
+      t: 0,
+      // Un rebond file plus vite que le tir de départ : la chaîne se lit d'un trait.
+      dur: 0.1,
+      damage: Math.max(1, Math.round(res.damage * this.hooks.dmgOut(owner, next) * scale)),
+      kind: res.crit ? 'crit' : kindFromMultiplier(res.effectiveness),
+      extra: true,
+      chain: { left: chain.left - 1, hit: chain.hit, scale },
+    };
+    const at = { x: from.x, y: from.y };
+    this.fx.moveCast(strike.move, strike.type, true, () => at, () => strike, strike.dur, o.power ?? 40);
+    this.run?.boons.fire('elec_split');
+    return strike;
   }
 
   /**
@@ -1041,10 +1145,11 @@ export class Combat {
   /** EnemyAI.take_damage (+ stagger_from pour le finisher). */
   /**
    * `ranged` : attaque spéciale (null pour un coup qui ne vient pas d'une attaque) ;
-   * `by` : le membre qui frappe — seuls les coups du Pokémon joué figent l'écran
-   * et déclenchent ses dons.
+   * `by` : le membre qui frappe — ses coups déclenchent les dons de l'équipe ;
+   * seuls ceux du Pokémon joué figent l'écran. `extra` : rebond ou tir d'Écho
+   * (pas de on_hit).
    */
-  private hitEnemy(e: Actor, damage: number, fromX: number, fromY: number, type: string, color: string, finisher: boolean, kind: NumberKind, ranged: boolean | null, moveApi?: string, by: Actor | null = null): void {
+  private hitEnemy(e: Actor, damage: number, fromX: number, fromY: number, type: string, color: string, finisher: boolean, kind: NumberKind, ranged: boolean | null, moveApi?: string, by: Actor | null = null, extra = false): void {
     // En pleine entrée en puissance : le coup (déjà parti) se perd.
     if (e.intro) return;
     this.dealtBy(by, Math.min(damage, e.pokemon?.hp ?? 0));
@@ -1063,7 +1168,9 @@ export class Combat {
     // Le finisher brise l'anticipation en cours ; un coup normal ne repousse pas un sauvage qui prépare son attaque.
     if (finisher) e.brain?.cancelWindup();
     const windingUp = (e.brain?.windupLeft() ?? 0) > 0;
-    if (!boss && (finisher || (!fatal && e.poiseT <= 0 && !windingUp))) {
+    // Un rebond ou un tir d'Écho ne repousse pas : il éparpillait la Horde loin du Pokémon (le banc
+    // la mesurait plus lente à vider avec Écho qu'avec rien).
+    if (!boss && !extra && (finisher || (!fatal && e.poiseT <= 0 && !windingUp))) {
       e.brain?.interrupt();
       const v = (finisher ? STAGGER : KNOCKBACK) * this.knockbackMult(e);
       e.kbVx = dx * v;
@@ -1085,7 +1192,7 @@ export class Combat {
       if (forced) this.hooks.inflict(e, forced, true);
       else if (roll && this.random() < roll[1]) this.hooks.inflict(e, roll[0]);
     }
-    if (ranged !== null && own && this.player) this.hooks.onHit(this.player, e, damage, ranged, this.enemies);
+    if (ranged !== null && by && !extra) this.hooks.onHit(by, e, damage, ranged, this.enemies);
     if (fatal) this.kill(e, by);
   }
 
@@ -1112,7 +1219,8 @@ export class Combat {
     cry(e.speciesId, e.role === 'wild' ? -5 : 0, 0.85);
     this.defeated(e);
     if (!this.player) return;
-    if (!by || by === this.player) this.hooks.onKill(this.player, e, this.enemies);
+    // Les dons de K.O. (Colère du Volcan, Vide, Ascendant…) partent de celui qui achève, ou du Pokémon mené.
+    this.hooks.onKill(by ?? this.player, e, this.enemies);
     // XP : niveau de l'ennemi × 12 (EnemyAI.gd:1365), augmentée par Cendres.
     if (!e.pokemon) return;
     const xp = Math.max(1, Math.floor(e.pokemon.level * XP_MULTIPLIER * this.hooks.xpMult()));
@@ -1141,15 +1249,17 @@ export class Combat {
     const mon = player.pokemon;
     if (!mon || mon.fainted || player.deathT >= 0 || player.evolve || player.trapped) return;
     const own = player === this.player;
-    // Esquivé : en plein dash (et juste après), sous Abri, ou par chance (Reflet).
-    const dashing = player.dashT > 0 || (own && player.sinceDash < DASH_IFRAMES_AFTER + this.hooks.dashGrace());
+    // Un Pokémon mené par un joueur : celui de cet écran, ou celui d'un invité en ligne.
+    const led = own || !!player.remote;
+    // Esquivé : en plein dash (et juste après, Ombre Portée comprise), sous Abri, ou par chance (Reflet).
+    const dashing = player.dashT > 0 || (led && player.sinceDash < DASH_IFRAMES_AFTER + this.hooks.dashGrace());
     if (dashing || player.protectT > 0 || this.random() < mon.dodgeChance) {
       this.fx.number('dodge', player.x, player.y);
-      if (dashing && own) this.hooks.onDodgedByDash(player, damage, this.enemies);
+      if (dashing && led) this.hooks.onDodgedByDash(player, damage, this.enemies);
       return;
     }
-    // Dette double le coup, l'Armure de Givre en absorbe une part.
-    damage = this.hooks.dmgIn(damage);
+    // Dette double le coup, l'Armure de Givre (de ce Pokémon) en absorbe une part.
+    damage = this.hooks.dmgIn(player, damage);
     if (damage <= 0) {
       this.fx.number('dodge', player.x, player.y, 0, 'ABSORBÉ');
       return;
@@ -1167,10 +1277,10 @@ export class Combat {
     if (own) {
       this.freeze(0.05);
       this.addShake(0.12);
-      // Phénix, Souhait, Renaissance peuvent encore empêcher le K.O. ; Épines renvoie.
-      this.hooks.onHurt(player, damage, this.enemies);
       this.hurt();
     }
+    // Phénix, Souhait, Renaissance peuvent encore empêcher le K.O. de n'importe quel membre ; Épines renvoie.
+    this.hooks.onHurt(player, damage, this.enemies, led);
     const roll = STATUS_ROLL[type];
     if (!mon.fainted && roll && this.random() < roll[1]) mon.applyStatus(roll[0]);
     if (mon.fainted) {

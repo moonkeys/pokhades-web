@@ -79,6 +79,22 @@ export const PATCH_NOTES: readonly PatchNote[] = [
           'Un don qui n’a pas de valeur chiffrée n’est plus proposé une deuxième fois.',
         ],
       },
+      {
+        title: 'Des dons pour toute l’équipe',
+        items: [
+          'Chaque don vaut maintenant pour tous les Pokémon de l’équipe : tes compagnons et tes amis en ligne déclenchent eux aussi gel, brûlures, finishers et soins avec leurs propres coups.',
+          'Un don de statistique monte la stat de toute l’équipe, même d’un Pokémon qui la rejoint plus tard.',
+          'Phénix, Souhait, l’Armure de Givre et les autres protègent chaque Pokémon une fois chacun : celui de ton ami ne te prive plus du tien.',
+          'En ligne, chaque joueur prend sa propre nouvelle attaque pour son Pokémon. Seul, c’est toujours une attaque, pour le membre de ton choix.',
+        ],
+      },
+      {
+        title: 'Rebonds et tirs multiples',
+        items: [
+          'Surtension, d’Électhor, fait vraiment rebondir tes tirs d’ennemi en ennemi : une Flammèche rebondit en Flammèche. Un rebond au Commun, quatre au Prismatique.',
+          'Nouveau don de Mew, Écho : tes tirs se dédoublent vers d’autres ennemis, d’un à quatre tirs en plus selon la rareté.',
+        ],
+      },
     ],
   },
   {

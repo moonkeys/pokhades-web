@@ -975,6 +975,11 @@ effets animés). Les flèches, ✕ et ✔ restent : ce sont des signes typograph
   Conscience Collective (à imaginer pour l'équipe) ; des dons `flag` qui
   gagneraient une valeur selon la rareté (les sillages de dash, Dette) ; un
   banc moins bruité (plus de combats, graine fixe).
+- Dons pour toute l'équipe, une nouvelle attaque par joueur en coop, Surtension
+  qui rebondit, Écho (même jour, README). À juger en jeu : les compagnons
+  déclenchent maintenant les dons de finisher (Fortune, Plumage, Vrille),
+  l'ultime peut venir plus vite avec une équipe de trois ou quatre. À tester
+  à deux onglets : la nouvelle attaque de chacun, la vitesse de l'invité.
 
 ## 3. Déjà notés, toujours en attente
 

@@ -309,7 +309,7 @@ export class RewardScreen {
       // Couleur de rareté assombrie : lisible au feutre sur le papier.
       const rar = el('span', 'rw-rar', undefined, card.result > card.rarity && !ult ? `${rarity} ↑` : rarity);
       rar.style.setProperty('--c', `color-mix(in srgb, ${ult || def?.duo ? RARITY_COLOR[3] : RARITY_COLOR[card.result]} 70%, #000)`);
-      const scope = ult ? 'Touche R' : def?.duo ? `${DONORS[def.duo[0]].name} + ${DONORS[def.duo[1]].name}` : def?.scope === 'T' ? 'Toute l’équipe' : 'Ton Pokémon';
+      const scope = ult ? 'Touche R' : def?.duo ? `${DONORS[def.duo[0]].name} + ${DONORS[def.duo[1]].name}` : 'Toute l’équipe';
       // Valeur mise en avant : « 40 % », « rayon 4,5 cases »… ; un don de stat montre son gain.
       // Un don de stat : « +28 % » en valeur, le nom de la statistique en légende.
       const value = ult ? '' : stat ? valueText(card.id, card.result).slice(stat.name.length + 1) : valueText(card.id, card.result);

@@ -1,7 +1,7 @@
 import type { Rng } from '../core/rng';
 import type { Status } from './pokemon';
 
-// Dons de légendaires, repris de RunBoons.gd : 10 donateurs, 83 dons (75 de
+// Dons de légendaires, repris de RunBoons.gd : 10 donateurs, 84 dons (76 de
 // donateur dont 10 de statistique, et 8 duos), 4 raretés. La valeur d'un don
 // est sa base × l'échelle de sa rareté ; reprendre un don déjà possédé le fait
 // monter d'une rareté.
@@ -51,8 +51,6 @@ export interface BoonDef {
   god: DonorId | 'duo';
   duo?: [DonorId, DonorId];
   name: string;
-  /** T : toute l'équipe ; S : le Pokémon qui le porte. */
-  scope: 'S' | 'T';
   base: number;
   fmt: Fmt;
   desc: string;
@@ -60,12 +58,14 @@ export interface BoonDef {
   solo: boolean;
 }
 
-const b = (id: string, god: BoonDef['god'], name: string, scope: 'S' | 'T', base: number, fmt: Fmt, desc: string, solo = true, duo?: [DonorId, DonorId]): BoonDef => ({
+// Plus de portée « Ton Pokémon » / « Toute l'équipe » (le jeu Godot les distinguait) : depuis le
+// 27 novembre 2026, tout don vaut pour chaque Pokémon de l'équipe, compagnons et invités en ligne
+// compris (« on ne fait plus de dons que pour un Pokémon, sinon c'est compliqué en multi »).
+const b = (id: string, god: BoonDef['god'], name: string, base: number, fmt: Fmt, desc: string, solo = true, duo?: [DonorId, DonorId]): BoonDef => ({
   id,
   god,
   duo,
   name,
-  scope,
   base,
   fmt,
   desc,
@@ -74,98 +74,106 @@ const b = (id: string, god: BoonDef['god'], name: string, scope: 'S' | 'T', base
 
 /** RunBoons.CATALOG (RB:124-347). Descriptions du jeu, ajustées là où le prototype diffère. */
 const LIST: BoonDef[] = [
-  b('elec_ricochet', 'electhor', 'Arc Vagabond', 'S', 0.4, 'pct', 'Tes attaques de mêlée ricochent sur un 2ᵉ ennemi proche.'),
-  b('elec_static', 'electhor', 'Décharge Statique', 'S', 3.5, 'mult', 'Tous les 10 coups, tu te décharges en zone autour de toi.'),
-  b('elec_dash', 'electhor', 'Nerf à Vif', 'S', 1, 'flag', 'Ton dash laisse un sillage qui paralyse.'),
-  b('elec_finisher', 'electhor', 'Fusible', 'S', 4, 'radius', 'Ton finisher paralyse tout autour de la cible.'),
-  b('elec_network', 'electhor', 'Réseau', 'T', 0.25, 'pct', 'Les ennemis paralysés subissent plus de dégâts.'),
-  b('elec_split', 'electhor', 'Surtension', 'S', 0.45, 'pct', "Tes tirs frappent aussi un second ennemi à l'impact."),
-  b('elec_storm', 'electhor', 'Orage', 'T', 8, 'sec', "La foudre frappe régulièrement l'ennemi le plus coriace de la salle."),
-  b('elec_range', 'electhor', 'Portée', 'S', 1, 'stat', 'Tes attaques portent plus loin.'),
+  b('elec_ricochet', 'electhor', 'Arc Vagabond', 0.4, 'pct', 'Tes attaques de mêlée ricochent sur un 2ᵉ ennemi proche.'),
+  b('elec_static', 'electhor', 'Décharge Statique', 3.5, 'mult', 'Tous les 10 coups, tu te décharges en zone autour de toi.'),
+  b('elec_dash', 'electhor', 'Nerf à Vif', 1, 'flag', 'Ton dash laisse un sillage qui paralyse.'),
+  b('elec_finisher', 'electhor', 'Fusible', 4, 'radius', 'Ton finisher paralyse tout autour de la cible.'),
+  b('elec_network', 'electhor', 'Réseau', 0.25, 'pct', 'Les ennemis paralysés subissent plus de dégâts.'),
+  // Surtension : un vrai rebond d'ennemi en ennemi, avec l'attaque elle-même (une Flammèche rebondit
+  // en Flammèche), et plus de rebonds à chaque rareté. Elle ne frappait qu'un second ennemi, d'un
+  // chiffre électrique sans animation : retour du 27 novembre 2026, « des flammèches qui rebondissent
+  // de Pokémon en Pokémon adverse, comme dans Hades ».
+  b('elec_split', 'electhor', 'Surtension', 1, 'count', 'Tes tirs rebondissent d’ennemi en ennemi, à 60 % du coup précédent à chaque rebond.'),
+  b('elec_storm', 'electhor', 'Orage', 8, 'sec', "La foudre frappe régulièrement l'ennemi le plus coriace de la salle."),
+  b('elec_range', 'electhor', 'Portée', 1, 'stat', 'Tes attaques portent plus loin.'),
   // Braises : une chance de brûler qui monte avec la rareté (elle brûlait à coup sûr dès le Commun,
   // si bien qu'une reprise ne changeait rien ; revue du 27 novembre 2026).
-  b('feu_burn', 'sulfura', 'Braises', 'S', 0.5, 'pct', 'Tes coups ont une chance de brûler.'),
-  b('feu_finisher', 'sulfura', 'Terre Brûlée', 'S', 4.5, 'radius', 'Ton finisher embrase tout autour de la cible.'),
-  b('feu_dash', 'sulfura', 'Traînée', 'S', 1, 'flag', 'Ton dash laisse un chemin de flammes.'),
-  b('feu_poise', 'sulfura', 'Attisement', 'T', 1, 'flag', 'Frapper un ennemi qui brûle le fait reculer, ténacité ignorée.'),
-  b('feu_phoenix', 'sulfura', 'Phénix', 'T', 0.3, 'pct', 'Une fois par salle, tu te relèves au lieu de tomber K.O.'),
-  b('feu_kill', 'sulfura', 'Colère du Volcan', 'T', 4, 'radius', 'Chaque ennemi tué embrase ses voisins.'),
-  b('feu_cauldron', 'sulfura', 'Chaudron', 'T', 2, 'mult', 'Tes brûlures durent bien plus longtemps.'),
-  b('feu_fury', 'sulfura', 'Fureur', 'S', 1, 'stat', 'Attaque nettement augmentée.'),
+  b('feu_burn', 'sulfura', 'Braises', 0.5, 'pct', 'Tes coups ont une chance de brûler.'),
+  b('feu_finisher', 'sulfura', 'Terre Brûlée', 4.5, 'radius', 'Ton finisher embrase tout autour de la cible.'),
+  b('feu_dash', 'sulfura', 'Traînée', 1, 'flag', 'Ton dash laisse un chemin de flammes.'),
+  b('feu_poise', 'sulfura', 'Attisement', 1, 'flag', 'Frapper un ennemi qui brûle le fait reculer, ténacité ignorée.'),
+  b('feu_phoenix', 'sulfura', 'Phénix', 0.3, 'pct', 'Une fois par salle, chaque Pokémon se relève au lieu de tomber K.O.'),
+  b('feu_kill', 'sulfura', 'Colère du Volcan', 4, 'radius', 'Chaque ennemi tué embrase ses voisins.'),
+  b('feu_cauldron', 'sulfura', 'Chaudron', 2, 'mult', 'Tes brûlures durent bien plus longtemps.'),
+  b('feu_fury', 'sulfura', 'Fureur', 1, 'stat', 'Attaque nettement augmentée.'),
   // Souffle Gelé : 20 % au Commun (12 % avant la revue du 27 novembre 2026 : « je gèle à chaque
   // attaque, j'ai l'impression qu'il ne marche pas » ; il était aussi masqué par Braises).
-  b('glace_freeze', 'artikodin', 'Souffle Gelé', 'S', 0.2, 'pct', 'Chaque coup a une chance de geler.'),
-  b('glace_dash', 'artikodin', 'Verglas', 'S', 1, 'flag', "Ton dash gèle ce qu'il traverse."),
-  b('glace_shatter', 'artikodin', 'Éclat', 'T', 0.7, 'pct', 'Frapper un ennemi gelé le brise — dégâts majorés, le gel saute au voisin.'),
-  b('glace_finisher', 'artikodin', 'Blizzard de Poche', 'S', 0.5, 'pct', 'Ton finisher ralentit toute la salle.'),
-  b('glace_shield', 'artikodin', 'Armure de Givre', 'T', 0.6, 'pct', 'Un bouclier absorbe une partie du premier coup encaissé.'),
-  b('glace_execute', 'artikodin', 'Zéro Absolu', 'T', 0.15, 'pct', 'Un sauvage affaibli gèle net dès que tu le touches.'),
-  b('glace_ward', 'artikodin', 'Rempart de Givre', 'S', 1, 'stat', 'Défense Spéciale nettement augmentée.'),
-  b('glace_hail', 'artikodin', 'Grêle', 'S', 0.4, 'pct', 'Tes tirs laissent une nappe de froid qui ralentit ce qui la traverse.'),
-  b('psy_empathy', 'mew', 'Empathie', 'T', 0.3, 'pct', 'Tes compagnons infligent plus de dégâts.'),
+  b('glace_freeze', 'artikodin', 'Souffle Gelé', 0.2, 'pct', 'Chaque coup a une chance de geler.'),
+  b('glace_dash', 'artikodin', 'Verglas', 1, 'flag', "Ton dash gèle ce qu'il traverse."),
+  b('glace_shatter', 'artikodin', 'Éclat', 0.7, 'pct', 'Frapper un ennemi gelé le brise — dégâts majorés, le gel saute au voisin.'),
+  b('glace_finisher', 'artikodin', 'Blizzard de Poche', 0.5, 'pct', 'Ton finisher ralentit toute la salle.'),
+  b('glace_shield', 'artikodin', 'Armure de Givre', 0.6, 'pct', 'Un bouclier absorbe une partie du premier coup encaissé.'),
+  b('glace_execute', 'artikodin', 'Zéro Absolu', 0.15, 'pct', 'Un sauvage affaibli gèle net dès que tu le touches.'),
+  b('glace_ward', 'artikodin', 'Rempart de Givre', 1, 'stat', 'Défense Spéciale nettement augmentée.'),
+  b('glace_hail', 'artikodin', 'Grêle', 0.4, 'pct', 'Tes tirs laissent une nappe de froid qui ralentit ce qui la traverse.'),
+  b('psy_empathy', 'mew', 'Empathie', 0.3, 'pct', 'Les compagnons menés par l’IA infligent plus de dégâts.'),
   // Les soins (revue du 27 novembre 2026) : au banc des dons, Transfert, Flamme Sacrée et Plumage
   // finissaient une salle presque sans PV perdus, dès le Rare. Bases divisées par deux environ.
-  b('psy_transfer', 'mew', 'Transfert', 'T', 0.04, 'pct', 'Une part de tes dégâts te soigne.'),
-  b('psy_morph', 'mew', 'Morphing', 'S', 1, 'flag', 'Tes attaques de type Normal prennent le type le plus efficace contre la cible.'),
-  b('psy_finisher', 'mew', 'Lien Psychique', 'S', 1, 'flag', 'Ton finisher recharge sur-le-champ les capacités de tes compagnons.'),
-  b('psy_summon', 'mew', 'Invocation', 'T', 1, 'flag', 'Un allié rejoint ton équipe sur-le-champ, pour toute la run.', false),
-  b('psy_focus', 'mew', 'Concentration', 'S', 1, 'stat', 'Attaque Spéciale nettement augmentée.'),
-  b('psy_premonition', 'mew', 'Prémonition', 'S', 1, 'flag', 'Un coup évité par ton dash est renvoyé en entier au plus proche.'),
-  b('psy_hivemind', 'mew', 'Conscience Collective', 'T', 1, 'flag', 'Tes compagnons copient la capacité que tu as sélectionnée.', false),
-  b('tenb_sleep', 'darkrai', 'Cauchemar', 'S', 0.15, 'pct', 'Tes coups endorment ; les endormis encaissent double.'),
-  b('tenb_steal', 'darkrai', 'Vol d’Ombre', 'S', 0.25, 'pct', 'Tu frappes plus fort, mais tu perds des PV max à chaque salle.'),
-  b('tenb_execute', 'darkrai', 'Exécution', 'S', 0.15, 'pct', 'Ton finisher achève net un sauvage déjà bas (pas un Pokémon de champion).'),
+  b('psy_transfer', 'mew', 'Transfert', 0.04, 'pct', 'Une part de tes dégâts te soigne.'),
+  b('psy_morph', 'mew', 'Morphing', 1, 'flag', 'Tes attaques de type Normal prennent le type le plus efficace contre la cible.'),
+  b('psy_finisher', 'mew', 'Lien Psychique', 1, 'flag', 'Un finisher recharge sur-le-champ les capacités des autres membres de l’équipe.'),
+  b('psy_summon', 'mew', 'Invocation', 1, 'flag', 'Un allié rejoint ton équipe sur-le-champ, pour toute la run.', false),
+  b('psy_focus', 'mew', 'Concentration', 1, 'stat', 'Attaque Spéciale nettement augmentée.'),
+  b('psy_premonition', 'mew', 'Prémonition', 1, 'flag', 'Un coup évité par ton dash est renvoyé en entier au plus proche.'),
+  // Écho, même retour : « certaines attaques ne font qu'un projectile ; un don pour en avoir
+  // plusieurs, deux Flammèches au lieu d'une ». Les tirs en plus vont chacun à un autre ennemi : sur
+  // une cible seule (un as), le don ne double pas les dégâts.
+  b('psy_echo', 'mew', 'Écho', 1, 'count', 'Tes tirs se dédoublent : des projectiles de plus partent vers d’autres ennemis, à 45 % des dégâts.'),
+  b('psy_hivemind', 'mew', 'Conscience Collective', 1, 'flag', 'Tes compagnons copient la capacité que tu as sélectionnée.', false),
+  b('tenb_sleep', 'darkrai', 'Cauchemar', 0.15, 'pct', 'Tes coups endorment ; les endormis encaissent double.'),
+  b('tenb_steal', 'darkrai', 'Vol d’Ombre', 0.25, 'pct', 'Tu frappes plus fort, mais tu perds des PV max à chaque salle.'),
+  b('tenb_execute', 'darkrai', 'Exécution', 0.15, 'pct', 'Ton finisher achève net un sauvage déjà bas (pas un Pokémon de champion).'),
   // Le dash rend déjà invulnérable dans le prototype : Ombre Portée prolonge cette invulnérabilité.
-  b('tenb_phase', 'darkrai', 'Ombre Portée', 'S', 0.3, 'sec', 'Tu restes intangible un instant de plus après ton dash.'),
-  b('tenb_lastbreath', 'darkrai', 'Dernier Souffle', 'T', 0.5, 'pct', 'Sous 30 % de PV, tu cognes plus fort et plus vite.'),
-  b('tenb_debt', 'darkrai', 'Dette', 'T', 1, 'flag', 'Tu encaisses le double, mais tous les dons trouvés montent d’une rareté.'),
-  b('tenb_precision', 'darkrai', 'Point Faible', 'S', 1, 'stat', 'Tes coups critiques deviennent fréquents.'),
-  b('tenb_void', 'darkrai', 'Vide', 'T', 8, 'sec', 'Chaque ennemi tué laisse une ombre qui ronge ce qui la traverse.'),
-  b('sol_reach', 'groudon', 'Séisme', 'S', 0.5, 'pct', 'Tes attaques portent plus loin.'),
-  b('sol_finisher', 'groudon', 'Impact', 'S', 0.6, 'pct', 'Ton finisher frappe en zone et étourdit.'),
-  b('sol_dash', 'groudon', 'Charge', 'S', 0.55, 'pct', 'Ton dash inflige des dégâts et repousse.'),
-  b('sol_steady', 'groudon', 'Inébranlable', 'T', 1, 'flag', 'Rien ne t’immobilise : gel, sommeil et paralysie se dissipent aussitôt.'),
-  b('sol_shell', 'groudon', 'Carapace', 'T', 0.08, 'pct', 'Chaque salle libérée sans encaisser de coup augmente tes PV max.'),
-  b('sol_thorns', 'groudon', 'Épines', 'T', 0.3, 'pct', 'Une part des dégâts encaissés est renvoyée à l’agresseur.'),
-  b('sol_bulk', 'groudon', 'Masse', 'S', 1, 'stat', 'PV maximum nettement augmentés.'),
-  b('sol_guard', 'groudon', 'Rempart', 'S', 1, 'stat', 'Défense nettement augmentée.'),
-  b('sol_continent', 'groudon', 'Continent', 'S', 0.55, 'pct', 'Tous les cinq coups, une faille s’ouvre sous ta cible.'),
-  b('temps_cooldown', 'celebi', 'Feuillage', 'T', 0.15, 'pct', 'Toutes tes cadences sont raccourcies.'),
-  b('temps_regen', 'celebi', 'Sève', 'T', 0.008, 'pct', 'Tu régénères après 3 s sans prendre de coup.'),
-  b('temps_finisher', 'celebi', 'Vrille', 'S', 1, 'flag', 'Ton finisher recharge instantanément tes capacités.'),
-  b('temps_speed', 'celebi', 'Printemps', 'T', 0.2, 'pct', 'Tu te déplaces et tu frappes plus vite à chaque nouvelle salle.'),
-  b('temps_journey', 'celebi', 'Voyage', 'T', 0.08, 'pct', 'Tu entres dans chaque salle cadences pleines, dash rechargé et soigné d’une part de tes PV.'),
-  b('temps_haste', 'celebi', 'Hâte', 'S', 1, 'stat', 'Tes capacités reviennent plus vite.'),
-  b('temps_rewind', 'celebi', 'Rembobinage', 'S', 1, 'flag', 'Ton dash te ramène à la position et aux PV d’il y a trois secondes.'),
-  b('sacre_lifesteal', 'hooh', 'Flamme Sacrée', 'S', 0.03, 'pct', 'Tes coups brûlent et te soignent.'),
-  b('sacre_xp', 'hooh', 'Cendres', 'T', 0.25, 'pct', 'Tu gagnes plus d’XP sur chaque ennemi vaincu.'),
-  b('sacre_revive', 'hooh', 'Résurrection', 'T', 0.3, 'pct', 'À la fin de chaque salle, tes compagnons K.O. se relèvent avec une part de leurs PV, et non plus 1 PV.'),
-  b('sacre_level', 'hooh', 'Ascension', 'T', 0.25, 'pct', 'Chaque salle libérée donne à toute l’équipe une part d’un niveau, en XP.'),
-  b('sacre_finisher', 'hooh', 'Plumage', 'S', 0.05, 'pct', 'Ton finisher te soigne.'),
-  b('sacre_rebirth', 'hooh', 'Renaissance', 'T', 1, 'flag', 'Une fois par run, tu te relèves à moitié de tes PV au lieu de tomber.'),
-  b('dragon_dash_charge', 'rayquaza', 'Ozone', 'T', 1, 'count', 'Des charges de dash supplémentaires.'),
-  b('dragon_dash_hit', 'rayquaza', 'Piqué', 'S', 0.7, 'pct', 'Dasher dans un ennemi le frappe.'),
-  b('dragon_momentum', 'rayquaza', 'Ascendant', 'S', 0.08, 'pct', 'Chaque ennemi tué dans la salle te rend plus rapide (jusqu’à +60 %).'),
-  b('dragon_finisher', 'rayquaza', 'Turbulence', 'S', 1, 'flag', 'Ton finisher te rend une charge de dash.'),
-  b('dragon_delta', 'rayquaza', 'Delta', 'S', 0.3, 'pct', 'Tes cadences fondent tant que tu restes en mouvement.'),
-  b('dragon_swift', 'rayquaza', 'Célérité', 'S', 1, 'stat', 'Vitesse de déplacement et de frappe augmentée.'),
-  b('dragon_evade', 'rayquaza', 'Insaisissable', 'S', 1, 'stat', 'Tu esquives une partie des coups.'),
-  b('astre_coin', 'jirachi', 'Étoile Filante', 'S', 0.1, 'pct', 'Tes coups font parfois tomber des Pokédollars.'),
-  b('astre_bounty', 'jirachi', 'Aubaine', 'T', 0.8, 'money', 'Les salles libérées rapportent davantage.'),
-  b('astre_wish', 'jirachi', 'Souhait', 'T', 1, 'flag', 'Une fois par salle, un coup fatal te laisse à 1 PV.'),
+  b('tenb_phase', 'darkrai', 'Ombre Portée', 0.3, 'sec', 'Tu restes intangible un instant de plus après ton dash.'),
+  b('tenb_lastbreath', 'darkrai', 'Dernier Souffle', 0.5, 'pct', 'Sous 30 % de PV, tu cognes plus fort et plus vite.'),
+  b('tenb_debt', 'darkrai', 'Dette', 1, 'flag', 'Tu encaisses le double, mais tous les dons trouvés montent d’une rareté.'),
+  b('tenb_precision', 'darkrai', 'Point Faible', 1, 'stat', 'Tes coups critiques deviennent fréquents.'),
+  b('tenb_void', 'darkrai', 'Vide', 8, 'sec', 'Chaque ennemi tué laisse une ombre qui ronge ce qui la traverse.'),
+  b('sol_reach', 'groudon', 'Séisme', 0.5, 'pct', 'Tes attaques portent plus loin.'),
+  b('sol_finisher', 'groudon', 'Impact', 0.6, 'pct', 'Ton finisher frappe en zone et étourdit.'),
+  b('sol_dash', 'groudon', 'Charge', 0.55, 'pct', 'Ton dash inflige des dégâts et repousse.'),
+  b('sol_steady', 'groudon', 'Inébranlable', 1, 'flag', 'Rien ne t’immobilise : gel, sommeil et paralysie se dissipent aussitôt.'),
+  b('sol_shell', 'groudon', 'Carapace', 0.08, 'pct', 'Chaque salle libérée sans encaisser de coup augmente tes PV max.'),
+  b('sol_thorns', 'groudon', 'Épines', 0.3, 'pct', 'Une part des dégâts encaissés est renvoyée à l’agresseur.'),
+  b('sol_bulk', 'groudon', 'Masse', 1, 'stat', 'PV maximum nettement augmentés.'),
+  b('sol_guard', 'groudon', 'Rempart', 1, 'stat', 'Défense nettement augmentée.'),
+  b('sol_continent', 'groudon', 'Continent', 0.55, 'pct', 'Tous les cinq coups, une faille s’ouvre sous ta cible.'),
+  b('temps_cooldown', 'celebi', 'Feuillage', 0.15, 'pct', 'Toutes tes cadences sont raccourcies.'),
+  b('temps_regen', 'celebi', 'Sève', 0.008, 'pct', 'Tu régénères après 3 s sans prendre de coup.'),
+  b('temps_finisher', 'celebi', 'Vrille', 1, 'flag', 'Ton finisher recharge instantanément tes capacités.'),
+  b('temps_speed', 'celebi', 'Printemps', 0.2, 'pct', 'Tu te déplaces et tu frappes plus vite à chaque nouvelle salle.'),
+  b('temps_journey', 'celebi', 'Voyage', 0.08, 'pct', 'Tu entres dans chaque salle cadences pleines, dash rechargé et soigné d’une part de tes PV.'),
+  b('temps_haste', 'celebi', 'Hâte', 1, 'stat', 'Tes capacités reviennent plus vite.'),
+  b('temps_rewind', 'celebi', 'Rembobinage', 1, 'flag', 'Ton dash te ramène à la position et aux PV d’il y a trois secondes.'),
+  b('sacre_lifesteal', 'hooh', 'Flamme Sacrée', 0.03, 'pct', 'Tes coups brûlent et te soignent.'),
+  b('sacre_xp', 'hooh', 'Cendres', 0.25, 'pct', 'Tu gagnes plus d’XP sur chaque ennemi vaincu.'),
+  b('sacre_revive', 'hooh', 'Résurrection', 0.3, 'pct', 'À la fin de chaque salle, tes compagnons K.O. se relèvent avec une part de leurs PV, et non plus 1 PV.'),
+  b('sacre_level', 'hooh', 'Ascension', 0.25, 'pct', 'Chaque salle libérée donne à toute l’équipe une part d’un niveau, en XP.'),
+  b('sacre_finisher', 'hooh', 'Plumage', 0.05, 'pct', 'Ton finisher te soigne.'),
+  b('sacre_rebirth', 'hooh', 'Renaissance', 1, 'flag', 'Une fois par run, chaque Pokémon se relève à moitié de ses PV au lieu de tomber.'),
+  b('dragon_dash_charge', 'rayquaza', 'Ozone', 1, 'count', 'Des charges de dash supplémentaires.'),
+  b('dragon_dash_hit', 'rayquaza', 'Piqué', 0.7, 'pct', 'Dasher dans un ennemi le frappe.'),
+  b('dragon_momentum', 'rayquaza', 'Ascendant', 0.08, 'pct', 'Chaque ennemi tué dans la salle te rend plus rapide (jusqu’à +60 %).'),
+  b('dragon_finisher', 'rayquaza', 'Turbulence', 1, 'flag', 'Ton finisher te rend une charge de dash.'),
+  b('dragon_delta', 'rayquaza', 'Delta', 0.3, 'pct', 'Tes cadences fondent tant que tu restes en mouvement.'),
+  b('dragon_swift', 'rayquaza', 'Célérité', 1, 'stat', 'Vitesse de déplacement et de frappe augmentée.'),
+  b('dragon_evade', 'rayquaza', 'Insaisissable', 1, 'stat', 'Tu esquives une partie des coups.'),
+  b('astre_coin', 'jirachi', 'Étoile Filante', 0.1, 'pct', 'Tes coups font parfois tomber des Pokédollars.'),
+  b('astre_bounty', 'jirachi', 'Aubaine', 0.8, 'money', 'Les salles libérées rapportent davantage.'),
+  b('astre_wish', 'jirachi', 'Souhait', 1, 'flag', 'Une fois par salle, un coup fatal laisse chaque Pokémon à 1 PV.'),
   // Fortune soignait comme Plumage, de Ho-Oh, en plus fort : deux fois le même don (revue du 27
   // novembre 2026, « il y en a qui sont trop basiques »). Elle remplit maintenant l'ultime.
-  b('astre_finisher', 'jirachi', 'Fortune', 'S', 0.08, 'pct', 'Ton finisher remplit une part de ta jauge d’ultime.'),
-  b('astre_resource', 'jirachi', 'Pluie d’Étoiles', 'T', 2, 'count', 'Chaque salle libérée livre du Bois et de la Pierre en plus, pour le Repaire.'),
-  b('astre_wish_granted', 'jirachi', 'Vœu Exaucé', 'T', 1, 'flag', 'À chaque nouvel acte, un don que tu possèdes déjà monte d’une rareté.'),
-  b('duo_firestorm', 'duo', 'Tempête de Feu', 'S', 1, 'flag', 'Tes ricochets enflamment tout ce qu’ils touchent.', true, ['electhor', 'sulfura']),
-  b('duo_whitebolt', 'duo', 'Foudre Blanche', 'S', 0.8, 'pct', 'Frapper un ennemi gelé le fait exploser en arcs électriques.', true, ['electhor', 'artikodin']),
-  b('duo_eruption', 'duo', 'Éruption', 'S', 6, 'radius', 'Ton finisher embrase ET projette tout un rayon.', true, ['sulfura', 'groudon']),
-  b('duo_winter', 'duo', 'Hiver Perpétuel', 'T', 4, 'mult', 'Le gel dure bien plus longtemps.', true, ['artikodin', 'celebi']),
-  b('duo_sacrifice', 'duo', 'Sacrifice', 'T', 0.35, 'pct', 'Quand un compagnon tombe, tu absorbes sa force : plus de dégâts jusqu’à la fin de la salle.', true, ['mew', 'darkrai']),
-  b('duo_roots', 'duo', 'Racines', 'S', 2, 'sec', 'Rester immobile quelques secondes recharge tout : capacités, dash, bouclier.', true, ['groudon', 'celebi']),
-  b('duo_shortcircuit', 'duo', 'Court-Circuit', 'T', 7, 'radius', 'Chaque ennemi tué paralyse ses voisins.', true, ['darkrai', 'electhor']),
-  b('duo_goldphoenix', 'duo', 'Phénix Doré', 'T', 1, 'flag', 'Chaque évolution en run remplit ta jauge d’ultime.', true, ['hooh', 'jirachi']),
+  b('astre_finisher', 'jirachi', 'Fortune', 0.08, 'pct', 'Ton finisher remplit une part de ta jauge d’ultime.'),
+  b('astre_resource', 'jirachi', 'Pluie d’Étoiles', 2, 'count', 'Chaque salle libérée livre du Bois et de la Pierre en plus, pour le Repaire.'),
+  b('astre_wish_granted', 'jirachi', 'Vœu Exaucé', 1, 'flag', 'À chaque nouvel acte, un don que tu possèdes déjà monte d’une rareté.'),
+  b('duo_firestorm', 'duo', 'Tempête de Feu', 1, 'flag', 'Tes ricochets enflamment tout ce qu’ils touchent.', true, ['electhor', 'sulfura']),
+  b('duo_whitebolt', 'duo', 'Foudre Blanche', 0.8, 'pct', 'Frapper un ennemi gelé le fait exploser en arcs électriques.', true, ['electhor', 'artikodin']),
+  b('duo_eruption', 'duo', 'Éruption', 6, 'radius', 'Ton finisher embrase ET projette tout un rayon.', true, ['sulfura', 'groudon']),
+  b('duo_winter', 'duo', 'Hiver Perpétuel', 4, 'mult', 'Le gel dure bien plus longtemps.', true, ['artikodin', 'celebi']),
+  b('duo_sacrifice', 'duo', 'Sacrifice', 0.35, 'pct', 'Quand un membre tombe, l’équipe absorbe sa force : plus de dégâts jusqu’à la fin de la salle.', true, ['mew', 'darkrai']),
+  b('duo_roots', 'duo', 'Racines', 2, 'sec', 'Rester immobile quelques secondes recharge tout : capacités, dash, bouclier.', true, ['groudon', 'celebi']),
+  b('duo_shortcircuit', 'duo', 'Court-Circuit', 7, 'radius', 'Chaque ennemi tué paralyse ses voisins.', true, ['darkrai', 'electhor']),
+  b('duo_goldphoenix', 'duo', 'Phénix Doré', 1, 'flag', 'Chaque évolution en run remplit ta jauge d’ultime.', true, ['hooh', 'jirachi']),
 ];
 export const BOONS: Record<string, BoonDef> = Object.fromEntries(LIST.map((d) => [d.id, d]));
 
@@ -243,6 +251,14 @@ export const MET_WEIGHT = 3;
 export const RARITY_NAME = ['Commun', 'Rare', 'Épique', 'Prismatique'];
 export const RARITY_COLOR = ['#e3c287', '#57b04a', '#f2c24f', '#40e0d1'];
 
+/** Rebonds de Surtension, tirs en plus d'Écho : un par rareté, de 1 (Commun) à 4 (Prismatique). */
+export function extraShots(rarity: number | undefined): number {
+  return rarity === undefined ? 0 : rarity + 1;
+}
+/** Part des dégâts d'un rebond (du coup précédent) et d'un tir d'Écho (du tir principal). */
+export const CHAIN_RATIO = 0.6;
+export const ECHO_RATIO = 0.45;
+
 /** Valeur d'un don à une rareté. */
 export function boonValue(id: string, rarity: number): number {
   return (BOONS[id]?.base ?? 0) * RARITY_SCALE[rarity];
@@ -255,6 +271,11 @@ export function valueText(id: string, rarity: number): string {
   const v = boonValue(id, rarity);
   // Sous 5 %, une décimale : Sève (0,8 % par seconde) ne s'affichait qu'en « 1 % » à toutes les raretés.
   const pct = (x: number) => (x < 0.05 ? `${String(Math.round(x * 1000) / 10).replace('.', ',')} %` : `${Math.round(x * 100)} %`);
+  // Surtension et Écho : un rebond ou un tir de plus à chaque rareté (1 au Commun, 4 au Prismatique).
+  if (id === 'elec_split' || id === 'psy_echo') {
+    const n = extraShots(rarity);
+    return id === 'elec_split' ? `${n} rebond${n > 1 ? 's' : ''}` : `+${n} tir${n > 1 ? 's' : ''}`;
+  }
   switch (def.fmt) {
     case 'pct':
       return pct(id === 'feu_burn' ? Math.min(1, v) : id === 'glace_finisher' || id === 'glace_hail' ? Math.min(id === 'glace_hail' ? 0.85 : 0.75, v) : id === 'temps_cooldown' || id === 'dragon_delta' ? Math.min(0.75, v) : id === 'glace_shield' ? Math.min(1, v) : v) + (id === 'temps_regen' ? ' des PV par seconde' : '');
@@ -295,22 +316,18 @@ export class Boons {
   readonly owned = new Map<string, number>();
   ult: DonorId | null = null;
   ultGauge = 0;
-  // Compteurs (RunBoons : _static_count, _shield_ready, _phoenix_used…).
-  hits = 0;
-  shieldReady = true;
-  shieldT = 0;
-  phoenixUsed = false;
-  wishUsed = false;
-  rebirthUsed = false;
+  // Compteurs communs à l'équipe (RunBoons : _storm_t…). Ceux qui valent pour un Pokémon (bouclier,
+  // Phénix, Souhait, coups comptés, régénération, Rembobinage) sont tenus par Pokémon dans
+  // BoonHooks : depuis le 27 novembre 2026, chaque don sert à toute l'équipe (« sinon c'est
+  // compliqué quand on joue en multi »), et un Phénix pris par l'un ne doit pas manquer à l'autre.
+  /** Coups encaissés dans la salle par un Pokémon mené (le joueur, un invité) : Carapace, rareté. */
   roomHurts = 0;
   roomKills = 0;
-  sinceHurt = 0;
   stormT = 0;
-  stillT = 0;
   /** Sacrifice : compagnons tombés dans la salle. */
   sacrifice = 0;
-  /** Rembobinage : temps avant de pouvoir remonter le temps de nouveau. */
-  rewindCd = 0;
+  /** Renaissance : les Pokémon (leur acteur) qui l'ont déjà usée dans la run. */
+  readonly rebirth = new Set<object>();
   /** Crans de rareté ajoutés à la prochaine offre (pacte de l'Autel maudit), remis à 0 après elle. */
   bonus = 0;
   /**
@@ -462,12 +479,8 @@ export class Boons {
 
   /** Nouvelle salle : les effets « une fois par salle » se réarment. */
   enterRoom(): void {
-    this.phoenixUsed = false;
-    this.wishUsed = false;
-    this.shieldReady = true;
     this.roomHurts = 0;
     this.roomKills = 0;
-    this.hits = 0;
     this.sacrifice = 0;
   }
 }

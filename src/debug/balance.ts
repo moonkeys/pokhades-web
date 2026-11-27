@@ -195,15 +195,12 @@ export function installBalance(P: BalanceHost): {
       mon.moves.splice(0, mon.moves.length, ...best);
       mon.movesVersion++;
     }
-    // Les dons du test, comme pris à un autel : un don de statistique s'applique au Pokémon joué.
+    // Les dons du test, comme pris à un autel : un don de statistique s'applique à toute l'équipe.
     if (setup.boons?.length) {
-      const { STAT_BOONS } = await import('../combat/boons');
-      const hooks = (P.combat as unknown as { hooks: { applyStat(a: Actor, id: string, from: number | undefined, to: number): void } }).hooks;
+      const hooks = (P.combat as unknown as { hooks: { syncStats(a: Actor): void } }).hooks;
       P.run.boons.teamSize = P.team.length;
-      for (const [id, r] of setup.boons) {
-        const got = P.run.boons.grant(id, r);
-        if (STAT_BOONS[id]) hooks.applyStat(P.player, id, undefined, got);
-      }
+      for (const [id, r] of setup.boons) P.run.boons.grant(id, r);
+      for (const m of P.team) hooks.syncStats(m);
       P.run.boons.fired.clear();
     }
     // Une Horde forcée prend la première espèce possible, comme le panneau.

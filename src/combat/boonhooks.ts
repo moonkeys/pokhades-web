@@ -22,14 +22,23 @@ import { STATUS, type Status } from './pokemon';
 // - Ascendant cumule réellement un kill après l'autre ;
 // - Dette double les dégâts avant que l'Armure de Givre n'absorbe ;
 // - Phénix ne rend jamais plus que les PV max, l'Armure n'absorbe pas plus que tout.
+//
+// Écart voulu, retour du 27 novembre 2026 (« les dons, je préfère que ça aille pour toute l'équipe ;
+// sinon c'est compliqué quand on joue en multi ») : le jeu Godot, puis ce portage, ne faisaient
+// agir les dons qu'aux coups du Pokémon mené, et les dons de statistique sur lui seul. Maintenant
+// chaque membre de l'équipe les porte : ses coups, ses finishers, ses K.O. et les coups qu'il encaisse
+// déclenchent les dons, compagnons de l'IA comme invités en ligne. Ce qui se compte « une fois par
+// salle » ou « tous les N coups » se compte par Pokémon (Guard) : le Phénix de l'un ne manque pas
+// à l'autre. Restent communs la jauge d'ultime, l'Orage et les compteurs de la salle (Boons).
 
 /** Ce dont les effets ont besoin du combat (dégâts de don, recul, recharges). */
 export interface BoonHost {
   boonDamage(e: Actor, damage: number, color: string, fromX: number, fromY: number): void;
   stagger(e: Actor, fromX: number, fromY: number, force: number): void;
-  resetCooldowns(): void;
-  /** Les compagnons sur le terrain (Lien Psychique). */
-  companions(): readonly Actor[];
+  /** Recharges et verrous de ce membre à zéro (Vrille, Voyage, Racines). */
+  resetCooldowns(a: Actor): void;
+  /** Toute l'équipe sur le terrain, Pokémon mené en tête (Lien Psychique). */
+  team(): readonly Actor[];
   addShake(amount: number): void;
   notify(text: string): void;
   fx: {
@@ -53,6 +62,24 @@ interface Zone {
   id: string;
 }
 
+/** Ce qui se compte pour chaque Pokémon de l'équipe, remis à neuf à chaque salle. */
+interface Guard {
+  /** Temps depuis le dernier coup encaissé : Sève, Armure de Givre. */
+  sinceHurt: number;
+  shieldReady: boolean;
+  phoenix: boolean;
+  wish: boolean;
+  /** Coups portés dans la salle : Décharge Statique (tous les 10), Continent (tous les 5). */
+  hits: number;
+  regenAcc: number;
+  stillT: number;
+  stillLatched: boolean;
+  /** Positions et PV des 4 dernières secondes, à 10 Hz (Rembobinage). */
+  history: { x: number; y: number; hp: number }[];
+  historyT: number;
+  rewindCd: number;
+}
+
 /** Une nappe frappe ce qu'elle couvre toutes les 0,5 s (BoonZone.gd:23). */
 const ZONE_PULSE = 0.5;
 /** Le dash balaie un segment de 4,2 cases, sur 2 de part et d'autre (RB:589-592). */
@@ -61,11 +88,7 @@ const DASH_HALF_WIDTH = 2;
 
 export class BoonHooks {
   private zones: Zone[] = [];
-  private regenAcc = 0;
-  /** Positions et PV des 4 dernières secondes, à 10 Hz (Rembobinage). */
-  private history: { x: number; y: number; hp: number }[] = [];
-  private historyT = 0;
-  private stillLatched = false;
+  private guards = new Map<Actor, Guard>();
 
   constructor(
     private readonly host: BoonHost,
@@ -76,9 +99,16 @@ export class BoonHooks {
     return this.run()?.boons ?? null;
   }
 
+  /** Nouvelle salle : nappes éteintes, compteurs de chaque Pokémon remis à neuf (bouclier, Phénix, Souhait…). */
   reset(): void {
     this.zones = [];
-    this.history = [];
+    this.guards.clear();
+  }
+
+  private guard(a: Actor): Guard {
+    let g = this.guards.get(a);
+    if (!g) this.guards.set(a, (g = { sinceHurt: 0, shieldReady: true, phoenix: false, wish: false, hits: 0, regenAcc: 0, stillT: 0, stillLatched: false, history: [], historyT: 0, rewindCd: 0 }));
+    return g;
   }
 
   /** Puissance de base : celle de la 1re capacité, 40 par défaut (RB:1695). */
@@ -220,22 +250,26 @@ export class BoonHooks {
     return this.boons?.v('tenb_phase') ?? 0;
   }
 
-  /** on_hit : un coup du joueur a porté (`ranged` : orbe). */
+  /**
+   * on_hit : un coup d'un membre de l'équipe a porté (`ranged` : tir). Les rebonds de Surtension et
+   * les tirs d'Écho n'y passent pas (Combat les résout comme des tirs, sans redéclencher on_hit).
+   */
   onHit(player: Actor, target: Actor, damage: number, ranged: boolean, enemies: readonly Actor[]): void {
     const b = this.boons;
     const run = this.run();
     if (!b || !run || !player.pokemon) return;
     b.ultGauge = Math.min(ULT_MAX, b.ultGauge + damage);
-    b.hits++;
-    const ricochet = ranged ? b.v('elec_split') : b.v('elec_ricochet');
+    const g = this.guard(player);
+    g.hits++;
+    const ricochet = ranged ? 0 : b.v('elec_ricochet');
     if (ricochet > 0) {
       const other = this.nearest(enemies, target.x, target.y, 5.5, target);
       if (other) {
-        this.hitBy(ranged ? 'elec_split' : 'elec_ricochet', other, damage * ricochet, typeColor('electric'), target.x, target.y);
+        this.hitBy('elec_ricochet', other, damage * ricochet, typeColor('electric'), target.x, target.y);
         if (b.has('duo_firestorm')) this.inflictBy('duo_firestorm', other, 'burn');
       }
     }
-    if (b.has('elec_static') && b.hits % 10 === 0) {
+    if (b.has('elec_static') && g.hits % 10 === 0) {
       for (const e of this.around(enemies, player.x, player.y, 6)) {
         this.hitBy('elec_static', e, damage * b.v('elec_static'), typeColor('electric'), player.x, player.y);
         this.inflict(e, 'paralysis');
@@ -260,12 +294,12 @@ export class BoonHooks {
     if (ranged && b.has('glace_hail')) (this.zone(target.x, target.y, 3.4, 5, 'slow', Math.min(0.85, b.v('glace_hail')), typeColor('ice'), 'glace_hail'), b.fire('glace_hail'));
     // Continent : une faille qui frappe trois fois en 1,5 s (elle durait 4 s, huit pulsations : la
     // revue du 27 novembre 2026 la mesurait au double des dégâts du Pokémon à elle seule).
-    if (b.has('sol_continent') && b.hits % 5 === 0) this.zone(target.x, target.y, 3, 1.5, 'damage', Math.max(1, Math.round(damage * b.v('sol_continent'))), typeColor('ground'), 'sol_continent');
+    if (b.has('sol_continent') && g.hits % 5 === 0) this.zone(target.x, target.y, 3, 1.5, 'damage', Math.max(1, Math.round(damage * b.v('sol_continent'))), typeColor('ground'), 'sol_continent');
     const heal = damage * (b.v('psy_transfer') + b.v('sacre_lifesteal'));
     if (heal > 0) {
       if (b.has('psy_transfer')) b.fire('psy_transfer');
       if (b.has('sacre_lifesteal')) b.fire('sacre_lifesteal');
-      this.healPlayer(player, heal);
+      this.heal(player, heal);
     }
     if (b.has('astre_coin') && Math.random() < b.v('astre_coin')) {
       b.fire('astre_coin');
@@ -304,18 +338,19 @@ export class BoonHooks {
         this.host.stagger(e, target.x, target.y, 2.6);
       }
     }
-    if (b.has('temps_finisher')) (this.host.resetCooldowns(), b.fire('temps_finisher'));
-    // Lien Psychique : les compagnons relancent tout de suite (le jeu les faisait attaquer d'un coup ;
-    // recharger leurs capacités laisse leur IA choisir la cible et l'attaque).
+    if (b.has('temps_finisher')) (this.host.resetCooldowns(player), b.fire('temps_finisher'));
+    // Lien Psychique : les autres membres relancent tout de suite (le jeu faisait attaquer les
+    // compagnons d'un coup ; recharger leurs capacités laisse leur IA choisir la cible et l'attaque).
+    // Le finisher d'un compagnon recharge aussi le Pokémon mené.
     if (b.has('psy_finisher')) {
-      for (const c of this.host.companions()) {
-        c.atk.moveCd.fill(0);
-        c.atk.globalLock = c.atk.actionLock = 0;
+      for (const c of this.host.team()) {
+        if (c === player || c.deathT >= 0) continue;
+        this.host.resetCooldowns(c);
         this.host.fx.attackAnim('psychic', c.x, c.y);
       }
       b.fire('psy_finisher');
     }
-    if (b.has('sacre_finisher')) (this.healPlayer(player, mon.maxHp * b.v('sacre_finisher')), b.fire('sacre_finisher'));
+    if (b.has('sacre_finisher')) (this.heal(player, mon.maxHp * b.v('sacre_finisher')), b.fire('sacre_finisher'));
     // Fortune : une part de la jauge d'ultime (même sans ultime équipée : elle sera prête).
     if (b.has('astre_finisher')) (b.ultGauge = Math.min(ULT_MAX, b.ultGauge + ULT_MAX * b.v('astre_finisher')), b.fire('astre_finisher'));
     if (b.has('dragon_finisher')) (player.dashCharges = Math.min(player.dashMax, player.dashCharges + 1), b.fire('dragon_finisher'));
@@ -325,7 +360,7 @@ export class BoonHooks {
   onDashStart(player: Actor, dx: number, dy: number, enemies: readonly Actor[]): void {
     const b = this.boons;
     if (!b) return;
-    if (b.has('temps_rewind')) this.rewind(player, b);
+    if (b.has('temps_rewind')) this.rewind(player, b, this.guard(player));
     const hitters = ['elec_dash', 'feu_dash', 'glace_dash', 'sol_dash', 'dragon_dash_hit'].filter((id) => b.has(id));
     if (!hitters.length) return;
     for (const e of this.around(enemies, player.x, player.y, DASH_REACH + DASH_HALF_WIDTH)) {
@@ -352,14 +387,17 @@ export class BoonHooks {
    * dash, donc plus aucun dash n'avançait (on revenait en arrière à chaque fois), et il pouvait
    * faire perdre des PV soignés depuis. Il ne joue plus que si on avait plus de PV il y a 3 s,
    * une fois toutes les 8 s : un vrai « retour en arrière » après un coup encaissé.
+   * Un invité en ligne mène sa position chez lui : il ne retrouve que ses PV.
    */
-  private rewind(player: Actor, b: Boons): void {
-    const past = this.history[Math.max(0, this.history.length - 30)];
+  private rewind(player: Actor, b: Boons, g: Guard): void {
+    const past = g.history[Math.max(0, g.history.length - 30)];
     const mon = player.pokemon;
-    if (!past || !mon || b.rewindCd > 0 || past.hp <= mon.hp) return;
-    b.rewindCd = 8;
-    player.x = player.prevX = past.x;
-    player.y = player.prevY = past.y;
+    if (!past || !mon || g.rewindCd > 0 || past.hp <= mon.hp) return;
+    g.rewindCd = 8;
+    if (!player.remote) {
+      player.x = player.prevX = past.x;
+      player.y = player.prevY = past.y;
+    }
     mon.hp = Math.min(mon.maxHp, past.hp);
     this.host.fx.attackAnim('grass', player.x, player.y);
     b.fire('temps_rewind');
@@ -378,14 +416,15 @@ export class BoonHooks {
     if (b.has('dragon_momentum')) (player.pokemon?.applyBuff('spd', 1 + Math.min(0.6, b.v('dragon_momentum') * b.roomKills), 99), b.fire('dragon_momentum'));
   }
 
-  /** dmg_mult_in, puis l'Armure de Givre qui absorbe une part du premier coup. */
-  dmgIn(damage: number): number {
+  /** dmg_mult_in, puis l'Armure de Givre (de ce Pokémon) qui absorbe une part du premier coup. */
+  dmgIn(a: Actor, damage: number): number {
     const b = this.boons;
     if (!b) return damage;
     let d = damage;
     if (b.has('tenb_debt')) d *= 2;
-    if (b.has('glace_shield') && b.shieldReady) {
-      b.shieldReady = false;
+    const g = this.guard(a);
+    if (b.has('glace_shield') && g.shieldReady) {
+      g.shieldReady = false;
       b.fire('glace_shield');
       d *= 1 - Math.min(1, b.v('glace_shield'));
     }
@@ -401,34 +440,40 @@ export class BoonHooks {
 
   /**
    * on_take_damage, après le retrait des PV : Phénix, Souhait et Renaissance
-   * empêchent le K.O. ; Épines renvoie une part du coup.
+   * empêchent le K.O. ; Épines renvoie une part du coup. `led` : un Pokémon mené (le joueur, un
+   * invité) ; seuls ses coups encaissés comptent pour la salle (Carapace, rareté des dons) et
+   * chargent l'ultime, comme avant : un compagnon de l'IA s'expose sans qu'on y puisse rien.
    */
-  onHurt(player: Actor, damage: number, enemies: readonly Actor[]): void {
+  onHurt(player: Actor, damage: number, enemies: readonly Actor[], led = true): void {
     const b = this.boons;
     const mon = player.pokemon;
     if (!b || !mon) return;
-    b.roomHurts++;
-    b.sinceHurt = 0;
-    b.ultGauge = Math.min(ULT_MAX, b.ultGauge + damage * 4);
+    const g = this.guard(player);
+    g.sinceHurt = 0;
+    if (led) {
+      b.roomHurts++;
+      b.ultGauge = Math.min(ULT_MAX, b.ultGauge + damage * 4);
+    }
+    const who = player.remote || !led ? `${mon.name} se relève` : 'Tu te relèves';
     if (mon.fainted) {
-      if (b.has('feu_phoenix') && !b.phoenixUsed) {
-        b.phoenixUsed = true;
+      if (b.has('feu_phoenix') && !g.phoenix) {
+        g.phoenix = true;
         b.fire('feu_phoenix');
         mon.hp = Math.max(1, Math.floor(mon.maxHp * Math.min(1, b.v('feu_phoenix'))));
         for (const e of this.around(enemies, player.x, player.y, 6)) this.inflict(e, 'burn');
         this.host.fx.attackAnim('fire', player.x, player.y);
-        this.host.notify('Phénix ! Tu te relèves.');
-      } else if (b.has('astre_wish') && !b.wishUsed) {
-        b.wishUsed = true;
+        this.host.notify(`Phénix ! ${who}.`);
+      } else if (b.has('astre_wish') && !g.wish) {
+        g.wish = true;
         b.fire('astre_wish');
         mon.hp = 1;
-        this.host.notify('Souhait : tu tiens à 1 PV.');
-      } else if (b.has('sacre_rebirth') && !b.rebirthUsed) {
-        b.rebirthUsed = true;
+        this.host.notify(`Souhait : ${player.remote || !led ? `${mon.name} tient` : 'tu tiens'} à 1 PV.`);
+      } else if (b.has('sacre_rebirth') && !b.rebirth.has(player)) {
+        b.rebirth.add(player);
         b.fire('sacre_rebirth');
         mon.hp = Math.floor(mon.maxHp / 2);
         this.host.fx.attackAnim('fx_heal', player.x, player.y);
-        this.host.notify('Renaissance !');
+        this.host.notify(`Renaissance ! ${who}.`);
       }
     }
     if (b.has('sol_thorns')) {
@@ -437,123 +482,145 @@ export class BoonHooks {
     }
   }
 
-  private healPlayer(player: Actor, amount: number): void {
+  private heal(player: Actor, amount: number): void {
     const mon = player.pokemon!;
     const before = mon.hp;
     mon.hp = Math.min(mon.maxHp, mon.hp + Math.max(1, Math.round(amount)));
     if (mon.hp > before) this.host.fx.number('heal', player.x, player.y, 0, `+${mon.hp - before}`);
   }
 
-  tick(dt: number, player: Actor, enemies: readonly Actor[]): void {
+  /** Un pas : l'Orage (commun, depuis le Pokémon mené), puis ce que chaque membre porte. */
+  tick(dt: number, team: readonly Actor[], enemies: readonly Actor[]): void {
     const b = this.boons;
-    const mon = player.pokemon;
-    if (!b || !mon || player.deathT >= 0) return;
-    b.sinceHurt += dt;
-    b.rewindCd = Math.max(0, b.rewindCd - dt);
-    player.dashMax = 1 + this.metaDash + Math.round(b.v('dragon_dash_charge'));
-    if (b.has('glace_shield') && !b.shieldReady && b.sinceHurt >= 6) b.shieldReady = true;
-    if (b.has('temps_regen') && b.sinceHurt >= 3 && mon.hp < mon.maxHp) {
-      this.regenAcc += mon.maxHp * b.v('temps_regen') * dt;
-      if (this.regenAcc >= 1) {
-        const n = Math.floor(this.regenAcc);
-        this.regenAcc -= n;
-        mon.hp = Math.min(mon.maxHp, mon.hp + n);
-        b.fire('temps_regen');
-      }
-    }
-    if (b.has('sol_steady') && (mon.status === 'freeze' || mon.status === 'sleep' || mon.status === 'paralysis')) (mon.status = null, b.fire('sol_steady'));
-    if (b.has('elec_storm')) {
+    if (!b) return;
+    const lead = team[0];
+    for (const a of team) this.tickMember(dt, a, b);
+    if (b.has('elec_storm') && lead) {
       b.stormT += dt;
       // Période : 8 s ÷ l'échelle de rareté (une meilleure rareté frappe plus souvent).
       const period = 8 / RARITY_SCALE[b.owned.get('elec_storm')!];
       if (b.stormT >= period) {
         b.stormT = 0;
-        const targets = this.around(enemies, player.x, player.y, Infinity).sort((a, c) => c.pokemon!.hp - a.pokemon!.hp);
+        const targets = this.around(enemies, lead.x, lead.y, Infinity).sort((a, c) => c.pokemon!.hp - a.pokemon!.hp);
         const t = targets[0];
         if (t) {
-          this.hitBy('elec_storm', t, this.basePower(player) * 1.6, typeColor('electric'), t.x, t.y - 3);
+          this.hitBy('elec_storm', t, this.basePower(lead) * 1.6, typeColor('electric'), t.x, t.y - 3);
           this.inflict(t, 'paralysis');
           this.host.fx.attackAnim('electric', t.x, t.y);
         }
       }
     }
+    this.updateZones(dt, enemies);
+  }
+
+  /** Sève, Armure de Givre, Inébranlable, Racines, charges de dash et historique (Rembobinage) d'un membre. */
+  private tickMember(dt: number, player: Actor, b: Boons): void {
+    const mon = player.pokemon;
+    if (!mon || player.deathT >= 0 || mon.fainted) return;
+    const g = this.guard(player);
+    g.sinceHurt += dt;
+    g.rewindCd = Math.max(0, g.rewindCd - dt);
+    player.dashMax = 1 + this.metaDash + Math.round(b.v('dragon_dash_charge'));
+    if (b.has('glace_shield') && !g.shieldReady && g.sinceHurt >= 6) g.shieldReady = true;
+    if (b.has('temps_regen') && g.sinceHurt >= 3 && mon.hp < mon.maxHp) {
+      g.regenAcc += mon.maxHp * b.v('temps_regen') * dt;
+      if (g.regenAcc >= 1) {
+        const n = Math.floor(g.regenAcc);
+        g.regenAcc -= n;
+        mon.hp = Math.min(mon.maxHp, mon.hp + n);
+        b.fire('temps_regen');
+      }
+    }
+    if (b.has('sol_steady') && (mon.status === 'freeze' || mon.status === 'sleep' || mon.status === 'paralysis')) (mon.status = null, b.fire('sol_steady'));
     if (b.has('duo_roots')) {
       if (player.moving) {
-        b.stillT = 0;
-        this.stillLatched = false;
-      } else if (!this.stillLatched) {
-        b.stillT += dt;
-        if (b.stillT >= 2 / RARITY_SCALE[b.owned.get('duo_roots')!]) {
-          this.stillLatched = true;
-          this.host.resetCooldowns();
+        g.stillT = 0;
+        g.stillLatched = false;
+      } else if (!g.stillLatched) {
+        g.stillT += dt;
+        if (g.stillT >= 2 / RARITY_SCALE[b.owned.get('duo_roots')!]) {
+          g.stillLatched = true;
+          this.host.resetCooldowns(player);
           player.dashCharges = player.dashMax;
-          b.shieldReady = true;
+          g.shieldReady = true;
           this.host.fx.attackAnim('grass', player.x, player.y);
           b.fire('duo_roots');
         }
       }
     }
     // Historique pour Rembobinage : 10 Hz sur 4 s.
-    this.historyT += dt;
-    if (this.historyT >= 0.1) {
-      this.historyT = 0;
-      this.history.push({ x: player.x, y: player.y, hp: mon.hp });
-      if (this.history.length > 40) this.history.shift();
+    g.historyT += dt;
+    if (g.historyT >= 0.1) {
+      g.historyT = 0;
+      g.history.push({ x: player.x, y: player.y, hp: mon.hp });
+      if (g.history.length > 40) g.history.shift();
     }
-    this.updateZones(dt, enemies);
   }
 
-  /** Nouvelle salle : effets « une fois par salle », Printemps, Voyage, et Vœu Exaucé au début d'un acte. */
-  onRoomEnter(player: Actor, run: Run, newAct: boolean, rng: Rng): void {
+  /** Nouvelle salle : effets « une fois par salle », Printemps et Voyage pour chaque membre, Vœu Exaucé au début d'un acte. */
+  onRoomEnter(team: readonly Actor[], run: Run, newAct: boolean, rng: Rng): void {
     const b = run.boons;
     b.enterRoom();
     this.reset();
-    const mon = player.pokemon;
-    if (b.has('temps_speed')) (mon?.applyBuff('spd', 1 + b.v('temps_speed'), 12), b.fire('temps_speed'));
-    if (b.has('temps_journey')) {
-      b.fire('temps_journey');
-      this.host.resetCooldowns();
-      player.dashCharges = Math.min(player.dashMax, player.dashCharges + 1);
-      // Rééquilibrage : il soigne aussi (cadences et dash pleins ne servaient presque à rien entre deux salles).
-      if (mon && !mon.fainted) mon.hp = Math.min(mon.maxHp, mon.hp + Math.round(mon.maxHp * b.v('temps_journey')));
+    for (const player of team) {
+      const mon = player.pokemon;
+      if (!mon) continue;
+      if (b.has('temps_speed')) (mon.applyBuff('spd', 1 + b.v('temps_speed'), 12), b.fire('temps_speed'));
+      if (b.has('temps_journey')) {
+        b.fire('temps_journey');
+        this.host.resetCooldowns(player);
+        player.dashCharges = Math.min(player.dashMax, player.dashCharges + 1);
+        // Rééquilibrage : il soigne aussi (cadences et dash pleins ne servaient presque à rien entre deux salles).
+        if (!mon.fainted) mon.hp = Math.min(mon.maxHp, mon.hp + Math.round(mon.maxHp * b.v('temps_journey')));
+      }
     }
     if (newAct && b.has('astre_wish_granted')) {
       if (b.wishGranted(rng)) (this.host.notify(`Vœu Exaucé : un don monte d'une rareté.`), b.fire('astre_wish_granted'));
     }
   }
 
-  /** Salle libérée : Vol d'Ombre ronge les PV max, Carapace les augmente, Aubaine rapporte. */
-  onRoomClear(player: Actor, run: Run): void {
+  /** Salle libérée : Vol d'Ombre ronge les PV max de chaque membre, Carapace les augmente, Aubaine rapporte. */
+  onRoomClear(team: readonly Actor[], run: Run): void {
     const b = run.boons;
-    const mon = player.pokemon;
-    if (!mon) return;
-    if (b.has('tenb_steal')) {
-      mon.boostMaxHp(0.98);
-      mon.hp = Math.min(mon.hp, mon.maxHp);
+    for (const player of team) {
+      const mon = player.pokemon;
+      if (!mon) continue;
+      if (b.has('tenb_steal')) {
+        mon.boostMaxHp(0.98);
+        mon.hp = Math.min(mon.hp, mon.maxHp);
+      }
+      if (b.has('sol_shell') && b.roomHurts === 0) (mon.boostMaxHp(1 + b.v('sol_shell')), b.fire('sol_shell'));
     }
-    if (b.has('sol_shell') && b.roomHurts === 0) (mon.boostMaxHp(1 + b.v('sol_shell')), b.fire('sol_shell'));
     if (b.has('astre_bounty')) (run.money += Math.round(60 * b.v('astre_bounty')), b.fire('astre_bounty'));
   }
 
   /**
-   * Don de statistique, à la prise : le gain de sa rareté, ou à une reprise l'écart avec la
-   * rareté d'avant (`from`), pour qu'un Prismatique vaille son gain et pas la somme des reprises.
+   * Dons de statistique d'un membre : chacun au gain de sa rareté actuelle. Appelé pour toute
+   * l'équipe à la prise d'un don et à chaque salle (un membre arrivé entre-temps, recrue ou invité
+   * revenu, reçoit tout). Le Pokémon garde la rareté déjà appliquée (Pokemon.boonRanks) : une
+   * reprise n'ajoute que l'écart, pour qu'un Prismatique vaille son gain et pas la somme des reprises.
    */
-  applyStat(player: Actor, id: string, from: number | undefined, to: number): void {
-    const s = STAT_BOONS[id];
+  syncStats(player: Actor): void {
+    const b = this.boons;
     const mon = player.pokemon;
-    if (!s || !mon) return;
-    const was = statGain(id, from);
-    const now = statGain(id, to);
-    if (now <= was) return;
-    // Les multiplicateurs : (1 + nouveau) / (1 + ancien) ; la cadence, son inverse (plus court).
-    const ratio = (1 + now) / (1 + was);
-    if (s.apply === 'hp') mon.boostMaxHp(ratio);
-    else if (s.apply === 'crit' || s.apply === 'dodge') mon.mult[s.apply] += now - was;
-    else if (s.apply === 'cooldown') mon.mult.cooldown /= ratio;
-    else mon.mult[s.apply] *= ratio;
-    mon.movesVersion++;
-    this.boons?.fire(id);
+    if (!b || !mon) return;
+    for (const [id, to] of b.owned) {
+      const s = STAT_BOONS[id];
+      if (!s) continue;
+      const from = mon.boonRanks.get(id);
+      const was = statGain(id, from);
+      const now = statGain(id, to);
+      if (now <= was) continue;
+      mon.boonRanks.set(id, to);
+      // Les multiplicateurs : (1 + nouveau) / (1 + ancien) ; la cadence, son inverse (plus court).
+      const ratio = (1 + now) / (1 + was);
+      if (s.apply === 'hp') mon.boostMaxHp(ratio);
+      else if (s.apply === 'crit' || s.apply === 'dodge') mon.mult[s.apply] += now - was;
+      else if (s.apply === 'cooldown') mon.mult.cooldown /= ratio;
+      else mon.mult[s.apply] *= ratio;
+      mon.movesVersion++;
+      b.fire(id);
+    }
   }
 
   private zone(x: number, y: number, r: number, dur: number, kind: Zone['kind'], value: number, color: string, id: string): void {

@@ -691,8 +691,9 @@ bonus et attaques gardés, PV pleins) et l'évolution est annoncée. Parti du
 Repaire au-delà d'un seuil (Super Bonbon), il part déjà évolué. Colombeau,
 sans planche PMD, est sauté : Poichigeon devient Déflaisan au niveau 32. Un membre K.O. reste couché là
 où il est tombé ; un Rappel de la boutique le relève. Les sauvages visent le membre qui craint
-le plus leur attaque, à distance égale. Seuls les coups du Pokémon joué
-déclenchent les dons, le gel d'impact et la secousse. Pour tester vite,
+le plus leur attaque, à distance égale. Les coups de chaque membre déclenchent
+les dons (voir « Dons pour toute l'équipe ») ; seuls ceux du Pokémon joué
+figent l'image et secouent l'écran. Pour tester vite,
 « Aller à une salle » saute au combat, à la boutique ou au boss d'un acte,
 dans le biome choisi pour la run.
 
@@ -839,9 +840,10 @@ légendaire » propose 3 dons d'un des 10 donateurs (Électhor, Sulfura,
 Artikodin, Mew, Darkrai, Groudon, Célébi, Ho-Oh, Rayquaza, Jirachi), en 4
 raretés ; reprendre un don le fait monter d'une rareté, deux donateurs
 débloquent un duo, et dès l'acte 2 la 3ᵉ carte peut être une ultime (jauge
-qui se charge en frappant et en encaissant, touche R). Sur les 83 dons, les
-9 qui supposent une équipe, un allié, l'évolution ou les ressources du camp
-ne sont pas proposés. « ✦ Nouvelle attaque » propose d'apprendre une attaque
+qui se charge en frappant et en encaissant, touche R). Sur les 84 dons, deux
+(Invocation, Conscience Collective) ne sont pas proposés, et ceux qui servent
+aux compagnons ne le sont qu'à une équipe. Tout don vaut pour chaque Pokémon
+de l'équipe. « ✦ Nouvelle attaque » propose d'apprendre une attaque
 forte du répertoire de l'espèce ou d'en renforcer une (+25 %). Au deuxième
 renforcement, une capacité d'une lignée évolue (Pistolet à O → Vibraqua →
 Hydrocanon, Flammèche → Rebondifeu → Lance-Flammes → Déflagration…,
@@ -1536,3 +1538,38 @@ Poséidon dans Hades ». Écart voulu avec `CombatArena._roll_boon_rarity` du je
   - Un don `flag` déjà pris n'est plus reproposé (`Boons.usable`).
   Le banc est bruité (±15 % sur le temps, ±20 points de PV avec trois combats) : il sert à repérer
   un don muet ou un écart flagrant, pas à régler au pour cent.
+
+## Dons pour toute l'équipe, CT en coop, rebonds
+
+Retour du 27 novembre 2026 : « les dons, je préfère que ça aille pour toute l'équipe ; on ne fait
+plus de dons que pour un Pokémon, sinon c'est compliqué en multi. Pareil pour les CT : en coop,
+chaque Pokémon de l'équipe peut avoir une nouvelle CT ; sinon, c'est une seule CT. Et un don pour
+avoir plusieurs projectiles, ou des Flammèches qui rebondissent de Pokémon en Pokémon, comme dans
+Hades ».
+
+- **Dons pour toute l'équipe** (`combat/boonhooks.ts`, `combat/combat.ts`) : plus de portée « Ton
+  Pokémon » (`BoonDef.scope` retiré, la carte dit « Toute l'équipe »). Les coups, finishers et K.O.
+  de chaque membre, compagnons de l'IA et invités en ligne, déclenchent les dons ; les coups qu'il
+  encaisse aussi (Phénix, Souhait, Renaissance, Épines, Armure de Givre). Ce qui se compte par
+  salle ou tous les N coups se compte par Pokémon (`Guard` : bouclier, Phénix, Souhait, coups de
+  Décharge Statique et de Continent, Sève, Racines, Rembobinage) ; Renaissance, une fois par run et
+  par Pokémon (`Boons.rebirth`). Restent communs la jauge d'ultime, l'Orage, et les coups
+  encaissés de la salle (Carapace, rareté), qui ne comptent que les Pokémon menés par un joueur.
+  Dons de dash : ceux d'un invité partent aussi (son dash arrive avec sa position ; Rembobinage ne
+  lui rend que ses PV, sa position est la sienne). Lien Psychique recharge les autres membres.
+- **Dons de statistique pour tous** (`BoonHooks.syncStats`, `Pokemon.boonRanks`) : chaque membre
+  reçoit le gain à la rareté du don, y compris un membre arrivé ensuite (recrue, invité revenu),
+  à la prise du don et à chaque salle. La vitesse voyage jusqu'à l'invité (`ActorSnap.ms`), qui
+  déplace son Pokémon chez lui.
+- **Nouvelle attaque en coop** (`main.ts`, `skillTakers`) : seul, une attaque pour le membre qu'on
+  choisit ; en ligne, chaque joueur presse E et prend la sienne pour son Pokémon, la récompense
+  part avec le dernier. L'offre de chaque Pokémon reste la même tant que la récompense est là
+  (`skillFor`) : refermer l'écran ne la retire plus.
+- **Surtension** (Électhor) rebondit pour de vrai : le tir repart de sa cible vers l'ennemi le plus
+  proche qu'il n'a pas touché (5,5 cases), avec l'attaque elle-même (sa planche, son type,
+  l'efficacité recalculée), à 60 % du coup d'avant ; 1 rebond au Commun, 4 au Prismatique
+  (`extraShots`, `Combat.bounce`). Tempête de Feu enflamme les rebonds.
+- **Écho** (Mew, nouveau) : chaque tir part aussi vers 1 à 4 autres ennemis à portée, à 45 % des
+  dégâts. Jamais deux fois sur la même cible : contre un as seul, il ne double rien.
+  Rebonds et tirs d'Écho appliquent les statuts (type, Souffle Gelé…) mais ne redéclenchent pas
+  `onHit` (ni rebond d'un rebond, ni soin de Transfert).
