@@ -969,6 +969,12 @@ effets animés). Les flèches, ✕ et ✔ restent : ce sont des signes typograph
   l'ultime de chaque légendaire, les duos, le Panthéon (`meta/feats.ts`,
   `Save.boonsGot`). À voir : une récompense propre à chaque légendaire
   (un « souvenir » qui oriente la première porte, comme les gages de Hades).
+- Revue de tous les dons (même jour) : compteur `Boons.fire`, banc
+  `src/debug/boonbench.ts`, gel corrigé, dons de stat selon la rareté, sept
+  dons branchés, soins et zones rabotés (README). Restent : Invocation et
+  Conscience Collective (à imaginer pour l'équipe) ; des dons `flag` qui
+  gagneraient une valeur selon la rareté (les sillages de dash, Dette) ; un
+  banc moins bruité (plus de combats, graine fixe).
 
 ## 3. Déjà notés, toujours en attente
 

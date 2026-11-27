@@ -244,6 +244,12 @@ export class Combat {
   }
 
   /** Recharges et verrous à zéro (Vrille, Voyage, Racines). */
+  /** Les compagnons du dernier pas (Lien Psychique, boonhooks.ts). */
+  private allies: readonly Actor[] = [];
+  companions(): readonly Actor[] {
+    return this.allies;
+  }
+
   resetCooldowns(): void {
     this.st.moveCd.fill(0);
     this.st.globalLock = this.st.actionLock = 0;
@@ -429,7 +435,8 @@ export class Combat {
     const len = Math.hypot(target.x - a.x, target.y - a.y) || 1;
     // Les dégâts sont calculés pendant attack (au contact, et au tir où ils sont figés) : le
     // facteur ne vaut que pour ce coup-ci.
-    this.hitScale = COMPANION_DAMAGE;
+    // Empathie (don de Mew) relève les coups des compagnons.
+    this.hitScale = COMPANION_DAMAGE * this.hooks.companionMult();
     try {
       this.attack(a, { mx: (target.x - a.x) / len, my: (target.y - a.y) / len, dash: false, move: slot, interact: false, ult: false, swap: false }, enemies, slot);
     } finally {
@@ -482,6 +489,7 @@ export class Combat {
    */
   update(dt: number, input: InputSample, player: Actor, enemies: readonly Actor[], world: WorldMap, allies: readonly Actor[] = []): void {
     this.st = player.atk;
+    this.allies = allies;
     player.atk.tick(dt);
     for (const c of allies) c.atk.tick(dt);
     this.ringFlash = Math.max(0, this.ringFlash - dt * 4);
@@ -1074,7 +1082,7 @@ export class Combat {
       // Un don peut imposer le statut (Braises, Souffle Gelé, Cauchemar) ; sinon le type le tire.
       const forced = this.run ? forcedStatus(this.run.boons, this.random) : null;
       const roll = STATUS_ROLL[type];
-      if (forced) this.hooks.inflict(e, forced);
+      if (forced) this.hooks.inflict(e, forced, true);
       else if (roll && this.random() < roll[1]) this.hooks.inflict(e, roll[0]);
     }
     if (ranged !== null && own && this.player) this.hooks.onHit(this.player, e, damage, ranged, this.enemies);
@@ -1166,6 +1174,8 @@ export class Combat {
     const roll = STATUS_ROLL[type];
     if (!mon.fainted && roll && this.random() < roll[1]) mon.applyStatus(roll[0]);
     if (mon.fainted) {
+      // Sacrifice (duo Mew + Darkrai) : le Pokémon joué absorbe la force du compagnon tombé.
+      if (!own) this.hooks.onCompanionDown();
       sfx('faint', own ? 0 : -4);
       cry(player.speciesId, own ? 0 : -4, 0.85);
       player.deathT = 0;

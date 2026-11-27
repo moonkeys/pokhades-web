@@ -67,6 +67,18 @@ export const PATCH_NOTES: readonly PatchNote[] = [
           'Et deux pages de plus : les alliances (tous les dons duo) et le Panthéon (les dix légendaires).',
         ],
       },
+      {
+        title: 'Tous les dons revus',
+        items: [
+          'Chaque don a été essayé en combat. Souffle Gelé gèle bien plus souvent ; Braises ou une brûlure déjà posée ne l’empêchent plus de geler.',
+          'Les dons de statistique montent avec la rareté : +20 % au Commun, jusqu’à +48 % au Prismatique.',
+          'Sept dons qui n’étaient jamais proposés arrivent : Empathie, Lien Psychique, Résurrection, Ascension, Pluie d’Étoiles, et les duos Sacrifice et Phénix Doré.',
+          'Fortune, de Jirachi, remplit maintenant ta jauge d’ultime au lieu de soigner comme Plumage.',
+          'Rembobinage ne te ramène en arrière que si tu avais plus de PV, une fois toutes les 8 secondes : ton dash avance de nouveau.',
+          'Les soins des dons sont moins forts, Continent et Vide un peu moins aussi, et Ascendant plafonne à +60 % de vitesse.',
+          'Un don qui n’a pas de valeur chiffrée n’est plus proposé une deuxième fois.',
+        ],
+      },
     ],
   },
   {

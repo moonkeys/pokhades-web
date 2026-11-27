@@ -5,7 +5,7 @@ import { typeColor, withAlpha } from '../render/combatfx';
 import type { Run } from '../run/run';
 import type { WorldMap } from '../world/generate';
 import { TILE } from '../world/tiles';
-import { RARITY_SCALE, STAT_BOONS, ULT_MAX, ULT_POWER_MULT, type Boons, type DonorId, DONORS } from './boons';
+import { RARITY_SCALE, STAT_BOONS, statGain, ULT_MAX, ULT_POWER_MULT, type Boons, type DonorId, DONORS } from './boons';
 import { TYPE_CHART, typeMultiplier } from './damage';
 import { STATUS, type Status } from './pokemon';
 
@@ -28,6 +28,8 @@ export interface BoonHost {
   boonDamage(e: Actor, damage: number, color: string, fromX: number, fromY: number): void;
   stagger(e: Actor, fromX: number, fromY: number, force: number): void;
   resetCooldowns(): void;
+  /** Les compagnons sur le terrain (Lien Psychique). */
+  companions(): readonly Actor[];
   addShake(amount: number): void;
   notify(text: string): void;
   fx: {
@@ -47,6 +49,8 @@ interface Zone {
   kind: 'damage' | 'slow';
   value: number;
   color: string;
+  /** Le don qui l'a posée (compteur du banc). */
+  id: string;
 }
 
 /** Une nappe frappe ce qu'elle couvre toutes les 0,5 s (BoonZone.gd:23). */
@@ -86,14 +90,35 @@ export class BoonHooks {
   private statusMult(kind: Status): number {
     const b = this.boons;
     if (!b) return 1;
-    if (kind === 'burn' && b.has('feu_cauldron')) return b.v('feu_cauldron');
-    if (kind === 'freeze' && b.has('duo_winter')) return b.v('duo_winter');
+    if (kind === 'burn' && b.has('feu_cauldron')) return (b.fire('feu_cauldron'), b.v('feu_cauldron'));
+    if (kind === 'freeze' && b.has('duo_winter')) return (b.fire('duo_winter'), b.v('duo_winter'));
     return 1;
   }
 
-  /** Inflige un statut, durée allongée par Chaudron ou Hiver Perpétuel. */
-  inflict(e: Actor, kind: Status): void {
-    e.pokemon?.applyStatus(kind, STATUS[kind].duration * this.statusMult(kind));
+  /**
+   * Inflige un statut, durée allongée par Chaudron ou Hiver Perpétuel. `force` (le gel et le
+   * sommeil d'un don) remplace un statut moins fort déjà posé, brûlure, poison ou paralysie :
+   * sans ça, la brûlure d'une attaque Feu rendait Souffle Gelé muet. Un Pokémon de champion
+   * reste gelé ou endormi deux fois moins longtemps : un don ne doit pas figer un boss.
+   */
+  inflict(e: Actor, kind: Status, force = false): boolean {
+    const mon = e.pokemon;
+    if (!mon || mon.fainted) return false;
+    const hard = kind === 'freeze' || kind === 'sleep';
+    if (force && hard && mon.status && mon.status !== 'freeze' && mon.status !== 'sleep') mon.status = null;
+    const boss = e.role !== 'wild' && hard ? 0.5 : 1;
+    return mon.applyStatus(kind, STATUS[kind].duration * this.statusMult(kind) * boss);
+  }
+
+  /** Inflige un statut au nom d'un don, et le note s'il a pris. */
+  private inflictBy(id: string, e: Actor, kind: Status): void {
+    if (this.inflict(e, kind)) this.boons?.fire(id);
+  }
+
+  /** Dégâts d'un don, notés pour lui. */
+  private hitBy(id: string, e: Actor, damage: number, color: string, fromX: number, fromY: number): void {
+    this.boons?.fire(id);
+    this.host.boonDamage(e, Math.max(1, Math.round(damage)), color, fromX, fromY);
   }
 
   private around(enemies: readonly Actor[], x: number, y: number, r: number, except?: Actor): Actor[] {
@@ -116,6 +141,7 @@ export class BoonHooks {
   /** Morphing : une attaque Normal prend le type le plus efficace contre la cible. */
   morph(type: string, target: Actor): string {
     if (type !== 'normal' || !this.boons?.has('psy_morph') || !target.pokemon) return type;
+    this.boons.fire('psy_morph');
     let best = type;
     let bestMult = typeMultiplier(type, target.pokemon.types);
     for (const t of Object.keys(TYPE_CHART)) {
@@ -134,12 +160,29 @@ export class BoonHooks {
     if (!b) return 1;
     let m = 1;
     const st = target.pokemon?.status;
-    if (st === 'paralysis' && b.has('elec_network')) m *= 1 + b.v('elec_network');
-    if (st === 'freeze' && b.has('glace_shatter')) m *= 1 + b.v('glace_shatter');
+    if (st === 'paralysis' && b.has('elec_network')) (m *= 1 + b.v('elec_network'), b.fire('elec_network'));
+    if (st === 'freeze' && b.has('glace_shatter')) (m *= 1 + b.v('glace_shatter'), b.fire('glace_shatter'));
     if (st === 'sleep' && b.has('tenb_sleep')) m *= 2;
-    if (b.has('tenb_steal')) m *= 1 + b.v('tenb_steal');
-    if (b.has('tenb_lastbreath') && this.low(player)) m *= 1 + b.v('tenb_lastbreath');
+    if (b.has('tenb_steal')) (m *= 1 + b.v('tenb_steal'), b.fire('tenb_steal'));
+    if (b.has('tenb_lastbreath') && this.low(player)) (m *= 1 + b.v('tenb_lastbreath'), b.fire('tenb_lastbreath'));
+    if (b.sacrifice > 0) (m *= 1 + b.v('duo_sacrifice') * b.sacrifice, b.fire('duo_sacrifice'));
     return m;
+  }
+
+  /** Empathie : facteur des coups des compagnons. */
+  companionMult(): number {
+    const b = this.boons;
+    if (!b?.has('psy_empathy')) return 1;
+    b.fire('psy_empathy');
+    return 1 + b.v('psy_empathy');
+  }
+
+  /** Sacrifice : un compagnon vient de tomber. */
+  onCompanionDown(): void {
+    const b = this.boons;
+    if (!b?.has('duo_sacrifice')) return;
+    b.sacrifice++;
+    this.host.notify('Sacrifice : tu absorbes sa force.');
   }
 
   private low(player: Actor): boolean {
@@ -154,6 +197,7 @@ export class BoonHooks {
 
   /** Cendres : plus d'XP par ennemi vaincu. */
   xpMult(): number {
+    if (this.boons?.has('sacre_xp')) this.boons.fire('sacre_xp');
     return (1 + (this.boons?.v('sacre_xp') ?? 0)) * this.metaXp;
   }
 
@@ -167,13 +211,13 @@ export class BoonHooks {
     if (!b) return m;
     if (b.has('temps_cooldown')) m *= Math.max(0.25, 1 - b.v('temps_cooldown'));
     if (b.has('tenb_lastbreath') && this.low(player)) m *= 0.7;
-    if (b.has('dragon_delta') && player.moving) m *= Math.max(0.25, 1 - b.v('dragon_delta'));
+    if (b.has('dragon_delta') && player.moving) (m *= Math.max(0.25, 1 - b.v('dragon_delta')), b.fire('dragon_delta'));
     return m;
   }
 
-  /** Dash : invulnérabilité prolongée par Ombre Portée. */
+  /** Dash : invulnérabilité prolongée par Ombre Portée (0,3 s au Commun, 0,72 s au Prismatique). */
   dashGrace(): number {
-    return this.boons?.has('tenb_phase') ? 0.35 : 0;
+    return this.boons?.v('tenb_phase') ?? 0;
   }
 
   /** on_hit : un coup du joueur a porté (`ranged` : orbe). */
@@ -187,37 +231,44 @@ export class BoonHooks {
     if (ricochet > 0) {
       const other = this.nearest(enemies, target.x, target.y, 5.5, target);
       if (other) {
-        this.host.boonDamage(other, Math.max(1, Math.round(damage * ricochet)), typeColor('electric'), target.x, target.y);
-        if (b.has('duo_firestorm')) this.inflict(other, 'burn');
+        this.hitBy(ranged ? 'elec_split' : 'elec_ricochet', other, damage * ricochet, typeColor('electric'), target.x, target.y);
+        if (b.has('duo_firestorm')) this.inflictBy('duo_firestorm', other, 'burn');
       }
     }
     if (b.has('elec_static') && b.hits % 10 === 0) {
       for (const e of this.around(enemies, player.x, player.y, 6)) {
-        this.host.boonDamage(e, Math.max(1, Math.round(damage * b.v('elec_static'))), typeColor('electric'), player.x, player.y);
+        this.hitBy('elec_static', e, damage * b.v('elec_static'), typeColor('electric'), player.x, player.y);
         this.inflict(e, 'paralysis');
       }
       this.host.fx.attackAnim('electric', player.x, player.y);
     }
     const st = target.pokemon?.status;
-    if (st === 'burn' && b.has('feu_poise')) this.host.stagger(target, player.x, player.y, 1.7);
+    if (st === 'burn' && b.has('feu_poise')) (this.host.stagger(target, player.x, player.y, 1.7), b.fire('feu_poise'));
     if (st === 'freeze' && b.has('glace_shatter')) {
       const n = this.nearest(enemies, target.x, target.y, 4, target);
-      if (n) this.inflict(n, 'freeze');
+      if (n) this.inflict(n, 'freeze', true);
     }
     if (st === 'freeze' && b.has('duo_whitebolt')) {
       for (const e of this.around(enemies, target.x, target.y, 5)) {
-        this.host.boonDamage(e, Math.max(1, Math.round(damage * b.v('duo_whitebolt'))), typeColor('electric'), target.x, target.y);
+        this.hitBy('duo_whitebolt', e, damage * b.v('duo_whitebolt'), typeColor('electric'), target.x, target.y);
         this.inflict(e, 'paralysis');
       }
     }
     const tmon = target.pokemon;
     // Ni Zéro Absolu ni Exécution sur un Pokémon de champion : ils bloquaient ou achevaient un boss à mi-vie.
-    if (tmon && target.role === 'wild' && b.has('glace_execute') && tmon.hp / tmon.maxHp < b.v('glace_execute')) this.inflict(target, 'freeze');
-    if (ranged && b.has('glace_hail')) this.zone(target.x, target.y, 3.4, 5, 'slow', Math.min(0.85, b.v('glace_hail')), typeColor('ice'));
-    if (b.has('sol_continent') && b.hits % 5 === 0) this.zone(target.x, target.y, 3, 4, 'damage', Math.max(1, Math.round(damage * b.v('sol_continent'))), typeColor('ground'));
+    if (tmon && target.role === 'wild' && b.has('glace_execute') && tmon.hp / tmon.maxHp < b.v('glace_execute') && this.inflict(target, 'freeze', true)) b.fire('glace_execute');
+    if (ranged && b.has('glace_hail')) (this.zone(target.x, target.y, 3.4, 5, 'slow', Math.min(0.85, b.v('glace_hail')), typeColor('ice'), 'glace_hail'), b.fire('glace_hail'));
+    // Continent : une faille qui frappe trois fois en 1,5 s (elle durait 4 s, huit pulsations : la
+    // revue du 27 novembre 2026 la mesurait au double des dégâts du Pokémon à elle seule).
+    if (b.has('sol_continent') && b.hits % 5 === 0) this.zone(target.x, target.y, 3, 1.5, 'damage', Math.max(1, Math.round(damage * b.v('sol_continent'))), typeColor('ground'), 'sol_continent');
     const heal = damage * (b.v('psy_transfer') + b.v('sacre_lifesteal'));
-    if (heal > 0) this.healPlayer(player, heal);
+    if (heal > 0) {
+      if (b.has('psy_transfer')) b.fire('psy_transfer');
+      if (b.has('sacre_lifesteal')) b.fire('sacre_lifesteal');
+      this.healPlayer(player, heal);
+    }
     if (b.has('astre_coin') && Math.random() < b.v('astre_coin')) {
+      b.fire('astre_coin');
       const gold = Math.max(1, Math.round(damage * 0.5));
       run.money += gold;
       this.host.fx.number('buff', target.x, target.y, 0, `+${gold} ₽`);
@@ -229,40 +280,52 @@ export class BoonHooks {
     const b = this.boons;
     const mon = player.pokemon;
     if (!b || !mon) return;
-    if (b.has('elec_finisher')) for (const e of this.around(enemies, target.x, target.y, b.v('elec_finisher'))) this.inflict(e, 'paralysis');
-    if (b.has('feu_finisher')) for (const e of this.around(enemies, target.x, target.y, b.v('feu_finisher'))) this.inflict(e, 'burn');
+    if (b.has('elec_finisher')) for (const e of this.around(enemies, target.x, target.y, b.v('elec_finisher'))) this.inflictBy('elec_finisher', e, 'paralysis');
+    if (b.has('feu_finisher')) for (const e of this.around(enemies, target.x, target.y, b.v('feu_finisher'))) this.inflictBy('feu_finisher', e, 'burn');
     if (b.has('glace_finisher')) {
       const slow = Math.max(0.25, 1 - b.v('glace_finisher'));
       for (const e of this.around(enemies, target.x, target.y, Infinity)) e.pokemon!.applyBuff('spd', slow, 4);
       this.host.fx.attackAnim('ice', target.x, target.y);
+      b.fire('glace_finisher');
     }
     const tmon = target.pokemon;
     if (tmon && !tmon.fainted && target.role === 'wild' && b.has('tenb_execute') && tmon.hp / tmon.maxHp < b.v('tenb_execute')) {
-      this.host.boonDamage(target, tmon.hp, typeColor('dark'), player.x, player.y);
+      this.hitBy('tenb_execute', target, tmon.hp, typeColor('dark'), player.x, player.y);
     }
     if (b.has('sol_finisher')) {
       for (const e of this.around(enemies, target.x, target.y, 5)) {
-        this.host.boonDamage(e, Math.max(1, Math.round(damage * b.v('sol_finisher'))), typeColor('ground'), target.x, target.y);
+        this.hitBy('sol_finisher', e, damage * b.v('sol_finisher'), typeColor('ground'), target.x, target.y);
         this.host.stagger(e, target.x, target.y, 1.7);
       }
     }
     if (b.has('duo_eruption')) {
       for (const e of this.around(enemies, target.x, target.y, b.v('duo_eruption'))) {
-        this.inflict(e, 'burn');
+        this.inflictBy('duo_eruption', e, 'burn');
         this.host.stagger(e, target.x, target.y, 2.6);
       }
     }
-    if (b.has('temps_finisher')) this.host.resetCooldowns();
-    const heal = mon.maxHp * (b.v('sacre_finisher') + b.v('astre_finisher'));
-    if (heal > 0) this.healPlayer(player, heal);
-    if (b.has('dragon_finisher')) player.dashCharges = Math.min(player.dashMax, player.dashCharges + 1);
+    if (b.has('temps_finisher')) (this.host.resetCooldowns(), b.fire('temps_finisher'));
+    // Lien Psychique : les compagnons relancent tout de suite (le jeu les faisait attaquer d'un coup ;
+    // recharger leurs capacités laisse leur IA choisir la cible et l'attaque).
+    if (b.has('psy_finisher')) {
+      for (const c of this.host.companions()) {
+        c.atk.moveCd.fill(0);
+        c.atk.globalLock = c.atk.actionLock = 0;
+        this.host.fx.attackAnim('psychic', c.x, c.y);
+      }
+      b.fire('psy_finisher');
+    }
+    if (b.has('sacre_finisher')) (this.healPlayer(player, mon.maxHp * b.v('sacre_finisher')), b.fire('sacre_finisher'));
+    // Fortune : une part de la jauge d'ultime (même sans ultime équipée : elle sera prête).
+    if (b.has('astre_finisher')) (b.ultGauge = Math.min(ULT_MAX, b.ultGauge + ULT_MAX * b.v('astre_finisher')), b.fire('astre_finisher'));
+    if (b.has('dragon_finisher')) (player.dashCharges = Math.min(player.dashMax, player.dashCharges + 1), b.fire('dragon_finisher'));
   }
 
   /** on_dash : le segment balayé par le dash frappe, paralyse, brûle ou gèle. */
   onDashStart(player: Actor, dx: number, dy: number, enemies: readonly Actor[]): void {
     const b = this.boons;
     if (!b) return;
-    if (b.has('temps_rewind')) this.rewind(player);
+    if (b.has('temps_rewind')) this.rewind(player, b);
     const hitters = ['elec_dash', 'feu_dash', 'glace_dash', 'sol_dash', 'dragon_dash_hit'].filter((id) => b.has(id));
     if (!hitters.length) return;
     for (const e of this.around(enemies, player.x, player.y, DASH_REACH + DASH_HALF_WIDTH)) {
@@ -272,33 +335,47 @@ export class BoonHooks {
       const along = rx * dx + ry * dy;
       const side = Math.abs(rx * dy - ry * dx);
       if (along < -0.5 || along > DASH_REACH || side > DASH_HALF_WIDTH) continue;
-      if (b.has('elec_dash')) this.inflict(e, 'paralysis');
-      if (b.has('feu_dash')) this.inflict(e, 'burn');
-      if (b.has('glace_dash')) this.inflict(e, 'freeze');
+      if (b.has('elec_dash')) this.inflictBy('elec_dash', e, 'paralysis');
+      if (b.has('feu_dash')) this.inflictBy('feu_dash', e, 'burn');
+      if (b.has('glace_dash') && this.inflict(e, 'freeze', true)) b.fire('glace_dash');
       const dmg = this.basePower(player) * (b.v('sol_dash') + b.v('dragon_dash_hit'));
-      if (dmg > 0) this.host.boonDamage(e, Math.max(1, Math.round(dmg)), typeColor(b.has('sol_dash') ? 'ground' : 'dragon'), player.x, player.y);
+      if (dmg > 0) {
+        if (b.has('dragon_dash_hit')) b.fire('dragon_dash_hit');
+        this.hitBy(b.has('sol_dash') ? 'sol_dash' : 'dragon_dash_hit', e, dmg, typeColor(b.has('sol_dash') ? 'ground' : 'dragon'), player.x, player.y);
+      }
       if (b.has('sol_dash')) this.host.stagger(e, player.x, player.y, 1.7);
     }
   }
 
-  /** Rembobinage : position et PV d'il y a 3 s (si on était encore debout). */
-  private rewind(player: Actor): void {
+  /**
+   * Rembobinage : position et PV d'il y a 3 s. Revue du 27 novembre 2026 : il jouait à chaque
+   * dash, donc plus aucun dash n'avançait (on revenait en arrière à chaque fois), et il pouvait
+   * faire perdre des PV soignés depuis. Il ne joue plus que si on avait plus de PV il y a 3 s,
+   * une fois toutes les 8 s : un vrai « retour en arrière » après un coup encaissé.
+   */
+  private rewind(player: Actor, b: Boons): void {
     const past = this.history[Math.max(0, this.history.length - 30)];
-    if (!past || !player.pokemon) return;
+    const mon = player.pokemon;
+    if (!past || !mon || b.rewindCd > 0 || past.hp <= mon.hp) return;
+    b.rewindCd = 8;
     player.x = player.prevX = past.x;
     player.y = player.prevY = past.y;
-    if (past.hp > 0) player.pokemon.hp = Math.min(player.pokemon.maxHp, past.hp);
+    mon.hp = Math.min(mon.maxHp, past.hp);
     this.host.fx.attackAnim('grass', player.x, player.y);
+    b.fire('temps_rewind');
   }
 
   onKill(player: Actor, e: Actor, enemies: readonly Actor[]): void {
     const b = this.boons;
     if (!b) return;
     b.roomKills++;
-    if (b.has('feu_kill')) for (const n of this.around(enemies, e.x, e.y, b.v('feu_kill'), e)) this.inflict(n, 'burn');
-    if (b.has('duo_shortcircuit')) for (const n of this.around(enemies, e.x, e.y, b.v('duo_shortcircuit'), e)) this.inflict(n, 'paralysis');
-    if (b.has('tenb_void')) this.zone(e.x, e.y, 3.2, b.v('tenb_void'), 'damage', Math.max(1, Math.round(this.basePower(player) * 0.3)), typeColor('dark'));
-    if (b.has('dragon_momentum')) player.pokemon?.applyBuff('spd', 1 + b.v('dragon_momentum') * b.roomKills, 99);
+    if (b.has('feu_kill')) for (const n of this.around(enemies, e.x, e.y, b.v('feu_kill'), e)) this.inflictBy('feu_kill', n, 'burn');
+    if (b.has('duo_shortcircuit')) for (const n of this.around(enemies, e.x, e.y, b.v('duo_shortcircuit'), e)) this.inflictBy('duo_shortcircuit', n, 'paralysis');
+    // Vide : l'ombre ronge 0,2 × la puissance à chaque pulsation (0,3 avant la revue du 27
+    // novembre 2026 : une Horde fondait dans les ombres sans qu'on frappe).
+    if (b.has('tenb_void')) this.zone(e.x, e.y, 3.2, b.v('tenb_void'), 'damage', Math.max(1, Math.round(this.basePower(player) * 0.2)), typeColor('dark'), 'tenb_void');
+    // Ascendant plafonne à +60 % : sans plafond, une Horde menait à des vitesses impossibles à diriger.
+    if (b.has('dragon_momentum')) (player.pokemon?.applyBuff('spd', 1 + Math.min(0.6, b.v('dragon_momentum') * b.roomKills), 99), b.fire('dragon_momentum'));
   }
 
   /** dmg_mult_in, puis l'Armure de Givre qui absorbe une part du premier coup. */
@@ -309,6 +386,7 @@ export class BoonHooks {
     if (b.has('tenb_debt')) d *= 2;
     if (b.has('glace_shield') && b.shieldReady) {
       b.shieldReady = false;
+      b.fire('glace_shield');
       d *= 1 - Math.min(1, b.v('glace_shield'));
     }
     return Math.round(d);
@@ -318,7 +396,7 @@ export class BoonHooks {
   onDodgedByDash(player: Actor, damage: number, enemies: readonly Actor[]): void {
     if (!this.boons?.has('psy_premonition')) return;
     const e = this.nearest(enemies, player.x, player.y, 6);
-    if (e) this.host.boonDamage(e, Math.max(1, Math.round(damage)), typeColor('psychic'), player.x, player.y);
+    if (e) this.hitBy('psy_premonition', e, damage, typeColor('psychic'), player.x, player.y);
   }
 
   /**
@@ -335,16 +413,19 @@ export class BoonHooks {
     if (mon.fainted) {
       if (b.has('feu_phoenix') && !b.phoenixUsed) {
         b.phoenixUsed = true;
+        b.fire('feu_phoenix');
         mon.hp = Math.max(1, Math.floor(mon.maxHp * Math.min(1, b.v('feu_phoenix'))));
         for (const e of this.around(enemies, player.x, player.y, 6)) this.inflict(e, 'burn');
         this.host.fx.attackAnim('fire', player.x, player.y);
         this.host.notify('Phénix ! Tu te relèves.');
       } else if (b.has('astre_wish') && !b.wishUsed) {
         b.wishUsed = true;
+        b.fire('astre_wish');
         mon.hp = 1;
         this.host.notify('Souhait : tu tiens à 1 PV.');
       } else if (b.has('sacre_rebirth') && !b.rebirthUsed) {
         b.rebirthUsed = true;
+        b.fire('sacre_rebirth');
         mon.hp = Math.floor(mon.maxHp / 2);
         this.host.fx.attackAnim('fx_heal', player.x, player.y);
         this.host.notify('Renaissance !');
@@ -352,7 +433,7 @@ export class BoonHooks {
     }
     if (b.has('sol_thorns')) {
       const e = this.nearest(enemies, player.x, player.y, 4);
-      if (e) this.host.boonDamage(e, Math.max(1, Math.round(damage * b.v('sol_thorns'))), typeColor('ground'), player.x, player.y);
+      if (e) this.hitBy('sol_thorns', e, damage * b.v('sol_thorns'), typeColor('ground'), player.x, player.y);
     }
   }
 
@@ -368,17 +449,19 @@ export class BoonHooks {
     const mon = player.pokemon;
     if (!b || !mon || player.deathT >= 0) return;
     b.sinceHurt += dt;
+    b.rewindCd = Math.max(0, b.rewindCd - dt);
     player.dashMax = 1 + this.metaDash + Math.round(b.v('dragon_dash_charge'));
     if (b.has('glace_shield') && !b.shieldReady && b.sinceHurt >= 6) b.shieldReady = true;
-    if (b.has('temps_regen') && b.sinceHurt >= 2 && mon.hp < mon.maxHp) {
+    if (b.has('temps_regen') && b.sinceHurt >= 3 && mon.hp < mon.maxHp) {
       this.regenAcc += mon.maxHp * b.v('temps_regen') * dt;
       if (this.regenAcc >= 1) {
         const n = Math.floor(this.regenAcc);
         this.regenAcc -= n;
         mon.hp = Math.min(mon.maxHp, mon.hp + n);
+        b.fire('temps_regen');
       }
     }
-    if (b.has('sol_steady') && (mon.status === 'freeze' || mon.status === 'sleep' || mon.status === 'paralysis')) mon.status = null;
+    if (b.has('sol_steady') && (mon.status === 'freeze' || mon.status === 'sleep' || mon.status === 'paralysis')) (mon.status = null, b.fire('sol_steady'));
     if (b.has('elec_storm')) {
       b.stormT += dt;
       // Période : 8 s ÷ l'échelle de rareté (une meilleure rareté frappe plus souvent).
@@ -388,7 +471,7 @@ export class BoonHooks {
         const targets = this.around(enemies, player.x, player.y, Infinity).sort((a, c) => c.pokemon!.hp - a.pokemon!.hp);
         const t = targets[0];
         if (t) {
-          this.host.boonDamage(t, Math.round(this.basePower(player) * 1.6), typeColor('electric'), t.x, t.y - 3);
+          this.hitBy('elec_storm', t, this.basePower(player) * 1.6, typeColor('electric'), t.x, t.y - 3);
           this.inflict(t, 'paralysis');
           this.host.fx.attackAnim('electric', t.x, t.y);
         }
@@ -406,6 +489,7 @@ export class BoonHooks {
           player.dashCharges = player.dashMax;
           b.shieldReady = true;
           this.host.fx.attackAnim('grass', player.x, player.y);
+          b.fire('duo_roots');
         }
       }
     }
@@ -425,15 +509,16 @@ export class BoonHooks {
     b.enterRoom();
     this.reset();
     const mon = player.pokemon;
-    if (b.has('temps_speed')) mon?.applyBuff('spd', 1 + b.v('temps_speed'), 12);
+    if (b.has('temps_speed')) (mon?.applyBuff('spd', 1 + b.v('temps_speed'), 12), b.fire('temps_speed'));
     if (b.has('temps_journey')) {
+      b.fire('temps_journey');
       this.host.resetCooldowns();
       player.dashCharges = Math.min(player.dashMax, player.dashCharges + 1);
       // Rééquilibrage : il soigne aussi (cadences et dash pleins ne servaient presque à rien entre deux salles).
       if (mon && !mon.fainted) mon.hp = Math.min(mon.maxHp, mon.hp + Math.round(mon.maxHp * b.v('temps_journey')));
     }
     if (newAct && b.has('astre_wish_granted')) {
-      if (b.wishGranted(rng)) this.host.notify(`Vœu Exaucé : un don monte d'une rareté.`);
+      if (b.wishGranted(rng)) (this.host.notify(`Vœu Exaucé : un don monte d'une rareté.`), b.fire('astre_wish_granted'));
     }
   }
 
@@ -446,23 +531,33 @@ export class BoonHooks {
       mon.boostMaxHp(0.98);
       mon.hp = Math.min(mon.hp, mon.maxHp);
     }
-    if (b.has('sol_shell') && b.roomHurts === 0) mon.boostMaxHp(1 + b.v('sol_shell'));
-    if (b.has('astre_bounty')) run.money += Math.round(60 * b.v('astre_bounty'));
+    if (b.has('sol_shell') && b.roomHurts === 0) (mon.boostMaxHp(1 + b.v('sol_shell')), b.fire('sol_shell'));
+    if (b.has('astre_bounty')) (run.money += Math.round(60 * b.v('astre_bounty')), b.fire('astre_bounty'));
   }
 
-  /** Don de statistique : appliqué une fois, à la prise. */
-  applyStat(player: Actor, id: string): void {
+  /**
+   * Don de statistique, à la prise : le gain de sa rareté, ou à une reprise l'écart avec la
+   * rareté d'avant (`from`), pour qu'un Prismatique vaille son gain et pas la somme des reprises.
+   */
+  applyStat(player: Actor, id: string, from: number | undefined, to: number): void {
     const s = STAT_BOONS[id];
     const mon = player.pokemon;
     if (!s || !mon) return;
-    if (s.apply === 'hp') mon.boostMaxHp(s.value);
-    else if (s.apply === 'crit' || s.apply === 'dodge') mon.mult[s.apply] += s.value;
-    else mon.mult[s.apply] *= s.value;
+    const was = statGain(id, from);
+    const now = statGain(id, to);
+    if (now <= was) return;
+    // Les multiplicateurs : (1 + nouveau) / (1 + ancien) ; la cadence, son inverse (plus court).
+    const ratio = (1 + now) / (1 + was);
+    if (s.apply === 'hp') mon.boostMaxHp(ratio);
+    else if (s.apply === 'crit' || s.apply === 'dodge') mon.mult[s.apply] += now - was;
+    else if (s.apply === 'cooldown') mon.mult.cooldown /= ratio;
+    else mon.mult[s.apply] *= ratio;
     mon.movesVersion++;
+    this.boons?.fire(id);
   }
 
-  private zone(x: number, y: number, r: number, dur: number, kind: Zone['kind'], value: number, color: string): void {
-    this.zones.push({ x, y, r, t: 0, dur, pulse: 0, kind, value, color });
+  private zone(x: number, y: number, r: number, dur: number, kind: Zone['kind'], value: number, color: string, id: string): void {
+    this.zones.push({ x, y, r, t: 0, dur, pulse: 0, kind, value, color, id });
   }
 
   private updateZones(dt: number, enemies: readonly Actor[]): void {
@@ -472,7 +567,7 @@ export class BoonHooks {
       if (z.pulse > 0) continue;
       z.pulse = ZONE_PULSE;
       for (const e of this.around(enemies, z.x, z.y, z.r)) {
-        if (z.kind === 'damage') this.host.boonDamage(e, z.value, z.color, z.x, z.y);
+        if (z.kind === 'damage') this.hitBy(z.id, e, z.value, z.color, z.x, z.y);
         else e.pokemon!.applyBuff('spd', Math.max(0.15, 1 - z.value), 0.6);
       }
     }

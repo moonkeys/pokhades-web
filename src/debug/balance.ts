@@ -60,6 +60,8 @@ export interface FightSetup {
   champion?: string;
   /** Durée de jeu au plus, en secondes. */
   secs?: number;
+  /** Dons accordés au départ, [id, rareté] (le banc des dons, debug/boonbench.ts). */
+  boons?: [string, number][];
 }
 
 export interface FightResult {
@@ -76,6 +78,12 @@ export interface FightResult {
   /** PV restants de l'équipe, en %. */
   team: string;
   damage: { played: number; companions: number };
+  /** PV perdus par le Pokémon joué à la fin, en % de ses PV max. */
+  taken: number;
+  /** Dégâts encaissés par coups (hitPlayer). */
+  hits: number;
+  /** Combien de fois chaque don a agi (Boons.fired). */
+  fired: Record<string, number>;
 }
 
 /** Pas de la simulation (s), et pas de jeu par pas (1/60 s chacun). */
@@ -187,13 +195,33 @@ export function installBalance(P: BalanceHost): {
       mon.moves.splice(0, mon.moves.length, ...best);
       mon.movesVersion++;
     }
+    // Les dons du test, comme pris à un autel : un don de statistique s'applique au Pokémon joué.
+    if (setup.boons?.length) {
+      const { STAT_BOONS } = await import('../combat/boons');
+      const hooks = (P.combat as unknown as { hooks: { applyStat(a: Actor, id: string, from: number | undefined, to: number): void } }).hooks;
+      P.run.boons.teamSize = P.team.length;
+      for (const [id, r] of setup.boons) {
+        const got = P.run.boons.grant(id, r);
+        if (STAT_BOONS[id]) hooks.applyStat(P.player, id, undefined, got);
+      }
+      P.run.boons.fired.clear();
+    }
     // Une Horde forcée prend la première espèce possible, comme le panneau.
     P.run.hordeSpecies = setup.special === 'horde' ? (P.run.hordePool(setup.room)[0] ?? null) : null;
     P.goto(setup.room, setup.special ?? null);
 
     // Les dégâts portés aux Pokémon du champion (pas aux sbires), par source ; hors boss, à tous.
-    const combat = P.combat as unknown as { hitEnemy: (...a: unknown[]) => void };
+    const combat = P.combat as unknown as { hitEnemy: (...a: unknown[]) => void; hitPlayer: (...a: unknown[]) => void };
     const hit = combat.hitEnemy;
+    const hurt = combat.hitPlayer;
+    let taken = 0;
+    combat.hitPlayer = function (this: unknown, ...a: unknown[]) {
+      const target = a[0] as Actor;
+      const before = target.pokemon?.hp ?? 0;
+      const r = hurt.apply(this, a);
+      if (target === P.player) taken += Math.max(0, before - (target.pokemon?.hp ?? 0));
+      return r;
+    };
     const damage = { played: 0, companions: 0 };
     combat.hitEnemy = function (this: unknown, ...a: unknown[]) {
       const [e, dmg] = a as [Actor, number];
@@ -226,6 +254,7 @@ export function installBalance(P: BalanceHost): {
       }
     } finally {
       combat.hitEnemy = hit;
+      combat.hitPlayer = hurt;
       for (const k of [...held]) key(k, false);
     }
     const won = P.director.phase === 'open' || P.director.phase === 'over';
@@ -241,6 +270,11 @@ export function installBalance(P: BalanceHost): {
         .join(' '),
       team: P.team.map((m) => `${m.speciesId}:${m.pokemon ? Math.round((100 * m.pokemon.hp) / m.pokemon.maxHp) : 0}%`).join(' '),
       damage: { played: Math.round(damage.played), companions: Math.round(damage.companions) },
+      // Les PV perdus du Pokémon joué en fin de combat, en % (100 : K.O.) : comprend aussi la
+      // brûlure et le poison, qui ne passent pas par hitPlayer, et ce que les dons ont soigné.
+      taken: P.player?.pokemon ? Math.round(100 * (1 - P.player.pokemon.hp / P.player.pokemon.maxHp)) : 100,
+      hits: Math.round(taken),
+      fired: Object.fromEntries(P.run.boons.fired),
     };
   };
 

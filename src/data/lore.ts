@@ -116,7 +116,9 @@ export const LORE: LoreChapter[] = [
       // boons.ts:294-313
       { title: 'Choisir un don', text: 'Une porte « don » mène à un légendaire : il propose trois dons, tu en gardes un jusqu’à la fin de la run. Chaque légendaire a son style : foudre, feu, glace, ombre, chance…' },
       // boons.ts:163-174
-      { title: 'Dons de stats et d’effets', text: 'Certains montent une stat (PV, Attaque, Vitesse, critiques, portée, cadence). D’autres changent ta façon de te battre : coups qui rebondissent, dash qui laisse une traînée, armure de givre, retour en arrière…' },
+      { title: 'Dons de stats et d’effets', text: 'Certains montent une stat (PV, Attaque, Vitesse, critiques, portée, cadence), d’autant plus que le don est rare. D’autres changent ta façon de te battre : coups qui rebondissent, dash qui laisse une traînée, armure de givre, retour en arrière… Un don sans valeur chiffrée ne se reprend pas : il fait déjà tout.' },
+      // boons.ts, TEAM_BOONS
+      { title: 'Dons d’équipe', text: 'Avec au moins un compagnon, Mew et Ho-Oh offrent des dons pour lui : Empathie le rend plus fort, Lien Psychique recharge ses capacités à ton finisher, Résurrection le relève avec des PV en fin de salle.' },
       // boons.ts:177-179, 256-285
       { title: 'Raretés', text: 'Commun, Rare (×1,4), Épique (×1,85), Prismatique (×2,4). Au début, presque tout est Commun ; Rares et Épiques gagnent du terrain salle après salle. Une salle sans coup reçu monte parfois une carte. Le Prismatique, lui, se gagne en reprenant un don déjà pris : chaque reprise le monte d’un cran.' },
       // boons.ts, pickDonor (MAX_DONORS, MET_WEIGHT)

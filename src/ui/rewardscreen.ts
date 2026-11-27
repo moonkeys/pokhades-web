@@ -311,7 +311,8 @@ export class RewardScreen {
       rar.style.setProperty('--c', `color-mix(in srgb, ${ult || def?.duo ? RARITY_COLOR[3] : RARITY_COLOR[card.result]} 70%, #000)`);
       const scope = ult ? 'Touche R' : def?.duo ? `${DONORS[def.duo[0]].name} + ${DONORS[def.duo[1]].name}` : def?.scope === 'T' ? 'Toute l’équipe' : 'Ton Pokémon';
       // Valeur mise en avant : « 40 % », « rayon 4,5 cases »… ; un don de stat montre son gain.
-      const value = ult ? '' : stat ? stat.label.replace(/^.* (\S+ \S+)$/, '$1') : valueText(card.id, card.result);
+      // Un don de stat : « +28 % » en valeur, le nom de la statistique en légende.
+      const value = ult ? '' : stat ? valueText(card.id, card.result).slice(stat.name.length + 1) : valueText(card.id, card.result);
       const c = this.card(list, {
         color: typeColor(donor.type),
         // Le légendaire qui donne (son icône de menu d'Essentials) ; pour un don duo, les deux.
@@ -321,7 +322,7 @@ export class RewardScreen {
         scope,
         desc: ult ? ultDesc(offer.donor) : (def?.desc ?? ''),
         value,
-        valueLabel: stat ? stat.label.replace(/ \S+ \S+$/, '') : value ? 'valeur' : undefined,
+        valueLabel: stat ? stat.name : value ? 'valeur' : undefined,
       });
       this.addChoice(c, () => {
         this.onClose = null;

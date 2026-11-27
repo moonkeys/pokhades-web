@@ -34,7 +34,7 @@ import { Dialogue, type Speaker } from './ui/dialogue';
 import { Combat, DEATH_TIME } from './combat/combat';
 import { CompanionBrain } from './combat/companion';
 import { EnemyBrain } from './combat/enemy';
-import { BOONS, DONORS, RARITY_COLOR, RARITY_NAME, STAT_BOONS, type BoonOffer } from './combat/boons';
+import { BOONS, DONORS, RARITY_COLOR, RARITY_NAME, STAT_BOONS, ULT_MAX, type BoonOffer } from './combat/boons';
 import { loadMove, tune, type Move } from './combat/moves';
 import { BASE_TEAM_LEVEL, Pokemon, xpForLevel } from './combat/pokemon';
 import { typeMates } from './data/trainers';
@@ -677,6 +677,11 @@ async function boot(): Promise<void> {
         m.info = info;
         m.pokemon = evo;
         runHud.notify({ title: 'Évolution', text: `${old.name} évolue en ${species} !`, art: next, color: 'var(--yel)' });
+        // Phénix Doré (duo Ho-Oh + Jirachi) : l'évolution remplit la jauge d'ultime.
+        if (mode === 'run' && run.boons.has('duo_goldphoenix')) {
+          run.boons.ultGauge = ULT_MAX;
+          run.boons.fire('duo_goldphoenix');
+        }
         // Prime de lignée (retour de test : « une prime quand on complète une évolution ») : la
         // première fois qu'une lignée atteint sa forme finale, un Éclat et quelques Baies.
         if (!save.evolved.includes(next)) {
@@ -1561,9 +1566,11 @@ async function boot(): Promise<void> {
       boons.ultGauge = 0;
       runHud.notify({ title: 'Ultime obtenue', text: `${DONORS[offer.donor].ult} · touche R`, art: DONORS[offer.donor].dex, color: 'var(--yel)' });
     } else {
+      const before = boons.owned.get(id);
       const got = boons.grant(id, rarity);
       // Un don « Ton Pokémon » va à celui qui l'a choisi : l'invité en ligne (uiTarget), sinon le Pokémon joué.
-      if (STAT_BOONS[id]) combat.hooks.applyStat(uiTarget ?? player, id);
+      // Repris, il n'ajoute que l'écart entre sa rareté d'avant et la nouvelle.
+      if (STAT_BOONS[id]) combat.hooks.applyStat(uiTarget ?? player, id, before, got);
       runHud.notify({ title: 'Don obtenu', text: `${BOONS[id].name} · ${RARITY_NAME[got]}`, art: DONORS[offer.donor].dex, color: RARITY_COLOR[got] });
     }
     // La page du légendaire au carnet de Xatu (meta/feats.ts) : un don jamais obtenu la fait
@@ -1586,6 +1593,9 @@ async function boot(): Promise<void> {
     outdoor = null;
     run = newRunState();
     combat.run = run;
+    // Les dons de compagnons (Empathie, Lien Psychique, Résurrection, Sacrifice) ne sont proposés
+    // qu'à une équipe : seul, ils ne feraient rien.
+    run.boons.teamSize = save.team.length;
     // Améliorations du Repaire : Partage d'XP et Bourse de départ.
     combat.hooks.metaXp = 1 + 0.2 * level(save, 'xp');
     combat.hooks.metaDash = level(save, 'dash');
@@ -2091,8 +2101,32 @@ async function boot(): Promise<void> {
         if (run.cursed('rest')) continue;
         m.getUp();
         m.pokemon.status = null;
-        m.pokemon.hp = 1;
+        // Résurrection (don de Ho-Oh) : une part de leurs PV plutôt que 1.
+        const revive = run.boons.v('sacre_revive');
+        m.pokemon.hp = revive > 0 ? Math.max(1, Math.round(m.pokemon.maxHp * Math.min(1, revive))) : 1;
+        if (revive > 0) run.boons.fire('sacre_revive');
         fx.ballSend(m.x, m.y);
+      }
+      // Ascension (Ho-Oh) : chaque salle libérée, une part d'un niveau en XP pour toute l'équipe
+      // debout (l'écart entre ce niveau et le suivant, pour que la montée garde son rythme).
+      const ascend = run.boons.v('sacre_level');
+      if (ascend > 0) {
+        run.boons.fire('sacre_level');
+        for (const m of team) {
+          const mon = m.pokemon;
+          if (!mon || mon.fainted || m.runAlly) continue;
+          const gap = xpForLevel(mon.level + 1, mon.id) - xpForLevel(mon.level, mon.id);
+          void mon.addXp(Math.max(1, Math.round(gap * ascend))).then((n) => n && combat.levelUp(m));
+        }
+      }
+      // Pluie d'Étoiles (Jirachi) : du Bois et de la Pierre en plus, comptés au retour au Repaire.
+      const stars = Math.round(run.boons.v('astre_resource'));
+      if (stars > 0) {
+        run.boons.fire('astre_resource');
+        for (const r of ['wood', 'stone'] as const) {
+          save.resources[r] += stars;
+          runRes[r] += stars;
+        }
       }
       questProgress({ kind: 'room', hurt: roomHurt });
       if (run.isBoss()) questProgress({ kind: 'champion' });

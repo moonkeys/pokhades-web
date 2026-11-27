@@ -1514,3 +1514,25 @@ Poséidon dans Hades ». Écart voulu avec `CombatArena._roll_boon_rarity` du je
   alliances (les dons duo) et le Panthéon (les dix pages). Une page n'apparaît qu'au premier don du
   légendaire ; le carnet liste ce qui manque. Les sauvegardes d'avant partent de zéro (rien
   n'était noté).
+- **Revue de tous les dons** (même jour : « j'ai l'impression que plein de dons ne marchent pas, le
+  gel par exemple ; à vérifier tous, et à équilibrer »). `Boons.fire` compte chaque déclenchement,
+  et le banc `src/debug/boonbench.ts` (`(await import('/src/debug/boonbench.ts')).start()` puis
+  `.table()`, dans la console de `?debug`) joue des combats réels avec chaque don seul, via le
+  pilote de `debug/balance.ts` (option `boons`). Les dons à condition (gel puis Éclat, paralysie
+  puis Réseau, K.O. pour Phénix, Souhait, Renaissance, Sacrifice, évolution pour Phénix Doré) ont
+  été vérifiés dans des combats montés pour eux. Corrigé :
+  - Souffle Gelé et Cauchemar se tirent avant Braises et Flamme Sacrée (qui brûlaient à coup sûr
+    et les masquaient) et remplacent un statut moins fort (`BoonHooks.inflict`, `force`) ; Souffle
+    Gelé passe à 20 % au Commun ; un champion gelé ou endormi par un don l'est moitié moins longtemps.
+  - Dons de statistique : `step` × `RARITY_SCALE` (`statGain`), la reprise n'ajoute que l'écart.
+  - Branchés : Empathie, Lien Psychique, Résurrection, Sacrifice (`TEAM_BOONS`, proposés à une
+    équipe d'au moins deux), Ascension, Pluie d'Étoiles, Phénix Doré. Restent hors jeu Invocation et
+    Conscience Collective.
+  - Rembobinage : seulement si on avait plus de PV 3 s avant, toutes les 8 s (il jouait à chaque
+    dash, qui n'avançait donc plus). Fortune remplit l'ultime (elle doublait Plumage). Braises
+    (chance qui monte avec la rareté) et Ombre Portée (durée) prennent une valeur.
+  - Moins forts : Transfert, Flamme Sacrée, Plumage, Sève (les salles se finissaient presque sans
+    PV perdus), Continent (faille de 1,5 s au lieu de 4), Vide, Ascendant (plafond +60 %).
+  - Un don `flag` déjà pris n'est plus reproposé (`Boons.usable`).
+  Le banc est bruité (±15 % sur le temps, ±20 points de PV avec trois combats) : il sert à repérer
+  un don muet ou un écart flagrant, pas à régler au pour cent.
