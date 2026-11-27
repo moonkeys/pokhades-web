@@ -956,6 +956,16 @@ Gardés exprès : la Poké Ball barrée de l'écran des récompenses (motif du
 logo, pas un petit signe) et les particules d'aura (feuilles, arcs : des
 effets animés). Les flèches, ✕ et ✔ restent : ce sont des signes typographiques.
 
+### 1.9 sexies Raretés des dons, fidélité des légendaires (27 novembre 2026)
+
+- Retour : trop d'Épiques et de Rares trop tôt ; une montée logique ; retrouver
+  un légendaire déjà croisé (Hades). Courbe `RARITY_CURVE`, au plus quatre
+  légendaires par run, ×3 pour ceux déjà rencontrés (README). Banc
+  `src/debug/boonsim.ts`.
+- À juger en jeu : le banc prend toujours la carte la plus rare ; un vrai
+  joueur choisit aussi par effet. Les reprises (un cran chacune) font
+  l'essentiel des Épiques du premier acte.
+
 ## 3. Déjà notés, toujours en attente
 
 - **Jeu en ligne** (src/net/, voir README) : lobby, visite du Repaire de

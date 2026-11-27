@@ -40,6 +40,28 @@ export interface PatchNote {
 
 export const PATCH_NOTES: readonly PatchNote[] = [
   {
+    id: '2026-11-27',
+    date: '27 novembre 2026',
+    title: 'Des dons qui se méritent',
+    sections: [
+      {
+        title: 'Raretés',
+        items: [
+          'Au début d’une run, les dons sont presque tous Communs ; Rares et Épiques deviennent plus fréquents au fil des salles.',
+          'Une salle passée sans être touché ne fait plus monter toutes les cartes : seulement parfois, et jamais jusqu’au Prismatique.',
+          'Le Prismatique se gagne en reprenant un don que tu as déjà : chaque reprise le monte d’un cran.',
+        ],
+      },
+      {
+        title: 'Légendaires',
+        items: [
+          'Un légendaire qui t’a déjà donné un don revient bien plus souvent, comme les dieux de Hades.',
+          'Une run réunit au plus quatre légendaires : ensuite, ce sont toujours eux, de quoi monter leurs dons et décrocher leurs duos.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-11-26-compte',
     date: '26 novembre 2026',
     title: 'Ta partie sur tous tes appareils',

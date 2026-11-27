@@ -118,7 +118,9 @@ export const LORE: LoreChapter[] = [
       // boons.ts:163-174
       { title: 'Dons de stats et d’effets', text: 'Certains montent une stat (PV, Attaque, Vitesse, critiques, portée, cadence). D’autres changent ta façon de te battre : coups qui rebondissent, dash qui laisse une traînée, armure de givre, retour en arrière…' },
       // boons.ts:177-179, 256-285
-      { title: 'Raretés', text: 'Commun, Rare (×1,4), Épique (×1,85), Prismatique (×2,4). Elles montent au fil des salles, d’un cran après une salle sans coup reçu, et reprendre un don déjà pris le fait monter.' },
+      { title: 'Raretés', text: 'Commun, Rare (×1,4), Épique (×1,85), Prismatique (×2,4). Au début, presque tout est Commun ; Rares et Épiques gagnent du terrain salle après salle. Une salle sans coup reçu monte parfois une carte. Le Prismatique, lui, se gagne en reprenant un don déjà pris : chaque reprise le monte d’un cran.' },
+      // boons.ts, pickDonor (MAX_DONORS, MET_WEIGHT)
+      { title: 'Fidélité des légendaires', text: 'Un légendaire qui t’a déjà donné un don revient bien plus souvent. Une run n’en réunit pas plus de quatre : après, ce sont toujours les mêmes, de quoi monter leurs dons et décrocher leurs duos.' },
       { title: 'Dons duo', text: 'Garde un don de deux légendaires différents : leurs dons croisés, les duos, peuvent apparaître en première carte. Les plus puissants du jeu.' },
     ],
   },

@@ -1488,3 +1488,21 @@ sur cinq tons éclairés d'en haut à gauche, contour de sa propre couleur assom
 script). Un don duo montre ses deux légendaires l'un devant l'autre (`duoIcon`). `python3 scripts/pixel-icons.py` (Pillow) recadre les uns et
 dessine les autres dans `public/game/assets/pixel/`, hors de la copie d'import. Scènes de contrôle
 de l'outil de captures : `node scripts/shoot.mjs --out /tmp ctl-hud ctl-dons equipe`.
+
+## Raretés des dons et fidélité des légendaires
+
+Retour du 27 novembre 2026 : « des dons épiques et rares très vite ; il faudrait plus de communs,
+une suite logique de plus en plus rare, et retrouver facilement un légendaire déjà rencontré, comme
+Poséidon dans Hades ». Écart voulu avec `CombatArena._roll_boon_rarity` du jeu Godot.
+
+- **Rareté** (`RARITY_CURVE`, `Boons.rollRarity`) : 87 % de Communs en début de run ; Rare et Épique
+  montent par salle (+0,9 et +0,6 point) jusqu'à 42 % et 20 %. Une salle sans coup reçu ne monte
+  une carte qu'une fois sur cinq, jamais jusqu'au Prismatique, qui se gagne en reprenant un don
+  (un cran par reprise). Dette et le pacte de l'Autel gardent leur cran.
+- **Fidélité** (`Boons.pickDonor`) : un légendaire qui a déjà donné revient trois fois plus souvent
+  (`MET_WEIGHT`), et une run n'en réunit pas plus de quatre (`MAX_DONORS`, la règle des dieux de
+  Hades) ; les portes l'annoncent déjà (le donateur est tiré à la génération des portes).
+- **Banc** : `(await import('/src/debug/boonsim.ts')).simulate()` dans la console du serveur de dev
+  (2 000 runs, un joueur qui prend toujours la carte la plus rare). Avant → après, dons pris :
+  acte 1 9/29/42/20 % → 37/44/17/2 % (Commun/Rare/Épique/Prismatique), acte 4 0/4/54/42 % →
+  7/26/43/24 % ; légendaires par run 7,3 → 4 ; part du premier rencontré 17 % → 29 %.

@@ -186,6 +186,28 @@ export const STAT_BOONS: Record<string, { label: string; apply: 'atk' | 'def' | 
 // soigne, Prémonition renvoie tout, Inébranlable lève aussi la paralysie,
 // Aubaine rapporte plus, dons de statistique à +25 %).
 export const RARITY_SCALE = [1, 1.4, 1.85, 2.4];
+
+/**
+ * Courbe de rareté d'une carte (Boons.rollRarity), `room` étant la salle de la run (0 à 35). Rare et
+ * Épique partent bas et montent par salle jusqu'à leur plafond ; le reste est Commun. Réglée au banc
+ * (debug/boonsim.ts) : environ 60 % de dons Communs pris au premier acte, la moitié Rares ou mieux au
+ * dernier.
+ */
+export const RARITY_CURVE = {
+  epic0: 0.01,
+  epicPerRoom: 0.006,
+  epicMax: 0.2,
+  rare0: 0.12,
+  rarePerRoom: 0.009,
+  rareMax: 0.42,
+  /** Chance qu'une salle sans coup encaissé monte une carte Commune ou Rare d'un cran. */
+  flawlessBump: 0.2,
+} as const;
+
+/** Au plus quatre légendaires par run (Boons.pickDonor), comme les dieux de Hades. */
+export const MAX_DONORS = 4;
+/** Un légendaire déjà rencontré revient ce nombre de fois plus souvent qu'un inconnu. */
+export const MET_WEIGHT = 3;
 export const RARITY_NAME = ['Commun', 'Rare', 'Épique', 'Prismatique'];
 export const RARITY_COLOR = ['#e3c287', '#57b04a', '#f2c24f', '#40e0d1'];
 
@@ -285,14 +307,25 @@ export class Boons {
   }
 
   /**
-   * CombatArena._roll_boon_rarity : Épique sous 0,10 + 0,02 × salle, Rare sous
-   * 0,35 + 0,03 × salle, Commun sinon ; +1 cran si la salle s'est passée sans
-   * encaisser un coup, +1 avec Dette.
+   * La rareté d'une carte. Écart voulu avec CombatArena._roll_boon_rarity (Épique sous 0,10 + 0,02 ×
+   * salle, Rare sous 0,35 + 0,03 × salle, +1 cran à chaque salle sans coup encaissé) : retour du 27
+   * novembre 2026, « on a des dons épiques et rares très vite ; il faudrait plus de communs et une
+   * suite logique ». Le banc des dons (debug/boonsim.ts, un joueur qui prend toujours la carte la
+   * plus rare) mesurait 62 % de dons Épiques ou Prismatiques dès le premier acte.
+   *
+   * Maintenant (`RARITY_CURVE`) : 78 % de Communs en début de run, les Rares et les Épiques gagnent
+   * un peu à chaque salle (plafonnés) ; une salle sans coup encaissé ne fait monter la carte que
+   * parfois, et jamais jusqu'au Prismatique. Le Prismatique se mérite en reprenant un don qu'on a
+   * déjà (grant : un cran au-dessus) : c'est la montée logique. Dette et le pacte de l'Autel
+   * (`bonus`) gardent leur cran.
    */
   rollRarity(rng: Rng, room: number): number {
+    const c = RARITY_CURVE;
+    const epic = Math.min(c.epicMax, c.epic0 + c.epicPerRoom * room);
+    const rare = Math.min(c.rareMax, c.rare0 + c.rarePerRoom * room);
     const roll = rng.next();
-    let r = roll < 0.1 + 0.02 * room ? 2 : roll < 0.35 + 0.03 * room ? 1 : 0;
-    if (this.roomHurts === 0) r++;
+    let r = roll < epic ? 2 : roll < epic + rare ? 1 : 0;
+    if (this.roomHurts === 0 && r < 2 && rng.next() < c.flawlessBump) r++;
     if (this.has('tenb_debt')) r++;
     return Math.min(3, r + this.bonus);
   }
@@ -325,14 +358,39 @@ export class Boons {
     return { donor: god, cards };
   }
 
-  /** Un donateur au hasard parmi ceux qui ont encore au moins 3 dons à offrir (null : aucun). */
-  pickDonor(rng: Rng): DonorId | null {
-    const gods = [...DONOR_IDS];
-    for (let i = gods.length - 1; i > 0; i--) {
-      const j = rng.int(i + 1);
-      [gods[i], gods[j]] = [gods[j], gods[i]];
+  /** Les légendaires qui ont déjà donné un don pendant cette run. */
+  met(): Set<DonorId> {
+    const out = new Set<DonorId>();
+    for (const id of this.owned.keys()) {
+      const g = BOONS[id]?.god;
+      if (g && g !== 'duo') out.add(g);
     }
-    return gods.find((g) => this.offerableFrom(g).length >= 3) ?? null;
+    return out;
+  }
+
+  /**
+   * Le donateur d'une porte, parmi ceux qui ont encore au moins 3 dons à offrir (null : aucun).
+   *
+   * Écart voulu (retour du 27 novembre 2026 : « comme dans Hades, quand tu commences sur Poséidon, tu
+   * retrouves facilement Poséidon plus tard pour combiner et améliorer tes dons ») : un légendaire
+   * qui a déjà donné revient `MET_WEIGHT` fois plus souvent qu'un inconnu, et une run n'en réunit pas
+   * plus de `MAX_DONORS` (la règle des quatre dieux de Hades) : passé ce nombre, seuls eux
+   * reviennent. Les dons duo, qui demandent deux légendaires d'une même run, en deviennent
+   * atteignables, et les dons déjà pris reviennent pour monter de rareté. Le banc mesurait 7,3
+   * légendaires différents par run, le premier ne donnant que 17 % des dons.
+   */
+  pickDonor(rng: Rng): DonorId | null {
+    const met = this.met();
+    let pool = DONOR_IDS.filter((g) => this.offerableFrom(g).length >= 3);
+    if (met.size >= MAX_DONORS && pool.some((g) => met.has(g))) pool = pool.filter((g) => met.has(g));
+    if (!pool.length) return null;
+    const weight = (g: DonorId) => (met.has(g) ? MET_WEIGHT : 1);
+    let roll = rng.next() * pool.reduce((t, g) => t + weight(g), 0);
+    for (const g of pool) {
+      roll -= weight(g);
+      if (roll < 0) return g;
+    }
+    return pool[pool.length - 1];
   }
 
   /** Vœu Exaucé : un don possédé au hasard (non prismatique) monte d'un cran. */
