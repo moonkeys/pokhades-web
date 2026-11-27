@@ -441,7 +441,7 @@ nuit (carte de 88 × 66 cases), un feu de camp (la flamme d'Essentials,
 Pokémon qui mène s'y promène, l'équipe ne le suit pas. Au sud, un grand lac ;
 loin au milieu, une île qu'on n'atteint qu'à la nage, avec la CS Surf : un
 temple dont on gravit l'escalier (on y ralentit et l'on grandit en montant),
-Lugia et deux ermites qui vont et viennent. Un chevron tressaute au-dessus du
+et Lugia, seul, gardien de l'épreuve du temple (voir « Le temple de Lugia »). Un chevron tressaute au-dessus du
 gardien dont on s'approche ; E ouvre son écran, après sa présentation la
 première fois. Dans les écrans, les flèches choisissent et Entrée valide.
 
@@ -1544,6 +1544,27 @@ Poséidon dans Hades ». Écart voulu avec `CombatArena._roll_boon_rarity` du je
   - Un don `flag` déjà pris n'est plus reproposé (`Boons.usable`).
   Le banc est bruité (±15 % sur le temps, ±20 points de PV avec trois combats) : il sert à repérer
   un don muet ou un écart flagrant, pas à régler au pour cent.
+
+## Le temple de Lugia (27 novembre 2026)
+
+Retour du même jour : « il faut faire quelque chose de l'île ; un seul Pokémon, mais qui a un
+rôle ; entrer dans le temple pour avoir accès à une salle spéciale ou des jeux ».
+
+- **L'île** (`run/camp.ts`) : Roigada et Noadkoko partent ; Lugia reste, seul, gardien d'un poste
+  (`Station` `temple`) à côté de l'escalier du temple. Son écran (`ui/campscreen.ts`,
+  `renderTemple`) : record, essais, ce que rapporte l'épreuve, « Entrer dans le temple » (pas en
+  ligne, et il faut une équipe).
+- **L'épreuve** (`run/room.ts`, special `temple` ; `main.ts`, `newRun(true)`) : une « run » d'une
+  salle, l'arène d'intérieur du Village (le seul hall clos), sans porte ni récompense au sol, qui ne
+  compte ni comme run ni dans les records. 40 vagues tirées de toute la faune (sans les nageurs) :
+  la première au niveau moyen de l'équipe moins deux, +1,2 niveau et un demi-sauvage par vague (plus
+  un par paire de membres) ; toutes les cinq, un Pokémon de champion (`TEMPLE_*`). Chaque vague
+  s'annonce. Sans dons : l'équipe du Repaire telle quelle.
+- **La fin** (`finishTemple`, `meta/temple.ts`) : à la chute de l'équipe (ou au bout des 40
+  vagues), retour direct au Repaire, sans bilan de run : 12 Baies par vague vaincue, un Éclat de
+  Champion par palier de 5 vagues franchi pour la première fois, et à la 15ᵉ vague, une fois,
+  Lugia rejoint la rébellion (recrue chez Dracolosse, provenance « Épreuve du temple »). Record et
+  essais dans `Save.temple`. Les victoires y comptent pour les recrues, comme ailleurs.
 
 ## Formes de base, icônes, sols du Repaire (27 novembre 2026)
 

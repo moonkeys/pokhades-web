@@ -222,6 +222,8 @@ export const LORE: LoreChapter[] = [
       // meta/save.ts, catalog.ts
       { title: 'Baies, ressources, Éclats', text: 'Les Baies paient presque tout au Repaire. Bois, Pierre et Nourriture paient les chantiers de Charpenti. Les Éclats de Champion paient le Bracelet de charge.' },
       { title: 'Les postes', text: 'Dracolosse : le départ. Porygon : l’équipe et le Pokédex. Charpenti : les chantiers. Les autres gardiens arrivent avec leurs bâtiments : missions, quêtes, CT, objets, améliorations, potager, atelier.' },
+      // meta/temple.ts, run/room.ts (special temple)
+      { title: 'Le temple de Lugia', text: 'Sur l’île du lac (avec Surf), Lugia garde le temple. Entres-y avec ton équipe : des vagues sans fin, de plus en plus fortes, un champion toutes les cinq. 12 Baies par vague, un Éclat à chaque palier de cinq vagues battu, et à la 15ᵉ vague, Lugia te rejoint.' },
       // main.ts, net/net.ts
       { title: 'Jouer à plusieurs', text: 'Chez Roucarnage, ouvre une partie et donne son code. En run, chacun mène son Pokémon : l’invité prend ses dons au centre, achète à la boutique avec la bourse commune, boit à la Source, signe à l’Autel et lance l’ultime (R). Une coupure ? Il revient seul, ou avec le code, et retrouve sa place.' },
       // net/cloud.ts : la fiche n'a de sens que si le jeu publié a son projet Supabase (README).

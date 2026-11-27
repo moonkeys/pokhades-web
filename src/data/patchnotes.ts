@@ -42,8 +42,17 @@ export const PATCH_NOTES: readonly PatchNote[] = [
   {
     id: '2026-11-27-repaire',
     date: '27 novembre 2026',
-    title: 'Un Repaire plus net',
+    title: 'Le temple de Lugia',
     sections: [
+      {
+        title: 'Le temple de Lugia',
+        items: [
+          'Sur l’île du lac, Lugia est désormais seul, et il garde le temple : parle-lui pour y entrer.',
+          'L’épreuve : des vagues de plus en plus fortes, tirées de tous les biomes, avec un champion toutes les cinq. On n’en sort qu’en tombant.',
+          '12 Baies par vague vaincue, un Éclat de Champion à chaque palier de cinq vagues battu, et à la 15ᵉ vague, Lugia rejoint la rébellion.',
+        ],
+        images: artIcons([['Lugia', 249]]),
+      },
       {
         title: 'Pokédex et recrues',
         items: [

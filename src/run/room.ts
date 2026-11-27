@@ -8,7 +8,7 @@ import { withAlpha } from '../render/combatfx';
 import { landReachable, type Exit, type WorldMap } from '../world/generate';
 import { TILE } from '../world/tiles';
 import { REWARD_COLOR, SHOP_COLOR, SPECIALS, type ExitOffer, type Reward, type Run, type SpecialId } from './run';
-import { SWIMMERS, type BiomeId } from '../data/species';
+import { FAUNA, SWIMMERS, type BiomeId } from '../data/species';
 import type { DonorId } from '../combat/boons';
 import { donorBadge, drawRewardIcon, rewardIcon, shopIcon, type Prize } from '../ui/rewardicons';
 import { BIOMES, BIOME_COLOR } from '../world/biomes';
@@ -196,6 +196,17 @@ const THROW_RANGE = 3.5;
 const ENGAGE_RANGE = 8.5;
 /** Au-delà, il lance quand même (bloqué derrière un obstacle, joueur qui l'évite). */
 const ENGAGE_TIMEOUT = 6;
+/**
+ * Épreuve du temple de Lugia (retour du 27 novembre 2026 : « faire quelque chose de l'île ; entrer
+ * dans le temple pour une salle spéciale ou des jeux ») : des vagues qui ne s'arrêtent qu'à la
+ * chute de l'équipe, tirées de la faune de tous les biomes (pas les nageurs : la salle est sèche).
+ * Chaque vague gagne `TEMPLE_LEVEL_STEP` niveaux et un demi-sauvage ; toutes les cinq, un Pokémon
+ * de champion (deux barres, ses attaques les plus fortes) se joint à elle.
+ */
+const TEMPLE_WAVES = 40;
+const TEMPLE_LEVEL_STEP = 1.2;
+const TEMPLE_MAX = 9;
+const TEMPLE_CHAMPION_EVERY = 5;
 
 interface Door {
   exit: Exit;
@@ -397,7 +408,17 @@ export class RoomDirector {
     this.level = plan.level;
     this.open = openCells(world);
     const crowd = crowdOf(this.open);
-    if (run.isBoss() && enemiesOn) {
+    if (this.special === 'temple' && enemiesOn) {
+      const pool = [...new Set(Object.values(FAUNA).flat())].filter((id) => !SWIMMERS.has(id));
+      this.level = run.templeLevel;
+      for (let w = 0; w < TEMPLE_WAVES; w++) {
+        const level = run.templeLevel + Math.floor(w * TEMPLE_LEVEL_STEP);
+        const n = Math.min(TEMPLE_MAX, 2 + Math.floor(w * 0.5) + Math.floor((run.teamSize - 1) / 2));
+        const wave: WaveMon[] = Array.from({ length: n }, () => ({ id: this.rng.pick(pool), level, role: 'wild' as const }));
+        if ((w + 1) % TEMPLE_CHAMPION_EVERY === 0) wave.unshift({ id: this.rng.pick(pool), level: level + 3, role: 'champion' });
+        this.waves.push(wave);
+      }
+    } else if (run.isBoss() && enemiesOn) {
       this.waves = run.bossWaves();
     } else if (this.special === 'trap' && enemiesOn) {
       // Embuscade : trois vagues plus fournies, plus fortes, réparties de même.
@@ -440,11 +461,12 @@ export class RoomDirector {
     if (this.special === 'duel' && this.duel && this.waves.length) {
       const at = this.spawnPoint(world, world.spawn, false) ?? world.spawn;
       this.groups.push({ trainer: new Trainer(TRAINER_CLASSES[this.duel].sprite, at, null, 2.5), cls: this.duel, wave: 0, actors: [], thrown: false, done: false, ace: true, until: this.waves.length - 1 });
-    } else if (!this.boss && this.waves.length && this.special !== 'horde') this.assignTrainers(world, run);
+    } else if (!this.boss && this.waves.length && this.special !== 'horde' && this.special !== 'temple') this.assignTrainers(world, run);
     this.total = this.waves.reduce((s, w) => s + w.length, 0);
     // Portes fermées dès l'arrivée : autant que la carte en offre, une seule autour de la boutique et du boss.
     // Chaque offre dit sur quelle sortie elle s'ouvre (Run.pickExits : les routes du côté de leur biome).
-    const offers = run.offers(run.exitCount(world.exits.length), world.exits.map((e) => e.side));
+    // Le temple n'a pas de porte : on n'en sort qu'en tombant (ou en venant à bout de toutes les vagues).
+    const offers = this.special === 'temple' ? [] : run.offers(run.exitCount(world.exits.length), world.exits.map((e) => e.side));
     // Devant le boss, la porte n'annonce que lui : pas d'icône de récompense.
     this.doors = offers.map((offer, i) => ({
       exit: world.exits[offer.exit ?? i],
@@ -605,7 +627,7 @@ export class RoomDirector {
           break;
         }
         // Le piège a déjà posé sa récompense ; le défi raté n'en a plus.
-        if (!this.pedestal && !this.failed) this.placePedestal(world, run);
+        if (!this.pedestal && !this.failed && this.special !== 'temple') this.placePedestal(world, run);
         this.openDoors();
         break;
       case 'open':
@@ -639,6 +661,8 @@ export class RoomDirector {
     this.t = WAVE_GAP;
     // Ligne de front : les anneaux attendent le préavis (t négatif), le temps du grondement et de la flèche.
     const warn = world.front && !this.boss ? this.announce(world, player) : 0;
+    // Au temple, chaque vague s'annonce, et toutes les cinq celle du champion.
+    if (this.special === 'temple') this.host.toast(`Vague ${this.wave + 1}`, (this.wave + 1) % TEMPLE_CHAMPION_EVERY === 0 ? 'Un champion' : undefined);
     // Les dresseurs de cette vague : celui qui est déjà à portée lance tout de suite ; les autres
     // marchent vers le joueur et lanceront en arrivant (updateHeld). Le Duel garde son lancer d'emblée.
     const engaged = new Set<TrainerGroup>();
@@ -783,6 +807,12 @@ export class RoomDirector {
         m.id = pickMember(this.rng, this.groups[m.group].cls, pool, run.variety);
       });
     });
+  }
+
+  /** Temple : les vagues vaincues jusqu'ici (celle en cours ne compte pas, sauf salle libérée). */
+  get templeCleared(): number {
+    if (this.special !== 'temple') return 0;
+    return this.phase === 'cleared' || this.phase === 'open' ? this.waves.length : this.wave;
   }
 
   /** Les dresseurs encore dans la salle, pour le rendu. */

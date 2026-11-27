@@ -5996,3 +5996,17 @@ img.ess-duel {
 .cs-dex-filters img.ess-ico {
   margin: 0 0 0 0.35em;
 }
+
+/* Temple de Lugia (campscreen.ts, renderTemple) : l'épreuve et ce qu'elle rapporte, une ligne
+   chacun ; le bouton d'entrée sous le texte, à sa largeur. */
+.cs-temple {
+  display: grid;
+  gap: calc(0.5 * var(--u));
+  justify-items: start;
+}
+.cs-temple .cs-info {
+  display: block;
+}
+.cs-temple .cs-label {
+  margin-top: calc(0.6 * var(--u));
+}

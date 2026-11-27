@@ -1,4 +1,5 @@
 import { donorIcon, essIcon, iconText, isEssIcon } from './essicon';
+import { TEMPLE_BAIES_PER_WAVE, TEMPLE_LUGIA_AT, TEMPLE_SHARD_STEP } from '../meta/temple';
 import { loadMove, type Move } from '../combat/moves';
 import { sfx } from '../audio/audio';
 import { fetchJson } from '../assets/json';
@@ -77,6 +78,8 @@ export interface CampCtx {
    * referme le temps de la fiche, puis la liste se rouvre tant qu'il reste quelqu'un.
    */
   recruit(idx: number): void;
+  /** Lugia : lance l'épreuve du temple (main.ts, startTemple) ; une raison de ne pas pouvoir, sinon null. */
+  temple: { start(): void; blocked(): string | null };
 }
 
 /** Fiche d'espèce embarquée (data/pokeapi/pokemon) : ce que l'écran d'équipe et le tuteur en lisent. */
@@ -183,6 +186,7 @@ export function originLabel(o: string): string {
   if (o === 'quest') return 'Gagné en quête';
   if (o === 'nectar') return 'Attiré par un nectar';
   if (o === 'ally') return 'Rencontré en ligne';
+  if (o === 'temple') return 'Épreuve du temple';
   if (o === 'test') return '';
   if (o.startsWith('champion:')) return `Équipe ${/^[AEIOUÉÈÊ]/.test(o.slice(9)) ? 'd’' : 'de '}${o.slice(9)}`;
   const cave = o.startsWith('cave:');
@@ -236,7 +240,7 @@ const resRow = (amounts: Cost, parent: HTMLElement, cls: string, stock?: Record<
 };
 
 /** Couleur de chaque poste : le liseré de l'écran et l'ombre du titre. */
-const TINT: Record<Station, string> = { start: '#ff7a2a', moves: '#b88ceb', team: '#3ab0e0', upgrades: '#ffd23f', items: '#e8b04a', builder: '#c8963c', missions: '#9a86b8', quests: '#e0a35a', lore: '#7cc46a', online: '#7ac0e8', garden: '#e8c84a', craft: '#d9776a', visitor: '#f0a0c8', recruit: '#ffd23f', feats: '#ffd23f', map: '#c8963c' };
+const TINT: Record<Station, string> = { start: '#ff7a2a', moves: '#b88ceb', team: '#3ab0e0', upgrades: '#ffd23f', items: '#e8b04a', builder: '#c8963c', missions: '#9a86b8', quests: '#e0a35a', lore: '#7cc46a', online: '#7ac0e8', garden: '#e8c84a', craft: '#d9776a', visitor: '#f0a0c8', recruit: '#ffd23f', feats: '#ffd23f', map: '#c8963c', temple: '#9fc4e8' };
 
 /**
  * Ce qui se choisit au clavier, dans l'ordre de l'écran : onglets, cartes,
@@ -446,6 +450,7 @@ export class CampScreen {
     else if (this.station === 'garden') this.renderGarden(main, ctx);
     else if (this.station === 'craft') this.renderCraft(main, ctx);
     else if (this.station === 'feats') this.renderFeats(main, ctx);
+    else if (this.station === 'temple') this.renderTemple(main, ctx);
     else if (this.recruits) await this.renderRecruits(main, ctx);
     else await this.renderStart(main, ctx);
     if (ticket !== this.ticket || this.root !== root) return;
@@ -2093,6 +2098,42 @@ export class CampScreen {
    * Pokémon sur le côté). Les records, puis par groupe son compte, ce qui est prêt à réclamer et
    * les deux prochains à faire seulement (retour de test : « le carnet est trop chargé »).
    */
+  /**
+   * Lugia, gardien du temple de l'île (meta/temple.ts) : le record, ce que rapporte l'épreuve, et
+   * l'entrée. Les mêmes trois cases que les records du carnet de Xatu.
+   */
+  private renderTemple(main: HTMLElement, ctx: CampCtx): void {
+    const save = ctx.save;
+    const t = save.temple;
+    el('p', 'cs-quote', main, t.tries ? '« Tu reviens. Les pierres se souviennent de ta dernière chute. »' : '« Peu franchissent l’eau. Encore moins entrent ici. Les vagues ne cessent qu’à ta chute. »');
+    const rec = el('div', 'cs-records', main);
+    for (const [v, label] of [
+      [t.best ? String(t.best) : '—', t.best > 1 ? 'vagues, record' : 'vague, record'],
+      [String(t.tries), t.tries > 1 ? 'essais' : 'essai'],
+      [t.lugia ? 'Avec toi' : `Vague ${TEMPLE_LUGIA_AT}`, 'Lugia'],
+    ] as const) {
+      const cell = el('div', 'da-paper', rec);
+      el('b', '', cell, v);
+      el('small', '', cell, label);
+    }
+    const card = el('div', 'cs-card da-paper cs-temple', main);
+    el('div', 'cs-head', card).append(el('b', '', undefined, 'L’épreuve'));
+    el('small', 'cs-info', card, 'Ton équipe du Repaire, sans dons, contre des vagues de plus en plus fortes, tirées de tous les biomes. Toutes les cinq vagues, un Pokémon de champion. Pas de porte : on sort en tombant.');
+    el('div', 'cs-label', card, 'Ce qu’elle rapporte');
+    el('small', 'cs-info', card, `${TEMPLE_BAIES_PER_WAVE} Baies par vague vaincue, à chaque essai.`);
+    el('small', 'cs-info', card, `Un Éclat de Champion par palier de ${TEMPLE_SHARD_STEP} vagues franchi pour la première fois.`);
+    el('small', 'cs-info', card, t.lugia ? 'Lugia a rejoint la rébellion.' : `À la ${TEMPLE_LUGIA_AT}ᵉ vague, Lugia rejoint la rébellion.`);
+    const why = ctx.temple.blocked();
+    const go = el('button', 'cs-net-btn', card, why ?? 'Entrer dans le temple') as HTMLButtonElement;
+    go.disabled = !!why;
+    go.addEventListener('click', () => {
+      if (ctx.temple.blocked()) return;
+      sfx('confirm');
+      this.close();
+      ctx.temple.start();
+    });
+  }
+
   private renderFeats(main: HTMLElement, ctx: CampCtx): void {
     const save = ctx.save;
     el('p', 'cs-quote', main, '« Fais chacun une fois : je t’en récompense, ici, au Repaire. »');

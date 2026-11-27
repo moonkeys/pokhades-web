@@ -60,6 +60,7 @@ import { MH as PLAN_H, MW as PLAN_W, paintPlan, type Region } from '../ui/worldp
 // En dehors des gardiens des postes, le camp ne compte que des libérés — ceux
 // qu'on a débloqués, qu'on n'emmène pas et qui ne sont pas en mission : endormis sur les rondins du feu ou au
 // dortoir, à l'entraînement, à la nage dans le lac (ceux d'eau), ou à flâner.
+// (27 novembre 2026 : Lugia y est seul, gardien de l'épreuve du temple ; les deux ermites sont partis.)
 // Sur l'île, loin au sud du lac, un temple dont on gravit l'escalier, Lugia et
 // deux ermites : on n'y va qu'à la nage, avec la CS Surf. Un repère tressaute
 // au-dessus du gardien dont on s'approche ; E ouvre son écran (main.ts), après
@@ -69,7 +70,7 @@ import { MH as PLAN_H, MW as PLAN_W, paintPlan, type Region } from '../ui/worldp
 // sur 116 × 96 cases), des aménagements payés en Baies en plus du bois, de la
 // pierre et des vivres, et un camp qui s'agrandit sur la forêt.
 
-export type Station = 'start' | 'team' | 'builder' | 'missions' | 'quests' | 'lore' | 'moves' | 'upgrades' | 'items' | 'online' | 'garden' | 'craft' | 'visitor' | 'recruit' | 'feats' | 'map';
+export type Station = 'start' | 'team' | 'builder' | 'missions' | 'quests' | 'lore' | 'moves' | 'upgrades' | 'items' | 'online' | 'garden' | 'craft' | 'visitor' | 'recruit' | 'feats' | 'map' | 'temple';
 
 export const STATIONS: Record<Station, { id: number; type: string; title: string; kicker: string; intro: string }> = {
   start: {
@@ -193,6 +194,15 @@ export const STATIONS: Record<Station, { id: number; type: string; title: string
     title: 'Recrue',
     kicker: 'veut rejoindre la rébellion',
     intro: '',
+  },
+  // Ajout (27 novembre 2026, « l'île ne sert à rien ; un seul Pokémon, mais qui a un rôle ; entrer
+  // dans le temple ») : Lugia, seul sur l'île, garde l'épreuve du temple (run/room.ts, `temple`).
+  temple: {
+    id: ISLAND_NPCS.sage,
+    type: 'psychic',
+    title: 'Temple',
+    kicker: 'le gardien de l’île',
+    intro: 'Entre, si tu l’oses : les vagues ne cessent qu’à ta chute.',
   },
 };
 
@@ -1138,6 +1148,8 @@ export class Camp {
     // (Dessiné centré sur ses deux colonnes d'escalier, pas sur l'île : les marches tombent pile sous les pieds.)
     this.temple = { x: sx + 1, y: island.y, top: Math.floor(island.y) - STEPS };
 
+    // Lugia, au pied du temple, à côté de l'escalier (qu'il ne bouche pas) : le gardien de l'épreuve.
+    posts.push(['temple', place.freeSpot(Math.floor(island.x) + 3, Math.floor(island.y) + 1, 3), 0]);
     for (const [station, spot, rest, arg] of posts) {
       const news = document.createElement('div');
       news.className = 'room-label camp-news';
@@ -1286,16 +1298,6 @@ export class Camp {
       t.wander = { home: { ...s }, radius: 5, goal: { ...s }, wait: rng.range(0.5, 2), water: true };
     });
 
-    // Sur l'île, devant le temple : Lugia et les deux ermites, qui vont et viennent.
-    const islanders: [number, number, string[]][] = [
-      [ISLAND_NPCS.sage, 0, LINES.sage],
-      [ISLAND_NPCS.hermits[0], -5, LINES.hermit],
-      [ISLAND_NPCS.hermits[1], 5, [...LINES.hermit].reverse()],
-    ];
-    for (const [id, dx, lines] of islanders) {
-      const s = place.freeSpot(Math.floor(island.x + dx), Math.floor(island.y) + 1, 3);
-      this.talk(id, s, 0, ['Idle'], lines).wander = { home: { ...s }, radius: dx ? 2.5 : 1.5, goal: { ...s }, wait: rng.range(1, 4) };
-    }
   }
 
   /**

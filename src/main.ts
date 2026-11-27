@@ -41,7 +41,7 @@ import { typeMates } from './data/trainers';
 import { escortPreviousOf } from './data/evolutions';
 import { STEP, startLoop } from './core/loop';
 import { Rng } from './core/rng';
-import { CAMP_NPCS, SWIMMERS } from './data/species';
+import { CAMP_NPCS, SWIMMERS, type BiomeId } from './data/species';
 import { evolutionChoices, evolutionOf, regionalEvolution, evolutionsOf, evolvedStart } from './data/evolutions';
 import { Actor, dirFromVector } from './entities/actor';
 import { Input } from './input/input';
@@ -68,6 +68,7 @@ import { Residents } from './run/residents';
 import { MAX_ERRANDS, ROOM_AT, claimErrand, errandDone, errandEvent, errandOf, rewardLines, rewardOf, rollErrand } from './meta/errands';
 import { INTIMIDATE, INTIMIDATE_MULT, INTIMIDATE_RANGE, INTIMIDATE_TIME, WEATHER_ABILITIES } from './data/abilities';
 import { evolveMove, rollSkillOffer, upgradeMove, type SkillOffer } from './run/rewards';
+import { LUGIA, noteTemple, templeReward } from './meta/temple';
 import { COMBATS_PER_ACT, CURSES, LEAGUE_MASTER, ROOMS_PER_ACT, Run } from './run/run';
 import { Hud } from './ui/hud';
 import { loadOptions, saveOptions, type Options } from './ui/options';
@@ -832,8 +833,14 @@ async function boot(): Promise<void> {
   // Les CS apprises au départ ouvrent les branches gardées du graphe des biomes (Surf : l'Océan).
   // Test de la grotte (panneau) : une run au Rocailleux, dont le biome GROTTE hérite (faune, falaises du dehors).
   // La Route Victoire s'ouvre une fois tous les champions vaincus (meta/feats.ts) ; la taille de l'équipe règle les effectifs.
-  const newRunState = () =>
-    new Run(opts.seed, opts.biome === 'run' ? null : opts.biome === 'grotte' ? 'rocailleux' : opts.biome, { cs: [...save.cs], league: leagueOpen(save), teamSize: save.team.length, beaten: save.beaten });
+  const newRunState = (biome?: BiomeId) =>
+    new Run(opts.seed, biome ?? (opts.biome === 'run' ? null : opts.biome === 'grotte' ? 'rocailleux' : opts.biome), { cs: [...save.cs], league: leagueOpen(save), teamSize: save.team.length, beaten: save.beaten });
+  /**
+   * L'épreuve du temple de Lugia est en cours (meta/temple.ts) : une « run » d'une seule salle, sans
+   * porte, qui ne compte ni comme run ni dans les records ; sa fin ramène au Repaire avec ses
+   * récompenses, sans bilan de run.
+   */
+  let templeRun = false;
   let run = newRunState();
   /** Au Repaire entre deux runs, ou en run. */
   let mode: 'camp' | 'run' = 'camp';
@@ -1387,12 +1394,14 @@ async function boot(): Promise<void> {
   /** Génère la salle courante de la run et y place le joueur (PV et statuts conservés). */
   const loadRoom = (first: boolean) => {
     // Boutique et arène du champion : toujours les mêmes pour un biome donné (graine fixe), quelle que soit la run.
-    const arena = run.isBoss();
+    // (Le temple de Lugia prend l'arène d'intérieur du Village : voir newRun.)
+    const arena = run.isBoss() || templeRun;
     const seed = run.isShop() ? 7001 + BIOME_ORDER.indexOf(run.biome) * 131 : arena ? 9001 + BIOME_ORDER.indexOf(run.biome) * 137 : run.mapSeed;
     // Une grotte s'ouvre parfois dans une falaise (Run.hasCave) ; jamais à la boutique.
     // On entre par le bord d'en face de la porte prise (Run.entrySide) : la boutique et l'arène gardent leur allée du sud.
     // Les salles calmes ont leur petite salle ronde (layouts.ts, sanctuaire) ; le panneau peut forcer les autres.
-    const calmRoom = run.special === 'spring' || run.special === 'altar' || run.special === 'dojo' || run.special === 'pension';
+    // (Le temple aussi : une salle ronde et close, l'arène de l'épreuve.)
+    const calmRoom = run.special === 'spring' || run.special === 'altar' || run.special === 'dojo' || run.special === 'pension' || run.special === 'temple';
     const layout = calmRoom ? 'sanctuaire' : opts.layout === 'auto' ? undefined : opts.layout;
     roomKey = { kind: 'room', biome: run.biome, seed, store: run.isShop(), cave: run.hasCave(), layout, mouthUsed: false, entry: arena ? 'S' : run.entrySide, arena };
     world = roomWorld(roomKey);
@@ -1439,7 +1448,7 @@ async function boot(): Promise<void> {
     skyParticles.reset();
     const before = first ? 'clear' : roomWeather;
     // L'arène du Village est une salle d'intérieur : ni pluie, ni pollen.
-    const indoor = run.isBoss() && run.biome === 'village';
+    const indoor = (run.isBoss() || templeRun) && run.biome === 'village';
     // Le ciel découle de celui de la salle d'avant (world/weather.ts) ; une boutique ou un intérieur le laisse en pause.
     roomWeather = run.isShop() || indoor || calm ? 'clear' : opts.weather !== 'run' ? opts.weather : rollWeather(run.biome, run.mapSeed, first ? undefined : lastSky);
     if (!run.isShop() && !indoor && !calm) lastSky = roomWeather;
@@ -1631,13 +1640,24 @@ async function boot(): Promise<void> {
     if (page.filled) runHud.notify({ title: 'Exploit', text: `${page.feat.name} : page remplie. Réclame-la à Xatu, au Repaire.`, icon: 'feat', color: 'var(--yel)' });
   };
 
-  const newRun = () => {
+  /**
+   * `temple` : l'épreuve du temple de Lugia ; elle se joue dans la salle d'intérieur du Village (la
+   * seule arène close, avec ses torches : un hall de temple), et ne compte pas comme une run.
+   */
+  const newRun = (temple = false) => {
     mode = 'run';
+    templeRun = temple;
     camp.clear();
     campScreen.close();
     cave.clear();
     outdoor = null;
-    run = newRunState();
+    run = newRunState(temple ? 'village' : undefined);
+    if (temple) {
+      run.special = 'temple';
+      // La première vague au niveau moyen de l'équipe du Repaire, deux crans en dessous.
+      const lv = save.team.map((id) => startLevel(save, id, BASE_TEAM_LEVEL));
+      run.templeLevel = Math.max(5, Math.round(lv.reduce((a, b) => a + b, 0) / (lv.length || 1)) - 2);
+    }
     combat.run = run;
     // Les dons de compagnons (Empathie, Lien Psychique, Résurrection, Sacrifice) ne sont proposés
     // qu'à une équipe : seul, ils ne feraient rien.
@@ -1653,7 +1673,7 @@ async function boot(): Promise<void> {
     for (const r of RESOURCE_IDS) runRes[r] = 0;
     stats.reset();
     runWon = false;
-    save.runs++;
+    if (!temple) save.runs++;
     writeSave(save);
     rewardScreen.close();
     endT = -1;
@@ -1827,6 +1847,13 @@ async function boot(): Promise<void> {
     recruit: (idx) => {
       campScreen.close();
       void meetCandidate(idx, () => window.setTimeout(openRecruits, 250));
+    },
+    temple: {
+      blocked: () => (net.active ? 'Pas en ligne' : !save.team.length ? 'Compose ton équipe chez Porygon' : null),
+      start: () => {
+        input.flush();
+        newRun(true);
+      },
     },
     preview: () => {
       // La même graine que la run que Dracolosse lancera.
@@ -2128,6 +2155,13 @@ async function boot(): Promise<void> {
       loadRoom(false);
     },
     roomCleared: () => {
+      // Toutes les vagues du temple vaincues : l'épreuve s'achève sur une victoire.
+      if (templeRun) {
+        runHud.toast('Le temple est vaincu !', `${director.templeCleared} vagues`);
+        endT = 0;
+        endDelay = DEFEAT_TIME;
+        return;
+      }
       megaRevert();
       combat.hooks.onRoomClear(team, run);
       // Le ciel se dégage une fois la salle libérée (retour de test : sous la grêle, on ne pouvait
@@ -2418,8 +2452,34 @@ async function boot(): Promise<void> {
     // Le jingle de défaite seul, sans musique dessous (CombatArena.gd:7029).
     audio.playMusic(null);
     sfx('defeat');
+    // Au temple, tomber est la seule sortie : on compte les vagues, pas les salles.
+    if (templeRun) {
+      const n = director.templeCleared;
+      runHud.toast('L’épreuve s’achève', `${n} vague${n > 1 ? 's' : ''}`);
+      return;
+    }
     runHud.toast('Défaite…', `${run.room} salle${run.room > 1 ? 's' : ''} traversée${run.room > 1 ? 's' : ''}`);
     earn(BAIES.defeat(run.room));
+  };
+  /**
+   * Fin de l'épreuve du temple : Baies par vague, Éclats par palier franchi, Lugia à la 15ᵉ vague
+   * (meta/temple.ts), puis le Repaire, sans bilan de run.
+   */
+  const finishTemple = () => {
+    const cleared = director.templeCleared;
+    const got = templeReward(save, cleared);
+    noteTemple(save, cleared, got);
+    if (got.baies) save.baies += got.baies;
+    if (got.shards) save.shards += got.shards;
+    if (got.lugia && !ownsSpecies(save, LUGIA) && !save.candidates.some((c) => c.species === LUGIA)) save.candidates.push({ species: LUGIA, origin: 'temple' });
+    writeSave(save);
+    templeRun = false;
+    endT = -1;
+    input.flush();
+    enterCamp();
+    const parts = [`+${got.baies} Baies`, ...(got.shards ? [`+${got.shards} Éclat${got.shards > 1 ? 's' : ''}`] : [])];
+    runHud.notify({ title: got.record ? 'Temple : record !' : 'Temple', text: `${cleared} vague${cleared > 1 ? 's' : ''} vaincue${cleared > 1 ? 's' : ''} · ${parts.join(' · ')}`, art: LUGIA, color: '#9fc4e8' });
+    if (got.lugia) runHud.notify({ title: 'Lugia', text: 'Lugia veut rejoindre la rébellion : Dracolosse te le présentera.', art: LUGIA, color: 'var(--yel)' });
   };
   const cave: CaveDirector = new CaveDirector(document.body, fx, atlas, {
     spawnEnemy: (id, level, x, y, role) => {
@@ -4024,7 +4084,8 @@ async function boot(): Promise<void> {
       // Le voile tombe pendant la dernière demi-seconde, la nouvelle run le relève.
       director.fade = Math.max(director.fade, Math.min(1, (endT - (endDelay - 0.5)) / 0.5));
       // Voile tombé : le bilan de la run, puis le Repaire quand on le ferme.
-      if (endT >= endDelay && !runSummary.open) {
+      if (endT >= endDelay && templeRun) finishTemple();
+      else if (endT >= endDelay && !runSummary.open) {
         // Victoire : la musique se tait sous le jingle du badge, comme à la remise d'un badge.
         if (runWon) {
           audio.playMusic(null);
