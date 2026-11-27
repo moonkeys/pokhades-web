@@ -3,8 +3,9 @@
 // puis la configuration « dev-cloud » de .claude/launch.json, ou :
 //   VITE_SUPABASE_URL=http://127.0.0.1:54321 VITE_SUPABASE_ANON_KEY=test-anon npx vite
 //
-// Il imite les sept appels du jeu (code par e-mail, vérification, renouvellement du jeton,
-// déconnexion ; lecture, création et écriture conditionnelle de la ligne ; delete_account),
+// Il imite les appels du jeu (code par e-mail, vérification, renouvellement du jeton,
+// déconnexion ; lecture, création et écriture conditionnelle de la ligne ; delete_account ; et
+// pour le tableau de bord, admin_stats et report_error),
 // avec les règles de supabase/schema.sql : chacun ne voit que sa ligne, et un PATCH dont le
 // numéro de version n'est plus le bon ne touche rien. Tout vit en mémoire.
 //
@@ -20,6 +21,7 @@ const codes = new Map(); // email -> code
 const access = new Map(); // token -> {uid, exp}
 const refresh = new Map(); // token -> uid
 const saves = new Map(); // uid -> {data, rev, updated_at}
+const errors = new Map(); // sig -> {message, stack, version, count, first_at, last_at}
 const log = [];
 
 const issue = (u) => {
@@ -43,6 +45,15 @@ http.createServer(async (req, res) => {
   if (u.pathname === '/__expire') { for (const v of access.values()) v.exp = 0; return send(200, {}); }
   if (req.headers.apikey !== 'test-anon') return send(401, { message: 'no apikey' });
   const j = body ? JSON.parse(body) : {};
+  // Le journal des erreurs (supabase/admin.sql, report_error) : avec ou sans compte.
+  if (u.pathname === '/rest/v1/rpc/report_error') {
+    const sig = `${j.p_message}|${String(j.p_stack ?? '').split('\n').slice(0, 2).join('|')}`;
+    const now = new Date().toISOString();
+    const e = errors.get(sig);
+    if (e) Object.assign(e, { count: e.count + 1, last_at: now, version: j.p_version });
+    else errors.set(sig, { message: j.p_message, stack: j.p_stack, version: j.p_version, count: 1, first_at: now, last_at: now });
+    return send(204);
+  }
   if (u.pathname === '/auth/v1/otp') {
     const code = String(100000 + Math.floor(Math.random() * 900000));
     codes.set(j.email, code);
@@ -82,6 +93,18 @@ http.createServer(async (req, res) => {
       Object.assign(r, { data: j.data, rev: j.rev, updated_at: new Date().toISOString() });
       return req.headers.prefer === 'return=minimal' ? send(204) : send(200, row());
     }
+  }
+  // Le tableau de bord (supabase/admin.sql, admin_stats) : ici, est administrateur tout compte
+  // dont l'e-mail commence par « admin » (le vrai projet tient la liste dans public.admins).
+  if (u.pathname === '/rest/v1/rpc/admin_stats') {
+    const me = [...users.values()].find((x) => x.id === uid);
+    if (!me?.email.startsWith('admin')) return send(403, { code: '42501', message: 'réservé aux administrateurs' });
+    const n = (v) => Math.max(0, Math.floor(Number(v) || 0));
+    const players = [...saves].map(([id, r]) => {
+      const d = r.data ?? {};
+      return { id: id.slice(0, 8), updated_at: r.updated_at, rev: r.rev, started: d.started === true, runs: n(d.runs), wins: n(d.wins), best_room: n(d.bestRoom), baies: n(d.baies), shards: n(d.shards), beaten: (d.beaten ?? []).length, built: (d.built ?? []).length, seen: (d.seen ?? []).length, mons: Object.keys(d.mons ?? {}).length, temple: n(d.temple?.best) };
+    }).sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+    return send(200, { at: new Date().toISOString(), players, errors: [...errors.values()].sort((a, b) => b.last_at.localeCompare(a.last_at)) });
   }
   if (u.pathname === '/rest/v1/rpc/delete_account') {
     saves.delete(uid);

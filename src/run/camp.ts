@@ -10,7 +10,7 @@ import { GARDEN, GARDEN_PLOTS, MATERIALS, NECTARS } from '../meta/crafting';
 import type { Save } from '../meta/save';
 import type { Projector } from '../render/combatfx';
 import { CAMP_ATELIER_GLADE, CAMP_EAST_GLADE, CAMP_GLADE, CAMP_W, cleanThin, clearAreas, useGrid, type Pocket, type WorldMap } from '../world/generate';
-import { BAR, CAMP_PROPS, CAMPFIRE, EXTRA, FENCES, LAMP, LANE, PLAZA_TILES, PROPS, TILE, TOWN_DECOR, type SpriteDef, type Tile } from '../world/tiles';
+import { BAR, CAMP_PROPS, CAMPFIRE, EXTRA, FENCES, LAMP, LANE, PLAZA_TILES, PROPS, TILE, TOWN_DECOR, TREES, type SpriteDef, type Tile } from '../world/tiles';
 import { Placer, type Spot } from './placement';
 import { drawDummy } from './shop';
 import { LEAGUE_GATE } from './run';
@@ -308,6 +308,13 @@ const POSTS = {
   // La carrière, au nord-est derrière le relais, et la trouée qui l'y relie.
   quarry: [20, -11],
   quarryWay: [14, -12],
+  // Les deux chantiers de fin (27 novembre 2026, « agrandir le Repaire ») : le verger dans la forêt
+  // du sud-ouest, au-delà du coin du savant ; le hameau du lac au sud-est, au-delà de l'atelier.
+  // Chacun a sa trouée vers la partie déjà ouverte (le coin du savant, la clairière de l'atelier).
+  orchard: [-31, 16],
+  orchardWay: [-23, 17.5],
+  lakeside: [35, 11],
+  lakesideWay: [28, 14],
 } as const satisfies Record<string, readonly [number, number]>;
 
 /**
@@ -337,6 +344,8 @@ export function campPockets(built: readonly BuildingId[], hub: { x: number; y: n
     ...(has('outpost') ? [p('scout', 5.5, 3.5)] : []),
     ...(has('tavern') ? [p('elder', 7, 4)] : []),
     ...(has('quarry') ? [p('quarry', 6.5, 4.5), p('quarryWay', 4.5, 3)] : []),
+    ...(has('orchard') ? [p('orchard', 9, 6), p('orchardWay', 5, 4)] : []),
+    ...(has('lakeside') ? [p('lakeside', 7.5, 6), p('lakesideWay', 5, 4)] : []),
   ];
 }
 
@@ -543,6 +552,8 @@ export class Camp {
     // pas du chemin du nord : plus d'allée.
     const training = at0('training');
     const quarry = at0('quarry');
+    const orchard = at0('orchard');
+    const lakeside = at0('lakeside');
     // Le relais de Roucarnage, à côté de Dracolosse, à l'est de l'arche : le courrier part
     // avec ceux qui partent (retour de test : il était perdu au sud-est, près du puits).
     const relay = { x: gx + 7.5, y: gy + 2.6 };
@@ -893,6 +904,28 @@ export class Camp {
       put(PROPS.paleStones[2], quarry.x, quarry.y + 2.2, false);
       put(PROPS.rockSmall[1], quarry.x - 4.4, quarry.y + 1.8, false);
       put(PROPS.paleStones[3], quarry.x + 4.2, quarry.y + 2, false);
+    }
+    if (has('orchard')) {
+      // Le verger : trois rangées de fruitiers sur une herbe tondue, des balles de foin et des
+      // tonneaux de récolte au bout des rangs. Les arbres se posent seulement où le sol est libre
+      // (la poche a des bords bruités).
+      const fits = (x: number, y: number) => world.inside[Math.floor(y - 0.5) * W + Math.floor(x)] === 1 && !world.blocked[Math.floor(y - 0.5) * W + Math.floor(x)] && !isWater(Math.floor(x), Math.floor(y - 0.5));
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 4; c++) {
+          const x = orchard.x - 5.5 + c * 3.6 + (r % 2) * 1.2;
+          const y = orchard.y - 2.6 + r * 3;
+          if (fits(x, y)) put(TREES.olive[(r + c) % TREES.olive.length], x, y);
+        }
+      }
+      for (const [dx, dy] of [[7, -1.5], [7.4, 1.6]]) if (fits(orchard.x + dx, orchard.y + dy)) put(CAMP_PROPS.barrels[0], orchard.x + dx, orchard.y + dy);
+      if (fits(orchard.x - 7.5, orchard.y + 3.5)) put(CAMP_PROPS.logs, orchard.x - 7.5, orchard.y + 3.5);
+    }
+    if (has('lakeside')) {
+      // Le hameau du lac : trois huttes moussues en arc sur la rive, des tonneaux et un banc face à l'eau.
+      const fits = (x: number, y: number) => world.inside[Math.floor(y - 0.5) * W + Math.floor(x)] === 1 && !world.blocked[Math.floor(y - 0.5) * W + Math.floor(x)] && !isWater(Math.floor(x), Math.floor(y - 0.5));
+      for (const [dx, dy] of [[-4.5, -1.5], [1, -3], [5.5, -0.5]]) if (fits(lakeside.x + dx, lakeside.y + dy)) put(CAMP_PROPS.mossHut, lakeside.x + dx, lakeside.y + dy);
+      for (const [dx, dy] of [[-1.5, 2.4], [-0.6, 2.6]]) if (fits(lakeside.x + dx, lakeside.y + dy)) put(CAMP_PROPS.barrels[1], lakeside.x + dx, lakeside.y + dy);
+      if (fits(lakeside.x + 3, lakeside.y + 3.5)) put(TOWN_DECOR.bench, lakeside.x + 3, lakeside.y + 3.5);
     }
     if (has('dorm')) {
       // Décalés vers l'ouest (retour de test du 16 novembre 2026, capture à l'appui : le tipi de
@@ -1283,6 +1316,9 @@ export class Camp {
       ...(has('clearing') ? [{ x: glade.x, y: glade.y + 1 }] : []),
       ...(has('eastglade') ? [{ x: east.x, y: east.y + 2 }] : []),
       ...(has('hamlet') ? [{ x: square.x + square.w / 2, y: square.y + square.h - 1 }] : []),
+      // Les chantiers de fin : des libérés cueillent au verger et flânent devant les huttes du lac.
+      ...(has('orchard') ? [{ x: orchard.x, y: orchard.y + 3.5 }] : []),
+      ...(has('lakeside') ? [{ x: lakeside.x, y: lakeside.y + 3 }] : []),
     ];
     strollers.forEach((id, i) => {
       const home = yards[i % yards.length];

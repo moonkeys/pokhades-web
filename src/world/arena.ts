@@ -1,7 +1,7 @@
 import type { BiomeId } from '../data/species';
 import { findExits, type WorldMap } from './generate';
 import type { Paving } from './town';
-import { ARENA_BALL, CAMP_PROPS, FENCES, FLOWERS, GYM, LAMP, LILIES, PROPS, TILE, TOWN_DECOR, TREES, type SpriteDef, type Tile } from './tiles';
+import { ARENA_BALL, CAMP_PROPS, FENCES, FLOWERS, GYM, LAMP, LANE, LILIES, PROPS, TILE, TOWN_DECOR, TREES, type SpriteDef, type Tile } from './tiles';
 
 // L'arène d'un champion (ajout, retour de test : « de vraies arènes, un endroit
 // précis pour chaque boss, toujours le même pour chaque biome… un cercle » ;
@@ -390,4 +390,104 @@ function buildGym(world: WorldMap): void {
   world.entrySide = 'S';
   world.exits = findExits(W, H, reachable, world.water, 'S');
   world.layoutName = `Arène d'intérieur ${W}×${H}`;
+}
+
+/**
+ * La salle de l'épreuve du temple de Lugia (run/room.ts, special `temple`). Retour du 27 novembre
+ * 2026 : l'épreuve empruntait l'arène d'intérieur du Village, son parquet et ses lignes de terrain
+ * (« faire aussi le décor, pas celui du village »). Ici, un hall de pierre dans le noir : un dallage
+ * de gros galets pâles, deux colonnades de statues le long des flancs, des torches entre elles, et
+ * au fond, l'autel — la façade du temple de l'île (CAMP_PROPS.ruins), celle qu'on voit au Repaire.
+ * On entre par le sud, comme dans l'arène ; aucune sortie (l'épreuve n'a pas de porte).
+ */
+export function decorateTemple(world: WorldMap): void {
+  const { w: W, h: H } = world;
+  const N = W * H;
+  const idx = (x: number, y: number) => y * W + x;
+  const cc = Math.floor(W / 2);
+  const X0 = cc - 15;
+  const X1 = cc + 15;
+  const Y0 = 4;
+  const Y1 = H - 3;
+  const walk = new Uint8Array(N);
+  for (let y = Y0; y <= Y1; y++) for (let x = X0; x <= X1; x++) walk[idx(x, y)] = 1;
+  // Le dallage, motif de 2 × 2 cases (un calque par tuile), et le noir tout autour.
+  const paving: Paving[] = LANE.paleCobble.map((tile, k) => {
+    const mask = new Uint8Array(N);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (walk[idx(x, y)] && (y % 2) * 2 + (x % 2) === k) mask[idx(x, y)] = 1;
+    return { mask, tile };
+  });
+  paving.unshift({ mask: walk.map((v) => (v ? 0 : 1)), tile: GYM.void });
+
+  const blocked = walk.map((v) => (v ? 0 : 1));
+  const objects: WorldMap['objects'] = [];
+  const place = (sp: SpriteDef, px: number, cx0: number, cx1: number, cy: number) => {
+    objects.push({ sprite: sp, x: px, y: (cy + 1) * TILE - 1, fades: false });
+    for (let x = cx0; x <= cx1; x++) blocked[idx(x, cy)] = 1;
+  };
+  // L'autel au fond : la façade du temple (7 cases de large), qui ferme la salle au nord.
+  place(CAMP_PROPS.ruins, cc * TILE + TILE / 2, cc - 3, cc + 3, Y0 + 3);
+  for (let y = Y0; y < Y0 + 3; y++) for (let x = cc - 3; x <= cc + 3; x++) blocked[idx(x, y)] = 1;
+  // Les colonnades : une statue toutes les 5 rangées sur chaque flanc, une torche entre deux.
+  for (let y = Y0 + 4; y <= Y1 - 2; y += 5) {
+    place(CAMP_PROPS.statue, (X0 + 1) * TILE + TILE / 2, X0 + 1, X0 + 1, y);
+    place(CAMP_PROPS.statue, (X1 - 1) * TILE + TILE / 2, X1 - 1, X1 - 1, y);
+    if (y + 2 <= Y1 - 2) {
+      place(CAMP_PROPS.torch, (X0 + 1) * TILE + TILE / 2, X0 + 1, X0 + 1, y + 2);
+      place(CAMP_PROPS.torch, (X1 - 1) * TILE + TILE / 2, X1 - 1, X1 - 1, y + 2);
+    }
+  }
+  // Deux torches devant l'autel, deux statues d'arène de part et d'autre de l'entrée.
+  place(CAMP_PROPS.torch, (cc - 5) * TILE + TILE / 2, cc - 5, cc - 5, Y0 + 4);
+  place(CAMP_PROPS.torch, (cc + 5) * TILE + TILE / 2, cc + 5, cc + 5, Y0 + 4);
+  place(TOWN_DECOR.statue, (cc - 3) * TILE, cc - 4, cc - 3, Y1 - 1);
+  place(TOWN_DECOR.statue, (cc + 4) * TILE, cc + 3, cc + 4, Y1 - 1);
+  objects.sort((a, b) => a.y - b.y);
+
+  const spawn = { x: cc + 0.5, y: Y1 + 0.9 - 1 };
+  const reachable = new Uint8Array(N);
+  const queue = [idx(Math.floor(spawn.x), Math.floor(spawn.y))];
+  reachable[queue[0]] = 1;
+  while (queue.length) {
+    const i = queue.pop()!;
+    const x = i % W;
+    const y = (i / W) | 0;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+      const j = idx(nx, ny);
+      if (reachable[j] || blocked[j]) continue;
+      reachable[j] = 1;
+      queue.push(j);
+    }
+  }
+  world.water.fill(0);
+  world.tall.fill(0);
+  world.hide.fill(0);
+  world.patch.fill(0);
+  world.face.fill(0);
+  world.path.set(walk);
+  world.inside.set(walk);
+  world.blocked.set(blocked);
+  world.solid.set(walk.map((v) => (v ? 0 : 1)));
+  world.reachable.set(reachable);
+  world.cliff = null;
+  world.cliff2 = null;
+  world.stairs = [];
+  world.objects = objects;
+  world.flat = [];
+  world.lilies = [];
+  world.fountains = [];
+  world.lanes = undefined;
+  world.berries = [];
+  world.chest = null;
+  world.cave = null;
+  world.front = null;
+  world.paving = paving;
+  world.spawn = spawn;
+  world.hub = { x: cc + 0.5, y: (Y0 + Y1) / 2 };
+  world.entrySide = 'S';
+  world.exits = [];
+  world.layoutName = `Temple de Lugia ${W}×${H}`;
 }

@@ -6010,3 +6010,123 @@ img.ess-duel {
 .cs-temple .cs-label {
   margin-top: calc(0.6 * var(--u));
 }
+
+/* Tableau de bord des données (ui/dashboard.ts) : la feuille du compte, élargie ; des cartes de
+   chiffres, des barres (entonnoir, actes), un tableau qui défile de côté sur téléphone, les
+   erreurs repliées. */
+/* Le cadre de la feuille (poster-wrap, centré) a sa largeur à lui : on élargit les deux. */
+.poster-wrap.dash-wrap {
+  width: min(94vw, 960px);
+}
+.dash-sheet {
+  width: 100%;
+  box-sizing: border-box;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.dash-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.dash-when {
+  color: var(--muted);
+}
+.dash-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+  margin: 10px 0 4px;
+}
+.dash-card {
+  display: grid;
+  padding: 8px 10px;
+  text-align: center;
+  color: var(--ink);
+}
+.dash-card b {
+  font: normal 26px / 1.1 var(--head);
+  letter-spacing: 0.04em;
+}
+.dash-card small {
+  color: var(--muted);
+}
+.dash-h {
+  margin: 16px 0 6px;
+  font: normal 18px / 1.2 var(--head);
+  letter-spacing: 0.04em;
+}
+.dash-bars {
+  display: grid;
+  gap: 4px;
+}
+.dash-bar {
+  display: grid;
+  grid-template-columns: minmax(120px, 30%) 1fr auto;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+.dash-bar i {
+  height: 12px;
+  background: linear-gradient(90deg, var(--yel) var(--w), #0001 var(--w));
+  border: 1px solid #0003;
+}
+.dash-bar b {
+  min-width: 70px;
+  text-align: right;
+}
+.dash-table-wrap {
+  overflow-x: auto;
+}
+.dash-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.dash-table th,
+.dash-table td {
+  padding: 4px 6px;
+  text-align: right;
+  border-bottom: 1px solid #0002;
+  white-space: nowrap;
+}
+.dash-table th:first-child,
+.dash-table td:first-child,
+.dash-table th:nth-child(2),
+.dash-table td:nth-child(2) {
+  text-align: left;
+}
+.dash-table th {
+  font-family: var(--head);
+  font-weight: normal;
+  letter-spacing: 0.04em;
+}
+.dash-err {
+  margin: 6px 0;
+  padding: 6px 10px;
+  color: var(--ink);
+}
+.dash-err summary {
+  cursor: pointer;
+}
+.dash-err summary b {
+  margin-right: 6px;
+  color: #c0392b;
+}
+.dash-err pre {
+  max-height: 180px;
+  overflow: auto;
+  font-size: 11px;
+  white-space: pre-wrap;
+}
+@media (max-width: 760px) {
+  .dash-bar {
+    grid-template-columns: 1fr auto;
+  }
+  .dash-bar i {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}

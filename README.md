@@ -1545,6 +1545,39 @@ Poséidon dans Hades ». Écart voulu avec `CombatArena._roll_boon_rarity` du je
   Le banc est bruité (±15 % sur le temps, ±20 points de PV avec trois combats) : il sert à repérer
   un don muet ou un écart flagrant, pas à régler au pour cent.
 
+## Repaire agrandi, temple redécoré, tableau de bord (27 novembre 2026)
+
+Retours du même jour : « j'ai tout construit : agrandir le Repaire » ; « le décor du temple, pas
+celui du village ; et s'il n'y a pas d'animation du tout, on change de Pokémon à débloquer » ;
+« un petit dashboard des données : les gens, leur avancement, pour améliorer le jeu, les bugs ».
+
+- **Deux chantiers de fin** (`meta/catalog.ts`, `run/camp.ts`) : le **Verger** (après l'atelier de
+  l'artisan ; 30 Bois, 20 Nourriture) ouvre la forêt du sud-ouest, au-delà du coin du savant : trois
+  rangées de fruitiers, des tonneaux ; +2 Baies par salle libérée en run (`ORCHARD_BAIES`). Le
+  **Hameau du lac** (après le bourg ; 40 Bois, 30 Pierre, 15 Nourriture) ouvre la forêt du sud-est,
+  au-delà de l'atelier : trois huttes moussues, +10 places au Repaire. Chacun a sa poche
+  (`campPockets`, `POSTS.orchard` / `lakeside`) et sa trouée vers la partie ouverte ; des libérés
+  y flânent.
+- **Le hall du temple** (`world/arena.ts`, `decorateTemple` ; `WorldKey.temple`) : un dallage de
+  galets pâles dans le noir, deux colonnades de statues et de torches, et au fond l'autel (la
+  façade du temple de l'île). Le HUD dit « Temple de Lugia · vague N ».
+- **La récompense du temple** : Drattak (`TEMPLE_PRIZE`), que Lugia confie à la 15ᵉ vague. Lugia
+  restait sans attaque ni tir (ses planches PMD n'en ont pas) ; Mewtwo et Raikou, seuls légendaires
+  complets, sont déjà ceux des quêtes. `Save.temple.prize` remplace `lugia` (jamais en ligne).
+- **Tableau de bord** (`ui/dashboard.ts`, écran Compte → « Données du jeu ») : pour un
+  administrateur seulement. Les chiffres (joueurs, actifs 7 et 30 j, runs, victoires, erreurs),
+  l'entonnoir (compte → partie commencée → une run → un champion → une victoire → le temple), les
+  records par acte, chaque joueur (identifiant court, jamais l'e-mail) et les erreurs du jeu,
+  regroupées. **À faire une fois dans Supabase** : coller `supabase/admin.sql` dans le SQL Editor,
+  puis s'ajouter administrateur avec la ligne `insert into public.admins …` du haut du fichier (son
+  propre e-mail). Le script garde les règles de `schema.sql` : un joueur ne lit toujours que sa
+  ligne ; `admin_stats()` vérifie `public.admins` et ne rend que des compteurs.
+- **Journal des erreurs** (`net/cloud.ts`, `reportError` ; `report_error`) : une erreur JavaScript
+  non rattrapée part au journal (message, début de pile, version = dernière note de version ; ni IP
+  ni navigateur), cinq au plus par page, une même erreur ne fait qu'incrémenter son compteur.
+  Avant `admin.sql`, l'appel échoue en silence. Testable avec `scripts/fake-supabase.mjs`, où tout
+  compte dont l'e-mail commence par « admin » est administrateur.
+
 ## Le temple de Lugia (27 novembre 2026)
 
 Retour du même jour : « il faut faire quelque chose de l'île ; un seul Pokémon, mais qui a un
@@ -1563,7 +1596,8 @@ rôle ; entrer dans le temple pour avoir accès à une salle spéciale ou des je
 - **La fin** (`finishTemple`, `meta/temple.ts`) : à la chute de l'équipe (ou au bout des 40
   vagues), retour direct au Repaire, sans bilan de run : 12 Baies par vague vaincue, un Éclat de
   Champion par palier de 5 vagues franchi pour la première fois, et à la 15ᵉ vague, une fois,
-  Lugia rejoint la rébellion (recrue chez Dracolosse, provenance « Épreuve du temple »). Record et
+  Drattak rejoint la rébellion (recrue chez Dracolosse, provenance « Épreuve du temple » ; voir
+  plus haut pour Lugia). Record et
   essais dans `Save.temple`. Les victoires y comptent pour les recrues, comme ailleurs.
 
 ## Formes de base, icônes, sols du Repaire (27 novembre 2026)

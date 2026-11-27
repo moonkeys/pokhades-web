@@ -1,5 +1,6 @@
 import { sfx } from '../audio/audio';
 import {
+  adminStats,
   cloudConflict,
   cloudEmail,
   cloudError,
@@ -12,8 +13,10 @@ import {
   resolveConflict,
   sendCode,
   verifyCode,
+  type AdminStats,
   type SaveSummary,
 } from '../net/cloud';
+import { renderDashboard } from './dashboard';
 
 // Écran « Compte » : créer son compte (e-mail puis code à 6 chiffres), voir que la partie est
 // à l'abri, se déconnecter, supprimer son compte, ou choisir entre deux parties quand elles ont
@@ -57,6 +60,12 @@ export class AccountScreen {
   /** Suppression du compte : deux appuis, comme « Abandonner la run ». */
   private confirmDelete = false;
   private unsub: (() => void) | null = null;
+  /**
+   * Tableau de bord (ui/dashboard.ts) : les statistiques si ce compte est administrateur (lues à
+   * l'ouverture), null sinon ; `dash` : on le regarde au lieu de la page du compte.
+   */
+  private admin: AdminStats | null = null;
+  private dash = false;
 
   constructor(
     parent: HTMLElement,
@@ -100,7 +109,11 @@ export class AccountScreen {
     this.root.hidden = false;
     this.root.classList.remove('play');
     this.unsub = onCloudChange(() => this.render());
+    this.dash = false;
+    this.admin = null;
     this.render();
+    // Un administrateur voit le bouton du tableau de bord ; les autres, rien (l'appel est refusé).
+    if (cloudStatus() !== 'out') void this.loadStats();
     requestAnimationFrame(() => this.root.classList.add('play'));
   }
 
@@ -114,6 +127,13 @@ export class AccountScreen {
     const done = this.onClose;
     this.onClose = null;
     done?.();
+  }
+
+  private async loadStats(): Promise<void> {
+    const got = await adminStats();
+    if (this.root.hidden) return;
+    this.admin = got;
+    this.render();
   }
 
   private async act(f: () => Promise<void>): Promise<void> {
@@ -133,14 +153,23 @@ export class AccountScreen {
   private render(): void {
     this.root.replaceChildren();
     el('div', 'poster-dim', this.root).addEventListener('click', () => this.close());
-    const wrap = el('div', 'poster-wrap', this.root);
-    const sheet = el('div', 'poster opt-sheet', wrap);
+    const wrap = el('div', `poster-wrap${this.dash ? ' dash-wrap' : ''}`, this.root);
+    const sheet = el('div', `poster opt-sheet${this.dash ? ' dash-sheet' : ''}`, wrap);
     const head = el('div', 'opt-head', sheet);
-    el('span', 'banner da-tape', head, 'COMPTE');
-    el('h3', '', head, 'SAUVEGARDE EN LIGNE');
+    el('span', 'banner da-tape', head, this.dash ? 'ADMIN' : 'COMPTE');
+    el('h3', '', head, this.dash ? 'DONNÉES DU JEU' : 'SAUVEGARDE EN LIGNE');
     const body = el('div', 'opt-body acct-body', sheet);
 
     const st = cloudStatus();
+    if (this.dash && this.admin) {
+      renderDashboard(body, this.admin, () => void this.loadStats());
+      const back = el('button', 'acct-close', sheet, 'RETOUR AU COMPTE');
+      back.addEventListener('click', () => {
+        this.dash = false;
+        this.render();
+      });
+      return;
+    }
     if (st === 'conflict') this.renderConflict(body);
     else if (st === 'out') this.renderLogin(body);
     else this.renderAccount(body);
@@ -260,6 +289,14 @@ export class AccountScreen {
       });
     });
     if (this.confirmDelete) el('p', 'acct-fine', body, 'Ton e-mail et ta sauvegarde en ligne seront effacés. La partie de cet appareil, elle, reste.');
+    if (this.admin) {
+      const go = el('button', 'opt-switch', actions, 'DONNÉES DU JEU');
+      go.addEventListener('click', () => {
+        sfx('click', -6);
+        this.dash = true;
+        this.render();
+      });
+    }
     if (this.message) el('p', 'acct-error', body, this.message);
   }
 

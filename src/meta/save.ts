@@ -179,9 +179,9 @@ export interface Save {
   boonsGot: string[];
   /**
    * L'épreuve du temple de Lugia (run/room.ts, special `temple`) : la meilleure vague atteinte
-   * (vagues vaincues), le nombre d'essais, et si Lugia a déjà rejoint la rébellion par elle.
+   * (vagues vaincues), le nombre d'essais, et si sa récompense (meta/temple.ts) a déjà rejoint la rébellion.
    */
-  temple: { best: number; tries: number; lugia: boolean };
+  temple: { best: number; tries: number; prize: boolean };
 }
 
 /** Longueur d'un surnom dans les jeux principaux (12 depuis la 6ᵉ génération). */
@@ -240,7 +240,7 @@ const DEFAULTS: Save = {
   bestRoom: 0,
   evolved: [],
   boonsGot: [],
-  temple: { best: 0, tries: 0, lugia: false },
+  temple: { best: 0, tries: 0, prize: false },
 };
 
 /** La clé du localStorage : net/cloud.ts lit et réécrit la même, pour la sauvegarde en ligne. */
@@ -346,7 +346,7 @@ export function migrate(save: Save): Save {
   {
     const t = (save.temple ?? {}) as Partial<Save['temple']>;
     const n = (v: unknown) => Math.max(0, Math.floor(Number(v) || 0));
-    save.temple = { best: n(t.best), tries: n(t.tries), lugia: t.lugia === true };
+    save.temple = { best: n(t.best), tries: n(t.tries), prize: t.prize === true };
   }
   save.evolved = Array.isArray(save.evolved) ? [...new Set(save.evolved.filter((n) => Number.isInteger(n)))] : [];
   return save;

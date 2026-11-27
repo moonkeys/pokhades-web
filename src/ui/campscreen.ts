@@ -1,5 +1,5 @@
 import { donorIcon, essIcon, iconText, isEssIcon } from './essicon';
-import { TEMPLE_BAIES_PER_WAVE, TEMPLE_LUGIA_AT, TEMPLE_SHARD_STEP } from '../meta/temple';
+import { TEMPLE_BAIES_PER_WAVE, TEMPLE_PRIZE_AT, TEMPLE_PRIZE_NAME, TEMPLE_SHARD_STEP } from '../meta/temple';
 import { loadMove, type Move } from '../combat/moves';
 import { sfx } from '../audio/audio';
 import { fetchJson } from '../assets/json';
@@ -2110,7 +2110,7 @@ export class CampScreen {
     for (const [v, label] of [
       [t.best ? String(t.best) : '—', t.best > 1 ? 'vagues, record' : 'vague, record'],
       [String(t.tries), t.tries > 1 ? 'essais' : 'essai'],
-      [t.lugia ? 'Avec toi' : `Vague ${TEMPLE_LUGIA_AT}`, 'Lugia'],
+      [t.prize ? 'Avec toi' : `Vague ${TEMPLE_PRIZE_AT}`, TEMPLE_PRIZE_NAME],
     ] as const) {
       const cell = el('div', 'da-paper', rec);
       el('b', '', cell, v);
@@ -2122,7 +2122,7 @@ export class CampScreen {
     el('div', 'cs-label', card, 'Ce qu’elle rapporte');
     el('small', 'cs-info', card, `${TEMPLE_BAIES_PER_WAVE} Baies par vague vaincue, à chaque essai.`);
     el('small', 'cs-info', card, `Un Éclat de Champion par palier de ${TEMPLE_SHARD_STEP} vagues franchi pour la première fois.`);
-    el('small', 'cs-info', card, t.lugia ? 'Lugia a rejoint la rébellion.' : `À la ${TEMPLE_LUGIA_AT}ᵉ vague, Lugia rejoint la rébellion.`);
+    el('small', 'cs-info', card, t.prize ? `${TEMPLE_PRIZE_NAME} a rejoint la rébellion.` : `À la ${TEMPLE_PRIZE_AT}ᵉ vague, je te confie ${TEMPLE_PRIZE_NAME}.`);
     const why = ctx.temple.blocked();
     const go = el('button', 'cs-net-btn', card, why ?? 'Entrer dans le temple') as HTMLButtonElement;
     go.disabled = !!why;

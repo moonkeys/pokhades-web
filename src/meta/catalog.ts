@@ -248,7 +248,7 @@ export type Cost = Partial<Record<ResourceId, number>>;
 /** Le stock couvre tout le coût (GameManager.can_afford_resources). */
 export const canAfford = (stock: Record<ResourceId, number>, cost: Cost = {}): boolean => RESOURCE_IDS.every((r) => stock[r] >= (cost[r] ?? 0));
 
-export type BuildingId = 'outpost' | 'tavern' | 'study' | 'market' | 'dorm' | 'training' | 'jetty' | 'clearing' | 'field' | 'houses' | 'gardens' | 'lamps' | 'eastglade' | 'hamlet' | 'atelier' | 'quarry';
+export type BuildingId = 'outpost' | 'tavern' | 'study' | 'market' | 'dorm' | 'training' | 'jetty' | 'clearing' | 'field' | 'houses' | 'gardens' | 'lamps' | 'eastglade' | 'hamlet' | 'atelier' | 'quarry' | 'orchard' | 'lakeside';
 
 /**
  * Aménagements du Repaire, bâtis par le bâtisseur (Charpenti, puis ses
@@ -296,6 +296,11 @@ export const BUILDINGS: readonly { id: BuildingId; name: string; desc: string; p
   // Ajout (A-FAIRE 2.3 : « d'autres aménagements » ; Godot projetait une Carrière du sanctuaire) :
   // une poche au nord-est, derrière le relais, où deux libérés taillent la pierre.
   { id: 'quarry', name: 'Carrière', desc: 'Des libérés y taillent la pierre : de la Pierre à chaque salle nettoyée.', cost: { wood: 14, food: 6 }, art: 74, needs: 'training' },
+  // Ajout (27 novembre 2026, « j'ai tout construit ; qu'est-ce qu'on peut faire pour rendre ça plus
+  // grand, plus sympa ? agrandir le Repaire ») : deux chantiers de fin, qui gagnent les deux pans
+  // de forêt restés debout, au sud-ouest et au sud-est du lac (run/camp.ts, campPockets).
+  { id: 'orchard', name: 'Verger', desc: 'Défriche la forêt du sud-ouest pour des arbres fruitiers : des Baies en plus à chaque salle libérée.', cost: { wood: 30, food: 20 }, art: 357, needs: 'atelier' },
+  { id: 'lakeside', name: 'Hameau du lac', desc: 'Des huttes sur la rive sud-est, au-delà de l’atelier : +10 places au Repaire.', cost: { wood: 40, stone: 30, food: 15 }, art: 270, needs: 'hamlet' },
 ];
 
 /**
@@ -308,7 +313,7 @@ export const BUILDINGS: readonly { id: BuildingId; name: string; desc: string; p
 // au lieu de 6, des logements plus grands, et des Lits superposés à acheter
 // en Baies, autant de fois que BUNKS a de prix.
 export const BASE_CAPACITY = 8;
-export const HOUSING: Partial<Record<BuildingId, number>> = { dorm: 4, houses: 6, hamlet: 8 };
+export const HOUSING: Partial<Record<BuildingId, number>> = { dorm: 4, houses: 6, hamlet: 8, lakeside: 10 };
 /**
  * Lits superposés, chez le bâtisseur : +BUNK_ROOM places par achat, en Baies
  * seules (la monnaie qu'on a en quantité), sans chantier préalable ni décor.
@@ -338,6 +343,8 @@ export const ROOM_RES: Record<'room' | 'boss', Cost> = {
 export const FIELD_FOOD = 1;
 /** Carrière : Pierre taillée par salle franchie en run (main.ts). */
 export const QUARRY_STONE = 1;
+/** Verger : Baies cueillies par salle libérée en run (main.ts). */
+export const ORCHARD_BAIES = 2;
 
 export type CsId = 'surf' | 'cut' | 'strength' | 'rock-smash';
 

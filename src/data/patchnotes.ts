@@ -49,9 +49,16 @@ export const PATCH_NOTES: readonly PatchNote[] = [
         items: [
           'Sur l’île du lac, Lugia est désormais seul, et il garde le temple : parle-lui pour y entrer.',
           'L’épreuve : des vagues de plus en plus fortes, tirées de tous les biomes, avec un champion toutes les cinq. On n’en sort qu’en tombant.',
-          '12 Baies par vague vaincue, un Éclat de Champion à chaque palier de cinq vagues battu, et à la 15ᵉ vague, Lugia rejoint la rébellion.',
+          'On y entre dans un hall de pierre, entre deux colonnades de statues et de torches, face à l’autel.',
+          '12 Baies par vague vaincue, un Éclat de Champion à chaque palier de cinq vagues battu, et à la 15ᵉ vague, Lugia te confie Drattak.',
         ],
-        images: artIcons([['Lugia', 249]]),
+        images: artIcons([['Lugia', 249], ['Drattak', 373]]),
+      },
+      {
+        title: 'Le Repaire s’agrandit',
+        items: [
+          'Deux nouveaux chantiers chez Charpenti, une fois tout le reste bâti : le Verger, au sud-ouest, qui rapporte des Baies à chaque salle, et le Hameau du lac, au sud-est, dix places de plus.',
+        ],
       },
       {
         title: 'Pokédex et recrues',

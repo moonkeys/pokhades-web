@@ -987,15 +987,17 @@ effets animés). Les flèches, ✕ et ✔ restent : ce sont des signes typograph
   l'acte 3 perdue une fois sur deux au banc). À voir : la bande d'eau de Surf
   dessinée par-dessus le décor (de vraies cases d'eau seraient plus jolies).
 - Formes de base seules, icônes plus petites, Pokédex resserré, sols raccordés
-  (même jour, README). Demandé, à concevoir : que faire une fois tout bâti
-  chez le bâtisseur (agrandir le Repaire : nouveaux chantiers, niveaux des
-  bâtiments).
+  (même jour, README).
+- Repaire agrandi (Verger, Hameau du lac), hall du temple, Drattak en
+  récompense, tableau de bord et journal des erreurs (même jour, README).
+  **À faire par toi** : passer `supabase/admin.sql` dans Supabase et s'y
+  ajouter administrateur. À voir : des niveaux pour les bâtiments, un
+  mode de jeu au verger (cueillette), un journal d'événements de jeu
+  (morts, abandons par salle) pour un entonnoir plus fin.
 - Le temple de Lugia (même jour, README) : Lugia seul sur l'île, l'épreuve
   des vagues dans l'arène d'intérieur. À juger en jeu : la courbe des vagues
-  (+1,2 niveau par vague), la place de Lugia comme recrue (ses planches PMD
-  n'ont ni attaque ni tir : il se bat en « Idle »). À voir : un vrai décor
-  de temple (l'arène du Village en tient lieu), des dons entre les vagues,
-  un classement en ligne.
+  (+1,2 niveau par vague). À voir : des dons entre les vagues, un
+  classement en ligne.
 
 ## 3. Déjà notés, toujours en attente
 

@@ -18,7 +18,7 @@ import { MERC_RETAINER, Shop } from './run/shop';
 import { Camp, CAMP_SEED, campPockets, STATIONS, stationId, type Station } from './run/camp';
 import { CampScreen, movePool, teamWeight, type CampCtx } from './ui/campscreen';
 import { NetBadge } from './ui/netbadge';
-import { BAIES, FIELD_FOOD, QUARRY_STONE, RESOURCES, RESOURCE_IDS, ROOM_RES, SHARDS, UPGRADES, applyHeld, heldItem, teamSlots, type ResourceId } from './meta/catalog';
+import { BAIES, FIELD_FOOD, ORCHARD_BAIES, QUARRY_STONE, RESOURCES, RESOURCE_IDS, ROOM_RES, SHARDS, UPGRADES, applyHeld, heldItem, teamSlots, type ResourceId } from './meta/catalog';
 import { addMon, capacity, exile, grantAlly, grantChampion, isFull, level, loadSave, markSeen, onSaveWritten, monName, ownedSpecies, ownsSpecies, recordDefeat, resetSave, roster, speciesOf, startLevel, welcomeMon, writeSave } from './meta/save';
 import { applyTraits, natureText } from './meta/mons';
 import { quest, questEvent, type QuestEvent, contractEvent, contractText } from './meta/quests';
@@ -41,7 +41,7 @@ import { typeMates } from './data/trainers';
 import { escortPreviousOf } from './data/evolutions';
 import { STEP, startLoop } from './core/loop';
 import { Rng } from './core/rng';
-import { CAMP_NPCS, SWIMMERS, type BiomeId } from './data/species';
+import { CAMP_NPCS, ISLAND_NPCS, SWIMMERS, type BiomeId } from './data/species';
 import { evolutionChoices, evolutionOf, regionalEvolution, evolutionsOf, evolvedStart } from './data/evolutions';
 import { Actor, dirFromVector } from './entities/actor';
 import { Input } from './input/input';
@@ -68,7 +68,7 @@ import { Residents } from './run/residents';
 import { MAX_ERRANDS, ROOM_AT, claimErrand, errandDone, errandEvent, errandOf, rewardLines, rewardOf, rollErrand } from './meta/errands';
 import { INTIMIDATE, INTIMIDATE_MULT, INTIMIDATE_RANGE, INTIMIDATE_TIME, WEATHER_ABILITIES } from './data/abilities';
 import { evolveMove, rollSkillOffer, upgradeMove, type SkillOffer } from './run/rewards';
-import { LUGIA, noteTemple, templeReward } from './meta/temple';
+import { TEMPLE_PRIZE, TEMPLE_PRIZE_NAME, noteTemple, templeReward } from './meta/temple';
 import { COMBATS_PER_ACT, CURSES, LEAGUE_MASTER, ROOMS_PER_ACT, Run } from './run/run';
 import { Hud } from './ui/hud';
 import { loadOptions, saveOptions, type Options } from './ui/options';
@@ -87,13 +87,14 @@ import { StarterScreen } from './ui/starterscreen';
 import { QuizScreen, STARTER_NATURE } from './ui/quizscreen';
 import { TitleScreen } from './ui/titlescreen';
 import { AccountScreen } from './ui/accountscreen';
-import { cloudBoot, cloudStatus, onCloudChange, startCloud } from './net/cloud';
+import { cloudBoot, cloudStatus, onCloudChange, reportError, startCloud } from './net/cloud';
+import { PATCH_NOTES } from './data/patchnotes';
 import { StatSheet, type SheetEntry } from './ui/statsheet';
 import { BIOME_COLOR, BIOME_ORDER, BIOMES, REPAIRE, type Ambiance } from './world/biomes';
 import { generate, landReachable, type WorldMap, type WorldObject } from './world/generate';
 import type { LayoutId } from './world/layouts';
 import { generateCave } from './world/cave';
-import { decorateArena } from './world/arena';
+import { decorateArena, decorateTemple } from './world/arena';
 import { CHEST, CHEST_OPEN, FIELD_FX, SURF, TILE } from './world/tiles';
 import { net, type HostMsg, type Loadout, type RemotePick, type RemoteUi, type WorldKey } from './net/net';
 import { ClientField, NetIds, snapActor } from './net/sync';
@@ -205,6 +206,18 @@ async function boot(): Promise<void> {
   const save = loadSave();
   // Chaque écriture de la sauvegarde part ensuite en ligne (si le joueur a un compte).
   startCloud(onSaveWritten);
+  // Les erreurs du jeu partent au journal du tableau de bord (supabase/admin.sql, report_error) :
+  // le message, le début de la pile et la version (la dernière note de version). Cinq au plus
+  // par page, une même erreur une seule fois (net/cloud.ts).
+  const version = PATCH_NOTES[0]?.id ?? '?';
+  addEventListener('error', (e) => {
+    const err = e.error as Error | undefined;
+    reportError(err?.message ?? e.message ?? '?', err?.stack ?? `${e.filename}:${e.lineno}:${e.colno}`, version);
+  });
+  addEventListener('unhandledrejection', (e) => {
+    const r = e.reason as Error | undefined;
+    reportError(r?.message ?? String(e.reason), r?.stack ?? '', version);
+  });
   const renderer = new Renderer(canvas, atlas, surf, fieldSheet);
   // ?debug : le menu principal sauté et l'objet `window.pokhades` exposé, pour les tests automatisés. Réservé au
   // serveur de dev : dans le jeu publié, le paramètre ne fait rien (retour de test : « les gens vont faire n'importe quoi »).
@@ -1403,7 +1416,7 @@ async function boot(): Promise<void> {
     // (Le temple aussi : une salle ronde et close, l'arène de l'épreuve.)
     const calmRoom = run.special === 'spring' || run.special === 'altar' || run.special === 'dojo' || run.special === 'pension' || run.special === 'temple';
     const layout = calmRoom ? 'sanctuaire' : opts.layout === 'auto' ? undefined : opts.layout;
-    roomKey = { kind: 'room', biome: run.biome, seed, store: run.isShop(), cave: run.hasCave(), layout, mouthUsed: false, entry: arena ? 'S' : run.entrySide, arena };
+    roomKey = { kind: 'room', biome: run.biome, seed, store: run.isShop(), cave: run.hasCave(), layout, mouthUsed: false, entry: arena ? 'S' : run.entrySide, arena, temple: templeRun || undefined };
     world = roomWorld(roomKey);
     genObjs.set(world, new Set(world.objects));
     outdoor = null;
@@ -1549,7 +1562,9 @@ async function boot(): Promise<void> {
   function roomWorld(k: Extract<WorldKey, { kind: 'room' }>): WorldMap {
     const biome = k.biome as keyof typeof BIOMES;
     const w = generate(BIOMES[biome], k.seed, { store: k.store, arena: k.arena, cave: k.cave, layout: k.layout as LayoutId | undefined, entry: k.entry });
-    if (k.arena) decorateArena(w, biome);
+    // L'épreuve du temple de Lugia a sa propre salle (world/arena.ts, decorateTemple).
+    if (k.temple) decorateTemple(w);
+    else if (k.arena) decorateArena(w, biome);
     return w;
   }
 
@@ -1641,8 +1656,8 @@ async function boot(): Promise<void> {
   };
 
   /**
-   * `temple` : l'épreuve du temple de Lugia ; elle se joue dans la salle d'intérieur du Village (la
-   * seule arène close, avec ses torches : un hall de temple), et ne compte pas comme une run.
+   * `temple` : l'épreuve du temple de Lugia ; elle se joue dans le hall du temple (world/arena.ts,
+   * decorateTemple, bâti sur l'arène d'intérieur du Village), et ne compte pas comme une run.
    */
   const newRun = (temple = false) => {
     mode = 'run';
@@ -2216,6 +2231,8 @@ async function boot(): Promise<void> {
       if (save.built.includes('field')) save.resources.food += FIELD_FOOD;
       // La carrière, de même, un peu de Pierre.
       if (save.built.includes('quarry')) save.resources.stone += QUARRY_STONE;
+      // Le verger, quelques Baies cueillies (comptées dans le gain de la run, annoncé au retour).
+      if (save.built.includes('orchard')) earn(ORCHARD_BAIES);
       // Chaque salle libérée rapporte un peu de bois et de pierre, un champion
       // davantage, vivres compris (retour de test du 11 novembre 2026 : sans
       // coffre ni biome rocheux, pas moyen de gagner de la pierre). Sans
@@ -2462,7 +2479,7 @@ async function boot(): Promise<void> {
     earn(BAIES.defeat(run.room));
   };
   /**
-   * Fin de l'épreuve du temple : Baies par vague, Éclats par palier franchi, Lugia à la 15ᵉ vague
+   * Fin de l'épreuve du temple : Baies par vague, Éclats par palier franchi, Drattak à la 15ᵉ vague
    * (meta/temple.ts), puis le Repaire, sans bilan de run.
    */
   const finishTemple = () => {
@@ -2471,15 +2488,15 @@ async function boot(): Promise<void> {
     noteTemple(save, cleared, got);
     if (got.baies) save.baies += got.baies;
     if (got.shards) save.shards += got.shards;
-    if (got.lugia && !ownsSpecies(save, LUGIA) && !save.candidates.some((c) => c.species === LUGIA)) save.candidates.push({ species: LUGIA, origin: 'temple' });
+    if (got.prize && !ownsSpecies(save, TEMPLE_PRIZE) && !save.candidates.some((c) => c.species === TEMPLE_PRIZE)) save.candidates.push({ species: TEMPLE_PRIZE, origin: 'temple' });
     writeSave(save);
     templeRun = false;
     endT = -1;
     input.flush();
     enterCamp();
     const parts = [`+${got.baies} Baies`, ...(got.shards ? [`+${got.shards} Éclat${got.shards > 1 ? 's' : ''}`] : [])];
-    runHud.notify({ title: got.record ? 'Temple : record !' : 'Temple', text: `${cleared} vague${cleared > 1 ? 's' : ''} vaincue${cleared > 1 ? 's' : ''} · ${parts.join(' · ')}`, art: LUGIA, color: '#9fc4e8' });
-    if (got.lugia) runHud.notify({ title: 'Lugia', text: 'Lugia veut rejoindre la rébellion : Dracolosse te le présentera.', art: LUGIA, color: 'var(--yel)' });
+    runHud.notify({ title: got.record ? 'Temple : record !' : 'Temple', text: `${cleared} vague${cleared > 1 ? 's' : ''} vaincue${cleared > 1 ? 's' : ''} · ${parts.join(' · ')}`, art: ISLAND_NPCS.sage, color: '#9fc4e8' });
+    if (got.prize) runHud.notify({ title: TEMPLE_PRIZE_NAME, text: `Lugia te confie ${TEMPLE_PRIZE_NAME} : Dracolosse te le présentera.`, art: TEMPLE_PRIZE, color: 'var(--yel)' });
   };
   const cave: CaveDirector = new CaveDirector(document.body, fx, atlas, {
     spawnEnemy: (id, level, x, y, role) => {
@@ -3451,7 +3468,7 @@ async function boot(): Promise<void> {
   };
   // La malédiction d'un pacte (Autel maudit) reste écrite sous le lieu jusqu'à la fin de l'acte.
   const curseTag = () => (run.cursed() ? ` · Pacte : ${CURSES[run.curse!].name}` : '');
-  const placeName = () => (cave.active ? cave.title : run.isShop() ? `Boutique${curseTag()}` : `${run.placeName}${weatherNow() !== 'clear' ? ` · ${WEATHERS[weatherNow()].name}` : ''}${curseTag()}`);
+  const placeName = () => (templeRun ? `Temple de Lugia · vague ${director.templeCleared + 1}` : cave.active ? cave.title : run.isShop() ? `Boutique${curseTag()}` : `${run.placeName}${weatherNow() !== 'clear' ? ` · ${WEATHERS[weatherNow()].name}` : ''}${curseTag()}`);
 
   /** Hôte : l'instantané du terrain, à tous les invités. */
   const sendSnap = () => {
