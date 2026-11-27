@@ -124,6 +124,16 @@ export class Trainer {
     this.rushing = true;
   }
 
+  /**
+   * Son tour est venu mais le joueur est loin (run/room.ts) : sa place devient le joueur, il
+   * marche vers lui (direct) jusqu'à le voir d'assez près pour lancer ses Poké Balls.
+   */
+  approach(x: number, y: number): void {
+    if (this.fleeing) return;
+    this.anchorX = x;
+    this.anchorY = y;
+  }
+
   /** Il s'arrête `t` s, tourné vers (x, y) : le temps de viser et de lancer. */
   aim(x: number, y: number, t: number): void {
     if (this.fleeing) return;

@@ -1545,6 +1545,37 @@ Poséidon dans Hades ». Écart voulu avec `CombatArena._roll_boon_rarity` du je
   Le banc est bruité (±15 % sur le temps, ±20 points de PV avec trois combats) : il sert à repérer
   un don muet ou un écart flagrant, pas à régler au pour cent.
 
+## Grande équipe, dresseurs, routes gardées (27 novembre 2026)
+
+Retour du même jour : « à six Pokémon on roule sur le boss, le jeu est trop facile ; les routes à CS
+ne doivent pas dire "accessible seulement avec Coupe", juste une lignée d'arbres devant, de l'eau
+pour Surf ; l'ombre de Forgelina est trop basse ; dans les grandes zones, que les dresseurs lancent
+leurs Pokémon quand on s'approche ; les attaques qui endorment sont abusées ; trop de notifs ».
+
+- **Difficulté selon l'équipe** (`main.ts`, `attach`) : au-delà de trois membres, l'attaque d'un
+  Pokémon de champion monte de +15 % par membre (`BOSS_ATK_PER_BIG_MEMBER` ; +5 % jusqu'à trois,
+  comme avant). Les sauvages, escortes comprises, prennent +20 % de PV et +10 % d'attaque par membre
+  au-delà de deux (`WILD_*_PER_MEMBER`). Banc (`debug/balance.ts`, équipe de six) : boss de l'acte 2
+  fini à 100 % de PV pour la plupart des membres avant, avec deux ou trois membres entamés ou K.O.
+  après ; salle 21, le Pokémon joué finit à 40-85 % au lieu de 100 %.
+- **Routes gardées** (`run/room.ts`, `drawCsBlock`) : une porte de sortie de champion qui demande
+  une CS n'affiche plus « CS … requise » ; une rangée d'arbustes (Coupe), de rochers fissurés
+  (Éclate-Roc) ou de gros rochers (Force), les planches des coffres, barre l'ouverture, ou une bande
+  d'eau (Surf). Buter contre dit ce qui barre et quelle CS il faut.
+- **Ligne de sol des sprites** (`assets/pmd.ts`, `measure`) : elle descend au plus à 2 px sous la
+  4ᵉ direction la plus haute, au lieu du pixel le plus bas de la planche (le marteau de Ferdeter, de
+  dos, pendait 7 px sous ses pieds : il flottait au-dessus de son ombre). 397 planches sur 470 ne
+  bougent pas.
+- **Dresseurs** (`run/room.ts`, `held`, `updateHeld`) : à leur tour, ceux qui sont loin marchent
+  vers le joueur le plus proche (`Trainer.approach`) et lancent à 8,5 cases (ou après 6 s) ; leurs
+  Pokémon sortent près d'eux. Le Duel lance d'emblée.
+- **Sommeil** : Poudre Dodo, Berceuse, Bâillement réussissent une fois sur deux (`SLEEP_MOVE_CHANCE`)
+  et passent par `BoonHooks.inflict` (moitié de la durée sur un champion) ; Cauchemar 10 % au lieu de
+  15 %, +50 % de dégâts sur un endormi au lieu du double.
+- **Notifications** (`ui/runhud.ts`, `main.ts`) : trois cartes au plus, 3,5 s ; plus de carte pour
+  un niveau gagné (« Niv. N ! » monte au-dessus du Pokémon), l'éclaircie, un don ou une attaque
+  qu'on vient de choisir (sauf choix d'un invité en ligne), l'avancée d'une page du carnet.
+
 ## Dons pour toute l'équipe, CT en coop, rebonds
 
 Retour du 27 novembre 2026 : « les dons, je préfère que ça aille pour toute l'équipe ; on ne fait

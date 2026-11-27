@@ -46,10 +46,11 @@ export interface Notice {
 }
 
 /** Combien de notifications à la fois, et combien de temps chacune reste. */
-const MAX_NOTICES = 5;
+/** Trois cartes à la fois au plus, 3,5 s chacune (5 et 4,5 s avant : « il y a vite trop de notifs », 27 novembre 2026). */
+const MAX_NOTICES = 3;
 /** Écart entre deux notifications mises en file (le butin d'un coffre, une par gain). */
 const QUEUE_GAP = 0.28;
-const NOTICE_TIME = 4.5;
+const NOTICE_TIME = 3.5;
 const TOAST_TIME = 2.4;
 
 const el = (tag: string, cls: string, parent?: HTMLElement, text?: string) => {

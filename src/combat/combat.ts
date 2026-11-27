@@ -72,6 +72,8 @@ const ENEMY_STRIKE_RADIUS = 0.8;
 const STRIKE_RADIUS = 0.55;
 /** Portée des capacités de statut qui visent un sauvage (TeamMember.STATUS_MOVE_RANGE). */
 const STATUS_MOVE_RANGE = 9;
+/** Chance qu'une attaque qui endort (Poudre Dodo, Berceuse, Bâillement) prenne. */
+const SLEEP_MOVE_CHANCE = 0.5;
 /**
  * Le dash rend invulnérable pendant sa durée et un court instant après.
  * Écart voulu avec le jeu, qui n'en donne aucune : sans elle, un tir déjà
@@ -857,7 +859,12 @@ export class Combat {
           }
         }
         if (best) {
-          best.pokemon!.applyStatus(effect.status);
+          // Endormir ne réussit qu'une fois sur deux (retour du 27 novembre 2026 : « les coups qui
+          // endorment dès le début, c'est super abusé ; une chance sur deux ») : Poudre Dodo et
+          // Berceuse figeaient à coup sûr n'importe quel sauvage, dès la première salle. Un Pokémon
+          // de champion dort moitié moins longtemps (BoonHooks.inflict), comme sous un don.
+          if (effect.status === 'sleep' && this.random() >= SLEEP_MOVE_CHANCE) this.fx.number('dodge', best.x, best.y, 0, 'RATÉ');
+          else this.hooks.inflict(best, effect.status);
           best.brain?.provoke();
           this.fx.attackAnim(move.type, best.x, best.y, move.api);
           this.face(player, best.x, best.y);

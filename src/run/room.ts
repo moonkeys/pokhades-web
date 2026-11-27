@@ -10,14 +10,15 @@ import { TILE } from '../world/tiles';
 import { REWARD_COLOR, SHOP_COLOR, SPECIALS, type ExitOffer, type Reward, type Run, type SpecialId } from './run';
 import { SWIMMERS, type BiomeId } from '../data/species';
 import type { DonorId } from '../combat/boons';
-import { donorBadge, drawRewardIcon, itemIcon, rewardIcon, shopIcon, type Prize } from '../ui/rewardicons';
+import { donorBadge, drawRewardIcon, rewardIcon, shopIcon, type Prize } from '../ui/rewardicons';
 import { BIOMES, BIOME_COLOR } from '../world/biomes';
 import { CS_LIST } from '../meta/catalog';
 import { VICTORY_ROAD } from '../world/worldmap';
 import { Trainer } from '../entities/trainer';
 import { CaptureThreat } from './capture';
 import { typePill } from '../ui/hud';
-import { loadInfo } from '../assets/pmd';
+import { loadImage, loadInfo } from '../assets/pmd';
+import type { CsId } from '../meta/catalog';
 import { ACES, LEGENDS, LEGEND_TEAMS, TRAINER_CLASSES, pickClass, pickMember, type TrainerClassId } from '../data/trainers';
 
 // Déroulé d'une salle, repris de CombatArena.gd (_start_zone, vagues,
@@ -34,8 +35,11 @@ import { ACES, LEGENDS, LEGEND_TEAMS, TRAINER_CLASSES, pickClass, pickMember, ty
 //
 // Sortie de boss : une porte par biome voisin (Run.offers), qui annonce le
 // biome en grand au-dessus de sa récompense et luit à sa couleur. Une porte
-// gardée par une CS qu'on n'a pas garde sa barrière : on la voit, on ne la
-// prend pas.
+// gardée par une CS qu'on n'a pas est barrée par ce que la CS lève : une rangée
+// d'arbustes (Coupe), de rochers fissurés (Éclate-Roc), de gros rochers (Force),
+// ou de l'eau (Surf). Retour du 27 novembre 2026 : « pas écrire "accessible
+// seulement avec Coupe" ; juste une lignée d'arbres qui gêne devant, de l'eau
+// pour Surf : on comprend mieux pourquoi il faut la CS ».
 //
 // Salles spéciales (Run.special, ajout) : le Défi chronomètre les vagues (raté,
 // les sauvages s'enfuient et la récompense est perdue) ; le Piège pose la
@@ -62,6 +66,21 @@ const CLEAR_DELAY = 1;
 const OPEN_DELAY = 0.8;
 /** Fondu au noir et retour (CombatArena._transition_to_next_zone). */
 const FADE = 0.5;
+/**
+ * Planches Essentials des obstacles de CS (celles des coffres, run/chests.ts) : 32 px, image 0 =
+ * intact. Chargées une fois pour toutes les salles.
+ */
+const CS_OBSTACLE: Partial<Record<CsId, string>> = { cut: 'Object tree 1.png', 'rock-smash': 'Object rock.png', strength: 'Object boulder.png' };
+const obstacleSheets = new Map<string, HTMLImageElement>();
+for (const file of Object.values(CS_OBSTACLE)) void loadImage(`/game/assets/essentials/objects/${encodeURIComponent(file!)}`).then((img) => obstacleSheets.set(file!, img), () => {});
+/** Ce qui barre la route, dit quand on bute contre (l'étiquette de la porte ne le dit plus). */
+const CS_BLOCK: Record<CsId, string> = {
+  cut: 'Des arbustes barrent la route',
+  'rock-smash': 'Des rochers fissurés barrent la route',
+  strength: 'De gros rochers barrent la route',
+  surf: 'L’eau barre la route',
+};
+
 /** Délai entre deux rappels « CS requise » quand on bute contre une porte fermée. */
 const LOCKED_NAG = 2.5;
 /** Rayon de ramassage de la récompense au centre (Area3D de rayon 1,2). */
@@ -167,6 +186,16 @@ const ACE_BARS = 2;
 const SOLO_MAX = 3;
 /** Les Pokémon d'un dresseur sortent à moins de tant de cases de lui. */
 const THROW_RANGE = 3.5;
+/**
+ * Un dresseur dont c'est le tour ne lance ses Poké Balls que quand un joueur passe à cette
+ * distance (cases) ; d'ici là, il marche vers lui. Retour du 27 novembre 2026 : « dans les
+ * grandes zones avec plein de dresseurs, qu'ils balancent leurs Pokémon quand on se rapproche
+ * d'eux ; sinon on tourne autour des zones en losange à chercher où est le Pokémon ». Ils
+ * lançaient tous au début de leur vague, où qu'ils soient, et leurs Pokémon sortaient loin.
+ */
+const ENGAGE_RANGE = 8.5;
+/** Au-delà, il lance quand même (bloqué derrière un obstacle, joueur qui l'évite). */
+const ENGAGE_TIMEOUT = 6;
 
 interface Door {
   exit: Exit;
@@ -242,6 +271,8 @@ export class RoomDirector {
   }
   private wave = 0;
   private pending: PendingSpawn[] = [];
+  /** Pokémon d'un dresseur dont c'est le tour, gardés dans ses Poké Balls jusqu'à ce qu'on l'approche. */
+  private held: { mon: WaveMon; g: TrainerGroup; t: number }[] = [];
   /** Sauvages déjà comptés comme K.O. */
   private readonly counted = new Set<Actor>();
   killed = 0;
@@ -347,6 +378,7 @@ export class RoomDirector {
     this.rng = new Rng(run.mapSeed * 13 + 5);
     this.counted.clear();
     this.pending = [];
+    this.held = [];
     this.killed = 0;
     this.wave = 0;
     this.chosen = null;
@@ -470,6 +502,7 @@ export class RoomDirector {
         this.killed++;
       }
     }
+    this.updateHeld(dt, world, player, others);
     for (const p of this.pending) p.t += dt;
     if (this.incoming && (this.incoming.t -= dt) <= 0) this.dropIncoming();
     for (const p of this.pending.filter((q) => q.t >= SPAWN_ANNOUNCE)) {
@@ -516,12 +549,13 @@ export class RoomDirector {
         if (this.special === 'challenge') {
           this.clock -= dt;
           // Vaincus : tous, moins ceux debout, ceux qui arrivent et les vagues à venir.
-          const left = enemies.filter((e) => e.deathT < 0).length + this.pending.length + this.waves.slice(this.wave + 1).reduce((s, w) => s + w.length, 0);
+          const left = enemies.filter((e) => e.deathT < 0).length + this.pending.length + this.held.length + this.waves.slice(this.wave + 1).reduce((s, w) => s + w.length, 0);
           this.host.setTimer(Math.max(0, this.clock), `${Math.max(0, this.total - left)} / ${this.total} sauvages`);
           if (this.clock <= 0) {
             // Temps écoulé : ceux qui restent s'enfuient, et la récompense avec eux.
             this.failed = true;
             this.pending = [];
+            this.held = [];
             this.host.dismissEnemies();
             for (const g of this.groups) if (!g.done) this.flee(g, world);
             this.host.setTimer(null);
@@ -531,7 +565,7 @@ export class RoomDirector {
             break;
           }
         }
-        const alive = enemies.some((e) => e.deathT < 0) || this.pending.length > 0;
+        const alive = enemies.some((e) => e.deathT < 0) || this.pending.length > 0 || this.held.length > 0;
         if (alive) {
           this.t = this.wave + 1 < this.waves.length ? WAVE_GAP : CLEAR_DELAY;
           break;
@@ -605,19 +639,22 @@ export class RoomDirector {
     this.t = WAVE_GAP;
     // Ligne de front : les anneaux attendent le préavis (t négatif), le temps du grondement et de la flèche.
     const warn = world.front && !this.boss ? this.announce(world, player) : 0;
-    // Les dresseurs de cette vague se tournent vers le joueur et lancent leurs Poké Balls.
+    // Les dresseurs de cette vague : celui qui est déjà à portée lance tout de suite ; les autres
+    // marchent vers le joueur et lanceront en arrivant (updateHeld). Le Duel garde son lancer d'emblée.
+    const engaged = new Set<TrainerGroup>();
     for (const g of this.groups) {
       if (this.wave < g.wave || this.wave > (g.until ?? g.wave)) continue;
-      const first = !g.thrown;
-      g.thrown = true;
-      g.trainer.aim(player.x, player.y, 1.2);
-      if (g.ace && first) {
-        this.host.message(`${TRAINER_CLASSES[g.cls].name} te défie !`);
-        sfx('vs');
+      if (this.special === 'duel' || g.thrown || Math.hypot(g.trainer.x - player.x, g.trainer.y - player.y) <= ENGAGE_RANGE) {
+        this.engage(g, player);
+        engaged.add(g);
       }
     }
     for (const mon of this.waves[this.wave] ?? []) {
       const g = mon.group !== undefined ? this.groups[mon.group] : undefined;
+      if (g && !engaged.has(g) && !this.boss) {
+        this.held.push({ mon, g, t: 0 });
+        continue;
+      }
       const swims = SWIMMERS.has(mon.id);
       // En salle de champion, ses Pokémon sortent sur la Poké Ball gravée au centre de l'arène (retour de
       // test du 17 novembre 2026 : « l'as devrait apparaître sur la Poké Ball, pas dans les coins ») ;
@@ -629,6 +666,45 @@ export class RoomDirector {
       // Toutes les balls d'une vague partent ensemble ; elles s'ouvrent quand le Pokémon apparaît (0,55 s).
       this.fx.ballSend(at.x, at.y);
     }
+  }
+
+  /** Le dresseur se tourne vers le joueur pour lancer ; un top dresseur lance son défi. */
+  private engage(g: TrainerGroup, player: Actor): void {
+    const first = !g.thrown;
+    g.thrown = true;
+    g.trainer.aim(player.x, player.y, 1.2);
+    if (g.ace && first) {
+      this.host.message(`${TRAINER_CLASSES[g.cls].name} te défie !`);
+      sfx('vs');
+    }
+  }
+
+  /**
+   * Les dresseurs en marche vers le joueur : à `ENGAGE_RANGE` d'un joueur (ou passé
+   * `ENGAGE_TIMEOUT`), ils lancent leurs Poké Balls, qui tombent près d'eux.
+   */
+  private updateHeld(dt: number, world: WorldMap, player: Actor, others: readonly Actor[]): void {
+    if (!this.held.length) return;
+    const team = [player, ...others];
+    const ready = new Set<TrainerGroup>();
+    for (const h of this.held) {
+      h.t += dt;
+      const t = h.g.trainer;
+      const near = team.reduce((best, a) => (Math.hypot(a.x - t.x, a.y - t.y) < Math.hypot(best.x - t.x, best.y - t.y) ? a : best), player);
+      if (Math.hypot(near.x - t.x, near.y - t.y) <= ENGAGE_RANGE || h.t >= ENGAGE_TIMEOUT || t.gone) ready.add(h.g);
+      else t.approach(near.x, near.y);
+    }
+    for (const g of ready) {
+      this.engage(g, player);
+      for (const h of this.held.filter((x) => x.g === g)) {
+        const swims = SWIMMERS.has(h.mon.id);
+        const at = this.spawnNear(world, g.trainer, player, swims) ?? this.spawnPoint(world, player, swims);
+        if (!at) continue;
+        this.pending.push({ ...h.mon, ...at, t: 0 });
+        this.fx.ballSend(at.x, at.y);
+      }
+    }
+    this.held = this.held.filter((h) => !ready.has(h.g));
   }
 
   /**
@@ -831,7 +907,7 @@ export class RoomDirector {
       const who = everyone.find((a) => this.atExit(world, a, d.exit));
       if (who) {
         if (d.offer.locked) {
-          if (this.nag <= 0) this.host.message(`Il faut la CS ${csName(d.offer.locked)} pour aller ${toBiome(d.offer.biome!)}`);
+          if (this.nag <= 0) this.host.message(`${CS_BLOCK[d.offer.locked]} : il faut la CS ${csName(d.offer.locked)} pour aller ${toBiome(d.offer.biome!)}`);
           this.nag = LOCKED_NAG;
           continue;
         }
@@ -932,8 +1008,9 @@ export class RoomDirector {
     const biome = offer.biome!;
     const cs = offer.locked && CS_LIST.find((c) => c.id === offer.locked);
     const place = offer.victory ? { name: VICTORY_ROAD.name, color: VICTORY_ROAD.color } : { name: BIOMES[biome].name, color: BIOME_COLOR[biome] };
-    // Sous le nom du biome, l'icône de la récompense seule (retour de test : moins de texte).
-    const el = cs ? this.label(`CS ${cs.name} requise`, '#b9b2a4', itemIcon(cs.icon)) : this.label('', REWARD_COLOR[offer.reward], rewardIcon(offer.reward, offer.donor));
+    // Sous le nom du biome, l'icône de la récompense seule (retour de test : moins de texte). Une
+    // porte barrée n'a que le nom, grisé : l'obstacle devant (drawOverlay) dit le reste.
+    const el = cs ? this.label('', '#b9b2a4') : this.label('', REWARD_COLOR[offer.reward], rewardIcon(offer.reward, offer.donor));
     el.classList.add('route');
     el.classList.toggle('locked', !!cs);
     const name = document.createElement('span');
@@ -984,6 +1061,7 @@ export class RoomDirector {
   clear(): void {
     this.clearLabels();
     this.pending = [];
+    this.held = [];
     this.waves = [];
     this.groups = [];
     this.total = 0;
@@ -1023,6 +1101,47 @@ export class RoomDirector {
   }
 
   /**
+   * Une porte gardée par une CS : une rangée de l'obstacle que la CS lève, une case par case de
+   * l'ouverture et une de chaque côté (pas de jour où se faufiler), sur la ligne de la porte ;
+   * pour Surf, une bande d'eau qui ondule, deux cases de profondeur.
+   */
+  private drawCsBlock(b: CanvasRenderingContext2D, e: Exit, cs: CsId, sx: (x: number) => number, sy: (y: number) => number, k: number, time: number): void {
+    const horiz = e.side === 'N' || e.side === 'S';
+    const half = e.width / 2 + 1;
+    if (cs === 'surf') {
+      // Juste l'ouverture (une bande plus large passait sur la frondaison des arbres voisins), avec
+      // une berge d'écume côté salle.
+      const w = e.width / 2 + 0.3;
+      const [x0, x1, y0, y1] = horiz ? [e.x - w, e.x + w, e.y - 1, e.y + 1] : [e.x - 1, e.x + 1, e.y - w, e.y + w];
+      b.fillStyle = '#3d7fc4';
+      b.fillRect(sx(x0), sy(y0), sx(x1) - sx(x0), sy(y1) - sy(y0));
+      b.fillStyle = '#e8f6ff';
+      if (e.side === 'N') b.fillRect(sx(x0), sy(y1) - 2 * k, sx(x1) - sx(x0), 2 * k);
+      else if (e.side === 'S') b.fillRect(sx(x0), sy(y0), sx(x1) - sx(x0), 2 * k);
+      else if (e.side === 'W') b.fillRect(sx(x1) - 2 * k, sy(y0), 2 * k, sy(y1) - sy(y0));
+      else b.fillRect(sx(x0), sy(y0), 2 * k, sy(y1) - sy(y0));
+      // Vaguelettes claires qui glissent, en pixels (le reste du jeu est en pixel art).
+      b.fillStyle = '#9fd3f5';
+      for (let gy = Math.ceil(y0 * 4); gy < y1 * 4; gy += 2) {
+        for (let gx = Math.floor(x0); gx < x1; gx++) {
+          const off = ((time * 0.8 + gy * 0.37 + gx * 0.61) % 1) * TILE * k;
+          const px = sx(gx) + Math.round(off);
+          if (px + 4 * k > sx(x1)) continue;
+          b.fillRect(px, sy(gy / 4), 4 * k, k);
+        }
+      }
+      return;
+    }
+    const sheet = obstacleSheets.get(CS_OBSTACLE[cs]!);
+    if (!sheet) return;
+    const s = 32 * 0.5 * k;
+    for (let t = -half + 0.5; t <= half - 0.5; t += 1) {
+      const [cx, foot] = horiz ? [e.x + t, e.y + 0.5] : [e.x, e.y + t + 0.5];
+      b.drawImage(sheet, 0, 0, 32, 32, Math.round(sx(cx) - s / 2), Math.round(sy(foot) - s + k), Math.round(s), Math.round(s));
+    }
+  }
+
+  /**
    * Par-dessus le décor : portes (barrière fermée, lueur ouverte) et
    * récompense. Au ras du bord de carte, la frondaison des arbres de lisière
    * les aurait cachées.
@@ -1035,7 +1154,9 @@ export class RoomDirector {
       const e = d.exit;
       const horiz = e.side === 'N' || e.side === 'S';
       const half = e.width / 2;
-      if ((this.phase !== 'open' && this.phase !== 'fadeOut') || d.offer.locked) {
+      if (d.offer.locked) {
+        this.drawCsBlock(b, e, d.offer.locked, sx, sy, k, time);
+      } else if (this.phase !== 'open' && this.phase !== 'fadeOut') {
         // Barrière de bois en travers de l'ouverture : deux poteaux, deux lisses.
         const pts = horiz
           ? [

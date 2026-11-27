@@ -192,7 +192,7 @@ export class BoonHooks {
     const st = target.pokemon?.status;
     if (st === 'paralysis' && b.has('elec_network')) (m *= 1 + b.v('elec_network'), b.fire('elec_network'));
     if (st === 'freeze' && b.has('glace_shatter')) (m *= 1 + b.v('glace_shatter'), b.fire('glace_shatter'));
-    if (st === 'sleep' && b.has('tenb_sleep')) m *= 2;
+    if (st === 'sleep' && b.has('tenb_sleep')) m *= 1.5;
     if (b.has('tenb_steal')) (m *= 1 + b.v('tenb_steal'), b.fire('tenb_steal'));
     if (b.has('tenb_lastbreath') && this.low(player)) (m *= 1 + b.v('tenb_lastbreath'), b.fire('tenb_lastbreath'));
     if (b.sacrifice > 0) (m *= 1 + b.v('duo_sacrifice') * b.sacrifice, b.fire('duo_sacrifice'));
