@@ -121,6 +121,8 @@ export const LORE: LoreChapter[] = [
       { title: 'Raretés', text: 'Commun, Rare (×1,4), Épique (×1,85), Prismatique (×2,4). Au début, presque tout est Commun ; Rares et Épiques gagnent du terrain salle après salle. Une salle sans coup reçu monte parfois une carte. Le Prismatique, lui, se gagne en reprenant un don déjà pris : chaque reprise le monte d’un cran.' },
       // boons.ts, pickDonor (MAX_DONORS, MET_WEIGHT)
       { title: 'Fidélité des légendaires', text: 'Un légendaire qui t’a déjà donné un don revient bien plus souvent. Une run n’en réunit pas plus de quatre : après, ce sont toujours les mêmes, de quoi monter leurs dons et décrocher leurs duos.' },
+      // meta/feats.ts, groupe « dons » (Save.boonsGot)
+      { title: 'Le carnet des dons', text: 'Xatu tient une page par légendaire : chaque don obtenu une fois, à n’importe quelle rareté, s’y coche, avec l’ultime. Une page pleine se réclame au Repaire contre des Éclats et un Super Bonbon. Le carnet dit ce qui manque : vise-le à la prochaine porte.' },
       { title: 'Dons duo', text: 'Garde un don de deux légendaires différents : leurs dons croisés, les duos, peuvent apparaître en première carte. Les plus puissants du jeu.' },
     ],
   },

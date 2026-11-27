@@ -965,6 +965,10 @@ effets animés). Les flèches, ✕ et ✔ restent : ce sont des signes typograph
 - À juger en jeu : le banc prend toujours la carte la plus rare ; un vrai
   joueur choisit aussi par effet. Les reprises (un cran chacune) font
   l'essentiel des Épiques du premier acte.
+- Pages des légendaires au carnet de Xatu (même jour) : tous les dons et
+  l'ultime de chaque légendaire, les duos, le Panthéon (`meta/feats.ts`,
+  `Save.boonsGot`). À voir : une récompense propre à chaque légendaire
+  (un « souvenir » qui oriente la première porte, comme les gages de Hades).
 
 ## 3. Déjà notés, toujours en attente
 

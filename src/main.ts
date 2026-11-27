@@ -22,7 +22,7 @@ import { BAIES, FIELD_FOOD, QUARRY_STONE, RESOURCES, RESOURCE_IDS, ROOM_RES, SHA
 import { addMon, capacity, exile, grantAlly, grantChampion, isFull, level, loadSave, markSeen, onSaveWritten, monName, ownedSpecies, ownsSpecies, recordDefeat, resetSave, roster, speciesOf, startLevel, welcomeMon, writeSave } from './meta/save';
 import { applyTraits, natureText } from './meta/mons';
 import { quest, questEvent, type QuestEvent, contractEvent, contractText } from './meta/quests';
-import { leagueOpen, readyFeats } from './meta/feats';
+import { leagueOpen, noteBoon, readyFeats } from './meta/feats';
 import { busy, mission, rewardText, tick as tickMissions } from './meta/missions';
 import { MATERIALS, NECTARS, materialName, tickCraft } from './meta/crafting';
 import { campNews, fresh as freshNews, markSeen as markNewsSeen } from './meta/news';
@@ -1560,12 +1560,22 @@ async function boot(): Promise<void> {
       boons.ult = offer.donor;
       boons.ultGauge = 0;
       runHud.notify({ title: 'Ultime obtenue', text: `${DONORS[offer.donor].ult} · touche R`, art: DONORS[offer.donor].dex, color: 'var(--yel)' });
-      return;
+    } else {
+      const got = boons.grant(id, rarity);
+      // Un don « Ton Pokémon » va à celui qui l'a choisi : l'invité en ligne (uiTarget), sinon le Pokémon joué.
+      if (STAT_BOONS[id]) combat.hooks.applyStat(uiTarget ?? player, id);
+      runHud.notify({ title: 'Don obtenu', text: `${BOONS[id].name} · ${RARITY_NAME[got]}`, art: DONORS[offer.donor].dex, color: RARITY_COLOR[got] });
     }
-    const got = boons.grant(id, rarity);
-    // Un don « Ton Pokémon » va à celui qui l'a choisi : l'invité en ligne (uiTarget), sinon le Pokémon joué.
-    if (STAT_BOONS[id]) combat.hooks.applyStat(uiTarget ?? player, id);
-    runHud.notify({ title: 'Don obtenu', text: `${BOONS[id].name} · ${RARITY_NAME[got]}`, art: DONORS[offer.donor].dex, color: RARITY_COLOR[got] });
+    // La page du légendaire au carnet de Xatu (meta/feats.ts) : un don jamais obtenu la fait
+    // avancer, on le dit tout de suite ; une page remplie se réclame au Repaire.
+    const page = noteBoon(save, id);
+    if (!page) return;
+    writeSave(save);
+    runHud.notify(
+      page.filled
+        ? { title: 'Exploit', text: `${page.feat.name} : page remplie. Réclame-la à Xatu, au Repaire.`, icon: 'feat', color: 'var(--yel)' }
+        : { title: 'Nouveau don', text: `${page.feat.name} · ${page.n} / ${page.goal} au carnet de Xatu`, icon: 'feat', color: 'var(--muted)' },
+    );
   };
 
   const newRun = () => {

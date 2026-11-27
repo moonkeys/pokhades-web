@@ -59,6 +59,14 @@ export const PATCH_NOTES: readonly PatchNote[] = [
           'Une run réunit au plus quatre légendaires : ensuite, ce sont toujours eux, de quoi monter leurs dons et décrocher leurs duos.',
         ],
       },
+      {
+        title: 'Le carnet de Xatu',
+        items: [
+          'Une page par légendaire : obtiens chacun de ses dons et son ultime, à n’importe quelle rareté, au fil de tes runs. La page apparaît dès son premier don.',
+          'Le carnet dit ce qui manque à chaque page. Une page remplie rapporte 60 Baies, 2 Éclats et un Super Bonbon.',
+          'Et deux pages de plus : les alliances (tous les dons duo) et le Panthéon (les dix légendaires).',
+        ],
+      },
     ],
   },
   {

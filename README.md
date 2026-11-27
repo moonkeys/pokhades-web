@@ -1506,3 +1506,11 @@ Poséidon dans Hades ». Écart voulu avec `CombatArena._roll_boon_rarity` du je
   (2 000 runs, un joueur qui prend toujours la carte la plus rare). Avant → après, dons pris :
   acte 1 9/29/42/20 % → 37/44/17/2 % (Commun/Rare/Épique/Prismatique), acte 4 0/4/54/42 % →
   7/26/43/24 % ; légendaires par run 7,3 → 4 ; part du premier rencontré 17 % → 29 %.
+- **Pages des légendaires** (`meta/feats.ts`, groupe `dons`) : retour du même jour, « chez Xatu, une
+  quête par légendaire qui se complète au fur et à mesure, il faut avoir tous ses dons ». Comme le
+  Codex de Hades : `Save.boonsGot` note chaque don pris au moins une fois (et `__ult__<légendaire>`
+  pour l'ultime), dans `claimBoon` (main.ts, `noteBoon`), qui annonce « Nouveau don · n / N ». Une
+  page par légendaire (ses dons `solo` et son ultime ; 60 Baies, 2 Éclats, un Super Bonbon), les
+  alliances (les dons duo) et le Panthéon (les dix pages). Une page n'apparaît qu'au premier don du
+  légendaire ; le carnet liste ce qui manque. Les sauvegardes d'avant partent de zéro (rien
+  n'était noté).

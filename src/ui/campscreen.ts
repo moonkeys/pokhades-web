@@ -1,4 +1,4 @@
-import { essIcon, iconText, isEssIcon } from './essicon';
+import { donorIcon, essIcon, iconText, isEssIcon } from './essicon';
 import { loadMove, type Move } from '../combat/moves';
 import { sfx } from '../audio/audio';
 import { fetchJson } from '../assets/json';
@@ -2130,16 +2130,23 @@ export class CampScreen {
       // Le titre à l'encre sur le papier (retour de test : le jaune du feutre ne s'y lisait pas).
       const h = el('div', `cs-feat-head g-${group}`, box, FEAT_GROUPS[group]);
       el('small', '', h, `${done} / ${feats.length}`);
-      const shown = [...feats.filter((f) => featState(save, f) === 'ready'), ...feats.filter((f) => featState(save, f) === 'todo').slice(0, 2)];
+      // Les pages des légendaires se remplissent toutes en même temps, au fil des runs : on les
+      // montre toutes (dix au plus), pas seulement les deux prochaines.
+      const todo = feats.filter((f) => featState(save, f) === 'todo');
+      const shown = [...feats.filter((f) => featState(save, f) === 'ready'), ...(group === 'dons' ? todo : todo.slice(0, 2))];
       if (!shown.length) el('small', 'cs-info', box, 'Tout est fait.');
       const rows = el('div', 'cs-feat-rows', box);
       for (const f of shown) {
         const state = featState(save, f);
         const row = el('div', `cs-feat ${state}`, rows);
         const text = el('div', '', row);
-        el('b', '', text, f.name);
+        const name = el('b', '', text, f.name);
+        if (f.dex) name.prepend(donorIcon(f.dex));
         const [n, goal] = f.progress(save);
         el('small', '', text, goal > 1 && state === 'todo' ? `${f.desc} (${n} / ${goal})` : f.desc);
+        // Ce qui manque à une page de légendaire, pour savoir quoi prendre à sa prochaine porte.
+        const missing = state === 'todo' ? (f.missing?.(save) ?? []) : [];
+        if (missing.length) el('small', 'cs-feat-missing', text, `Manque : ${missing.join(', ')}.`);
         if (state === 'ready') {
           const b = el('button', 'cs-claim', row, featReward(f.reward));
           b.addEventListener('click', () => {

@@ -172,6 +172,11 @@ export interface Save {
    * atteinte) : la prime de lignée ne tombe qu'une fois par lignée.
    */
   evolved: number[];
+  /**
+   * Les dons déjà obtenus au moins une fois, toutes runs confondues (et `__ult__<légendaire>`
+   * pour une ultime) : les pages des légendaires au carnet de Xatu (meta/feats.ts, noteBoon).
+   */
+  boonsGot: string[];
 }
 
 /** Longueur d'un surnom dans les jeux principaux (12 depuis la 6ᵉ génération). */
@@ -229,6 +234,7 @@ const DEFAULTS: Save = {
   feats: [],
   bestRoom: 0,
   evolved: [],
+  boonsGot: [],
 };
 
 /** La clé du localStorage : net/cloud.ts lit et réécrit la même, pour la sauvegarde en ligne. */
@@ -330,6 +336,7 @@ export function migrate(save: Save): Save {
   save.feats = names(save.feats);
   save.wins = Math.max(0, Math.floor(Number(save.wins) || 0));
   save.bestRoom = Math.max(0, Math.floor(Number(save.bestRoom) || 0));
+  save.boonsGot = names(save.boonsGot);
   save.evolved = Array.isArray(save.evolved) ? [...new Set(save.evolved.filter((n) => Number.isInteger(n)))] : [];
   return save;
 }
