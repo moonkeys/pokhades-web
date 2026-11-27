@@ -5395,15 +5395,59 @@ body.net-on .hud-team {
 }
 
 /* Recrues chez Dracolosse (campscreen.ts, renderRecruits) : la grille et la fiche du Pokédex de
- * Porygon. Les attaques ne se cliquent pas (.ro) ; les deux boutons sont ceux de la hutte. */
+ * Porygon. Les attaques ne se cliquent pas (.ro) ; les deux boutons sont ceux de la hutte.
+ *
+ * Retour du 27 novembre 2026 : « j'en ai beaucoup en attente, il faut que je scrolle de fou, et la
+ * fiche scrolle aussi ; il faudrait qu'elle soit sticky ». La fiche faisait 46 unités de large : la
+ * grille n'avait plus la place que d'une carte par ligne (34 recrues, 34 lignes). Maintenant la
+ * fiche est à la largeur de celle du Pokédex et reste en place pendant qu'on fait défiler les
+ * cartes, plus petites (sprite et nom, sans l'étiquette « Recrue » répétée sur chacune) : cinq par
+ * ligne sur un écran de portable, une trentaine de recrues sans défiler. */
 .cs-recruits {
-  grid-template-columns: minmax(0, 1fr) calc(46 * var(--u));
+  grid-template-columns: minmax(0, 1fr) calc(32 * var(--u));
+  gap: calc(1.4 * var(--u));
+}
+.cs-recruits .cs-dex-grid {
+  grid-template-columns: repeat(auto-fill, minmax(calc(5.1 * var(--u)), 1fr));
+  gap: calc(0.45 * var(--u));
 }
 .cs-recruits .cs-dex-card {
   position: relative;
+  padding: calc(0.3 * var(--u)) calc(0.2 * var(--u)) calc(0.35 * var(--u));
 }
+.cs-recruits .cs-dex-card img {
+  width: calc(3.8 * var(--u));
+  height: calc(3.8 * var(--u));
+}
+.cs-recruits .cs-dex-card b {
+  font-size: calc(0.95 * var(--u));
+}
+.cs-recruits .cs-dex-card .state {
+  font-size: calc(0.72 * var(--u));
+}
+/* Le « ! » des recrues pas encore vues, réduit à la taille des cartes. */
+.cs-recruits .cs-dex-card > .cs-new {
+  --px: calc(0.065 * var(--u));
+}
+/* La fiche reste à l'écran pendant que la colonne défile (.cs-main fait défiler le tout) ; plus
+ * haute que l'écran, elle défile seule. */
 .cs-rec-detail {
+  position: sticky;
+  top: 0;
   margin-top: 0;
+  max-height: calc(82vh - 4 * var(--u));
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.cs-rec-detail .cs-stats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+@media (max-width: 760px) {
+  /* Petit écran : la fiche passe sous les cartes (on y descend au choix d'une carte). */
+  .cs-rec-detail {
+    position: static;
+    max-height: none;
+  }
 }
 .cs-move.ro {
   cursor: default;

@@ -1150,6 +1150,12 @@ du joueur, et reculent s'il fonce sur eux.
   (surnom, équipe ou Repaire, exil si le Repaire est plein), « Renvoyer » la
   laisse partir ; la liste se rouvre après chaque fiche tant qu'il en reste.
   Sans recrue, Dracolosse rappelle qu'on part par l'arche.
+  Retour du 27 novembre 2026 (« j'en ai beaucoup en attente, il faut que je
+  scrolle de fou, et la fiche scrolle aussi ») : la fiche est ramenée à 32
+  unités (elle en faisait 46 et ne laissait qu'une carte par ligne), les cartes
+  rapetissent (5 par ligne sur un portable, 7 sur un téléphone ; plus
+  d'étiquette « Recrue » sur chacune) et la fiche reste en place
+  (`position: sticky`) pendant qu'on fait défiler les cartes.
 - En petit écran (moins de 760 px de large, téléphone en portrait), les écrans
   du Repaire passent sur une colonne : le gardien en bandeau en haut, la
   colonne qui défile dessous, la fiche sous les cartes (Pokédex, équipe,

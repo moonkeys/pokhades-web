@@ -40,6 +40,20 @@ export interface PatchNote {
 
 export const PATCH_NOTES: readonly PatchNote[] = [
   {
+    id: '2026-11-27-recrues',
+    date: '27 novembre 2026',
+    title: 'Des recrues plus faciles à trier',
+    sections: [
+      {
+        title: 'Recrues chez Dracolosse',
+        items: [
+          'Les recrues en attente tiennent sur un seul écran : cinq cartes par ligne au lieu d’une seule.',
+          'La fiche de la recrue choisie reste à l’écran pendant que tu fais défiler les cartes.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-11-27',
     date: '27 novembre 2026',
     title: 'Des dons qui se méritent',
