@@ -1,3 +1,4 @@
+import { donorIcon, duoIcon } from './essicon';
 import { sfx } from '../audio/audio';
 import { BOONS, DONORS, RARITY_COLOR, RARITY_NAME, STAT_BOONS, valueText, type BoonCard, type BoonOffer, type DonorId } from '../combat/boons';
 import type { Move } from '../combat/moves';
@@ -264,9 +265,11 @@ export class RewardScreen {
    * Une carte : pictogramme, une ligne de titre (le nom, son étiquette — rareté
    * ou type —, la portée en petit), la description, la valeur sur étiquette.
    */
-  private card(list: HTMLElement, o: { color: string; icon: string; name: string; tag?: HTMLElement; scope?: string; act?: string; desc: string; value?: string; valueLabel?: string; upgrade?: boolean }): HTMLElement {
+  private card(list: HTMLElement, o: { color: string; icon: string | HTMLElement; name: string; tag?: HTMLElement; scope?: string; act?: string; desc: string; value?: string; valueLabel?: string; upgrade?: boolean }): HTMLElement {
     const c = el('div', `rw-card da-paper${o.upgrade ? ' upgrade' : ''}`, list);
-    el('div', 'rw-icon', c, o.icon).style.setProperty('--c', o.color);
+    const ico = el('div', 'rw-icon', c, typeof o.icon === 'string' ? o.icon : undefined);
+    if (typeof o.icon !== 'string') ico.append(o.icon);
+    ico.style.setProperty('--c', o.color);
     const body = el('div', 'rw-body', c);
     const head = el('div', 'rw-head', body);
     el('span', 'rw-cname', head, o.name);
@@ -311,7 +314,8 @@ export class RewardScreen {
       const value = ult ? '' : stat ? stat.label.replace(/^.* (\S+ \S+)$/, '$1') : valueText(card.id, card.result);
       const c = this.card(list, {
         color: typeColor(donor.type),
-        icon: ult ? '⚡' : def?.duo ? '✧' : donor.sym,
+        // Le légendaire qui donne (son icône de menu d'Essentials) ; pour un don duo, les deux.
+        icon: def?.duo && !ult ? duoIcon(DONORS[def.duo[0]].dex, DONORS[def.duo[1]].dex) : donorIcon(donor.dex, undefined, 'rw-ess'),
         name: ult ? donor.ult : (def?.name ?? card.id),
         tag: rar,
         scope,

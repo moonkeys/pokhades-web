@@ -1,3 +1,4 @@
+import { essIcon, type EssIconKind } from './essicon';
 import { RESOURCES, RESOURCE_IDS, SHARDS, type ResourceId } from '../meta/catalog';
 import { resIcon } from './resicon';
 import { curve, spray } from './spray';
@@ -31,7 +32,8 @@ export interface Notice {
   title?: string;
   text: string;
   art?: number;
-  icon?: string;
+  /** Icône d'Essentials (ui/essicon.ts) ; sans icône ni image, l'Étoile (exploits, nouvelles). */
+  icon?: EssIconKind;
   /** Couleur du bord. */
   color?: string;
   /** Pokémon K.O. : son image passe en gris. */
@@ -156,7 +158,7 @@ export class RunHud {
     if (key !== this.bossKey) {
       this.bossKey = key;
       this.bossName.replaceChildren();
-      if (info.ace) el('span', 'ace', this.bossName, '★ ');
+      if (info.ace) essIcon('star', el('span', 'ace', this.bossName));
       this.bossName.append(info.name.toUpperCase());
       this.bossSub.textContent = info.sub;
       this.ghost = total;
@@ -205,8 +207,9 @@ export class RunHud {
     this.timer.hidden = seconds === null;
     if (seconds === null) return;
     const s = Math.ceil(seconds);
-    const text = `⏱ ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}${goal ? ` · ${goal}` : ''}`;
-    if (this.timer.textContent !== text) this.timer.textContent = text;
+    const text = ` ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}${goal ? ` · ${goal}` : ''}`;
+    // La Chrono Ball devant le temps (ui/essicon.ts) ; on ne redessine que quand le texte change.
+    if (this.timer.textContent !== text) this.timer.replaceChildren(essIcon('challenge'), text);
     this.timer.classList.toggle('hurry', s <= 10);
   }
 
@@ -240,7 +243,7 @@ export class RunHud {
       const img = el('img', '', ico) as HTMLImageElement;
       img.src = `/game/artwork/${n.art}.png`;
       img.alt = '';
-    } else ico.textContent = n.icon ?? '✦';
+    } else essIcon(n.icon ?? 'feat', ico);
     const body = el('div', '', card);
     if (n.title) el('b', '', body, n.title);
     el('span', '', body, n.text);

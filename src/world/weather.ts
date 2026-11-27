@@ -1,3 +1,4 @@
+import type { EssIconKind } from '../ui/essicon';
 import { Rng } from '../core/rng';
 import type { BiomeId } from '../data/species';
 
@@ -18,7 +19,8 @@ export type WeatherId = 'clear' | 'rain' | 'sun' | 'sand' | 'hail' | 'fog';
 export interface Weather {
   name: string;
   /** Glyphe des notifications. */
-  icon: string;
+  /** Son icône d'Essentials (une Roche de météo ; ui/essicon.ts), dans la notification qui l'annonce. */
+  icon: EssIconKind;
   /** Ce qu'elle change, en une ligne (notification d'entrée de salle). */
   hint: string;
   /** Particules propres (rideau de pluie, flocons, grains de sable). */
@@ -33,12 +35,12 @@ export interface Weather {
 }
 
 export const WEATHERS: Record<WeatherId, Weather> = {
-  clear: { icon: '☼', name: 'Temps clair', hint: '', particles: null },
-  rain: { icon: '☂', name: 'Pluie', hint: 'Eau renforcée, Feu affaibli', particles: 'rain', tint: ['#6f86a8', 0.32] },
-  sun: { icon: '☀', name: 'Soleil ardent', hint: 'Feu renforcé, Eau affaiblie', particles: null, light: ['#ffcf6a', 0.22], tint: ['#ffe2b0', 0.15] },
-  sand: { icon: '≋', name: 'Tempête de sable', hint: 'Usure sauf Roche, Sol, Acier', particles: 'sand', tint: ['#c9a25e', 0.4], chip: ['rock', 'ground', 'steel'] },
-  hail: { icon: '❄', name: 'Grêle', hint: 'Usure sauf Glace', particles: 'snow', tint: ['#b9d4ea', 0.3], light: ['#dff0ff', 0.12], chip: ['ice'] },
-  fog: { icon: '☁', name: 'Brouillard', hint: 'La vue est bouchée', particles: null, haze: 0.38 },
+  clear: { icon: 'clear', name: 'Temps clair', hint: '', particles: null },
+  rain: { icon: 'rain', name: 'Pluie', hint: 'Eau renforcée, Feu affaibli', particles: 'rain', tint: ['#6f86a8', 0.32] },
+  sun: { icon: 'sun', name: 'Soleil ardent', hint: 'Feu renforcé, Eau affaiblie', particles: null, light: ['#ffcf6a', 0.22], tint: ['#ffe2b0', 0.15] },
+  sand: { icon: 'sand', name: 'Tempête de sable', hint: 'Usure sauf Roche, Sol, Acier', particles: 'sand', tint: ['#c9a25e', 0.4], chip: ['rock', 'ground', 'steel'] },
+  hail: { icon: 'hail', name: 'Grêle', hint: 'Usure sauf Glace', particles: 'snow', tint: ['#b9d4ea', 0.3], light: ['#dff0ff', 0.12], chip: ['ice'] },
+  fog: { icon: 'fog', name: 'Brouillard', hint: 'La vue est bouchée', particles: null, haze: 0.38 },
 };
 
 /** Multiplicateur de dégâts d'une attaque de ce type sous cette météo. */

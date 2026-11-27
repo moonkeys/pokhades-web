@@ -2017,6 +2017,57 @@
 .opt-note li::marker {
   color: var(--red, #e84040);
 }
+/* Les images d'une note (patchnotes.ts, PatchImage) : une capture scotchée sur le papier, sa
+   légende au feutre dessous ; les vignettes (Pokémon, objets) en rangée de cartes. */
+.opt-shot {
+  margin: calc(0.8 * var(--u)) 0 calc(0.4 * var(--u));
+}
+.opt-shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  background: var(--ink);
+  border: calc(0.25 * var(--u)) solid var(--ink);
+  box-shadow: calc(0.35 * var(--u)) calc(0.35 * var(--u)) 0 color-mix(in srgb, var(--ink) 25%, transparent);
+  rotate: -0.6deg;
+}
+.opt-shot figcaption,
+.opt-icons figcaption {
+  margin-top: calc(0.35 * var(--u));
+  font-size: max(11px, calc(1 * var(--u)));
+  font-weight: 700;
+  color: var(--muted);
+}
+.opt-icons {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(max(64px, calc(7 * var(--u))), 1fr));
+  gap: calc(0.6 * var(--u));
+  margin-top: calc(0.8 * var(--u));
+}
+.opt-icons figure {
+  margin: 0;
+  padding: calc(0.4 * var(--u));
+  text-align: center;
+  background: var(--paper-hi);
+  border: calc(0.15 * var(--u)) solid color-mix(in srgb, var(--ink) 30%, transparent);
+}
+.opt-icons img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: contain;
+}
+.opt-icons figcaption {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.opt-note img.pixel {
+  image-rendering: pixelated;
+}
 
 /* ── Boutique : étiquettes de prix, fiche d'article, bulles, mercenaires ── */
 /* Prix de l'étal : une petite ardoise cerclée de bois, le prix à la craie ; elle
@@ -2586,7 +2637,7 @@
   opacity: 0.85;
   cursor: pointer;
 }
-.cs-slot img:first-child {
+.cs-slot > img:first-child {
   width: calc(4.8 * var(--u));
   margin: calc(-0.4 * var(--u)) calc(-0.3 * var(--u));
 }
@@ -2715,14 +2766,15 @@
   white-space: nowrap;
   text-overflow: ellipsis;
 }
-/* Une Méga dans la lignée (filtre « Méga ◈ », data/megaline.ts) : le losange rose de l'anneau. */
-.cs-dex-card .cs-dex-mega {
+/* Une Méga dans la lignée (filtre Méga, data/megaline.ts) : le symbole Méga d'Essentials dans le
+   coin (ui/essicon.ts). Plus spécifique que « .cs-dex-card img », qui taille l'illustration. */
+.cs-dex-card img.cs-dex-mega {
   position: absolute;
-  top: calc(0.2 * var(--u));
+  top: calc(0.3 * var(--u));
   right: calc(0.4 * var(--u));
-  font-size: calc(1.1 * var(--u));
-  line-height: 1;
-  color: #e85aa8;
+  width: auto;
+  height: max(16px, calc(1.6 * var(--u)));
+  margin: 0;
 }
 .cs-dex-detail .cs-mega {
   color: #c23c86;
@@ -2995,8 +3047,14 @@
   color: #fff;
 }
 .cs-lineup .lead b::before {
-  content: '★ ';
-  color: var(--yel);
+  /* Le ruban doré (ui/essicon.ts, star), plus le signe ★. */
+  content: '';
+  display: inline-block;
+  width: 0.8em;
+  height: 0.9em;
+  margin-right: 0.3em;
+  background: url('/game/assets/pixel/ruban.png') center / 210% no-repeat;
+  image-rendering: pixelated;
 }
 .cs-lineup .cs-held {
   top: calc(1 * var(--u));
@@ -5612,4 +5670,251 @@ body.net-on .hud-team {
   width: calc(4.4 * var(--u));
   height: calc(4.4 * var(--u));
   image-rendering: pixelated;
+}
+
+/* ── Compte et sauvegarde en ligne (ui/accountscreen.ts) : la feuille des réglages ─────────
+ * Des tailles planchées en pixels : on s'y connecte souvent depuis un téléphone, où --u
+ * (1vw) rendrait le champ et le texte illisibles. */
+.acct .poster-wrap {
+  width: min(92vw, max(340px, calc(56 * var(--u))));
+}
+.acct-body {
+  display: grid;
+  align-content: start;
+  gap: max(8px, calc(0.9 * var(--u)));
+  min-height: 0;
+  padding: max(6px, calc(0.6 * var(--u))) 0;
+}
+.acct-body p {
+  margin: 0;
+}
+.acct .acct-lead {
+  font-size: max(15px, calc(1.45 * var(--u)));
+  font-weight: 700;
+}
+.acct .acct-fine {
+  font-size: max(13px, calc(1.1 * var(--u)));
+  color: var(--muted);
+}
+.acct-form {
+  display: grid;
+  gap: max(8px, calc(0.8 * var(--u)));
+}
+/* 16 px au moins : en dessous, Safari sur iPhone zoome la page quand on touche le champ. */
+.acct-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: max(8px, calc(0.7 * var(--u))) max(10px, calc(1 * var(--u)));
+  font: 700 max(16px, calc(1.5 * var(--u))) var(--body);
+  color: var(--ink);
+  background: var(--paper-hi);
+  border: 3px solid var(--ink);
+  border-radius: 0;
+  outline: none;
+}
+.acct-input:focus {
+  box-shadow: 0 0 0 3px var(--yel);
+}
+.acct-code {
+  font-family: var(--head);
+  font-size: max(26px, calc(2.6 * var(--u)));
+  letter-spacing: 0.4em;
+  text-align: center;
+}
+.acct-form .opt-big:disabled,
+.acct-actions button:disabled,
+.acct-card:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+.acct-link {
+  justify-self: start;
+  padding: 0;
+  font: 700 max(13px, calc(1.1 * var(--u))) var(--body);
+  color: var(--ink);
+  text-decoration: underline;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.acct .acct-error {
+  font-size: max(13px, calc(1.15 * var(--u)));
+  font-weight: 700;
+  color: #b3261e;
+}
+/* (Préfixés par .acct : « .poster p » fixerait sinon leur taille.) */
+/* L'état de la synchro : un liseré, vert à l'abri, gris hors ligne. */
+.acct .acct-state {
+  padding: max(6px, calc(0.5 * var(--u))) max(10px, calc(0.9 * var(--u)));
+  font-size: max(13px, calc(1.15 * var(--u)));
+  border-left: 4px solid #3f8f4e;
+  background: color-mix(in srgb, #3f8f4e 12%, transparent);
+}
+.acct .acct-state.offline {
+  border-left-color: var(--muted);
+  background: color-mix(in srgb, var(--muted) 12%, transparent);
+}
+.acct-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: max(8px, calc(0.8 * var(--u)));
+}
+.acct-actions .opt-switch {
+  min-height: 40px;
+  font-size: max(15px, calc(1.35 * var(--u)));
+}
+.acct-danger.sure {
+  color: var(--paper);
+  background: var(--spray);
+}
+/* Le conflit : deux cartes côte à côte (l'une sous l'autre sur téléphone). */
+.acct-pick {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: max(8px, calc(1 * var(--u)));
+}
+.acct-card {
+  display: grid;
+  gap: 4px;
+  padding: max(10px, calc(1 * var(--u)));
+  text-align: left;
+  font: inherit;
+  color: var(--ink);
+  background: var(--paper-hi);
+  border: 3px solid var(--ink);
+  cursor: pointer;
+}
+.acct-card:hover,
+.acct-card:focus-visible {
+  background: var(--yel);
+}
+.acct-card b {
+  font: normal max(20px, calc(2 * var(--u))) var(--head);
+  letter-spacing: 0.06em;
+}
+.acct-card small {
+  font-size: max(12px, calc(1 * var(--u)));
+  color: var(--muted);
+}
+.acct-card span {
+  font-size: max(13px, calc(1.15 * var(--u)));
+  font-weight: 700;
+}
+.acct-close {
+  display: block;
+  margin: max(10px, calc(1 * var(--u))) 0 0 auto;
+  padding: 4px 12px;
+  font: normal max(15px, calc(1.35 * var(--u))) var(--head);
+  letter-spacing: 0.06em;
+  color: var(--ink);
+  background: none;
+  border: 2px solid var(--ink);
+  cursor: pointer;
+}
+/* Le petit mot de l'écran titre : créer un compte pour garder sa progression. */
+.title-cloud {
+  max-width: max(280px, calc(40 * var(--u)));
+  margin: 0;
+  padding: 0;
+  font: 700 max(11px, calc(1.1 * var(--u))) var(--body);
+  text-align: center;
+  color: color-mix(in srgb, var(--paper) 70%, transparent);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.title-cloud b {
+  color: var(--yel);
+}
+.title-cloud.warn b {
+  color: var(--spray);
+}
+.title-screen.under .title-cloud {
+  opacity: 0;
+}
+
+/* ── Icônes d'Essentials dans le texte (ui/essicon.ts) ──────────────────────────────────────
+ * Le symbole Méga (14 × 22) et les icônes d'objets (48 × 48, l'objet au centre) remplacent ◈, ⚖
+ * et ✦ : à la hauteur du texte, agrandies sans flou. Les objets ont une marge vide dans leur case
+ * de 48 px : on les affiche plus grands et on rogne cette marge (marges négatives). */
+img.ess-ico {
+  display: inline-block;
+  width: auto;
+  height: 1.15em;
+  margin: 0 0.15em 0 0;
+  vertical-align: -0.2em;
+  image-rendering: pixelated;
+}
+img.ess-item {
+  height: 1.9em;
+  margin: -0.45em -0.15em -0.45em -0.1em;
+  vertical-align: -0.55em;
+}
+/* Les légendaires donateurs : leur icône de menu (deux images de 64 px côte à côte), dont on ne
+   montre que la première, recadrée au carré. */
+img.ess-mon {
+  width: 1.9em;
+  height: 1.9em;
+  margin: -0.45em 0.05em -0.45em -0.15em;
+  vertical-align: -0.6em;
+  object-fit: cover;
+  object-position: 0 50%;
+}
+/* Dans les pastilles rondes des dons (écran des récompenses, fiche des dons) : l'icône remplit la
+   pastille, à la place de l'ancien signe blanc. */
+.rw-icon img.ess-ico,
+.stats-boons .boon i img.ess-ico {
+  width: 120%;
+  height: 120%;
+  margin: 0;
+  vertical-align: 0;
+}
+/* Un don duo : ses deux légendaires, le premier en haut à gauche, le second devant, en bas à droite. */
+.ess-duo {
+  position: relative;
+  display: inline-block;
+  width: 2.2em;
+  height: 1.6em;
+  vertical-align: -0.45em;
+}
+.ess-duo img.ess-mon {
+  position: absolute;
+  width: 1.5em;
+  height: 1.5em;
+  margin: 0;
+}
+.ess-duo img.ess-mon:first-child {
+  left: -0.1em;
+  top: -0.15em;
+}
+.ess-duo img.ess-mon:last-child {
+  right: -0.1em;
+  bottom: -0.2em;
+}
+/* Dans les pastilles rondes : les deux se partagent le rond. */
+.rw-icon .ess-duo,
+.stats-boons .boon i .ess-duo {
+  width: 100%;
+  height: 100%;
+  vertical-align: 0;
+}
+.rw-icon .ess-duo img.ess-mon,
+.stats-boons .boon i .ess-duo img.ess-mon {
+  width: 78%;
+  height: 78%;
+}
+/* Le VS du Duel remplit sa case (pas de marge comme les objets) : plus bas, pour rester à la taille des autres. */
+img.ess-duel {
+  height: 1.2em;
+  margin: 0 0.2em 0 0;
+  vertical-align: -0.15em;
+}
+/* Le contour d'encre des petits chiffres (poids sur les puces) ne doit pas déborder sur l'icône. */
+.cs-wt img.ess-ico,
+.cs-moves .wt img.ess-ico {
+  vertical-align: -0.6em;
+}
+.cs-dex-filters img.ess-ico {
+  margin: 0 0 0 0.35em;
 }

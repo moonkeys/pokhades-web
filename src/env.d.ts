@@ -8,4 +8,7 @@ interface ImportMetaEnv {
   readonly VITE_TURN_URLS?: string;
   readonly VITE_TURN_USERNAME?: string;
   readonly VITE_TURN_CREDENTIAL?: string;
+  /** Projet Supabase de la sauvegarde en ligne (net/cloud.ts, README) : son adresse et sa clé publique « anon ». */
+  readonly VITE_SUPABASE_URL?: string;
+  readonly VITE_SUPABASE_ANON_KEY?: string;
 }

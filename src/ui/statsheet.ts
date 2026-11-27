@@ -1,3 +1,4 @@
+import { donorIcon, duoIcon } from './essicon';
 import { sfx } from '../audio/audio';
 import { BOONS, DONORS, RARITY_COLOR, RARITY_NAME, valueText, type Boons } from '../combat/boons';
 import type { Pokemon } from '../combat/pokemon';
@@ -120,7 +121,8 @@ export class StatSheet {
     if (boons.ult) {
       const d = DONORS[boons.ult];
       const row = el('div', 'boon ult', box);
-      const i = el('i', '', row, d.sym);
+      const i = el('i', '', row);
+      donorIcon(d.dex, i);
       i.style.setProperty('--c', typeColor(d.type));
       el('b', '', row, `Ultime : ${d.ult}`);
       el('small', '', row, `${d.name} · touche R`);
@@ -135,7 +137,9 @@ export class StatSheet {
       if (!def) continue;
       const donor = def.god !== 'duo' ? DONORS[def.god] : null;
       const row = el('div', 'boon', list);
-      const i = el('i', '', row, def.duo ? '✧' : (donor?.sym ?? '?'));
+      const i = el('i', '', row);
+      if (donor) donorIcon(donor.dex, i);
+      else if (def.duo) duoIcon(DONORS[def.duo[0]].dex, DONORS[def.duo[1]].dex, i);
       i.style.setProperty('--c', donor ? typeColor(donor.type) : 'var(--spray)');
       const body = el('div', '', row);
       const name = el('b', '', body, def.name);

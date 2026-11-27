@@ -896,6 +896,66 @@ Si d'autres se voient en jeu, noter leur emplacement.
   beaucoup d'une partie à l'autre (Pierre contre Feu-Plante : deux victoires
   sur quatre).
 
+### 2.11 Compte et sauvegarde en ligne (26 novembre 2026)
+
+Demande : « créer une espèce de compte juste pour sauvegarder nos données […]
+même si on passe du mobile à l'ordi » ; « sécurisé », « on garde le moins de
+choses possible », compte facultatif, un petit mot pour le proposer. Choix
+du joueur : e-mail et code à 6 chiffres (plutôt qu'une clé secrète sans
+e-mail, irrécupérable si on la perd).
+
+- Supabase : `supabase/schema.sql` (table `saves`, RLS, `delete_account`),
+  client `src/net/cloud.ts` (fetch seuls), écran `src/ui/accountscreen.ts`,
+  entrée *Compte* au menu principal et dans Échap → Réglages. Voir README.
+- Testé avec `scripts/fake-supabase.mjs` (deux origines) et le schéma sur
+  PostgreSQL 16 local.
+- **À faire par le propriétaire** : créer le projet Supabase, coller le
+  schéma, mettre le code `{{ .Token }}` dans les modèles d'e-mail, brancher
+  un SMTP (le serveur intégré n'écrit qu'à l'équipe du projet), puis les
+  variables GitHub `SUPABASE_URL` et `SUPABASE_ANON_KEY` (README, étapes 1
+  à 7). Sans elles, rien ne change dans le jeu publié.
+- Pas encore testé contre un vrai projet Supabase (formats exacts des
+  réponses d'erreur, envoi des e-mails).
+
+### 2.12 Notes de version illustrées (26 novembre 2026)
+
+- Captures et vignettes dans les notes (`PatchImage`, `artIcons`), outil
+  `scripts/shoot.mjs` (Chrome sans fenêtre). Illustrées : le compte, le
+  filtre Méga du Pokédex, les dix-sept lignées.
+- À chaque nouveauté visible : une scène et une image dans sa note. Pas
+  encore de scène en run (salle, faune) : il faudra savoir y amener un
+  Pokémon précis, par exemple pour montrer une nouvelle espèce sauvage.
+
+### 2.13 Icônes d'Essentials (26 novembre 2026)
+
+Retour : « je veux pas de symboles dessinés qui n'ont pas la DA du jeu ;
+des sprites d'Essentials, pixelisés ». Fait : ◈ (Méga), ⚖ (poids) et ✦ des
+Éclats de Champion (bilan de run) → `src/ui/essicon.ts`.
+
+Puis tous les autres (« un sprite qui correspond vraiment, sinon un symbole
+pixel art dans le même style ») : portes des salles spéciales (Chrono Ball,
+Piquants, Pièce Rune, Eau Fraîche, Rune Sort, Ceinture Noire, Œuf Chance,
+Miel), grotte (Corde Sortie), météo (Roches), as et MVP (étoile chromatique),
+Débloqué (Poké Ball « possédé » du Pokédex), Nuzlocke (Poké Ball éteinte),
+talent (Ability Urge), nature (Herbe Mental), provenance (Carte), contrats
+(Lettre), exploits (Morceau d'Étoile), Route Victoire (Couronne Antique),
+dégâts du bilan (Bandeau Muscle), dons duo (leurs deux légendaires), légendaires
+donateurs (leurs icônes de menu). Deuxième passe, sur planche de choix (même
+jour) : VS des transitions de combat pour le Duel, ruban doré pour l'as et
+le MVP, rocher d'Éclate-Roc pour la grotte ; dessinés en pixel art (« dans
+la même DA des jeux Pokémon ») : chrono du Défi, trois silhouettes de
+Pikachu pour la Horde, pictogrammes de météo (`scripts/pixel-icons.py`,
+`public/game/assets/pixel/`). Icônes des légendaires recentrées (décalage
+mesuré par espèce). Fiche de toutes les icônes : artefact « Icônes de
+Pokhades ». Troisième passe : météo redessinée avec
+cinq tons par matière, reflets et contours colorés (style des objets des jeux
+DS ; tornade de sable, nappes de brume, nuages en bosses), et les dons duo
+montrent leurs deux légendaires au lieu du Nœud Destin. Les ☠ des portes de boss et ★ des
+textes de notification sont retirés (l'illustration suffit).
+Gardés exprès : la Poké Ball barrée de l'écran des récompenses (motif du
+logo, pas un petit signe) et les particules d'aura (feuilles, arcs : des
+effets animés). Les flèches, ✕ et ✔ restent : ce sont des signes typographiques.
+
 ## 3. Déjà notés, toujours en attente
 
 - **Jeu en ligne** (src/net/, voir README) : lobby, visite du Repaire de

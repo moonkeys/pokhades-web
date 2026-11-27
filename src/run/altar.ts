@@ -1,3 +1,4 @@
+import { iconText } from '../ui/essicon';
 import { sfx } from '../audio/audio';
 import { loadInfo, loadSheet } from '../assets/pmd';
 import { Actor } from '../entities/actor';
@@ -207,7 +208,7 @@ export class Altar {
     const c = CURSES[this.curse];
     this.prompt.replaceChildren(
       el('shop-name', 'Pacte de l’autel'),
-      el('da-stamp shop-cost', `☠ ${c.name}`),
+      iconText('div', 'da-stamp shop-cost', null, 'curse', c.name),
       el('shop-desc', `Un don d’un légendaire, d’un cran plus rare. En échange, jusqu’à la fin de l’acte : ${c.desc.charAt(0).toLowerCase()}${c.desc.slice(1)}`),
       el('shop-note', 'Une seule fois. Tu peux aussi passer ton chemin.'),
       el('shop-buy', '✔ Signer [E]'),

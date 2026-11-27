@@ -1,3 +1,4 @@
+import { essIcon, iconText, isEssIcon } from './essicon';
 import { loadMove, type Move } from '../combat/moves';
 import { sfx } from '../audio/audio';
 import { fetchJson } from '../assets/json';
@@ -252,7 +253,7 @@ const DEX_FILTERS: readonly [DexFilter, string][] = [
   ['locked', 'À débloquer'],
   ['seen', 'Rencontrés'],
   // Les lignées qui ont une Méga jouable (data/megaline.ts), croisées ou non : on sait ce qu'on cherche.
-  ['mega', 'Méga ◈'],
+  ['mega', 'Méga'],
   ['all', 'Tous'],
 ];
 
@@ -967,6 +968,8 @@ export class CampScreen {
     const filters = el('div', 'cs-tabs cs-dex-filters', main);
     for (const [id, label] of DEX_FILTERS) {
       const t = el('button', this.dexFilter === id ? 'sel' : '', filters, label);
+      // Le filtre Méga porte le symbole Méga d'Essentials, comme les cartes qu'il garde.
+      if (id === 'mega') essIcon('mega', t);
       t.addEventListener('click', () => {
         this.dexFilter = id;
         void this.render();
@@ -982,9 +985,11 @@ export class CampScreen {
       if (this.news.has(String(id))) newMark(card);
       el('small', 'no', card, `n°${String(dexOf(id)).padStart(3, '0')}`);
       // Une Méga dans la lignée : un losange dans le coin de la carte.
-      if (megaInLine(id).length) el('span', 'cs-dex-mega', card, '◈').title = 'Méga-évolution dans la lignée';
+      if (megaInLine(id).length) essIcon('mega', card, 'cs-dex-mega').title = 'Méga-évolution dans la lignée';
       el('b', '', card, names.get(id) ?? '???');
-      el('small', 'state', card, waiting(id) ? '! Au Repaire' : own ? '★ Débloqué' : questFor(id) ? 'Quête' : !seen.has(id) ? '—' : gauge(id));
+      const state = el('small', 'state', card, waiting(id) ? '! Au Repaire' : own ? 'Débloqué' : questFor(id) ? 'Quête' : !seen.has(id) ? '—' : gauge(id));
+      // Débloqué : la Poké Ball « possédé » du Pokédex d'Essentials devant le mot.
+      if (own && !waiting(id)) state.prepend(essIcon('own'));
       card.addEventListener('click', () => {
         this.dexId = id;
         void this.render();
@@ -1007,12 +1012,12 @@ export class CampScreen {
     // Où le trouver, une fois croisé : ses biomes, et les grottes qui le gardent.
     // Son talent, s'il en a un que le jeu fait jouer, ou celui d'une de ses évolutions.
     const talent = met || own ? talentInLine(id) : null;
-    if (talent) el('small', 'cs-info cs-talent', card, `◆ Talent : ${talent.name} — ${talent.desc}${talent.level ? ` (une fois évolué, dès le niveau ${talent.level})` : ''}.`);
+    if (talent) iconText('small', 'cs-info cs-talent', card, 'talent', ` Talent : ${talent.name} — ${talent.desc}${talent.level ? ` (une fois évolué, dès le niveau ${talent.level})` : ''}.`);
     // Ses Méga-évolutions, nommées une fois l'espèce croisée (sinon juste annoncées).
     const megas = megaInLine(id);
     if (megas.length) {
       const names = await Promise.all(megas.map((m) => (m.level && met ? species(m.species).then((d) => d.name) : Promise.resolve(undefined))));
-      el('small', 'cs-info cs-mega', card, met || own ? `◈ Méga-évolution : ${megas.map((m, i) => megaText(m, names[i])).join(' ou ')}. Avec le Méga-Anneau d’Alakazam, touche F en run.` : '◈ Une Méga-évolution l’attend dans sa lignée.');
+      iconText('small', 'cs-info cs-mega', card, 'mega', met || own ? ` Méga-évolution : ${megas.map((m, i) => megaText(m, names[i])).join(' ou ')}. Avec le Méga-Anneau d’Alakazam, touche F en run.` : ' Une Méga-évolution l’attend dans sa lignée.');
     }
     if (met) {
       const { wild, caves } = habitat(id);
@@ -1107,7 +1112,7 @@ export class CampScreen {
     // ── Colonne de gauche : l'équipe (places achetées), puis les Pokémon restés au camp.
     const col = el('div', 'cs-roster', wrap);
     const label = el('div', 'cs-label', col, `Équipe ${save.team.length}/${slots} · `);
-    const gauge = el('span', `cs-weight${load > cap ? ' over' : ''}`, label, `⚖ ${load} / ${cap}`);
+    const gauge = iconText('span', `cs-weight${load > cap ? ' over' : ''}`, label, 'weight', ` ${load} / ${cap}`);
     gauge.title = load > cap ? 'Trop lourd pour partir : retire un Pokémon, un objet ou une grosse attaque.' : 'Poids d’équipe : Pokémon (selon le stade et la force), objets tenus (selon leur puissance) et grosses attaques.';
     for (let i = 0; i < slots; i++) {
       const sid = save.team[i];
@@ -1121,7 +1126,9 @@ export class CampScreen {
       if (this.news.has(String(sid))) newMark(row);
       const txt = el('div', '', row);
       el('b', '', txt, nameOf(sid));
-      el('small', '', txt, `N.${startLevel(save, sid, BASE_TEAM_LEVEL)} · ⚖ ${weights.get(sid)?.total ?? '?'}`);
+      const lv = el('small', '', txt, `N.${startLevel(save, sid, BASE_TEAM_LEVEL)} · `);
+      essIcon('weight', lv);
+      lv.append(` ${weights.get(sid)?.total ?? '?'}`);
       const held = heldItem(save.held[sid]);
       if (held) icon(held.icon, row, 'cs-held');
       this.dragSource(row, { kind: 'mon', id: sid, from: 'team' });
@@ -1147,7 +1154,7 @@ export class CampScreen {
       const chip = el('div', `cs-chip${uid === id ? ' sel' : ''}${away ? ' away' : ''}`, bench);
       art(spOf(uid), chip);
       if (this.news.has(String(uid))) newMark(chip);
-      el('i', 'cs-wt', chip, `⚖${weights.get(uid)?.total ?? '?'}`);
+      iconText('i', 'cs-wt', chip, 'weight', String(weights.get(uid)?.total ?? '?'));
       const nature = natureText(save.mons[uid].nature);
       chip.title = away ? `${nameOf(uid)} — en mission` : `${nameOf(uid)} — ${nature} — poids ${weights.get(uid)?.total ?? '?'}`;
       if (away) {
@@ -1203,21 +1210,23 @@ export class CampScreen {
     const chips = el('div', 'cs-chips', who);
     const chip = (icon: string, text: string, tip: string) => {
       const c = el('span', 'cs-chip2', chips);
-      el('i', '', c, icon);
+      // Méga et poids : les sprites d'Essentials (ui/essicon.ts) ; le reste garde son signe.
+      if (isEssIcon(icon)) essIcon(icon, el('i', '', c));
+      else el('i', '', c, icon);
       if (text) c.append(text);
       c.title = tip;
     };
     const w0 = weights.get(id);
-    if (w0) chip('⚖', String(w0.total), `Poids ${w0.total} : Pokémon ${w0.mon} · attaques ${w0.moves} · objet ${w0.item}. L’équipe ne doit pas dépasser son plafond pour partir.`);
-    chip('✦', natureText(indiv.nature).split(' (')[0], `Nature : ${natureText(indiv.nature)}`);
+    if (w0) chip('weight', String(w0.total), `Poids ${w0.total} : Pokémon ${w0.mon} · attaques ${w0.moves} · objet ${w0.item}. L’équipe ne doit pas dépasser son plafond pour partir.`);
+    chip('nature', natureText(indiv.nature).split(' (')[0], `Nature : ${natureText(indiv.nature)}`);
     // Le talent (data/abilities.ts), ou celui qu'apportera une évolution (Têtarte → Tarpaud).
     const talent = talentInLine(speciesOf(save, id));
-    if (talent) chip('◆', talent.name, `Talent : ${talent.name} — ${talent.desc}${talent.level ? ` (une fois évolué, dès le niveau ${talent.level})` : ''}.`);
+    if (talent) chip('talent', talent.name, `Talent : ${talent.name} — ${talent.desc}${talent.level ? ` (une fois évolué, dès le niveau ${talent.level})` : ''}.`);
     // Sa Méga-évolution, s'il en a une dans sa lignée (le nom de la forme, et quand elle devient possible).
     const mega = megaInLine(speciesOf(save, id))[0];
-    if (mega) chip('◈', 'Méga', `${megaText(mega)} : avec le Méga-Anneau d’Alakazam, touche F en run.`);
+    if (mega) chip('mega', 'Méga', `${megaText(mega)} : avec le Méga-Anneau d’Alakazam, touche F en run.`);
     const from = originShort(save, id);
-    if (from) chip('⚑', '', from);
+    if (from) chip('origin', '', from);
     const act = el('div', 'cs-actions', who);
     if (busy(save, id)) el('small', 'cs-info', act, 'En mission chez Démolosse.');
     else {
@@ -1278,7 +1287,7 @@ export class CampScreen {
       if (save.tms.includes(m.api)) el('i', 'ct', row, 'CT');
       // Les grosses frappes pèsent (meta/weight.ts) ; les faibles et les statuts, rien.
       const mw = moveWeight(m.power);
-      if (mw) el('i', 'wt', row, `⚖${mw}`);
+      if (mw) iconText('i', 'wt', row, 'weight', String(mw));
       this.dragSource(row, { kind: 'move', api: m.api, from });
       row.addEventListener('click', () => setLoadout(from === 'slot' ? equipped.filter((a) => a !== m.api) : equipped.length < 4 ? [...equipped, m.api] : equipped));
       return row;
@@ -1574,7 +1583,8 @@ export class CampScreen {
       if (state === 'ready') newMark(card);
       el('div', 'cs-head', card).append(el('b', '', undefined, q.name));
       el('small', 'cs-info', card, q.desc);
-      el('small', 'cs-next', card, state === 'done' ? `★ ${names.get(q.reward) ?? '…'} a rejoint la rébellion` : `Récompense : ${q.legendary ? 'un Pokémon légendaire' : 'un Pokémon rare'}`);
+      const next = el('small', 'cs-next', card, state === 'done' ? ` ${names.get(q.reward) ?? '…'} a rejoint la rébellion` : `Récompense : ${q.legendary ? 'un Pokémon légendaire' : 'un Pokémon rare'}`);
+      if (state === 'done') next.prepend(essIcon('own'));
       if (state === 'active' || state === 'ready') {
         const bar = el('div', 'cs-dex-bar', card);
         bar.style.setProperty('--w', `${Math.min(100, (n / q.goal) * 100)}%`);
@@ -1598,7 +1608,7 @@ export class CampScreen {
           // Repaire plein : il attend près du feu qu'on lui fasse de la place.
           welcomeMon(save, id, 'quest');
           ctx.persist();
-          void species(id).then((d) => ctx.notify('Quête accomplie', `★ ${d.name} rejoint la rébellion !`, id));
+          void species(id).then((d) => ctx.notify('Quête accomplie', `${d.name} rejoint la rébellion !`, id));
           // Le nouveau venu s'installe au camp, parmi les libérés.
           ctx.teamChanged();
           void this.render();
@@ -1629,7 +1639,8 @@ export class CampScreen {
     save.contracts.list.forEach((c, i) => {
       const ready = c.n >= c.goal;
       const card = el('div', `cs-card da-paper cs-mission cs-quest q-${ready ? 'ready' : 'active'}`, grid);
-      el('div', 'cs-icon cs-build-art cs-teaser', card, '✎');
+      // Un contrat, c'est un courrier : la Lettre d'Essentials.
+      essIcon('contract', el('div', 'cs-icon cs-build-art cs-teaser', card));
       if (ready) newMark(card);
       el('div', 'cs-head', card).append(el('b', '', undefined, 'Contrat'));
       el('small', 'cs-info', card, contractText(c));
@@ -2010,14 +2021,15 @@ export class CampScreen {
     const chips = el('div', 'cs-chips', who);
     const chip = (icon: string, text: string, tip: string) => {
       const ch = el('span', 'cs-chip2', chips);
-      el('i', '', ch, icon);
+      if (isEssIcon(icon)) essIcon(icon, el('i', '', ch));
+      else el('i', '', ch, icon);
       if (text) ch.append(text);
       ch.title = tip;
     };
     const w = pokemonWeight(c.species);
-    chip('⚖', String(w), `Poids ${w} (sans ses attaques ni son objet) : l’équipe ne doit pas dépasser son plafond pour partir.`);
+    chip('weight', String(w), `Poids ${w} (sans ses attaques ni son objet) : l’équipe ne doit pas dépasser son plafond pour partir.`);
     const from = originLabel(c.origin ?? '');
-    if (from) chip('⚑', from, `Provenance : ${from}`);
+    if (from) chip('origin', from, `Provenance : ${from}`);
     const act = el('div', 'cs-actions cs-rec-act', who);
     const yes = el('button', 'cs-add', act) as HTMLButtonElement;
     el('i', '', yes, '＋');
@@ -2041,7 +2053,7 @@ export class CampScreen {
     });
     // Le talent, en toutes lettres (sur la fiche de la hutte, il tient dans une pastille).
     const talent = talentInLine(c.species);
-    if (talent) el('small', 'cs-info cs-talent', card, `◆ Talent : ${talent.name} — ${talent.desc}${talent.level ? ` (une fois évolué, dès le niveau ${talent.level})` : ''}.`);
+    if (talent) iconText('small', 'cs-info cs-talent', card, 'talent', ` Talent : ${talent.name} — ${talent.desc}${talent.level ? ` (une fois évolué, dès le niveau ${talent.level})` : ''}.`);
 
     // Ses stats au niveau de départ, sur la même échelle que la fiche de la hutte.
     const stats = el('div', 'cs-stats', card);
@@ -2100,7 +2112,7 @@ export class CampScreen {
     const ready = FEATS.filter((f) => featState(save, f) === 'ready');
     if (ready.length > 1) {
       const all = el('button', 'cs-claim all', main);
-      el('i', '', all, '✦');
+      essIcon('feat', el('i', '', all));
       all.append(`Tout réclamer · ${ready.length} exploits`);
       all.addEventListener('click', () => {
         for (const f of ready) claimFeat(save, f.id);
@@ -2170,7 +2182,7 @@ export class CampScreen {
     }
     const w = await teamWeight(save);
     const over = w.total > w.cap;
-    el('p', `cs-load${over ? ' over' : ''}`, main, over ? `⚖ Poids ${w.total} / ${w.cap} — trop lourd : allège l’équipe à la hutte de Porygon, ou monte le plafond chez Alakazam.` : `⚖ Poids ${w.total} / ${w.cap}`);
+    iconText('p', `cs-load${over ? ' over' : ''}`, main, 'weight', over ? ` Poids ${w.total} / ${w.cap} — trop lourd : allège l’équipe à la hutte de Porygon, ou monte le plafond chez Alakazam.` : ` Poids ${w.total} / ${w.cap}`);
     const go = el('button', `cs-go${over ? ' heavy' : ''}`, main) as HTMLButtonElement;
     go.disabled = over;
     el('span', 'cs-go-word', go, 'Partir');

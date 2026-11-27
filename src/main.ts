@@ -19,7 +19,7 @@ import { Camp, CAMP_SEED, campPockets, STATIONS, stationId, type Station } from 
 import { CampScreen, movePool, teamWeight, type CampCtx } from './ui/campscreen';
 import { NetBadge } from './ui/netbadge';
 import { BAIES, FIELD_FOOD, QUARRY_STONE, RESOURCES, RESOURCE_IDS, ROOM_RES, SHARDS, UPGRADES, applyHeld, heldItem, teamSlots, type ResourceId } from './meta/catalog';
-import { addMon, capacity, exile, grantAlly, grantChampion, isFull, level, loadSave, markSeen, monName, ownedSpecies, ownsSpecies, recordDefeat, resetSave, roster, speciesOf, startLevel, welcomeMon, writeSave } from './meta/save';
+import { addMon, capacity, exile, grantAlly, grantChampion, isFull, level, loadSave, markSeen, onSaveWritten, monName, ownedSpecies, ownsSpecies, recordDefeat, resetSave, roster, speciesOf, startLevel, welcomeMon, writeSave } from './meta/save';
 import { applyTraits, natureText } from './meta/mons';
 import { quest, questEvent, type QuestEvent, contractEvent, contractText } from './meta/quests';
 import { leagueOpen, readyFeats } from './meta/feats';
@@ -85,6 +85,8 @@ import { TrainScreen } from './ui/trainscreen';
 import { StarterScreen } from './ui/starterscreen';
 import { QuizScreen, STARTER_NATURE } from './ui/quizscreen';
 import { TitleScreen } from './ui/titlescreen';
+import { AccountScreen } from './ui/accountscreen';
+import { cloudBoot, cloudStatus, onCloudChange, startCloud } from './net/cloud';
 import { StatSheet, type SheetEntry } from './ui/statsheet';
 import { BIOME_COLOR, BIOME_ORDER, BIOMES, REPAIRE, type Ambiance } from './world/biomes';
 import { generate, landReachable, type WorldMap, type WorldObject } from './world/generate';
@@ -161,6 +163,9 @@ const FIRST_ACE_ATK = 0.8;
 const FIRST_ACE_HP = 0.5;
 
 async function boot(): Promise<void> {
+  // Sauvegarde en ligne (net/cloud.ts) : la partie du compte se récupère pendant que les images
+  // se chargent ; on ne l'attend qu'au moment de lire la sauvegarde, quelques secondes au plus.
+  const cloudReady = cloudBoot();
   const canvas = document.getElementById('screen') as HTMLCanvasElement;
   const loading = document.getElementById('loading')!;
   const [tileset, surf, fieldSheet] = await Promise.all([
@@ -176,7 +181,10 @@ async function boot(): Promise<void> {
   audio.setVolumes(opts);
   audio.preload();
   /** Progression permanente (Baies, équipe, CT, améliorations, objets) : src/meta/save.ts. */
+  await cloudReady;
   const save = loadSave();
+  // Chaque écriture de la sauvegarde part ensuite en ligne (si le joueur a un compte).
+  startCloud(onSaveWritten);
   const renderer = new Renderer(canvas, atlas, surf, fieldSheet);
   // ?debug : le menu principal sauté et l'objet `window.pokhades` exposé, pour les tests automatisés. Réservé au
   // serveur de dev : dans le jeu publié, le paramètre ne fait rien (retour de test : « les gens vont faire n'importe quoi »).
@@ -219,6 +227,12 @@ async function boot(): Promise<void> {
   const quizScreen = new QuizScreen(document.body);
   /** Le menu principal, au lancement (ui/titlescreen.ts) : montré plus bas, juste avant le premier enterCamp. */
   const titleScreen = new TitleScreen(document.body);
+  // Créé après l'écran titre : leurs écouteurs clavier passent dans cet ordre, et le titre se
+  // retire (sub) tant que le compte est ouvert par-dessus. La partie du compte remplace celle
+  // d'ici : on recharge la page, toute la partie en mémoire en découle.
+  const accountScreen = new AccountScreen(document.body, () => location.reload());
+  /** Le conflit de sauvegarde a déjà été annoncé pendant la partie (une seule fois). */
+  let conflictToldAt = 0;
   const dialogue = new Dialogue(document.body);
   /** Dresseur du champion, en salle de boss. */
   let trainer: Trainer | null = null;
@@ -343,7 +357,7 @@ async function boot(): Promise<void> {
   /** Une espèce vient d'être débloquée : on la salue (CombatArena, « ★ X rejoint la rébellion ! »). */
   const welcome = (id: number) => {
     sfx('pkmnGet', -4);
-    void loadInfo(id).then((i) => runHud.notify({ title: 'Débloqué', text: `★ ${i.name} rejoint la rébellion !`, art: id, color: 'var(--yel)' }));
+    void loadInfo(id).then((i) => runHud.notify({ title: 'Débloqué', text: `${i.name} rejoint la rébellion !`, art: id, color: 'var(--yel)' }));
   };
   // Chaque ennemi tombé en run compte pour son espèce, qui l'achève importe peu
   // (GameManager.record_defeat) ; le dixième d'une forme de base la débloque.
@@ -421,7 +435,7 @@ async function boot(): Promise<void> {
       renderer.bake(world);
       run.curse = curse;
       run.curseAct = run.act;
-      runHud.notify({ title: `Pacte scellé : ${CURSES[curse].name}`, text: `${CURSES[curse].desc} Jusqu’à la fin de l’acte.`, icon: '☠', color: '#b48ce8' });
+      runHud.notify({ title: `Pacte scellé : ${CURSES[curse].name}`, text: `${CURSES[curse].desc} Jusqu’à la fin de l’acte.`, icon: 'curse', color: '#b48ce8' });
       run.donor = run.boons.pickDonor(run.rng) ?? undefined;
       run.boons.bonus = 1;
       director.grant('boon');
@@ -1023,7 +1037,7 @@ async function boot(): Promise<void> {
     cry(player.speciesId, -4);
   };
   /** Un écran ouvert par-dessus le jeu : la simulation se fige. */
-  const paused = () => rewardScreen.open || evolutionScreen.open || bossPreview.open || runSummary.open || settingsMenu.open || campScreen.open || statSheet.open || recruitScreen.open || swapScreen.open || talkScreen.open || trainScreen.open || starterScreen.open || quizScreen.open || journal.open || titleScreen.open;
+  const paused = () => rewardScreen.open || evolutionScreen.open || bossPreview.open || runSummary.open || settingsMenu.open || campScreen.open || statSheet.open || recruitScreen.open || swapScreen.open || talkScreen.open || trainScreen.open || starterScreen.open || quizScreen.open || journal.open || titleScreen.open || accountScreen.open;
   /** Clic sur un membre du HUD : comme Tab, mais vers celui-là, s'il est debout et qu'on l'est aussi. */
   const pickMember = (i: number) => {
     const m = team[i];
@@ -1568,7 +1582,7 @@ async function boot(): Promise<void> {
     run.money = 100 * level(save, 'purse');
     runNuzlocke = opts.nuzlocke && !net.inRun;
     nuzCaptured.clear();
-    if (runNuzlocke) runHud.notify({ title: 'Mode Nuzlocke', text: 'Un Pokémon encore K.O. ou capturé en fin de run sera relâché pour de bon.', icon: '☠', color: '#e84040' });
+    if (runNuzlocke) runHud.notify({ title: 'Mode Nuzlocke', text: 'Un Pokémon encore K.O. ou capturé en fin de run sera relâché pour de bon.', icon: 'faint', color: '#e84040' });
     runBaies = 0;
     for (const r of RESOURCE_IDS) runRes[r] = 0;
     stats.reset();
@@ -1669,9 +1683,9 @@ async function boot(): Promise<void> {
     // Hôte : au retour de run, les invités réapparaissent à côté de lui.
     for (const v of visitors) v.remoteIn = null;
     netCamp();
-    if (runBaies > 0) runHud.notify({ title: 'Retour au Repaire', text: `+${runBaies} Baies rapportées de la run.`, icon: '✦', color: 'var(--yel)' });
+    if (runBaies > 0) runHud.notify({ title: 'Retour au Repaire', text: `+${runBaies} Baies rapportées de la run.`, icon: 'berry', color: 'var(--yel)' });
     const resGain = RESOURCE_IDS.filter((r) => runRes[r] > 0).map((r) => `+${runRes[r]} ${RESOURCES[r].name}`);
-    if (resGain.length) runHud.notify({ title: 'Ressources', text: `${resGain.join(' · ')} ramassés en chemin.`, icon: '✦', color: 'var(--yel)' });
+    if (resGain.length) runHud.notify({ title: 'Ressources', text: `${resGain.join(' · ')} ramassés en chemin.`, res: RESOURCE_IDS.find((r) => runRes[r] > 0), color: 'var(--yel)' });
     for (const r of RESOURCE_IDS) runRes[r] = 0;
     runBaies = 0;
     const back = save.missions.filter((m) => m && m.left <= 0).length;
@@ -1683,7 +1697,7 @@ async function boot(): Promise<void> {
     if (save.started && !save.intros.includes('journal-hint')) {
       save.intros.push('journal-hint');
       writeSave(save);
-      runHud.notify({ title: 'Plan du monde', text: 'Le panneau près de l’arche montre la carte du monde ; Xatu, à côté, tient le carnet des exploits.', icon: '✦', color: 'var(--yel)' });
+      runHud.notify({ title: 'Plan du monde', text: 'Le panneau près de l’arche montre la carte du monde ; Xatu, à côté, tient le carnet des exploits.', icon: 'origin', color: 'var(--yel)' });
     }
     const feats = readyFeats(save).length;
     if (feats) runHud.notify({ title: 'Exploits', text: `${feats > 1 ? `${feats} exploits sont` : 'Un exploit est'} à réclamer auprès de Xatu, près de l’arche.`, art: CAMP_NPCS.feats, color: 'var(--yel)' });
@@ -2055,7 +2069,7 @@ async function boot(): Promise<void> {
       if (roomWeather !== 'clear') {
         roomWeather = 'clear';
         setWeather(weatherNow());
-        runHud.notify({ title: 'Éclaircie', text: 'Le ciel se dégage.', icon: '☀' });
+        runHud.notify({ title: 'Éclaircie', text: 'Le ciel se dégage.', icon: 'clear' });
       }
       // La salle libérée, les membres à terre se relèvent avec 1 PV pour la suivante (retour de
       // test : « quand un Pokémon meurt et qu'on finit la zone, il revient avec un seul point de
@@ -2118,7 +2132,7 @@ async function boot(): Promise<void> {
             writeSave(save);
             sfx('pkmnGet', -4);
             void loadInfo(got.id).then((i) =>
-              runHud.notify({ title: 'Recrue de champion', text: got.waiting ? `${i.name} quitte ${run.champion.name} : il t’attend au Repaire.` : `★ ${i.name} quitte ${run.champion.name} et rejoint la rébellion !`, art: got.id, color: 'var(--yel)' }),
+              runHud.notify({ title: 'Recrue de champion', text: got.waiting ? `${i.name} quitte ${run.champion.name} : il t’attend au Repaire.` : `${i.name} quitte ${run.champion.name} et rejoint la rébellion !`, art: got.id, color: 'var(--yel)' }),
             );
           }
         }
@@ -2256,8 +2270,8 @@ async function boot(): Promise<void> {
     const was = leagueOpen(save);
     save.beaten.push(name);
     writeSave(save);
-    runHud.notify({ title: 'Exploit', text: `${name} vaincu pour la première fois : réclame l’exploit à Xatu, au Repaire.`, icon: '✦', color: 'var(--yel)' });
-    if (!was && leagueOpen(save)) runHud.notify({ title: 'Route Victoire', text: 'Tous les champions sont tombés. La Route Victoire s’ouvre au bout de la carte du monde.', icon: '★', color: 'var(--yel)' });
+    runHud.notify({ title: 'Exploit', text: `${name} vaincu pour la première fois : réclame l’exploit à Xatu, au Repaire.`, icon: 'feat', color: 'var(--yel)' });
+    if (!was && leagueOpen(save)) runHud.notify({ title: 'Route Victoire', text: 'Tous les champions sont tombés. La Route Victoire s’ouvre au bout de la carte du monde.', icon: 'league', color: 'var(--yel)' });
   }
 
   /** Les répliques du dernier boss : le Dresseur final, ou le Maître au bout de la Route Victoire. */
@@ -2310,7 +2324,7 @@ async function boot(): Promise<void> {
     message: (text) => runHud.message(text),
     toast: (text, stamp) => runHud.toast(text, stamp),
     announce: (name, kicker) => runHud.announce(name, '#8fa8ff', kicker),
-    notify: (title, text, art) => runHud.notify({ title, text, art, icon: art ? undefined : '✦', color: '#8fa8ff' }),
+    notify: (title, text, art) => runHud.notify({ title, text, art, icon: art ? undefined : 'feat', color: '#8fa8ff' }),
     heal: () => {
       for (const m of team) if (m.pokemon && m.deathT < 0 && !m.pokemon.fainted) m.pokemon.hp = m.pokemon.maxHp;
     },
@@ -2704,6 +2718,17 @@ async function boot(): Promise<void> {
   const settingsMenu = new SettingsMenu(document.body, opts, (changed) => {
     applyOption(changed);
     panel.sync();
+  });
+  settingsMenu.onAccount = (back) => accountScreen.show(() => {
+    input.flush();
+    back();
+  });
+  // Un autre appareil a écrit pendant qu'on jouait (net/cloud.ts) : la synchro s'arrête, rien
+  // n'est perdu, et on le dit une fois ; le choix se fait dans Échap → Réglages → Compte.
+  onCloudChange(() => {
+    if (cloudStatus() !== 'conflict' || titleScreen.open || accountScreen.open || conflictToldAt > 0) return;
+    conflictToldAt = performance.now();
+    runHud.toast('Partie modifiée ailleurs', 'Échap → Réglages → Compte');
   });
   addEventListener('keydown', (e) => {
     if (e.code !== 'Escape' || e.repeat || paused() || dialogue.open) return;
@@ -3161,7 +3186,7 @@ async function boot(): Promise<void> {
       got = true;
       sfx('pkmnGet', -4);
       void loadInfo(r.id).then((i) =>
-        runHud.notify({ title: 'Allié rencontré', text: r.waiting ? `${i.name} veut te rejoindre : il t’attend au Repaire.` : `★ ${i.name} rejoint la rébellion !`, art: r.id, color: '#7ac0e8' }),
+        runHud.notify({ title: 'Allié rencontré', text: r.waiting ? `${i.name} veut te rejoindre : il t’attend au Repaire.` : `${i.name} rejoint la rébellion !`, art: r.id, color: '#7ac0e8' }),
       );
     }
     if (got) writeSave(save);
@@ -3258,7 +3283,7 @@ async function boot(): Promise<void> {
       : null;
   };
   // La malédiction d'un pacte (Autel maudit) reste écrite sous le lieu jusqu'à la fin de l'acte.
-  const curseTag = () => (run.cursed() ? ` · ☠ ${CURSES[run.curse!].name}` : '');
+  const curseTag = () => (run.cursed() ? ` · Pacte : ${CURSES[run.curse!].name}` : '');
   const placeName = () => (cave.active ? cave.title : run.isShop() ? `Boutique${curseTag()}` : `${run.placeName}${weatherNow() !== 'clear' ? ` · ${WEATHERS[weatherNow()].name}` : ''}${curseTag()}`);
 
   /** Hôte : l'instantané du terrain, à tous les invités. */
@@ -3678,11 +3703,18 @@ async function boot(): Promise<void> {
             input.flush();
             back();
           }, tab),
+        account: (back) =>
+          accountScreen.show(() => {
+            input.flush();
+            back();
+          }),
       },
       save.started,
       invite,
     );
   enterCamp();
+  // Deux parties ont avancé chacune de leur côté (net/cloud.ts) : on demande tout de suite laquelle garder.
+  if (titleScreen.open && cloudStatus() === 'conflict') titleScreen.account();
   // L'écran-titre a sa musique (Title.ogg) ; quitter le menu lance celle du Repaire.
   if (titleScreen.open) audio.playMusic('title');
 
@@ -3922,7 +3954,7 @@ async function boot(): Promise<void> {
             opts.seed += 1;
             saveOptions(opts);
             enterCamp();
-            if (nuzLost.length) runHud.notify({ title: 'Nuzlocke', text: `${nuzLost.join(', ')} ${nuzLost.length > 1 ? 'ont quitté' : 'a quitté'} la rébellion pour de bon.`, icon: '☠', color: '#e84040' });
+            if (nuzLost.length) runHud.notify({ title: 'Nuzlocke', text: `${nuzLost.join(', ')} ${nuzLost.length > 1 ? 'ont quitté' : 'a quitté'} la rébellion pour de bon.`, icon: 'faint', color: '#e84040' });
           },
         );
       }
@@ -4052,6 +4084,15 @@ async function boot(): Promise<void> {
           return me;
         },
         campScreen,
+        /** Parle au gardien d'un poste du Repaire (ouvre son écran) : captures des notes de version (scripts/shoot.mjs). */
+        talk: (station: Station) => talkTo(station),
+        /**
+         * Fait apparaître un sauvage de cette espèce près du joueur (dx, dy en cases) : les captures des
+         * notes de version montrent ainsi une nouvelle espèce dans son biome (scripts/shoot.mjs).
+         */
+        spawn: (id: number, level = 12, dx = 3, dy = 0) => spawnEnemy(id, level, player.x + dx, player.y + dy),
+        /** Ouvre l'écran Compte (captures). */
+        account: () => accountScreen.show(() => input.flush()),
         save,
         enterCamp,
         newRun,

@@ -1357,3 +1357,134 @@ Ces identifiants sont lisibles dans le jeu publié : c'est un compte gratuit à 
 en abuse, « Refresh Username, Password » dans le tableau de bord les change (puis mettre à jour
 les variables GitHub). Sans ces variables, le jeu marche seulement entre deux appareils qui se
 joignent directement.
+
+## Compte et sauvegarde en ligne (Supabase)
+
+Demande du joueur : garder sa progression en passant du téléphone à l'ordinateur, sans être
+obligé d'avoir un compte pour jouer. Sans compte, rien ne change : la partie reste dans le
+navigateur (`localStorage['pokhades-save']`). Avec un compte, elle suit le joueur partout.
+
+**Côté joueur.** Écran titre → *Compte* (ou Échap → Réglages → Compte en pleine partie). Il tape
+son e-mail, reçoit un code à 6 chiffres, le tape : c'est tout, pas de mot de passe. Tant qu'il
+n'est pas connecté, un petit mot sous le menu propose de créer un compte. Il peut se
+déconnecter (cet appareil seulement) ou supprimer son compte (e-mail et sauvegarde effacés du
+serveur ; la partie reste sur l'appareil).
+
+**Ce qu'on garde, rien de plus.** L'e-mail (dans Supabase Auth, pour envoyer le code) et une
+ligne par joueur dans la table `saves` : la sauvegarde (le même JSON que le localStorage), un
+numéro de version et la date d'écriture. Ni pseudo à part, ni appareil.
+
+**Sécurité.** La clé « anon » (ou *publishable*) du projet est publique, dans le jeu. Ce qui
+protège les données, ce sont les règles RLS de `supabase/schema.sql` : une requête ne lit et
+n'écrit que la ligne de son propre jeton de connexion ; sans jeton, rien. Testé sur PostgreSQL
+(lecture et écriture d'un autre compte refusées, accès anonyme refusé, taille bornée à 512 Ko,
+suppression en cascade).
+
+**La synchro (`src/net/cloud.ts`).** Chaque écriture de la sauvegarde part en ligne 4 secondes
+après (une requête par rafale), et tout de suite quand on quitte la page. On n'écrit que
+par-dessus la version qu'on a vue (`PATCH …?rev=eq.N`) : deux appareils ne s'écrasent jamais.
+Au lancement, le jeu attend le serveur 4 secondes au plus (hors ligne, on joue tout de suite) :
+
+| Ici depuis la dernière synchro | Sur le compte | Ce qui se passe |
+|---|---|---|
+| rien joué | a avancé | la partie du compte est reprise, sans question |
+| a joué | n'a pas bougé | la partie d'ici est envoyée |
+| a joué | a avancé | conflit : le joueur choisit (deux cartes résumées) |
+| les deux identiques | | rien |
+
+Après un envoi, le serveur ne renvoie que le numéro de version (`select=rev`) : le trafic sortant
+est compté dans l'offre gratuite, pas l'entrant. Une partie ne redescend qu'au lancement, et
+seulement si elle a changé ailleurs.
+
+La partie écartée est gardée sur l'appareil (`pokhades-save-avant-compte`), jamais effacée. Un
+conflit découvert en pleine partie s'annonce une fois (« Partie modifiée ailleurs ») et la
+synchro s'arrête jusqu'au choix. Pas de bibliothèque `supabase-js` : sept `fetch`.
+
+**Mise en place, une fois** (à faire par le propriétaire du jeu) :
+
+1. Créer un compte et un projet gratuit sur <https://supabase.com> (région Europe). Un projet
+   gratuit sans aucune activité pendant une semaine est mis en pause : on le relance depuis le
+   tableau de bord.
+2. *SQL Editor* : coller `supabase/schema.sql`, *Run*. Le script se relance sans casse.
+3. *Authentication → Sign In / Providers* : laisser **Email** activé, couper le reste.
+4. *Authentication → URL Configuration* : **Site URL** = `https://moonkeys.github.io/pokhades-web/` ;
+   **Redirect URLs** : la même suivie de `**`, et `http://localhost:5173/**` (et le port du
+   serveur de test). C'est là que ramène le lien de l'e-mail.
+5. *Authentication → Emails → SMTP Settings* : brancher un service d'envoi (Brevo, Resend…).
+   Le serveur d'e-mails intégré de Supabase est fait pour les tests : très peu d'envois par
+   heure, et seulement vers les adresses de l'équipe du projet. Une fois branché, *Templates* :
+   dans **Magic Link** et **Confirm signup**, ajouter le code, par exemple
+   `Ton code Pokhades : {{ .Token }}` (Supabase refuse de toucher aux modèles sans SMTP).
+
+   Sans code dans l'e-mail, le **lien** marche aussi : il ramène au jeu avec la session dans
+   l'ancre de l'adresse (`#access_token=…`), que `linkLogin` prend au lancement puis efface. Sur
+   téléphone, le lien peut s'ouvrir dans un autre navigateur que celui du jeu : le code est plus
+   sûr.
+6. *Project Settings → API* : copier l'adresse du projet (`https://xxxx.supabase.co`) et la clé
+   publique (*anon* ou *publishable*, **jamais** la clé *service_role* ou *secret*).
+7. GitHub : *Settings → Secrets and variables → Actions → Variables* : `SUPABASE_URL` et
+   `SUPABASE_ANON_KEY`. Relancer le déploiement. En local : `VITE_SUPABASE_URL` et
+   `VITE_SUPABASE_ANON_KEY` dans `.env.local`.
+
+Sans ces variables, l'entrée *Compte* n'existe pas et le jeu est celui d'avant.
+
+**Tester sans projet.** `node scripts/fake-supabase.mjs` imite Supabase en mémoire (le code de
+connexion se lit sur `http://127.0.0.1:54321/__state`), puis la configuration `dev-cloud` de
+`.claude/launch.json`. Deux « appareils » : `http://127.0.0.1:5177` et `http://localhost:5177`.
+Vérifié ainsi : création du compte, reprise sur un second appareil, envoi automatique, conflit
+au lancement et en pleine partie (dans les deux sens), parties identiques sans conflit, jeton
+expiré renouvelé, lancement hors ligne, déconnexion, suppression du compte, écran sur téléphone.
+
+## Notes de version illustrées
+
+Demande du 26 novembre 2026 : « montrer des screenshots du jeu pour mieux visualiser les
+nouveautés, mettre aussi les sprites de nouveaux objets ». Une section de note
+(`src/data/patchnotes.ts`) porte des `images` : des **captures** (`kind: 'shot'`, sur toute la
+largeur, légende dessous) et des **vignettes** (`kind: 'icon'`, en rangée : Pokémon, objets ;
+`pixel: true` pour un sprite agrandi sans flou). `artIcons([['Florizarre', 3], …])` fait les
+vignettes à partir des illustrations du jeu (`public/game/artwork`). Les images se chargent à
+l'approche (`loading=lazy`) ; une image absente disparaît sans laisser de cadre vide.
+
+**Les captures** viennent du vrai jeu, prises par `scripts/shoot.mjs` : il pilote un Chrome sans
+fenêtre (profil neuf, la vraie sauvegarde n'est pas touchée), pose une sauvegarde de
+démonstration, met chaque scène en place (`window.pokhades` sous `?debug`, dont `talk(poste)` et
+`account()`), masque le panneau de test et les notifications, et écrit
+`public/game/patchnotes/<scène>.webp` (1280 × 720, une soixantaine de Ko).
+
+```
+npm run dev
+node scripts/shoot.mjs                    # toutes les scènes
+node scripts/shoot.mjs pokedex-mega       # une seule
+node scripts/shoot.mjs --url http://localhost:5175
+```
+
+Pour une nouveauté : ajouter une scène à `SCENES`, la lancer, regarder l'image, puis la citer
+dans la note. Une note déjà publiée garde son texte ; on peut lui ajouter des images.
+
+`pokhades.spawn(espèce, niveau, dx, dy)` fait apparaître un sauvage près du joueur : la scène
+`faune-village` lance une run au Village par temps clair, met le joueur au centre de la place et
+y pose quatre des nouvelles lignées. `--out DOSSIER` écrit des captures de contrôle ailleurs que
+dans le jeu. Chrome sans fenêtre met jusqu'à une demi-minute à démarrer sur macOS.
+
+## Icônes d'Essentials plutôt que des symboles
+
+Retour du 26 novembre 2026 : pas de symboles dessinés hors de la DA, des sprites d'Essentials,
+pixelisés. `src/ui/essicon.ts` (`essIcon`, `iconText`) remplace ◈ par le symbole Méga de
+l'interface de combat (`UI/Battle/icon_mega.png`), ⚖ par le Poids Pouvoir (`POWERWEIGHT`) et le ✦
+des Éclats de Champion par leur Comète (`COMETSHARD`) : Pokédex (coin des cartes, filtre, fiche),
+hutte de Porygon (jauge d'équipe, cartes, puces, attaques lourdes), recrues, départ, HUD de la
+Méga, bilan de run. Affichées à la hauteur du texte, sans flou (`img.ess-ico`). Les fichiers sont
+dans la liste de `scripts/import-assets.ts`.
+
+Puis tous les autres signes, chacun par un sprite qui a le bon sens dans les jeux (liste et raisons
+en tête de `essicon.ts`) : portes des salles spéciales, grotte, météo, as et MVP, Débloqué,
+Nuzlocke, talent, nature, provenance, contrats, exploits, Route Victoire, dons. Les légendaires
+donateurs montrent leur icône de menu (`Graphics/Pokemon/Icons`, première des deux images,
+`donorIcon`, recentrée par un décalage mesuré pour chaque espèce). Sur une planche de choix, le
+joueur a retenu le VS des transitions de combat (Duel), le ruban doré (as, MVP) et le rocher
+d'Éclate-Roc (grotte), et voulu des dessins en pixel art pour le chrono du Défi, la Horde (trois
+silhouettes de Pikachu) et la météo. La météo est ombrée comme les objets des jeux DS : chaque forme
+sur cinq tons éclairés d'en haut à gauche, contour de sa propre couleur assombrie (`paint` dans le
+script). Un don duo montre ses deux légendaires l'un devant l'autre (`duoIcon`). `python3 scripts/pixel-icons.py` (Pillow) recadre les uns et
+dessine les autres dans `public/game/assets/pixel/`, hors de la copie d'import. Scènes de contrôle
+de l'outil de captures : `node scripts/shoot.mjs --out /tmp ctl-hud ctl-dons equipe`.

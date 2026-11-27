@@ -3,10 +3,32 @@
 // dernière n'a pas été lue). La plus récente d'abord ; on en ajoute une en
 // tête à chaque mise en ligne.
 
+/**
+ * Une image d'une note (demande du 26 novembre 2026 : « montrer des screenshots du jeu pour mieux
+ * visualiser les nouveautés, mettre aussi les sprites de nouveaux objets »). Les captures sont
+ * dans public/game/patchnotes/ et se refont avec `node scripts/shoot.mjs` ; les vignettes
+ * reprennent les images du jeu (illustrations de public/game/artwork, icônes d'objets).
+ */
+export interface PatchImage {
+  /** Chemin servi, en « /game/… » (vite.config.ts y ajoute la base de GitHub Pages). */
+  src: string;
+  /** Légende, aussi texte de remplacement. */
+  caption: string;
+  /** « shot » : capture d'écran, sur toute la largeur ; « icon » : vignette, en rangée sous la section. */
+  kind: 'shot' | 'icon';
+  /** Pixel art (sprite, icône d'objet) : agrandi sans flou. */
+  pixel?: boolean;
+}
+
 export interface PatchSection {
   title: string;
   items: string[];
+  /** Captures et vignettes, sous les lignes de la section. */
+  images?: PatchImage[];
 }
+
+/** Les illustrations officielles d'une liste d'espèces, en vignettes (« Florizarre », 3…). */
+export const artIcons = (mons: [string, number][]): PatchImage[] => mons.map(([caption, id]) => ({ src: `/game/artwork/${id}.png`, caption, kind: 'icon' }));
 
 export interface PatchNote {
   /** Identifiant unique (sert à savoir si le joueur l'a lue). */
@@ -17,6 +39,46 @@ export interface PatchNote {
 }
 
 export const PATCH_NOTES: readonly PatchNote[] = [
+  {
+    id: '2026-11-26-compte',
+    date: '26 novembre 2026',
+    title: 'Ta partie sur tous tes appareils',
+    sections: [
+      {
+        title: 'Compte',
+        items: [
+          'Menu principal → Compte : ton e-mail, puis le code ou le lien reçu par e-mail. Pas de mot de passe.',
+          'Ta progression part en ligne toute seule pendant que tu joues, et tu la retrouves sur ton téléphone, ta tablette ou un autre ordinateur en te connectant avec la même adresse.',
+          'Si tu as joué des deux côtés sans connexion, le jeu te montre les deux parties et tu choisis laquelle garder ; l’autre reste de côté sur l’appareil.',
+          'Le compte est facultatif. On ne garde que ton e-mail et ta sauvegarde, et tu peux tout effacer depuis le même écran.',
+        ],
+        images: [{ src: '/game/patchnotes/compte-ecran.webp', caption: 'Menu principal → Compte : ton e-mail, et c’est parti.', kind: 'shot' }],
+      },
+      {
+        title: 'Notes de version',
+        items: ['Les nouveautés s’illustrent : captures du jeu et vignettes des nouveaux Pokémon et objets, ici même.'],
+      },
+      {
+        title: 'Interface',
+        items: [
+          'Les petits symboles deviennent des sprites du jeu, en pixel art : le symbole Méga (Pokédex, fiches, Méga prête en run), le Poids Pouvoir pour le poids de l’équipe, la Comète pour les Éclats de Champion.',
+          'Et tous les autres : le VS des Duels, l’Eau Fraîche de la Source, la Rune Sort de l’Autel, la Ceinture Noire du Dojo, l’Œuf Chance de la Pension, le rocher des grottes, le ruban de l’as et du MVP, un chrono pour le Défi, une horde de silhouettes, des pictogrammes de météo, et l’icône de chaque légendaire sur ses dons.',
+        ],
+        images: [
+          { src: '/game/assets/essentials/ui/icon_mega.png', caption: 'Méga', kind: 'icon', pixel: true },
+          { src: '/game/assets/essentials/items/POWERWEIGHT.png', caption: 'Poids', kind: 'icon', pixel: true },
+          { src: '/game/assets/essentials/items/COMETSHARD.png', caption: 'Éclats', kind: 'icon', pixel: true },
+          { src: '/game/assets/essentials/items/FRESHWATER.png', caption: 'Source', kind: 'icon', pixel: true },
+          { src: '/game/assets/essentials/items/SPELLTAG.png', caption: 'Autel', kind: 'icon', pixel: true },
+          { src: '/game/assets/pixel/horde.png', caption: 'Horde', kind: 'icon', pixel: true },
+          { src: '/game/assets/pixel/vs.png', caption: 'Duel', kind: 'icon', pixel: true },
+          { src: '/game/assets/pixel/rocher.png', caption: 'Grotte', kind: 'icon', pixel: true },
+          { src: '/game/assets/pixel/chrono.png', caption: 'Défi', kind: 'icon', pixel: true },
+          { src: '/game/assets/pixel/meteo-pluie.png', caption: 'Pluie', kind: 'icon', pixel: true },
+        ],
+      },
+    ],
+  },
   {
     id: '2026-11-26',
     date: '26 novembre 2026',
@@ -29,6 +91,30 @@ export const PATCH_NOTES: readonly PatchNote[] = [
           'Forêt : Bulbizarre, Arcko, Tortipouss, Étourmi. Automne : Germignon, Fantominus. Lac : Carapuce, Kaiminus, Moustillon.',
           'Marais : Gobou. Volcan : Gruikui. Rocailleux : Kranidos. Village : Abra, Tarsal, Lixy, Wattouat. Plage et Montagne glacée : Tiplouf.',
           'Alakazam et Ectoplasma ont une Méga-évolution : cherche-les au Pokédex, filtre Méga ◈.',
+        ],
+        // Une capture en run et les formes finales des dix-sept lignées (illustrations ajoutées après
+        // coup, texte inchangé).
+        images: [
+          { src: '/game/patchnotes/faune-village.webp', caption: 'Abra, Tarsal, Lixy et Wattouat sur la place du Village.', kind: 'shot' },
+          ...artIcons([
+          ['Florizarre', 3],
+          ['Tortank', 9],
+          ['Méganium', 154],
+          ['Aligatueur', 160],
+          ['Jungko', 254],
+          ['Torterra', 389],
+          ['Pingoléon', 395],
+          ['Roitiflam', 500],
+          ['Clamiral', 503],
+          ['Étouraptor', 398],
+          ['Charkos', 409],
+          ['Laggron', 260],
+          ['Alakazam', 65],
+          ['Ectoplasma', 94],
+          ['Gardevoir', 282],
+          ['Luxray', 405],
+          ['Pharamp', 181],
+          ]),
         ],
       },
     ],
@@ -58,6 +144,7 @@ export const PATCH_NOTES: readonly PatchNote[] = [
       {
         title: 'Pokédex',
         items: ['Filtre Méga ◈ : les lignées qui ont une Méga-évolution. La fiche du Pokédex et celle de l’équipe la nomment, et disent à quel niveau elle devient possible.'],
+        images: [{ src: '/game/patchnotes/pokedex-mega.webp', caption: 'Chez Porygon, Pokédex → Méga ◈ : la fiche dit quelle Méga attend la lignée.', kind: 'shot' }],
       },
     ],
   },

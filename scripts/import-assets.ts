@@ -132,6 +132,20 @@ for (const name of attackSheetFiles()) {
   renamed.push([`${ESSENTIALS}/Animations/${name}.png`, `assets/essentials/animations/${name}.png`]);
 }
 renamed.push([`${ESSENTIALS}/UI/Party/overlay_hp.png`, 'assets/essentials/ui/overlay_hp.png']);
+// Icônes de l'interface (src/ui/essicon.ts, retour du 26 novembre 2026 : « pas de symboles dessinés,
+// des sprites d'Essentials, pixelisés ») : le symbole Méga du combat et le Poids Pouvoir pour le poids.
+renamed.push([`${ESSENTIALS}/UI/Battle/icon_mega.png`, 'assets/essentials/ui/icon_mega.png']);
+renamed.push([`${ESSENTIALS}/Items/POWERWEIGHT.png`, 'assets/essentials/items/POWERWEIGHT.png']);
+// Puis tous les autres signes (ui/essicon.ts, liste à tenir avec SRC) : objets au sens qui va, étoile
+// Poké Ball « possédé » du Pokédex et Poké Ball éteinte du combat, icônes de menu des légendaires
+// donateurs. Les icônes recadrées ou dessinées (VS, ruban, rocher, chrono, Horde, météo) vivent hors
+// de cette copie, dans assets/pixel/ (scripts/pixel-icons.py).
+renamed.push([`${ESSENTIALS}/UI/Pokedex/icon_own.png`, 'assets/essentials/ui/icon_own.png']);
+renamed.push([`${ESSENTIALS}/UI/Battle/icon_ball_faint.png`, 'assets/essentials/ui/icon_ball_faint.png']);
+for (const f of ['STICKYBARB', 'AMULETCOIN', 'FRESHWATER', 'SPELLTAG', 'BLACKBELT', 'LUCKYEGG', 'HONEY', 'ABILITYURGE', 'MENTALHERB', 'TOWNMAP', 'AIRMAIL', 'STARPIECE', 'RELICCROWN', 'ORANBERRY', 'MUSCLEBAND', 'SMOOTHROCK'])
+  renamed.push([`${ESSENTIALS}/Items/${f}.png`, `assets/essentials/items/${f}.png`]);
+for (const f of ['ARTICUNO', 'ZAPDOS', 'MOLTRES', 'MEW', 'HOOH', 'CELEBI', 'GROUDON', 'RAYQUAZA', 'JIRACHI', 'DARKRAI'])
+  renamed.push([`${ESSENTIALS}/Pokemon/Icons/${f}.png`, `assets/essentials/icons/${f}.png`]);
 // Le « ! » des dresseurs qui vous repèrent : le repère de nouveauté du Repaire (run/camp.ts).
 renamed.push([`${ESSENTIALS}/Animations/!.png`, 'assets/essentials/animations/exclaim.png']);
 // Champions d'arène (PokePools.CHAMPION_SPRITE) et Poké Ball de leurs envois (PokeballFX.gd).
@@ -230,7 +244,7 @@ for (const id of species) {
 
 const OUT = path.join(WEB, 'public', 'game');
 // On repart de zéro (sauf le fichier extrait à la main) : une espèce retirée de la liste disparaît aussi.
-for (const sub of ['assets/tilesets', 'assets/cs', 'assets/fx', 'assets/essentials/animations', 'assets/essentials/ui', 'assets/essentials/trainers', 'assets/essentials/battle', 'assets/essentials/items', 'assets/essentials/tilesets', 'assets/essentials/autotiles', 'audio', 'data']) fs.rmSync(path.join(OUT, sub), { recursive: true, force: true });
+for (const sub of ['assets/tilesets', 'assets/cs', 'assets/fx', 'assets/essentials/animations', 'assets/essentials/ui', 'assets/essentials/trainers', 'assets/essentials/battle', 'assets/essentials/items', 'assets/essentials/icons', 'assets/essentials/tilesets', 'assets/essentials/autotiles', 'audio', 'data']) fs.rmSync(path.join(OUT, sub), { recursive: true, force: true });
 
 let copied = 0;
 let remote = 0;

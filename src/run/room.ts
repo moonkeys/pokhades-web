@@ -1,3 +1,4 @@
+import { essIcon } from '../ui/essicon';
 import { sfx } from '../audio/audio';
 import { Rng } from '../core/rng';
 import type { Actor } from '../entities/actor';
@@ -262,7 +263,7 @@ export class RoomDirector {
   swim = true;
   private rng = new Rng(1);
   private readonly layer: HTMLElement;
-  /** Étiquette « ⛰ Grotte » au-dessus de la bouche, et fondu en cours vers la grotte. */
+  /** Étiquette « Grotte » (Corde Sortie) au-dessus de la bouche, et fondu en cours vers la grotte. */
   private caveLabel: HTMLElement | null = null;
   private caveAt: { x: number; y: number } | null = null;
   private toCave = false;
@@ -433,7 +434,7 @@ export class RoomDirector {
     this.clock = CHALLENGE_BASE + CHALLENGE_PER_WAVE * this.waves.length;
     // La grotte ne s'ouvre qu'une fois la salle libérée (CombatArena : le déclencheur naît au nettoyage).
     this.toCave = false;
-    this.caveLabel = world.cave && !world.cave.used ? this.label('⛰ Grotte', '#9ab4ff') : null;
+    this.caveLabel = world.cave && !world.cave.used ? this.label('Grotte', '#9ab4ff', essIcon('cave')) : null;
     this.caveAt = world.cave ? { x: world.cave.x, y: world.cave.y } : null;
     this.phase = 'intro';
     // Après une porte, la pause ne commence qu'une fois le fondu de retour terminé.
@@ -902,7 +903,8 @@ export class RoomDirector {
     el.classList.add('route');
     const name = document.createElement('span');
     name.className = 'room-biome';
-    name.textContent = `${sp.glyph} ${sp.name}`;
+    essIcon(sp.icon, name);
+    name.append(sp.name);
     name.style.setProperty('--b', sp.color);
     el.prepend(name);
     // Horde : son espèce sous le nom, pour venir y chercher une recrue.
