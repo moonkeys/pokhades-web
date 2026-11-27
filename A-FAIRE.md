@@ -980,6 +980,12 @@ effets animés). Les flèches, ✕ et ✔ restent : ce sont des signes typograph
   déclenchent maintenant les dons de finisher (Fortune, Plumage, Vrille),
   l'ultime peut venir plus vite avec une équipe de trois ou quatre. À tester
   à deux onglets : la nouvelle attaque de chacun, la vitesse de l'invité.
+- Grande équipe plus dure, routes gardées dessinées, dresseurs qui lancent à
+  l'approche, sommeil adouci, moins de notifications (même jour, README). À
+  juger en jeu : la difficulté à six (le banc vise le Pokémon joué, les
+  compagnons finissent souvent intacts) ; la solitude reste dure (une salle de
+  l'acte 3 perdue une fois sur deux au banc). À voir : la bande d'eau de Surf
+  dessinée par-dessus le décor (de vraies cases d'eau seraient plus jolies).
 
 ## 3. Déjà notés, toujours en attente
 

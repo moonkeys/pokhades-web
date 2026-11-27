@@ -120,7 +120,10 @@ const LIST: BoonDef[] = [
   // une cible seule (un as), le don ne double pas les dégâts.
   b('psy_echo', 'mew', 'Écho', 1, 'count', 'Tes tirs se dédoublent : des projectiles de plus partent vers d’autres ennemis, à 45 % des dégâts.'),
   b('psy_hivemind', 'mew', 'Conscience Collective', 1, 'flag', 'Tes compagnons copient la capacité que tu as sélectionnée.', false),
-  b('tenb_sleep', 'darkrai', 'Cauchemar', 0.15, 'pct', 'Tes coups endorment ; les endormis encaissent double.'),
+  // Cauchemar : 10 % (15 % avant) et +50 % sur un endormi (le double avant). Retour du 27 novembre
+  // 2026, « le don qui endort, c'est trop abusé » : au Prismatique, plus d'un coup sur trois
+  // endormait, et chaque coup suivant comptait double pendant 3 s.
+  b('tenb_sleep', 'darkrai', 'Cauchemar', 0.1, 'pct', 'Tes coups ont une chance d’endormir ; les endormis encaissent 50 % de plus.'),
   b('tenb_steal', 'darkrai', 'Vol d’Ombre', 0.25, 'pct', 'Tu frappes plus fort, mais tu perds des PV max à chaque salle.'),
   b('tenb_execute', 'darkrai', 'Exécution', 0.15, 'pct', 'Ton finisher achève net un sauvage déjà bas (pas un Pokémon de champion).'),
   // Le dash rend déjà invulnérable dans le prototype : Ombre Portée prolonge cette invulnérabilité.

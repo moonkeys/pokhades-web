@@ -105,12 +105,26 @@ function measure(image: HTMLImageElement, fw: number, fh: number) {
   const data = ctx.getImageData(0, 0, image.width, image.height).data;
   const alpha = (x: number, y: number) => data[(y * image.width + x) * 4 + 3];
 
-  let footRow = 0;
+  // Ligne de sol : le pixel le plus bas, direction par direction (une rangée de la planche par
+  // direction). Retour du 27 novembre 2026 : « l'ombre de Forgelina et de sa clique est trop basse
+  // par rapport au sprite ». Le pixel le plus bas de toute la planche était parfois un accessoire
+  // qui pend dans quelques directions seulement (le marteau de Ferdeter, de dos, 7 px sous ses
+  // pieds ; une queue, une aile) : tout le Pokémon était dessiné trop haut au-dessus de son ombre.
+  // Sur une planche à 8 directions, la ligne ne descend plus qu'à 2 px sous la 4ᵉ direction la plus
+  // haute : sur 470 planches, 397 ne bougent pas, et les directions de face (un peu plus basses
+  // par la perspective) gardent leurs pieds.
+  const rows = Math.max(1, Math.floor(image.height / fh));
+  const lowest: number[] = new Array(rows).fill(-1);
   for (let y = 0; y < image.height; y++) {
+    const r = Math.min(rows - 1, Math.floor(y / fh));
     for (let x = 0; x < image.width; x++) {
-      if (alpha(x, y) > 0) footRow = Math.max(footRow, y % fh);
+      if (alpha(x, y) > 0) lowest[r] = Math.max(lowest[r], y % fh);
     }
   }
+  // Une rangée vide (planche incomplète) ne compte pas.
+  const sorted = lowest.filter((v) => v >= 0).sort((a, b) => a - b);
+  const deepest = sorted[sorted.length - 1] ?? 0;
+  const footRow = sorted.length >= 8 ? Math.min(deepest, sorted[3] + 2) : deepest;
   let minX = fw;
   let maxX = 0;
   let minY = fh;

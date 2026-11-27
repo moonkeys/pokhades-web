@@ -40,6 +40,42 @@ export interface PatchNote {
 
 export const PATCH_NOTES: readonly PatchNote[] = [
   {
+    id: '2026-11-27-recrues',
+    date: '27 novembre 2026',
+    title: 'Une grande équipe, de vrais combats',
+    sections: [
+      {
+        title: 'Difficulté',
+        items: [
+          'Avec plus de trois Pokémon, les champions frappent bien plus fort : à six, ils ne se laissent plus rouler dessus.',
+          'Les sauvages suivent aussi la taille de ton équipe, dès le troisième Pokémon.',
+        ],
+      },
+      {
+        title: 'Combats',
+        items: [
+          'Les dresseurs marchent vers toi et lancent leurs Poké Balls quand tu arrives à leur hauteur : plus besoin de chercher leurs Pokémon dans les grandes salles.',
+          'Poudre Dodo, Berceuse et Bâillement n’endorment plus qu’une fois sur deux. Cauchemar endort moins souvent, et les endormis encaissent +50 % au lieu du double.',
+        ],
+      },
+      {
+        title: 'Routes gardées',
+        items: [
+          'À la sortie d’un champion, une route qui demande une CS est barrée par ce que la CS lève : des arbustes pour Coupe, des rochers pour Éclate-Roc et Force, de l’eau pour Surf.',
+        ],
+      },
+      {
+        title: 'Interface',
+        items: [
+          'Les recrues en attente tiennent sur un seul écran : cinq cartes par ligne au lieu d’une seule.',
+          'La fiche de la recrue choisie reste à l’écran pendant que tu fais défiler les cartes.',
+          'Moins de notifications : plus de carte pour chaque niveau gagné ni pour un don ou une attaque que tu viens de choisir, trois cartes à la fois au plus.',
+          'Les Pokémon dont un accessoire pend sous les pieds (le marteau de Ferdeter, une queue) ne flottent plus au-dessus de leur ombre.',
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-11-27',
     date: '27 novembre 2026',
     title: 'Des dons qui se méritent',

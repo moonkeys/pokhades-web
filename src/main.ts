@@ -141,6 +141,25 @@ const CHAMPION_MON_MOVES = 6;
  * Pokémon du champion dès quatre membres (main.ts, spawnEnemy).
  */
 const BOSS_ATK_PER_MEMBER = 0.05;
+/** Au-delà de trois membres, chaque membre en plus ajoute ceci à l'attaque du champion. */
+const BOSS_ATK_PER_BIG_MEMBER = 0.15;
+/**
+ * Retour du 27 novembre 2026 (« à six Pokémon, on roule sur le boss ; le jeu est trop facile à
+ * six ») : au banc, une équipe de six finissait le boss de l'acte 2 en 54 s, la plupart des membres
+ * à 100 % de PV. Les PV en plus allongeaient le combat sans le rendre dangereux : les coups du
+ * champion se répartissent sur six cibles. Au-delà de trois membres (la taille pour laquelle les
+ * champions sont réglés : une équipe de trois ne change pas), l'attaque du champion monte de +15 %
+ * par membre (+5 % avant : ×1,55 à six au lieu de ×1,25), et les sauvages suivent aussi l'équipe
+ * (WILD_BASE_TEAM).
+ */
+const WILD_HP_PER_MEMBER = 0.2;
+const WILD_ATK_PER_MEMBER = 0.1;
+/**
+ * À partir de quelle taille d'équipe les sauvages se renforcent : au banc (salle 21, acte 3), seul
+ * on perdait une fois sur deux, à trois on finissait à 90 % de PV, à six à 100 %. Dès le
+ * troisième membre, donc : à trois PV ×1,2 et attaque ×1,1, à six PV ×1,8 et attaque ×1,4.
+ */
+const WILD_BASE_TEAM = 2;
 /**
  * Puissance la plus forte des attaques de l'as (ACE_MOVES), par acte ; au-delà, son jeu entier.
  * Run d'équilibrage du 20 novembre 2026 : au premier acte, l'Écrémeuh de Blanche (niv. 21) gardait
@@ -637,7 +656,9 @@ async function boot(): Promise<void> {
   const evolving = new Set<Actor>();
   combat.levelUp = (m) => {
     const mon = m.pokemon!;
-    runHud.notify({ title: 'Niveau supérieur', text: `${mon.name} passe au niveau ${mon.level} !`, art: mon.id, color: 'var(--yel)' });
+    // Plus de notification de niveau (retour du 27 novembre 2026 : « les gains de niveau, on ne
+    // les fait pas en notif, il y en a vite trop ») : « Niv. N ! » monte déjà au-dessus du Pokémon
+    // (Combat.kill), et une Horde en faisait tomber une pile.
     if (m.evolve || evolving.has(m)) return;
     // Une évolution à choix (Évoli) : le joueur choisit la forme, pour ses propres membres. « Plus tard » : on retentera
     // au niveau suivant. Les invités et les mercenaires prennent la forme par défaut.
@@ -871,9 +892,19 @@ async function boot(): Promise<void> {
         // PV de chaque barre, selon la taille de l'équipe sur le terrain (mercenaires compris).
         const extra = Math.max(0, team.length - 1);
         mon.boostMaxHp(boost.hp * (1 + BOSS_HP_PER_MEMBER * extra) * (first ? FIRST_ACE_HP : 1));
-        mon.mult.atk *= 1 + BOSS_ATK_PER_MEMBER * extra;
-        mon.mult.spAtk *= 1 + BOSS_ATK_PER_MEMBER * extra;
+        const atk = 1 + BOSS_ATK_PER_MEMBER * Math.min(extra, 2) + BOSS_ATK_PER_BIG_MEMBER * Math.max(0, extra - 2);
+        mon.mult.atk *= atk;
+        mon.mult.spAtk *= atk;
         mon.hp = mon.maxHp;
+      } else if (mode === 'run') {
+        // Les sauvages (escortes comprises) suivent une grande équipe (WILD_HP_PER_MEMBER).
+        const extra = Math.max(0, team.length - WILD_BASE_TEAM);
+        if (extra) {
+          mon.boostMaxHp(1 + WILD_HP_PER_MEMBER * extra);
+          mon.mult.atk *= 1 + WILD_ATK_PER_MEMBER * extra;
+          mon.mult.spAtk *= 1 + WILD_ATK_PER_MEMBER * extra;
+          mon.hp = mon.maxHp;
+        }
       }
       // L'archétype dépend des capacités : le cerveau naît avec la fiche.
       a.brain = new EnemyBrain(a);
@@ -1553,7 +1584,9 @@ async function boot(): Promise<void> {
     if (replace >= 0) mon.moves[replace] = learned;
     else mon.moves.push(learned);
     mon.movesVersion++;
-    runHud.notify({ title: 'Nouvelle attaque', text: `${mon.name} apprend ${learned.name}.`, art: mon.id, color: typeColor(learned.type) });
+    // Celui qui vient de choisir n'a pas besoin qu'on le lui redise : la carte ne part que pour le
+    // choix d'un invité en ligne, que l'hôte n'a pas vu (moins de notifications, 27 novembre 2026).
+    if (uiTarget) runHud.notify({ title: 'Nouvelle attaque', text: `${mon.name} apprend ${learned.name}.`, art: mon.id, color: typeColor(learned.type) });
   };
   const strengthen = (mon: Pokemon, slot: number) => {
     const old = mon.moves[slot];
@@ -1570,7 +1603,7 @@ async function boot(): Promise<void> {
       upgradeMove(old);
       sfx('moveLearnt');
       mon.movesVersion++;
-      runHud.notify({ title: 'Attaque renforcée', text: `${old.name} : puissance ${old.power}.`, art: mon.id, color: typeColor(old.type) });
+      if (uiTarget) runHud.notify({ title: 'Attaque renforcée', text: `${old.name} : puissance ${old.power}.`, art: mon.id, color: typeColor(old.type) });
     });
   };
 
@@ -1587,18 +1620,15 @@ async function boot(): Promise<void> {
       // Un don de statistique vaut pour chaque membre de l'équipe, invités en ligne compris (il
       // n'allait qu'à celui qui l'avait choisi) ; repris, il n'ajoute que l'écart de rareté.
       if (STAT_BOONS[id]) for (const m of team) combat.hooks.syncStats(m);
-      runHud.notify({ title: 'Don obtenu', text: `${BOONS[id].name} · ${RARITY_NAME[got]}`, art: DONORS[offer.donor].dex, color: RARITY_COLOR[got] });
+      if (uiTarget) runHud.notify({ title: 'Don obtenu', text: `${BOONS[id].name} · ${RARITY_NAME[got]}`, art: DONORS[offer.donor].dex, color: RARITY_COLOR[got] });
     }
     // La page du légendaire au carnet de Xatu (meta/feats.ts) : un don jamais obtenu la fait
     // avancer, on le dit tout de suite ; une page remplie se réclame au Repaire.
     const page = noteBoon(save, id);
     if (!page) return;
     writeSave(save);
-    runHud.notify(
-      page.filled
-        ? { title: 'Exploit', text: `${page.feat.name} : page remplie. Réclame-la à Xatu, au Repaire.`, icon: 'feat', color: 'var(--yel)' }
-        : { title: 'Nouveau don', text: `${page.feat.name} · ${page.n} / ${page.goal} au carnet de Xatu`, icon: 'feat', color: 'var(--muted)' },
-    );
+    // Seule une page remplie se dit : l'avancée don après don se lit au carnet (moins de notifications).
+    if (page.filled) runHud.notify({ title: 'Exploit', text: `${page.feat.name} : page remplie. Réclame-la à Xatu, au Repaire.`, icon: 'feat', color: 'var(--yel)' });
   };
 
   const newRun = () => {
@@ -2105,7 +2135,7 @@ async function boot(): Promise<void> {
       if (roomWeather !== 'clear') {
         roomWeather = 'clear';
         setWeather(weatherNow());
-        runHud.notify({ title: 'Éclaircie', text: 'Le ciel se dégage.', icon: 'clear' });
+        // (Plus de notification « Éclaircie » : le ciel qui se dégage se voit.)
       }
       // La salle libérée, les membres à terre se relèvent avec 1 PV pour la suivante (retour de
       // test : « quand un Pokémon meurt et qu'on finit la zone, il revient avec un seul point de

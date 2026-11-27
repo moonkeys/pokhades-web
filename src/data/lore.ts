@@ -72,7 +72,7 @@ export const LORE: LoreChapter[] = [
       { title: 'Poison', type: 'poison', text: '8 s. Fait perdre 6 % des PV max toutes les 0,9 s : le plus cruel. Une attaque Poison empoisonne trois fois sur dix, une attaque Plante une fois sur dix ; Toxik, Poudre Toxik et Vampigraine à coup sûr.' },
       { title: 'Paralysie', type: 'electric', text: '5 s. Divise la vitesse par deux : la cible se traîne. Une attaque Électrik paralyse une fois sur quatre ; Cage-Éclair à coup sûr.' },
       { title: 'Gel', type: 'ice', text: '3 s. La cible ne bouge plus et n’attaque plus. Une attaque Glace gèle une fois sur sept environ.' },
-      { title: 'Sommeil', type: 'psychic', text: '3 s. Comme le gel : plus un geste. Une attaque Psy endort une fois sur huit, une attaque Spectre une fois sur dix ; Poudre Dodo, Berceuse et Bâillement à coup sûr.' },
+      { title: 'Sommeil', type: 'psychic', text: '3 s. Comme le gel : plus un geste. Une attaque Psy endort une fois sur huit, une attaque Spectre une fois sur dix ; Poudre Dodo, Berceuse et Bâillement une fois sur deux. Un Pokémon de champion dort moitié moins longtemps.' },
       { title: 'Ça marche dans les deux sens', text: 'Les sauvages t’infligent les mêmes états, aux mêmes chances. Aucun type n’y est immunisé. Seule Régénération (refresh) les soigne.' },
       // world/weather.ts, combat.ts:465-478
       { title: 'Pluie et soleil', color: '#5aa0e8', text: 'Sous la pluie, l’Eau frappe à ×1,5 et le Feu à ×0,5 ; sous le soleil, c’est l’inverse. Choisis tes attaques selon le ciel.' },
@@ -150,7 +150,7 @@ export const LORE: LoreChapter[] = [
       { title: 'La boutique', text: 'Avant chaque champion : des potions, une CT, un lot de Baies, un lot de ressources pour le Repaire et des mercenaires. Un mercenaire réclame sa solde à la boutique suivante.' },
       // run/berries.ts, run/chests.ts
       { title: 'Baies et coffres', text: 'Frappe deux fois un arbre à baies pour en faire tomber. Beaucoup de salles cachent un coffre (E) : Baies, Bois, Pierre, Nourriture. Les plus riches demandent une CS : Coupe, Éclate-Roc ou Force.' },
-      { title: 'Les routes gardées', text: 'Certaines routes de la carte du monde demandent une CS : Surf vers l’Océan, Coupe vers l’Automne, Éclate-Roc du Marais au Volcan, Force vers la Montagne glacée. Le plan, près de l’arche, dit laquelle. Une autre route reste toujours ouverte. Chaque champion battu fait baisser le prix des CS chez Alakazam, jusqu’à moitié prix.' },
+      { title: 'Les routes gardées', text: 'Certaines routes de la carte du monde demandent une CS : Surf vers l’Océan, Coupe vers l’Automne, Éclate-Roc du Marais au Volcan, Force vers la Montagne glacée. Le plan, près de l’arche, dit laquelle ; à la sortie du champion, la porte est barrée par ce que la CS lève : des arbustes, des rochers, de l’eau. Une autre route reste toujours ouverte. Chaque champion battu fait baisser le prix des CS chez Alakazam, jusqu’à moitié prix.' },
       // data/forms.ts, data/evolutions.ts (REGIONAL_EVOLUTIONS)
       { title: 'Les formes régionales', text: 'Des sauvages d’autres régions : Rattata d’Alola, Miaouss de Galar, Caninos de Hisui… Et certains évoluent selon le biome : Pikachu en Raichu d’Alola à la Plage, Osselait en Ossatueur d’Alola au Volcan.' },
       // main.ts (nuzlockeToll), ui/options.ts
@@ -187,6 +187,8 @@ export const LORE: LoreChapter[] = [
       { title: 'Le Duel', color: '#e8584c', text: 'Red, Leaf ou Brice te défient avec quatre de leurs Pokémon, un à la fois, forts comme ceux d’un champion. Gagne, et un don t’attend. Pas avant le troisième acte.' },
       { title: 'La Horde', color: '#9ad46a', text: 'Toute une colonie d’une même espèce, plus faible mais deux fois plus nombreuse. La porte dit laquelle : viens-y remplir la jauge d’une recrue que tu veux.' },
       { title: 'La Pension', color: '#e8a8c8', text: 'Écrémeuh garde un grand enclos. Parle-lui (E) : elle entraîne l’équipe (des niveaux que tu répartis comme tu veux, plus nombreux à chaque acte, et d’autres contre des ₽) ou échange un membre contre un Pokémon du Repaire, chacun une fois.' },
+      // run/room.ts (ENGAGE_RANGE, updateHeld), main.ts (WILD_HP_PER_MEMBER)
+      { title: 'Les dresseurs', text: 'À son tour, un dresseur marche vers toi et lance ses Poké Balls quand tu arrives à sa hauteur : ses Pokémon sortent près de lui. Plus ton équipe est grande, plus les sauvages et les champions sont coriaces.' },
       // entities/actor.ts (terrainMult), run/hazards.ts, run/room.ts (Village), world/generate.ts (hide)
       { title: 'Le terrain', text: 'Chaque biome a son piège : hautes herbes qui cachent les sauvages, boue qui ralentit, lave qui brûle, tourbillons de sable, glace qui fait glisser, dresseurs qui lancent des Poké Balls au Village.' },
       // run/cave.ts

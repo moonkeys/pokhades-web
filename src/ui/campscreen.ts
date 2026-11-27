@@ -1992,7 +1992,9 @@ export class CampScreen {
       art(c.species, card);
       if (this.news.has(String(c.species))) newMark(card);
       el('b', '', card, c.name ?? datas[i].name);
-      el('small', 'state', card, originLabel(c.origin ?? '') || 'Recrue');
+      // La provenance seulement si elle dit quelque chose (« Recrue » sur chaque carte prenait une ligne pour rien).
+      const from = originLabel(c.origin ?? '');
+      if (from) el('small', 'state', card, from);
       card.addEventListener('click', () => {
         this.recSel = c.species;
         // En petit écran, la fiche est sous les cartes : on y descend.
