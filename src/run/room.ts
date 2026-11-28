@@ -9,6 +9,8 @@ import { landReachable, type Exit, type WorldMap } from '../world/generate';
 import { TILE } from '../world/tiles';
 import { REWARD_COLOR, SHOP_COLOR, SPECIALS, type ExitOffer, type Reward, type Run, type SpecialId } from './run';
 import { FAUNA, SWIMMERS, type BiomeId } from '../data/species';
+import { evolutionsOf } from '../data/evolutions';
+import { TEMPLE_FLOORS, TEMPLE_FLOOR_WAVES, TEMPLE_MINIBOSS_WAVE } from '../meta/temple';
 import type { DonorId } from '../combat/boons';
 import { donorBadge, drawRewardIcon, rewardIcon, shopIcon, type Prize } from '../ui/rewardicons';
 import { BIOMES, BIOME_COLOR } from '../world/biomes';
@@ -150,6 +152,8 @@ interface PendingSpawn {
   id: number;
   level: number;
   role: Role;
+  /** Barres de PV imposées (boss et mini-boss de la tour du temple). */
+  bars?: number;
   x: number;
   y: number;
   t: number;
@@ -158,7 +162,7 @@ interface PendingSpawn {
 }
 
 /** Un Pokémon d'une vague ; `group` : le dresseur à qui il appartient. */
-type WaveMon = { id: number; level: number; role: Role; group?: number };
+type WaveMon = { id: number; level: number; role: Role; group?: number; bars?: number };
 
 /**
  * Un dresseur de la salle (data/trainers.ts) : il attend son tour en faisant les cent pas,
@@ -197,16 +201,17 @@ const ENGAGE_RANGE = 8.5;
 /** Au-delà, il lance quand même (bloqué derrière un obstacle, joueur qui l'évite). */
 const ENGAGE_TIMEOUT = 6;
 /**
- * Épreuve du temple de Lugia (retour du 27 novembre 2026 : « faire quelque chose de l'île ; entrer
- * dans le temple pour une salle spéciale ou des jeux ») : des vagues qui ne s'arrêtent qu'à la
- * chute de l'équipe, tirées de la faune de tous les biomes (pas les nageurs : la salle est sèche).
- * Chaque vague gagne `TEMPLE_LEVEL_STEP` niveaux et un demi-sauvage ; toutes les cinq, un Pokémon
- * de champion (deux barres, ses attaques les plus fortes) se joint à elle.
+ * Un étage de la tour du temple (meta/temple.ts) : dix vagues de la faune de son terrain (pas les
+ * nageurs). Retour du 28 novembre 2026 (« à six, on a roulé jusqu'à la vague 25 ») : chaque vague
+ * gagne 0,8 niveau, chaque étage 2 de plus (le boss final, une cinquantaine de niveaux au-dessus de
+ * l'équipe au départ : on gagne des niveaux en montant), et plus de sauvages à chaque étage ; à la cinquième, un mini-boss, la
+ * forme finale d'une espèce du terrain (Pokémon de champion, plus de barres à chaque étage) ; à la
+ * dixième, le boss de l'étage, un légendaire (Pokémon d'as : renfort, entrée en puissance, barre de
+ * boss), escorté de formes finales.
  */
-const TEMPLE_WAVES = 40;
-const TEMPLE_LEVEL_STEP = 1.2;
-const TEMPLE_MAX = 9;
-const TEMPLE_CHAMPION_EVERY = 5;
+const TEMPLE_LEVEL_STEP = 0.8;
+const TEMPLE_FLOOR_LEVELS = 2;
+const TEMPLE_MAX = 10;
 
 interface Door {
   exit: Exit;
@@ -396,6 +401,7 @@ export class RoomDirector {
     this.paid = false;
     this.waves = [];
     this.special = run.special;
+    this.templeFloor = run.templeFloor;
     this.duel = null;
     this.failed = false;
     this.village = world.biome.id === 'village' && !run.isBoss() && !run.isShop();
@@ -409,13 +415,31 @@ export class RoomDirector {
     this.open = openCells(world);
     const crowd = crowdOf(this.open);
     if (this.special === 'temple' && enemiesOn) {
-      const pool = [...new Set(Object.values(FAUNA).flat())].filter((id) => !SWIMMERS.has(id));
-      this.level = run.templeLevel;
-      for (let w = 0; w < TEMPLE_WAVES; w++) {
-        const level = run.templeLevel + Math.floor(w * TEMPLE_LEVEL_STEP);
-        const n = Math.min(TEMPLE_MAX, 2 + Math.floor(w * 0.5) + Math.floor((run.teamSize - 1) / 2));
-        const wave: WaveMon[] = Array.from({ length: n }, () => ({ id: this.rng.pick(pool), level, role: 'wild' as const }));
-        if ((w + 1) % TEMPLE_CHAMPION_EVERY === 0) wave.unshift({ id: this.rng.pick(pool), level: level + 3, role: 'champion' });
+      const f = run.templeFloor;
+      const floor = TEMPLE_FLOORS[f];
+      // La faune du terrain de l'étage ; le hall du dernier, celle de toute la Ligue.
+      const pool = [...new Set(floor.hall ? Object.values(FAUNA).flat() : FAUNA[floor.biome])].filter((id) => !SWIMMERS.has(id));
+      const finalOf = (id: number) => {
+        let at = id;
+        for (let k = 0; k < 3 && evolutionsOf(at).length; k++) at = evolutionsOf(at).at(-1)!.next;
+        return at;
+      };
+      const base = run.templeLevel + f * (TEMPLE_FLOOR_WAVES * TEMPLE_LEVEL_STEP + TEMPLE_FLOOR_LEVELS);
+      this.level = Math.round(base);
+      for (let w = 0; w < TEMPLE_FLOOR_WAVES; w++) {
+        const level = Math.round(base + w * TEMPLE_LEVEL_STEP);
+        if (w === TEMPLE_FLOOR_WAVES - 1) {
+          // Le boss de l'étage, et son escorte de formes finales.
+          const wave: WaveMon[] = [{ id: floor.boss, level: level + 6, role: 'boss', bars: 3 + f }];
+          for (let k = 0; k < 2 + f; k++) wave.push({ id: finalOf(this.rng.pick(pool)), level, role: 'wild' });
+          this.waves.push(wave);
+          continue;
+        }
+        const n = Math.min(TEMPLE_MAX, 3 + f + Math.floor(w / 2) + Math.floor((run.teamSize - 1) / 2));
+        // Passé le mini-boss, la faune se mêle de formes évoluées.
+        const pick = () => (w >= TEMPLE_MINIBOSS_WAVE && this.rng.chance(0.35) ? finalOf(this.rng.pick(pool)) : this.rng.pick(pool));
+        const wave: WaveMon[] = Array.from({ length: n }, () => ({ id: pick(), level, role: 'wild' as const }));
+        if (w === TEMPLE_MINIBOSS_WAVE - 1) wave.unshift({ id: finalOf(this.rng.pick(pool)), level: level + 4, role: 'champion', bars: 2 + f });
         this.waves.push(wave);
       }
     } else if (run.isBoss() && enemiesOn) {
@@ -530,7 +554,7 @@ export class RoomDirector {
     for (const p of this.pending.filter((q) => q.t >= SPAWN_ANNOUNCE)) {
       // Sortie de Poké Ball : pas de nuage, la gerbe de la ball suffit.
       const g = p.group !== undefined ? this.groups[p.group] : undefined;
-      const a = this.host.spawnEnemy(p.id, p.level, p.x, p.y, p.role, g?.ace ? (this.special === 'duel' ? DUEL_BARS : ACE_BARS) : undefined);
+      const a = this.host.spawnEnemy(p.id, p.level, p.x, p.y, p.role, p.bars ?? (g?.ace ? (this.special === 'duel' ? DUEL_BARS : ACE_BARS) : undefined));
       g?.actors.push(a);
     }
     this.pending = this.pending.filter((q) => q.t < SPAWN_ANNOUNCE);
@@ -662,7 +686,11 @@ export class RoomDirector {
     // Ligne de front : les anneaux attendent le préavis (t négatif), le temps du grondement et de la flèche.
     const warn = world.front && !this.boss ? this.announce(world, player) : 0;
     // Au temple, chaque vague s'annonce, et toutes les cinq celle du champion.
-    if (this.special === 'temple') this.host.toast(`Vague ${this.wave + 1}`, (this.wave + 1) % TEMPLE_CHAMPION_EVERY === 0 ? 'Un champion' : undefined);
+    if (this.special === 'temple') {
+      const n = this.wave + 1;
+      const floor = TEMPLE_FLOORS[this.templeFloor];
+      this.host.toast(n === TEMPLE_FLOOR_WAVES ? floor.name : `Vague ${this.templeFloor * TEMPLE_FLOOR_WAVES + n}`, n === TEMPLE_FLOOR_WAVES ? 'Boss de l’étage' : n === TEMPLE_MINIBOSS_WAVE ? 'Un mini-boss' : undefined);
+    }
     // Les dresseurs de cette vague : celui qui est déjà à portée lance tout de suite ; les autres
     // marchent vers le joueur et lanceront en arrivant (updateHeld). Le Duel garde son lancer d'emblée.
     const engaged = new Set<TrainerGroup>();
@@ -812,8 +840,10 @@ export class RoomDirector {
   /** Temple : les vagues vaincues jusqu'ici (celle en cours ne compte pas, sauf salle libérée). */
   get templeCleared(): number {
     if (this.special !== 'temple') return 0;
-    return this.phase === 'cleared' || this.phase === 'open' ? this.waves.length : this.wave;
+    return this.templeFloor * TEMPLE_FLOOR_WAVES + (this.phase === 'cleared' || this.phase === 'open' ? this.waves.length : this.wave);
   }
+  /** L'étage de la tour en cours (pris à la run au début de la salle). */
+  private templeFloor = 0;
 
   /** Les dresseurs encore dans la salle, pour le rendu. */
   get trainers(): Trainer[] {

@@ -68,7 +68,7 @@ import { Residents } from './run/residents';
 import { MAX_ERRANDS, ROOM_AT, claimErrand, errandDone, errandEvent, errandOf, rewardLines, rewardOf, rollErrand } from './meta/errands';
 import { INTIMIDATE, INTIMIDATE_MULT, INTIMIDATE_RANGE, INTIMIDATE_TIME, WEATHER_ABILITIES } from './data/abilities';
 import { evolveMove, rollSkillOffer, upgradeMove, type SkillOffer } from './run/rewards';
-import { TEMPLE_PRIZE, TEMPLE_PRIZE_NAME, noteTemple, templeReward } from './meta/temple';
+import { TEMPLE_FLOORS, TEMPLE_REST_HEAL, claimFloorBoss, noteTemple, templeReward } from './meta/temple';
 import { COMBATS_PER_ACT, CURSES, LEAGUE_MASTER, ROOMS_PER_ACT, Run } from './run/run';
 import { Hud } from './ui/hud';
 import { loadOptions, saveOptions, type Options } from './ui/options';
@@ -903,7 +903,8 @@ async function boot(): Promise<void> {
       // Bonus innés permanents d'un champion et de son as (EnemyAI.gd:210-217 : ATQ +15 % ; ATQ +35 %, DÉF +30 %).
       if (a.role !== 'wild') {
         const boost = BOSS_BOOST[a.role];
-        const first = a.role === 'boss' && mode === 'run' && run.act === 0;
+        // (Pas d'adoucissement du premier as dans la tour du temple : son boss d'étage est un légendaire.)
+        const first = a.role === 'boss' && mode === 'run' && run.act === 0 && !templeRun;
         const soft = first ? FIRST_ACE_ATK : 1;
         mon.mult.atk *= boost.atk * soft;
         mon.mult.spAtk *= boost.atk * soft;
@@ -930,7 +931,7 @@ async function boot(): Promise<void> {
       a.brain = new EnemyBrain(a);
       // L'as d'un champion prend le jeu d'attaques choisi pour lui (data/champions.ts, ACE_MOVES) ;
       // son cerveau renaît avec (l'archétype en dépend).
-      const ace = a.role === 'boss' && mode === 'run' ? ACE_MOVES[run.champion.name] : undefined;
+      const ace = a.role === 'boss' && mode === 'run' && !templeRun ? ACE_MOVES[run.champion.name] : undefined;
       if (ace) {
         void Promise.all(ace.map((api) => loadMove(api, mon.level))).then((ms) => {
           const all = ms.filter((m): m is NonNullable<typeof m> => Boolean(m));
@@ -946,7 +947,8 @@ async function boot(): Promise<void> {
         });
       }
       // Un Pokémon de champion prend ses attaques les plus fortes (six : il en change à chaque coup), pas le kit des sauvages.
-      if (a.role === 'champion' && mode === 'run') {
+      // (Le boss d'étage de la tour aussi : un légendaire avec ses meilleures attaques, pas celles d'un as.)
+      if ((a.role === 'champion' || (a.role === 'boss' && templeRun)) && mode === 'run') {
         void mon.strongestMoves(CHAMPION_MON_MOVES).then((got) => {
           if (got.length < 2 || a.pokemon !== mon || a.deathT >= 0) return;
           mon.moves.splice(0, mon.moves.length, ...got);
@@ -1416,7 +1418,9 @@ async function boot(): Promise<void> {
     // (Le temple aussi : une salle ronde et close, l'arène de l'épreuve.)
     const calmRoom = run.special === 'spring' || run.special === 'altar' || run.special === 'dojo' || run.special === 'pension' || run.special === 'temple';
     const layout = calmRoom ? 'sanctuaire' : opts.layout === 'auto' ? undefined : opts.layout;
-    roomKey = { kind: 'room', biome: run.biome, seed, store: run.isShop(), cave: run.hasCave(), layout, mouthUsed: false, entry: arena ? 'S' : run.entrySide, arena, temple: templeRun || undefined };
+    // Le dernier étage de la tour se joue dans le hall du temple ; les autres, dans l'arène de leur terrain.
+    const hall = templeRun && TEMPLE_FLOORS[run.templeFloor]?.hall;
+    roomKey = { kind: 'room', biome: run.biome, seed, store: run.isShop(), cave: run.hasCave(), layout, mouthUsed: false, entry: arena ? 'S' : run.entrySide, arena, temple: hall || undefined };
     world = roomWorld(roomKey);
     genObjs.set(world, new Set(world.objects));
     outdoor = null;
@@ -1461,7 +1465,7 @@ async function boot(): Promise<void> {
     skyParticles.reset();
     const before = first ? 'clear' : roomWeather;
     // L'arène du Village est une salle d'intérieur : ni pluie, ni pollen.
-    const indoor = (run.isBoss() || templeRun) && run.biome === 'village';
+    const indoor = (run.isBoss() || (templeRun && TEMPLE_FLOORS[run.templeFloor]?.hall)) && run.biome === 'village';
     // Le ciel découle de celui de la salle d'avant (world/weather.ts) ; une boutique ou un intérieur le laisse en pause.
     roomWeather = run.isShop() || indoor || calm ? 'clear' : opts.weather !== 'run' ? opts.weather : rollWeather(run.biome, run.mapSeed, first ? undefined : lastSky);
     if (!run.isShop() && !indoor && !calm) lastSky = roomWeather;
@@ -1656,8 +1660,8 @@ async function boot(): Promise<void> {
   };
 
   /**
-   * `temple` : l'épreuve du temple de Lugia ; elle se joue dans le hall du temple (world/arena.ts,
-   * decorateTemple, bâti sur l'arène d'intérieur du Village), et ne compte pas comme une run.
+   * `temple` : la tour du temple (meta/temple.ts) : cinq étages, chacun l'arène de son terrain, le
+   * dernier dans le hall du temple (world/arena.ts, decorateTemple). Ne compte pas comme une run.
    */
   const newRun = (temple = false) => {
     mode = 'run';
@@ -1669,6 +1673,8 @@ async function boot(): Promise<void> {
     run = newRunState(temple ? 'village' : undefined);
     if (temple) {
       run.special = 'temple';
+      run.templeFloor = 0;
+      run.templeBiome = TEMPLE_FLOORS[0].biome;
       // La première vague au niveau moyen de l'équipe du Repaire, deux crans en dessous.
       const lv = save.team.map((id) => startLevel(save, id, BASE_TEAM_LEVEL));
       run.templeLevel = Math.max(5, Math.round(lv.reduce((a, b) => a + b, 0) / (lv.length || 1)) - 2);
@@ -2170,13 +2176,9 @@ async function boot(): Promise<void> {
       loadRoom(false);
     },
     roomCleared: () => {
-      // Toutes les vagues du temple vaincues : l'épreuve s'achève sur une victoire.
-      if (templeRun) {
-        runHud.toast('Le temple est vaincu !', `${director.templeCleared} vagues`);
-        endT = 0;
-        endDelay = DEFEAT_TIME;
-        return;
-      }
+      // Un étage de la tour vaincu (meta/temple.ts) : son boss rejoint la rébellion la première fois,
+      // puis le palier — soin et don — et l'escalier vers le suivant ; le dernier, c'est la victoire.
+      if (templeRun) return templeFloorDone();
       megaRevert();
       combat.hooks.onRoomClear(team, run);
       // Le ciel se dégage une fois la salle libérée (retour de test : sous la grêle, on ne pouvait
@@ -2479,24 +2481,67 @@ async function boot(): Promise<void> {
     earn(BAIES.defeat(run.room));
   };
   /**
-   * Fin de l'épreuve du temple : Baies par vague, Éclats par palier franchi, Drattak à la 15ᵉ vague
-   * (meta/temple.ts), puis le Repaire, sans bilan de run.
+   * Un étage de la tour vaincu. Son boss, battu pour la première fois, rejoint la rébellion (recrue
+   * chez Dracolosse). Puis le palier, comme entre deux salles de Hades : chacun reprend la moitié
+   * de ses PV (les K.O. se relèvent avec), un don à choisir, et l'escalier : l'étage suivant, sur
+   * un autre terrain. Le dernier étage vaincu, la tour l'est.
+   */
+  const templeFloorDone = () => {
+    const f = run.templeFloor;
+    const floor = TEMPLE_FLOORS[f];
+    if (claimFloorBoss(save, f)) {
+      if (!ownsSpecies(save, floor.boss) && !save.candidates.some((c) => c.species === floor.boss)) save.candidates.push({ species: floor.boss, origin: 'temple' });
+      writeSave(save);
+      runHud.notify({ title: floor.name, text: `${floor.name} veut rejoindre la rébellion : Dracolosse te le présentera.`, art: floor.boss, color: 'var(--yel)' });
+    }
+    if (f >= TEMPLE_FLOORS.length - 1) {
+      runHud.toast('La tour est vaincue !', `${director.templeCleared} vagues`);
+      endT = 0;
+      endDelay = DEFEAT_TIME;
+      return;
+    }
+    for (const m of team) {
+      const mon = m.pokemon;
+      if (!mon || m.runAlly) continue;
+      if (m.deathT >= 0) {
+        m.getUp();
+        mon.hp = 0;
+        fx.ballSend(m.x, m.y);
+      }
+      mon.status = null;
+      mon.hp = Math.min(mon.maxHp, mon.hp + Math.round(mon.maxHp * TEMPLE_REST_HEAL));
+      fx.attackAnim('fx_heal', m.x, m.y, undefined, true);
+    }
+    runHud.toast(`Étage ${f + 1} vaincu`, 'Soin et un don');
+    // Le don du palier (l'écran de choix des dons) ; l'escalier ensuite, quel que soit le choix.
+    window.setTimeout(() => {
+      director.grant('boon', () => {
+        input.flush();
+        run.templeFloor = f + 1;
+        run.templeBiome = TEMPLE_FLOORS[f + 1].biome;
+        loadRoom(false);
+        runHud.announce(`Étage ${f + 2}`, '#9fc4e8', BIOMES[run.biome].name);
+      });
+    }, 1200);
+  };
+
+  /**
+   * Fin de la tour : Baies par vague, Éclats par palier franchi (meta/temple.ts), puis le Repaire,
+   * sans bilan de run. (Les boss d'étage ont déjà rejoint la rébellion en tombant.)
    */
   const finishTemple = () => {
     const cleared = director.templeCleared;
     const got = templeReward(save, cleared);
-    noteTemple(save, cleared, got);
+    noteTemple(save, cleared);
     if (got.baies) save.baies += got.baies;
     if (got.shards) save.shards += got.shards;
-    if (got.prize && !ownsSpecies(save, TEMPLE_PRIZE) && !save.candidates.some((c) => c.species === TEMPLE_PRIZE)) save.candidates.push({ species: TEMPLE_PRIZE, origin: 'temple' });
     writeSave(save);
     templeRun = false;
     endT = -1;
     input.flush();
     enterCamp();
     const parts = [`+${got.baies} Baies`, ...(got.shards ? [`+${got.shards} Éclat${got.shards > 1 ? 's' : ''}`] : [])];
-    runHud.notify({ title: got.record ? 'Temple : record !' : 'Temple', text: `${cleared} vague${cleared > 1 ? 's' : ''} vaincue${cleared > 1 ? 's' : ''} · ${parts.join(' · ')}`, art: ISLAND_NPCS.sage, color: '#9fc4e8' });
-    if (got.prize) runHud.notify({ title: TEMPLE_PRIZE_NAME, text: `Lugia te confie ${TEMPLE_PRIZE_NAME} : Dracolosse te le présentera.`, art: TEMPLE_PRIZE, color: 'var(--yel)' });
+    runHud.notify({ title: got.record ? 'Tour du temple : record !' : 'Tour du temple', text: `${cleared} vague${cleared > 1 ? 's' : ''} vaincue${cleared > 1 ? 's' : ''} · ${parts.join(' · ')}`, art: ISLAND_NPCS.hermits[0], color: '#9fc4e8' });
   };
   const cave: CaveDirector = new CaveDirector(document.body, fx, atlas, {
     spawnEnemy: (id, level, x, y, role) => {
@@ -3458,7 +3503,13 @@ async function boot(): Promise<void> {
           // Un as et son jumeau : une barre pour deux.
           name: champ.partner && champ.partner.deathT < 0 ? `${champ.pokemon.name} ×2` : champ.pokemon.name,
           // En Duel, l'équipe est celle de la légende, pas du champion de l'acte.
-          sub: cave.active ? cave.guardianTitle : `${champ.role === 'boss' ? 'As' : 'Équipe'} de ${director.duelName ?? run.champion.name}`,
+          sub: cave.active
+            ? cave.guardianTitle
+            : templeRun
+              ? champ.role === 'boss'
+                ? `Gardien de l’étage ${run.templeFloor + 1}`
+                : 'Mini-boss de la tour'
+              : `${champ.role === 'boss' ? 'As' : 'Équipe'} de ${director.duelName ?? run.champion.name}`,
           ace: champ.role === 'boss',
           bars: champ.bars,
           barsLeft: champ.barsLeft,
@@ -3468,7 +3519,7 @@ async function boot(): Promise<void> {
   };
   // La malédiction d'un pacte (Autel maudit) reste écrite sous le lieu jusqu'à la fin de l'acte.
   const curseTag = () => (run.cursed() ? ` · Pacte : ${CURSES[run.curse!].name}` : '');
-  const placeName = () => (templeRun ? `Temple de Lugia · vague ${director.templeCleared + 1}` : cave.active ? cave.title : run.isShop() ? `Boutique${curseTag()}` : `${run.placeName}${weatherNow() !== 'clear' ? ` · ${WEATHERS[weatherNow()].name}` : ''}${curseTag()}`);
+  const placeName = () => (templeRun ? `Tour du temple · étage ${run.templeFloor + 1} · vague ${director.templeCleared + 1}` : cave.active ? cave.title : run.isShop() ? `Boutique${curseTag()}` : `${run.placeName}${weatherNow() !== 'clear' ? ` · ${WEATHERS[weatherNow()].name}` : ''}${curseTag()}`);
 
   /** Hôte : l'instantané du terrain, à tous les invités. */
   const sendSnap = () => {

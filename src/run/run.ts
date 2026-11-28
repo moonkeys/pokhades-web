@@ -192,8 +192,11 @@ export class Run {
   private readonly beaten: readonly string[];
   /** Salle spéciale en cours (la porte prise l'annonçait), sinon null. */
   special: SpecialId | null = null;
-  /** Épreuve du temple (main.ts, startTemple) : niveau de la première vague, celui de l'équipe. */
+  /** Tour du temple (main.ts, newRun(true)) : niveau de la première vague, celui de l'équipe. */
   templeLevel = 10;
+  /** Tour du temple : l'étage en cours (meta/temple.ts, TEMPLE_FLOORS), et son terrain. */
+  templeFloor = 0;
+  templeBiome: BiomeId | null = null;
   /** Salle de Horde : son espèce (ExitOffer.horde). */
   hordeSpecies: number | null = null;
   /** Salles spéciales prises à chaque acte, et la dernière (jamais deux pareilles de suite). */
@@ -431,6 +434,8 @@ export class Run {
     return Math.min(this.acts - 1, Math.floor(this.room / ROOMS_PER_ACT));
   }
   get biome(): BiomeId {
+    // La tour du temple change de terrain à chaque étage, hors du graphe des biomes.
+    if (this.templeBiome) return this.templeBiome;
     this.ensureAct(this.act);
     return this.biomes[this.act];
   }

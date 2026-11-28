@@ -60,7 +60,7 @@ import { MH as PLAN_H, MW as PLAN_W, paintPlan, type Region } from '../ui/worldp
 // En dehors des gardiens des postes, le camp ne compte que des libérés — ceux
 // qu'on a débloqués, qu'on n'emmène pas et qui ne sont pas en mission : endormis sur les rondins du feu ou au
 // dortoir, à l'entraînement, à la nage dans le lac (ceux d'eau), ou à flâner.
-// (27 novembre 2026 : Lugia y est seul, gardien de l'épreuve du temple ; les deux ermites sont partis.)
+// (27-28 novembre 2026 : Roigada y est seul, gardien de la tour du temple ; Lugia et Noadkoko sont partis.)
 // Sur l'île, loin au sud du lac, un temple dont on gravit l'escalier, Lugia et
 // deux ermites : on n'y va qu'à la nage, avec la CS Surf. Un repère tressaute
 // au-dessus du gardien dont on s'approche ; E ouvre son écran (main.ts), après
@@ -196,13 +196,15 @@ export const STATIONS: Record<Station, { id: number; type: string; title: string
     intro: '',
   },
   // Ajout (27 novembre 2026, « l'île ne sert à rien ; un seul Pokémon, mais qui a un rôle ; entrer
-  // dans le temple ») : Lugia, seul sur l'île, garde l'épreuve du temple (run/room.ts, `temple`).
+  // dans le temple ») : seul sur l'île, il garde la tour du temple (run/room.ts, `temple`). Roigada,
+  // l'ermite, et non Lugia (retour du 28 : « pas un légendaire comme gardien ; j'aime bien
+  // Roigada ») : Lugia attend au sommet de la tour.
   temple: {
-    id: ISLAND_NPCS.sage,
+    id: ISLAND_NPCS.hermits[0],
     type: 'psychic',
-    title: 'Temple',
-    kicker: 'le gardien de l’île',
-    intro: 'Entre, si tu l’oses : les vagues ne cessent qu’à ta chute.',
+    title: 'Tour du temple',
+    kicker: 'l’ermite de l’île',
+    intro: 'Cinq étages, cinq terrains. Au sommet de chacun, un gardien. Monte, si tu l’oses.',
   },
 };
 
@@ -921,9 +923,11 @@ export class Camp {
       if (fits(orchard.x - 7.5, orchard.y + 3.5)) put(CAMP_PROPS.logs, orchard.x - 7.5, orchard.y + 3.5);
     }
     if (has('lakeside')) {
-      // Le hameau du lac : trois huttes moussues en arc sur la rive, des tonneaux et un banc face à l'eau.
+      // Le hameau du lac : trois tipis en arc sur la rive (des huttes moussues d'abord, mais leur toit
+      // vert se confondait avec les arbres — retour du 28 novembre 2026 : « c'est juste des arbres,
+      // il faudrait de vrais tipis »), des tonneaux et un banc face à l'eau.
       const fits = (x: number, y: number) => world.inside[Math.floor(y - 0.5) * W + Math.floor(x)] === 1 && !world.blocked[Math.floor(y - 0.5) * W + Math.floor(x)] && !isWater(Math.floor(x), Math.floor(y - 0.5));
-      for (const [dx, dy] of [[-4.5, -1.5], [1, -3], [5.5, -0.5]]) if (fits(lakeside.x + dx, lakeside.y + dy)) put(CAMP_PROPS.mossHut, lakeside.x + dx, lakeside.y + dy);
+      for (const [dx, dy] of [[-4.5, -1.5], [0.5, -3], [5, -0.5]]) if (fits(lakeside.x + dx, lakeside.y + dy)) put(CAMP_PROPS.tepee, lakeside.x + dx, lakeside.y + dy);
       for (const [dx, dy] of [[-1.5, 2.4], [-0.6, 2.6]]) if (fits(lakeside.x + dx, lakeside.y + dy)) put(CAMP_PROPS.barrels[1], lakeside.x + dx, lakeside.y + dy);
       if (fits(lakeside.x + 3, lakeside.y + 3.5)) put(TOWN_DECOR.bench, lakeside.x + 3, lakeside.y + 3.5);
     }
@@ -1181,7 +1185,7 @@ export class Camp {
     // (Dessiné centré sur ses deux colonnes d'escalier, pas sur l'île : les marches tombent pile sous les pieds.)
     this.temple = { x: sx + 1, y: island.y, top: Math.floor(island.y) - STEPS };
 
-    // Lugia, au pied du temple, à côté de l'escalier (qu'il ne bouche pas) : le gardien de l'épreuve.
+    // Roigada, au pied du temple, à côté de l'escalier (qu'il ne bouche pas) : le gardien de la tour.
     posts.push(['temple', place.freeSpot(Math.floor(island.x) + 3, Math.floor(island.y) + 1, 3), 0]);
     for (const [station, spot, rest, arg] of posts) {
       const news = document.createElement('div');

@@ -1545,6 +1545,31 @@ Poséidon dans Hades ». Écart voulu avec `CombatArena._roll_boon_rarity` du je
   Le banc est bruité (±15 % sur le temps, ±20 points de PV avec trois combats) : il sert à repérer
   un don muet ou un écart flagrant, pas à régler au pour cent.
 
+## La tour du temple (28 novembre 2026)
+
+Retour du 28 novembre 2026, après un essai à six : « on a roulé jusqu'à la vague 25 ; tous les dix,
+on monte un escalier et on change de terrain, cinq étages ; de quoi se soigner ou une amélioration
+entre deux ; des mini-boss évolués, de plus en plus forts ; pas de forme évoluée en récompense, des
+légendaires, à battre en boss, plus rares plus on monte ; pas Lugia comme gardien, Roigada ; les
+tipis du hameau, c'est juste des arbres ».
+
+- **Roigada garde la tour** (`run/camp.ts`, `STATIONS.temple`) : Lugia quitte l'île ; il attend au
+  sommet. L'écran (`renderTemple`) liste les cinq étages, leur terrain et leur gardien (silhouette
+  tant qu'il n'est pas battu).
+- **Cinq étages de dix vagues** (`meta/temple.ts`, `TEMPLE_FLOORS` ; `run/room.ts`) : Montagne
+  glacée, Prairie, Volcan, Automne (l'arène de chacun), puis le hall du temple. Vague 5 : un mini-boss,
+  la forme finale d'une espèce du terrain (Pokémon de champion, 2 barres + l'étage) ; vague 10 : le
+  gardien, un légendaire en Pokémon d'as (renfort, entrée en puissance, barre de boss « Gardien de
+  l'étage N », 3 barres + l'étage, ses attaques les plus fortes), escorté de formes finales.
+  +0,8 niveau par vague, +2 par étage, plus de sauvages à chaque étage.
+- **Les gardiens** : Artikodin, Électhor, Sulfura, Ho-Oh, Lugia — légendaires aux planches de combat
+  complètes, qu'on n'obtient nulle part ailleurs. Battu pour la première fois, chacun rejoint la
+  rébellion (recrue chez Dracolosse ; `Save.temple.beaten`). Drattak n'est plus une récompense.
+- **Le palier** (`main.ts`, `templeFloorDone`) : entre deux étages, la moitié des PV pour chacun (les
+  K.O. se relèvent avec), un don à choisir (`director.grant('boon')`), puis l'escalier : l'étage
+  suivant sur son terrain (`Run.templeBiome`). Les dons restent jusqu'à la fin de la tour.
+- **Hameau du lac** : trois tipis au lieu des huttes moussues, dont le toit vert passait pour des arbres.
+
 ## Repaire agrandi, temple redécoré, tableau de bord (27 novembre 2026)
 
 Retours du même jour : « j'ai tout construit : agrandir le Repaire » ; « le décor du temple, pas
