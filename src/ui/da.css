@@ -6130,3 +6130,36 @@ img.ess-duel {
     grid-row: 2;
   }
 }
+/* La tour du temple : un étage par ligne, son gardien (en silhouette tant qu'il n'est pas battu). */
+.cs-temple-floors {
+  display: grid;
+  gap: calc(0.5 * var(--u));
+  margin: calc(1 * var(--u)) 0;
+}
+.cs-temple-floor {
+  display: grid;
+  grid-template-columns: calc(4.4 * var(--u)) 1fr;
+  align-items: center;
+  gap: calc(1 * var(--u));
+  padding: calc(0.4 * var(--u)) calc(1 * var(--u));
+  color: var(--ink);
+}
+.cs-temple-floor img {
+  width: calc(4.4 * var(--u));
+  height: calc(4.4 * var(--u));
+  object-fit: contain;
+}
+.cs-temple-floor img.shadow {
+  filter: brightness(0) opacity(0.85);
+}
+.cs-temple-floor b {
+  font-family: var(--head);
+  font-weight: normal;
+  letter-spacing: 0.03em;
+}
+.cs-temple-floor.done {
+  box-shadow: inset calc(0.5 * var(--u)) 0 0 var(--yel);
+}
+.cs-temple-floor .cs-info {
+  display: block;
+}

@@ -223,7 +223,7 @@ export const LORE: LoreChapter[] = [
       { title: 'Baies, ressources, Éclats', text: 'Les Baies paient presque tout au Repaire. Bois, Pierre et Nourriture paient les chantiers de Charpenti. Les Éclats de Champion paient le Bracelet de charge.' },
       { title: 'Les postes', text: 'Dracolosse : le départ. Porygon : l’équipe et le Pokédex. Charpenti : les chantiers. Les autres gardiens arrivent avec leurs bâtiments : missions, quêtes, CT, objets, améliorations, potager, atelier.' },
       // meta/temple.ts, run/room.ts (special temple)
-      { title: 'Le temple de Lugia', text: 'Sur l’île du lac (avec Surf), Lugia garde le temple. Entres-y avec ton équipe : des vagues sans fin, de plus en plus fortes, un champion toutes les cinq. 12 Baies par vague, un Éclat à chaque palier de cinq vagues battu, et à la 15ᵉ vague, Lugia te confie Drattak.' },
+      { title: 'La tour du temple', text: 'Sur l’île du lac (avec Surf), Roigada garde la tour : cinq étages de dix vagues, chacun sur son terrain. À la cinquième vague, un mini-boss évolué ; à la dixième, le gardien de l’étage, un légendaire : bats-le, il te rejoint. Entre deux étages, un soin et un don. 12 Baies par vague, un Éclat à chaque palier de cinq vagues battu.' },
       // meta/catalog.ts (orchard, lakeside)
       { title: 'Le Verger et le Hameau du lac', text: 'Une fois le bourg et l’atelier bâtis, Charpenti défriche encore : le Verger au sud-ouest (des Baies en plus à chaque salle), le Hameau du lac au sud-est (dix places de plus au Repaire).' },
       // main.ts, net/net.ts

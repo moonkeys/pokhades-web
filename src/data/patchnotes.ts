@@ -40,6 +40,27 @@ export interface PatchNote {
 
 export const PATCH_NOTES: readonly PatchNote[] = [
   {
+    id: '2026-11-28-tour',
+    date: '28 novembre 2026',
+    title: 'La tour du temple',
+    sections: [
+      {
+        title: 'Cinq étages, cinq légendaires',
+        items: [
+          'Roigada garde désormais le temple de l’île. Lugia, lui, attend au sommet.',
+          'Le temple devient une tour : cinq étages de dix vagues, chacun sur son terrain (Montagne glacée, Prairie, Volcan, Automne, puis le hall du temple).',
+          'À la cinquième vague de chaque étage, un mini-boss évolué ; à la dixième, le gardien de l’étage : Artikodin, Électhor, Sulfura, Ho-Oh, puis Lugia. Bats-le une première fois, il rejoint la rébellion.',
+          'Entre deux étages : la moitié de tes PV, tes K.O. qui se relèvent, et un don à choisir avant de monter l’escalier.',
+        ],
+        images: artIcons([['Artikodin', 144], ['Électhor', 145], ['Sulfura', 146], ['Ho-Oh', 250], ['Lugia', 249]]),
+      },
+      {
+        title: 'Le Repaire',
+        items: ['Le Hameau du lac a de vrais tipis.'],
+      },
+    ],
+  },
+  {
     id: '2026-11-27-repaire',
     date: '27 novembre 2026',
     title: 'Le temple de Lugia',

@@ -988,8 +988,14 @@ effets animés). Les flèches, ✕ et ✔ restent : ce sont des signes typograph
   dessinée par-dessus le décor (de vraies cases d'eau seraient plus jolies).
 - Formes de base seules, icônes plus petites, Pokédex resserré, sols raccordés
   (même jour, README).
-- Repaire agrandi (Verger, Hameau du lac), hall du temple, Drattak en
-  récompense, tableau de bord et journal des erreurs (même jour, README).
+- Repaire agrandi (Verger, Hameau du lac), hall du temple, tableau de bord
+  et journal des erreurs (même jour, README).
+- La tour du temple (28 novembre 2026, README) : Roigada, cinq étages et
+  cinq terrains, mini-boss évolués, légendaires à battre, soin et don aux
+  paliers. À juger en jeu : la courbe (+0,8 niveau par vague, +2 par étage)
+  à six et seul ; les gardiens restent-ils des combats de boss assez durs.
+  Restent libres pour plus tard : Mew, Celebi, Jirachi, Darkrai, Groudon,
+  Rayquaza (planches complètes).
   **À faire par toi** : passer `supabase/admin.sql` dans Supabase et s'y
   ajouter administrateur. À voir : des niveaux pour les bâtiments, un
   mode de jeu au verger (cueillette), un journal d'événements de jeu

@@ -1,5 +1,5 @@
 import { donorIcon, essIcon, iconText, isEssIcon } from './essicon';
-import { TEMPLE_BAIES_PER_WAVE, TEMPLE_PRIZE_AT, TEMPLE_PRIZE_NAME, TEMPLE_SHARD_STEP } from '../meta/temple';
+import { TEMPLE_BAIES_PER_WAVE, TEMPLE_FLOORS, TEMPLE_FLOOR_WAVES, TEMPLE_MINIBOSS_WAVE, TEMPLE_SHARD_STEP } from '../meta/temple';
 import { loadMove, type Move } from '../combat/moves';
 import { sfx } from '../audio/audio';
 import { fetchJson } from '../assets/json';
@@ -186,7 +186,7 @@ export function originLabel(o: string): string {
   if (o === 'quest') return 'Gagné en quête';
   if (o === 'nectar') return 'Attiré par un nectar';
   if (o === 'ally') return 'Rencontré en ligne';
-  if (o === 'temple') return 'Épreuve du temple';
+  if (o === 'temple') return 'Tour du temple';
   if (o === 'test') return '';
   if (o.startsWith('champion:')) return `Équipe ${/^[AEIOUÉÈÊ]/.test(o.slice(9)) ? 'd’' : 'de '}${o.slice(9)}`;
   const cave = o.startsWith('cave:');
@@ -2099,32 +2099,43 @@ export class CampScreen {
    * les deux prochains à faire seulement (retour de test : « le carnet est trop chargé »).
    */
   /**
-   * Lugia, gardien du temple de l'île (meta/temple.ts) : le record, ce que rapporte l'épreuve, et
-   * l'entrée. Les mêmes trois cases que les records du carnet de Xatu.
+   * Roigada, gardien de la tour du temple (meta/temple.ts) : le record, les cinq étages — leur
+   * terrain et le légendaire qui attend au sommet, en silhouette tant qu'il n'est pas battu —, ce
+   * que rapporte la tour, et l'entrée.
    */
   private renderTemple(main: HTMLElement, ctx: CampCtx): void {
     const save = ctx.save;
     const t = save.temple;
-    el('p', 'cs-quote', main, t.tries ? '« Tu reviens. Les pierres se souviennent de ta dernière chute. »' : '« Peu franchissent l’eau. Encore moins entrent ici. Les vagues ne cessent qu’à ta chute. »');
+    el('p', 'cs-quote', main, t.tries ? '« Tu reviens. Les pierres se souviennent de ta dernière chute. »' : '« Cinq étages, cinq terrains. Au sommet de chacun, un gardien plus ancien que la Ligue. Bats-le, et il te suivra. »');
     const rec = el('div', 'cs-records', main);
     for (const [v, label] of [
       [t.best ? String(t.best) : '—', t.best > 1 ? 'vagues, record' : 'vague, record'],
+      [`${Math.min(TEMPLE_FLOORS.length, Math.floor(t.best / TEMPLE_FLOOR_WAVES))} / ${TEMPLE_FLOORS.length}`, 'étages'],
       [String(t.tries), t.tries > 1 ? 'essais' : 'essai'],
-      [t.prize ? 'Avec toi' : `Vague ${TEMPLE_PRIZE_AT}`, TEMPLE_PRIZE_NAME],
     ] as const) {
       const cell = el('div', 'da-paper', rec);
       el('b', '', cell, v);
       el('small', '', cell, label);
     }
+    // Les étages, du premier au dernier : terrain, vagues, et leur boss (battu ou à battre).
+    const floors = el('div', 'cs-temple-floors', main);
+    TEMPLE_FLOORS.forEach((f, i) => {
+      const beaten = t.beaten.includes(f.boss);
+      const row = el('div', `cs-temple-floor da-paper${beaten ? ' done' : ''}`, floors);
+      art(f.boss, row, beaten ? '' : 'shadow');
+      const txt = el('div', '', row);
+      el('b', '', txt, `Étage ${i + 1} · ${f.hall ? 'le hall du temple' : BIOMES[f.biome].name}`);
+      el('small', 'cs-info', txt, `Vagues ${i * TEMPLE_FLOOR_WAVES + 1} à ${(i + 1) * TEMPLE_FLOOR_WAVES} · ${beaten ? `${f.name} a rejoint la rébellion` : `au sommet, ${beaten || t.best >= (i + 1) * TEMPLE_FLOOR_WAVES ? f.name : '???'} à battre`}`);
+    });
     const card = el('div', 'cs-card da-paper cs-temple', main);
-    el('div', 'cs-head', card).append(el('b', '', undefined, 'L’épreuve'));
-    el('small', 'cs-info', card, 'Ton équipe du Repaire, sans dons, contre des vagues de plus en plus fortes, tirées de tous les biomes. Toutes les cinq vagues, un Pokémon de champion. Pas de porte : on sort en tombant.');
+    el('div', 'cs-head', card).append(el('b', '', undefined, 'La tour'));
+    el('small', 'cs-info', card, `Ton équipe du Repaire contre dix vagues par étage, de plus en plus fortes. À la ${TEMPLE_MINIBOSS_WAVE}ᵉ, un mini-boss évolué ; à la dixième, le gardien de l’étage. Entre deux étages : de quoi te soigner et un don, puis l’escalier vers un autre terrain. Pas de porte : on sort en tombant.`);
     el('div', 'cs-label', card, 'Ce qu’elle rapporte');
     el('small', 'cs-info', card, `${TEMPLE_BAIES_PER_WAVE} Baies par vague vaincue, à chaque essai.`);
     el('small', 'cs-info', card, `Un Éclat de Champion par palier de ${TEMPLE_SHARD_STEP} vagues franchi pour la première fois.`);
-    el('small', 'cs-info', card, t.prize ? `${TEMPLE_PRIZE_NAME} a rejoint la rébellion.` : `À la ${TEMPLE_PRIZE_AT}ᵉ vague, je te confie ${TEMPLE_PRIZE_NAME}.`);
+    el('small', 'cs-info', card, 'Chaque gardien d’étage battu pour la première fois rejoint la rébellion.');
     const why = ctx.temple.blocked();
-    const go = el('button', 'cs-net-btn', card, why ?? 'Entrer dans le temple') as HTMLButtonElement;
+    const go = el('button', 'cs-net-btn', card, why ?? 'Entrer dans la tour') as HTMLButtonElement;
     go.disabled = !!why;
     go.addEventListener('click', () => {
       if (ctx.temple.blocked()) return;

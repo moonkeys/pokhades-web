@@ -300,7 +300,7 @@ export const BUILDINGS: readonly { id: BuildingId; name: string; desc: string; p
   // grand, plus sympa ? agrandir le Repaire ») : deux chantiers de fin, qui gagnent les deux pans
   // de forêt restés debout, au sud-ouest et au sud-est du lac (run/camp.ts, campPockets).
   { id: 'orchard', name: 'Verger', desc: 'Défriche la forêt du sud-ouest pour des arbres fruitiers : des Baies en plus à chaque salle libérée.', cost: { wood: 30, food: 20 }, art: 357, needs: 'atelier' },
-  { id: 'lakeside', name: 'Hameau du lac', desc: 'Des huttes sur la rive sud-est, au-delà de l’atelier : +10 places au Repaire.', cost: { wood: 40, stone: 30, food: 15 }, art: 270, needs: 'hamlet' },
+  { id: 'lakeside', name: 'Hameau du lac', desc: 'Des tipis sur la rive sud-est, au-delà de l’atelier : +10 places au Repaire.', cost: { wood: 40, stone: 30, food: 15 }, art: 270, needs: 'hamlet' },
 ];
 
 /**
